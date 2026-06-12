@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Version maskable : tout l'essentiel tient dans la zone sûre centrale (80 %) -->
+  <defs>
+    <radialGradient id="fondm" cx="50%" cy="46%" r="80%">
+      <stop offset="0%" stop-color="#1b1b1e"/>
+      <stop offset="70%" stop-color="#0d0d0f"/>
+      <stop offset="100%" stop-color="#070708"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#fondm)"/>
+  <!-- cadran (zone sûre) -->
+  <circle cx="256" cy="256" r="140" fill="#121214" stroke="#5d564a" stroke-width="9"/>
+  <g stroke="#9a907c" stroke-width="8" stroke-linecap="round">
+    <line x1="256" y1="146" x2="256" y2="168"/>
+    <line x1="256" y1="344" x2="256" y2="366"/>
+    <line x1="146" y1="256" x2="168" y2="256"/>
+    <line x1="344" y1="256" x2="366" y2="256"/>
+  </g>
+  <!-- aiguilles : 21 h 10 -->
+  <g stroke-linecap="round">
+    <line x1="256" y1="256" x2="166" y2="248" stroke="#c8c2b4" stroke-width="14"/>
+    <line x1="256" y1="256" x2="364" y2="194" stroke="#c8c2b4" stroke-width="9"/>
+  </g>
+  <circle cx="256" cy="256" r="12" fill="#c8c2b4"/>
+  <circle cx="256" cy="256" r="5" fill="#121214"/>
+  <!-- le sang -->
+  <g fill="#8a1c1c">
+    <path d="M300 132 q5 26 2 46 q-3 17 5 29 q6 10 2 20 q-5 11 1 19 q4 6 2 12 q-2 8 4 9 q7 1 6 -9 q-1 -10 -5 -19 q-3 -8 1 -17 q5 -12 -2 -24 q-6 -10 -3 -26 q2 -22 -3 -40 z" opacity="0.92"/>
+    <circle cx="332" cy="148" r="7"/>
+    <circle cx="320" cy="128" r="4"/>
+    <circle cx="172" cy="350" r="6"/>
+  </g>
+</svg>

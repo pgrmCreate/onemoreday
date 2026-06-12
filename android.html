@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>One More Day — installer sur Android</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <style>
+    body { margin: 0; background: #0b0b0c; color: #c8c2b4; font-family: Georgia, serif; line-height: 1.6; }
+    .page { max-width: 760px; margin: 0 auto; padding: 28px 18px 60px; }
+    h1 { font-family: 'Arial Narrow', Impact, sans-serif; text-transform: uppercase; letter-spacing: 4px; color: #b8b2a4; font-size: 1.6rem; }
+    h1 em { color: #a32020; font-style: normal; }
+    .icone { width: 96px; height: 96px; border-radius: 18px; float: right; margin: 0 0 12px 16px; box-shadow: 0 6px 24px #000; }
+    .adresse {
+      background: #131315; border: 1px solid #3c3c44; border-left: 4px solid #a32020;
+      border-radius: 4px; padding: 18px; margin: 18px 0; text-align: center;
+    }
+    .adresse .url { font-family: Consolas, monospace; font-size: clamp(1.3rem, 5vw, 2.2rem); color: #fff; word-break: break-all; }
+    .adresse small { color: #79746a; display: block; margin-top: 6px; text-transform: uppercase; letter-spacing: 2px; font-size: .7rem; }
+    ol { padding-left: 22px; }
+    li { margin: 10px 0; }
+    b { color: #c9b98a; }
+    .note { background: #170d0d; border: 1px solid #6e1212; border-radius: 4px; padding: 10px 14px; font-size: .85rem; color: #b4847f; }
+    .ko { color: #c33; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <img class="icone" src="icons/icon.svg" alt="">
+    <h1>Installer One More <em>Day</em> sur ton téléphone</h1>
+    <p>Le jeu tourne sur ce PC et se joue depuis le téléphone, sur le <b>même Wi-Fi</b>.
+    Une fois installé, il fonctionne <b>hors-ligne</b>, comme une vraie application, avec son icône.</p>
+
+    <div class="adresse">
+      <div class="url" id="url">recherche de l'adresse…</div>
+      <small>à taper dans Chrome, sur le téléphone</small>
+    </div>
+
+    <ol>
+      <li>Connecte le téléphone au <b>même réseau Wi-Fi</b> que ce PC.</li>
+      <li>Ouvre <b>Chrome</b> sur le téléphone et tape l'adresse ci-dessus.</li>
+      <li>Le jeu se charge. Ouvre le menu <b>⋮</b> (en haut à droite de Chrome).</li>
+      <li>Touche <b>« Ajouter à l'écran d'accueil »</b> (ou « Installer l'application »).</li>
+      <li>Valide : l'icône <b>One More Day</b> (l'horloge arrêtée) apparaît sur ton écran d'accueil.</li>
+      <li>Lance le jeu depuis l'icône — plein écran, hors-ligne, sauvegarde sur le téléphone.</li>
+    </ol>
+
+    <p class="note">Si la page ne charge pas sur le téléphone : vérifie que le pare-feu Windows autorise
+    Node.js sur le réseau privé (une fenêtre l'a proposé au premier lancement), et que les deux appareils
+    sont bien sur le même Wi-Fi (pas le réseau « invité »).</p>
+  </div>
+  <script>
+    fetch('/api/lan').then(r => r.json()).then(({ ips, port }) => {
+      const el = document.getElementById('url');
+      if (!ips.length) { el.innerHTML = '<span class="ko">Aucune adresse réseau trouvée — ce PC est-il connecté au Wi-Fi ?</span>'; return; }
+      el.innerHTML = ips.map(ip => `http://${ip}:${port}`).join('<br>');
+    }).catch(() => {
+      document.getElementById('url').innerHTML = '<span class="ko">Lance le jeu via « Jouer sur Android.bat » (serveur Node requis).</span>';
+    });
+  </script>
+</body>
+</html>

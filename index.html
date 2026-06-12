@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b0c">
+  <meta name="description" content="One More Day — survie post-apocalyptique à Salon-de-Provence. Survivre un jour de plus.">
+  <title>One More Day</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="topbar" class="topbar hidden">
+      <span class="heure" id="hud-time">Jour 1 — 08:00</span>
+      <span class="lieu" id="hud-lieu"></span>
+    </div>
+    <div id="screen" class="screen"></div>
+    <div id="moodles" class="moodles hidden"></div>
+    <!-- Coin bas GAUCHE : le menu du jeu (options, journal) -->
+    <div id="fabs-jeu" class="fabs fabs-gauche hidden">
+      <button class="fab small" id="btn-journal" title="Journal"></button>
+      <button class="fab small" id="btn-options" title="Options"></button>
+    </div>
+    <!-- Coin bas DROIT : le personnage (corps, inventaire + fabrication) -->
+    <div id="fabs" class="fabs fabs-droite hidden">
+      <button class="fab principal" id="btn-perso" title="Corps"></button>
+      <button class="fab principal" id="btn-inv" title="Inventaire"></button>
+    </div>
+    <div id="panel" class="panel hidden"></div>
+    <div id="evt" class="evt-fenetre hidden"></div>
+    <div id="attente" class="attente hidden" aria-hidden="true">
+      <div class="attente-box"><div class="attente-spinner"></div><div class="attente-label"></div></div>
+    </div>
+    <div id="toast" class="toast hidden"></div>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

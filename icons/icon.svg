@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- One More Day — l'horloge de la Tour de Salon, arrêtée à 21 h 10 (comme en 1909) -->
+  <defs>
+    <radialGradient id="fond" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#1b1b1e"/>
+      <stop offset="70%" stop-color="#0d0d0f"/>
+      <stop offset="100%" stop-color="#070708"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#fond)"/>
+  <!-- cadran -->
+  <circle cx="256" cy="248" r="168" fill="#121214" stroke="#5d564a" stroke-width="10"/>
+  <circle cx="256" cy="248" r="148" fill="none" stroke="#2c2a26" stroke-width="2"/>
+  <!-- index des heures -->
+  <g stroke="#9a907c" stroke-width="9" stroke-linecap="round">
+    <line x1="256" y1="116" x2="256" y2="142"/>
+    <line x1="256" y1="354" x2="256" y2="380"/>
+    <line x1="124" y1="248" x2="150" y2="248"/>
+    <line x1="362" y1="248" x2="388" y2="248"/>
+  </g>
+  <g stroke="#6e6657" stroke-width="6" stroke-linecap="round">
+    <line x1="322" y1="133.7" x2="309" y2="156.2"/>
+    <line x1="370.3" y1="182" x2="347.8" y2="195"/>
+    <line x1="370.3" y1="314" x2="347.8" y2="301"/>
+    <line x1="322" y1="362.3" x2="309" y2="339.8"/>
+    <line x1="190" y1="362.3" x2="203" y2="339.8"/>
+    <line x1="141.7" y1="314" x2="164.2" y2="301"/>
+    <line x1="141.7" y1="182" x2="164.2" y2="195"/>
+    <line x1="190" y1="133.7" x2="203" y2="156.2"/>
+  </g>
+  <!-- fêlure du verre -->
+  <path d="M168 124 l52 66 -10 16 34 38" fill="none" stroke="#33302a" stroke-width="4" stroke-linecap="round"/>
+  <!-- aiguilles : 21 h 10, l'heure où tout s'est arrêté -->
+  <g stroke-linecap="round">
+    <line x1="256" y1="248" x2="148" y2="238" stroke="#c8c2b4" stroke-width="16"/>
+    <line x1="256" y1="248" x2="385" y2="174" stroke="#c8c2b4" stroke-width="10"/>
+  </g>
+  <circle cx="256" cy="248" r="14" fill="#c8c2b4"/>
+  <circle cx="256" cy="248" r="6" fill="#121214"/>
+  <!-- le sang : une coulée le long du cadran, des éclaboussures -->
+  <g fill="#8a1c1c">
+    <path d="M310 96 q6 30 2 54 q-3 20 6 34 q7 12 2 24 q-6 13 1 22 q5 7 3 14 q-3 9 4 10 q8 1 7 -10 q-1 -12 -6 -22 q-4 -9 1 -20 q6 -14 -2 -28 q-7 -12 -4 -30 q3 -26 -3 -48 z" opacity="0.92"/>
+    <circle cx="352" cy="118" r="9"/>
+    <circle cx="338" cy="92" r="5"/>
+    <circle cx="368" cy="146" r="5.5"/>
+    <circle cx="128" cy="392" r="7"/>
+    <circle cx="112" cy="374" r="4"/>
+    <path d="M96 410 q22 -16 48 -10 q-20 18 -48 10 z"/>
+  </g>
+  <!-- ONE MORE DAY -->
+  <text x="256" y="470" text-anchor="middle" font-family="Arial Narrow, Arial, sans-serif" font-size="50" font-weight="bold" letter-spacing="6" fill="#c8c2b4">ONE MORE D<tspan fill="#a32020">A</tspan>Y</text>
+</svg>

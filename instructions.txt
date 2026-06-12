@@ -1,0 +1,46 @@
+Jeux de survie post apocalyptique zombie.
+
+One more day est un jeux d'aventure à 2 joueurs ou seul (principalement) Jouable PC, android (techno web)
+C'est un jeux d'avanture post-apocalyptique pour adulte (contenu texte gore, violent, qui peuvent un peu heurter la senssibilité des enfants).
+
+C'est globalement un jeux à choix (choix du lieu à parcourir, actions à faire) avec des temps différent celon le moment de l'aventure.
+Choix rapide : en combat par exemple,
+ choix moyen: construire des objets, faire le trie dans son inventaire, manger, dormir etc..
+
+Le jeux proposera un système d'inventaire sur chaque "case" où il sera, si il n'y a pas d'action rapide à faire à ce moment là comme par exemple un combat ou quoi avec 2 limites : le poigt et l'espace dans son ventaire
+chaque Objet à son cout en terme d'espace et de poigt. Il pourra crafter des objets avec ce qu'il a actuellement.
+
+Il pourra aussi avoir des vêtements avec chacun eux des caractéristique :
+- poigt (négatif)
+- possibilité de place d'inventaire (possitif)
+- protection (possitif)
+- temperature (negatif ou positif celon la situation)
+
+- Les combats seront plutôt  dynamique  avec un choix (choix de l'arme équipé, qui sera fait avant mais qui peut changer en combat),
+jeter son arme ou utiliser une arme à distance
+Au début du combat, le joueur aura sa dose d'endurance pleine (sauf situation spécifique comme manque d'eau ou de faim) et utilisera cette endurance pour effectuer un mouvement ou une attaque,
+si il est trop fatigué, il pourra se poser en défense pour gagner de l'endurance mais ne pourra pas bouger
+
+
+Le jeux incorpora un système de nourriture et d'eau à consommer (hors combat ou action rapide globalement)
+
+Les blessures :
+Un joueur peut être blesser, il peut avoir comme project zomboid, des saignement et 4 types de blessures. (égratignure, entaille, blessure profonde et plait ouverte dans l'ordre croissant)
+
+Déplacement:
+Le joueur aura une carte sur lequel il peut se déplacer, certaines salles sont "sécurisé" après la visite mais une rue par exemple, donnera toujours la possibiltié de rencontrer un zombie ennemie.
+
+Parfois, le joueur effectuera des temps long "par exemple un train ou bus", le gameplay sera un peu ralenti, différent, il aura des choix différent à faire, plus de lecture, moins d'action rapide.
+
+Il y aura du son (musique de fond, musique de combat etc..)
+
+Le joueur aura des capacités (construction, mécanique, entretient, peche/chasse, agilité (plus de chance d'esquivé, grimper sur les murs etc..)
+, force, dexterité (plus de chance de touché et faire mal), combat à main nu, visée arme à feu
+
+le jeux peut être lancé sur pc avec une commande tout faite (fichier batch à lancer) ou (fichier pour deployer directe sur android si connection usb existe et valdide) 
+
+Poses  moi tes questions avant
+
+
+
+

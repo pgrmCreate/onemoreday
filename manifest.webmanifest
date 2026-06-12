@@ -1,0 +1,16 @@
+{
+  "name": "One More Day",
+  "short_name": "One More Day",
+  "description": "Jeu de survie post-apocalyptique : survivre un jour de plus, chaque jour.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0d0f",
+  "theme_color": "#0d0d0f",
+  "lang": "fr",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

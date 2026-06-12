@@ -1,0 +1,557 @@
+/* ============ One More Day — Salon-de-Provence ============
+   Design : brutal, désaturé, adulte. Béton, sang séché, os.
+   Pas de barres de vie : des états. Pas d'émojis : des icônes au trait. */
+:root {
+  --bg: #0b0b0c;          /* nuit de béton */
+  --bg2: #131315;
+  --bg3: #1b1b1e;
+  --fg: #c8c2b4;          /* os sale */
+  --fg-dim: #79746a;
+  --blood: #6e1212;       /* sang séché */
+  --blood2: #a32020;      /* sang frais */
+  --rust: #8a5a28;        /* rouille */
+  --olive: #56583f;       /* treillis */
+  --steel: #44505a;       /* acier froid */
+  --danger: #c33;
+  --border: #26262a;
+  --radius: 3px;          /* angles durs */
+  font-size: 16px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--bg); color: var(--fg);
+  font-family: Georgia, 'Times New Roman', serif;
+  overscroll-behavior: none;
+}
+#app {
+  max-width: 860px; margin: 0 auto; height: 100dvh;
+  display: flex; flex-direction: column; position: relative;
+}
+/* Grain + vignette : le monde est sale et les bords sont sombres */
+#app::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 90;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.ico { display: inline-flex; width: 1.25em; height: 1.25em; vertical-align: -0.28em; }
+.ico svg { width: 100%; height: 100%; }
+
+/* ---------- Barre du haut : heure + lieu, discrète ---------- */
+.topbar {
+  z-index: 20; display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 12px calc(6px); gap: 10px;
+  background: linear-gradient(#161618, #111113);
+  border-bottom: 1px solid var(--border);
+  font-size: .82rem; color: var(--fg-dim);
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+.topbar .lieu { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar .heure { white-space: nowrap; color: var(--fg); }
+
+/* ---------- États (façon Project Zomboid) : coin HAUT GAUCHE de l'écran ---------- */
+.moodles {
+  position: fixed; left: 10px; top: 44px; z-index: 30;
+  display: flex; flex-direction: column; gap: 5px; align-items: flex-start;
+  pointer-events: none; max-width: 46vw;
+}
+.moodle {
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 7px;
+  background: rgba(15,15,17,.92); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 4px 8px 4px 7px;
+  font-size: .74rem; letter-spacing: .5px; cursor: default;
+  animation: moodle-in .25s ease-out;
+}
+@keyframes moodle-in { from { opacity: 0; transform: translateX(8px); } }
+.moodle .ico { width: 1.3em; height: 1.3em; vertical-align: middle; }
+.moodle.n1 { color: #b9a96c; border-color: #4a4426; }
+.moodle.n2 { color: #c98a3d; border-color: #5c401d; }
+.moodle.n3 { color: #c4574a; border-color: #5e2118; }
+.moodle.n4 { color: #e0392f; border-color: var(--blood2); animation: moodle-in .25s ease-out, pulse 1.6s infinite; }
+@keyframes pulse { 50% { opacity: .5; } }
+.moodle .mlabel { display: none; }
+.moodle:hover .mlabel, .moodle:active .mlabel, .moodles.labels .moodle .mlabel { display: inline; }
+
+/* ---------- Boutons fixes : COLLÉS aux coins bas de l'écran ----------
+   À droite : le personnage (corps, inventaire) — de GROS boutons RONDS.
+   À gauche : le menu du jeu (journal, options) — discret, tout petit, tout en bas. */
+.fabs {
+  position: fixed; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.fabs-droite { right: 12px; }
+.fabs-gauche { left: 10px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); flex-direction: row; gap: 6px; }
+.fab {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #232327, #131315 75%);
+  border: 1px solid #303036; color: var(--fg);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,.6);
+  position: relative;
+}
+.fab .ico { width: 26px; height: 26px; }
+.fab:hover { border-color: var(--rust); }
+.fab:active { transform: translateY(1px); }
+.fab.principal { border-color: #4a4030; width: 64px; height: 64px; box-shadow: 0 4px 14px rgba(0,0,0,.75), inset 0 1px 0 rgba(200,194,180,.07); }
+.fab.principal .ico { width: 32px; height: 32px; }
+.fab .badge {
+  position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px;
+  background: var(--blood2); color: #fff; font-size: .68rem; line-height: 18px;
+  border-radius: 9px; text-align: center; padding: 0 4px; font-family: Arial, sans-serif;
+}
+.fab.small { width: 36px; height: 36px; opacity: .8; }
+.fab.small .ico { width: 17px; height: 17px; }
+
+/* ---------- Écrans ---------- */
+.screen { flex: 1; overflow-y: auto; padding: 12px 12px 16px; }
+/* Le contenu doit pouvoir défiler AU-DESSUS des boutons flottants (sac, personnage) :
+   on réserve leur hauteur en bas de l'écran. Sur très grand écran, les boutons
+   tombent en dehors de la colonne de jeu : un petit dégagement suffit. */
+@media (max-width: 1099px) {
+  .screen { padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 1100px) {
+  .screen { padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)); }
+}
+button, .screen, .panel { touch-action: manipulation; }
+.screen::-webkit-scrollbar { width: 8px; }
+.screen::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 4px; }
+.hidden { display: none !important; }
+
+h1.title {
+  font-family: 'Arial Narrow', Impact, sans-serif; font-stretch: condensed;
+  font-size: clamp(2.6rem, 9vw, 4.6rem); text-align: center; margin: 6vh 0 0;
+  color: #b8b2a4; letter-spacing: 6px; font-weight: bold; text-transform: uppercase;
+  text-shadow: 0 2px 0 #000, 0 0 35px rgba(163, 32, 32, .25);
+}
+h1.title em { color: var(--blood2); font-style: normal; }
+.subtitle { text-align: center; color: var(--fg-dim); font-style: italic; margin-top: 6px; }
+.menu { display: flex; flex-direction: column; gap: 12px; max-width: 360px; margin: 5vh auto 0; }
+
+button.act {
+  background: var(--bg2); color: var(--fg); border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px; font-size: 1rem; cursor: pointer;
+  font-family: inherit; text-align: left; transition: border-color .15s, background .15s;
+  width: 100%;
+}
+button.act:hover:not(:disabled) { border-color: var(--rust); background: var(--bg3); }
+button.act:disabled { opacity: .42; cursor: not-allowed; }
+button.act.primary { border-left-color: var(--blood2); background: #170d0d; }
+button.act.primary:hover { background: #211012; }
+button.act small { display: block; color: var(--fg-dim); font-size: .78rem; margin-top: 2px; }
+button.act .req { color: var(--danger); }
+.act-row { display: flex; gap: 8px; }
+.act-row button { flex: 1; }
+
+/* ---------- Lieu / narration ---------- */
+.illu {
+  width: 100%; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border); margin-bottom: 12px; background: #000;
+  position: relative;
+}
+.illu::after { /* salissure des illustrations */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(160deg, transparent 60%, rgba(0,0,0,.5)),
+              radial-gradient(ellipse at 20% 0%, rgba(0,0,0,.35), transparent 50%);
+}
+.illu svg { display: block; width: 100%; height: auto; max-height: 34svh; }
+.illu-lieu svg { height: clamp(100px, 20svh, 190px); }
+.lieu-nom {
+  font-family: 'Arial Narrow', Impact, sans-serif; font-stretch: condensed; text-transform: uppercase;
+  font-size: 1.3rem; margin: 0 0 2px; color: #c9b98a; font-weight: bold; letter-spacing: 1.5px;
+}
+.lieu-zone { color: var(--fg-dim); font-size: .76rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; }
+.narration { line-height: 1.65; margin-bottom: 14px; white-space: pre-wrap; }
+.narration em { color: #c9b98a; }
+.narration .gore { color: #b4584f; }
+.actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.actions h3, .panel h3 {
+  font-size: .76rem; text-transform: uppercase; letter-spacing: 2.5px;
+  color: var(--fg-dim); margin: 10px 0 2px; font-weight: normal;
+  border-bottom: 1px solid var(--border); padding-bottom: 4px;
+}
+
+/* ---------- Carte en cases ----------
+   La carte se met à l'échelle de l'ÉCRAN : jamais besoin de scroller pour jouer. */
+.carte-wrap {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: #0a0a0b; margin-bottom: 8px; position: relative; overflow: hidden;
+}
+.carte-grille {
+  display: block; width: auto; max-width: 100%; height: auto;
+  max-height: clamp(220px, calc(100dvh - 455px), 56dvh);
+  margin: 0 auto; touch-action: manipulation;
+}
+/* En-tête de lieu compact (une seule ligne au-dessus de la carte) */
+.lieu-bar {
+  display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px; flex-wrap: wrap;
+}
+.lieu-bar .lb-nom {
+  font-family: 'Arial Narrow', Impact, sans-serif; font-weight: bold; text-transform: uppercase;
+  letter-spacing: 1.5px; color: #c9b98a; font-size: 1.05rem;
+}
+.lieu-bar .lb-sub { color: var(--fg-dim); font-size: .7rem; text-transform: uppercase; letter-spacing: 1.5px; }
+.carte-grille .case { cursor: pointer; }
+.carte-grille .case rect { transition: stroke .12s; }
+/* Surbrillance (case atteignable / sélectionnée) : un liseré dédié,
+   pour ne pas se battre avec les murs du plan */
+.carte-grille .case .hl { fill: none; stroke: transparent; stroke-width: 1.6; pointer-events: none; }
+.carte-grille .case.atteignable .hl { stroke: #5a544a; stroke-dasharray: 3 2; }
+.carte-grille .case.selection .hl { stroke: #c9b98a; stroke-dasharray: none; }
+/* Mobilier et dessins au trait des cases */
+.carte-grille .mob { fill: none; stroke: #6f6757; stroke-width: 1.1; opacity: .72; }
+.carte-grille text { font-family: 'Arial Narrow', Arial, sans-serif; pointer-events: none; }
+.carte-legende {
+  display: flex; gap: 12px; flex-wrap: wrap; padding: 5px 8px; align-items: center;
+  font-size: .68rem; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 1px;
+  border-top: 1px solid var(--border);
+}
+.legende-btn {
+  margin-left: auto; background: var(--bg3); border: 1px solid var(--border); color: #c9b98a;
+  border-radius: 2px; padding: 4px 10px; font-size: .68rem; cursor: pointer; font-family: inherit;
+  text-transform: uppercase; letter-spacing: 1px; min-height: 28px;
+}
+.legende-btn:hover { border-color: var(--rust); }
+.leg-grid { display: flex; flex-direction: column; gap: 7px; margin: 10px 0 4px; }
+.leg-row { display: flex; align-items: center; gap: 10px; font-size: .85rem; line-height: 1.35; }
+.leg-row svg { flex: none; }
+.leg-row b { color: #c9b98a; font-weight: normal; }
+.leg-sep { border-top: 1px solid var(--border); margin: 6px 0; }
+.case-info {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 11px; margin-bottom: 8px; min-height: 58px;
+}
+.case-info .ci-nom { color: #c9b98a; font-size: .95rem; letter-spacing: .5px; }
+.case-info .ci-desc { color: var(--fg-dim); font-size: .82rem; margin-top: 2px; line-height: 1.45; }
+.case-info .ci-tags { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
+.ci-tag {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: 1px;
+  border: 1px solid var(--border); border-radius: 2px; padding: 1px 6px; color: var(--fg-dim);
+}
+.ci-tag.danger { color: #c4574a; border-color: #5e2118; }
+.ci-tag.sur { color: #7d9469; border-color: #2f3d27; }
+.ci-tag.sombre { color: #9d92d8; border-color: #3d3760; }
+
+/* ---------- Tuiles d'action ---------- */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 6px; }
+.tile {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 6px; min-height: 84px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px; cursor: pointer;
+  color: var(--fg); font-family: inherit; text-align: center;
+  transition: border-color .15s, background .15s;
+}
+.tile:hover:not(:disabled) { border-color: var(--rust); background: var(--bg3); }
+.tile:disabled { cursor: not-allowed; border-style: dashed; }
+.tile:disabled .t-ico { opacity: .4; }
+.tile:disabled .t-nom { color: var(--fg-dim); }
+.tile.tile-quete { border-color: var(--blood); background: #170d0d; }
+.t-ico { line-height: 1; color: #a89e8c; }
+.t-ico .ico { width: 1.6em; height: 1.6em; }
+.t-nom {
+  font-size: .8rem; line-height: 1.15;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.t-sub {
+  font-size: .7rem; color: var(--fg-dim); line-height: 1.15;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.t-sub .req { color: var(--danger); }
+.trouves-btn { border-left-color: var(--rust) !important; background: #191307 !important; }
+
+/* ---------- Filtres (craft) ---------- */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 10px; }
+.chip {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--fg-dim);
+  border-radius: 2px; padding: 7px 12px; font-size: .78rem; cursor: pointer;
+  font-family: inherit; min-height: 36px; text-transform: uppercase; letter-spacing: 1px;
+}
+.chip.on { border-color: var(--rust); color: #c9b98a; background: #191307; }
+
+/* ---------- Journal de bord (log) ---------- */
+.gamelog { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 6px; max-height: 11svh; overflow-y: auto; }
+.gamelog p { margin: 3px 0; font-size: .84rem; color: var(--fg-dim); line-height: 1.4; }
+.gamelog p.bad { color: #b4584f; }
+.gamelog p.good { color: #7d9469; }
+.gamelog p.warn { color: #b9a96c; }
+
+/* ---------- Panneaux (inventaire, corps...) ---------- */
+.panel {
+  position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.87);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.panel-box {
+  background: var(--bg2); border: 1px solid #303036; border-bottom: none;
+  border-radius: 6px 6px 0 0; width: 100%; max-width: 860px;
+  max-height: 86dvh; overflow-y: auto; padding: 14px 14px 30px;
+}
+/* Variante PLEIN ÉCRAN : l'inventaire et le corps occupent toute la page,
+   le jeu disparaît derrière. */
+.panel.plein { background: var(--bg); align-items: stretch; }
+.panel.plein .panel-box {
+  max-width: none; width: 100%; height: 100dvh; max-height: 100dvh;
+  border: none; border-radius: 0; padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+.panel.plein .panel-head { top: -12px; }
+@media (min-width: 900px) {
+  .panel.plein .panel-box { padding-left: calc(50vw - 420px); padding-right: calc(50vw - 420px); }
+}
+/* Onglets du panneau plein écran (Inventaire / Fabrication) */
+.onglets { display: flex; gap: 6px; margin: 10px 0 4px; }
+.onglet {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border); color: var(--fg-dim);
+  border-radius: 2px; padding: 10px 8px; font-size: .85rem; cursor: pointer;
+  font-family: 'Arial Narrow', Impact, sans-serif; text-transform: uppercase; letter-spacing: 2px;
+}
+.onglet.on { border-color: var(--rust); color: #c9b98a; background: #191307; border-bottom: 2px solid var(--rust); }
+.panel-head { display: flex; justify-content: space-between; align-items: center; position: sticky; top: -14px; background: var(--bg2); padding: 4px 0; z-index: 2; border-bottom: 1px solid var(--border); }
+.panel-head h2 {
+  margin: 0; font-size: 1.05rem; color: #c9b98a; font-weight: bold;
+  font-family: 'Arial Narrow', Impact, sans-serif; text-transform: uppercase; letter-spacing: 2px;
+}
+.panel-close { background: none; border: none; color: var(--fg); font-size: 1.4rem; cursor: pointer; padding: 8px 14px; min-width: 44px; min-height: 44px; line-height: 1; }
+.cap-line { font-size: .8rem; color: var(--fg-dim); margin: 6px 0 10px; }
+.cap-line b.over { color: var(--danger); }
+
+.item-list { display: flex; flex-direction: column; gap: 6px; }
+.item-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 10px; display: flex; flex-direction: column; gap: 4px;
+}
+.item-card.equipped { border-left: 3px solid var(--rust); }
+.item-card.acces-rapide { border-left: 3px solid var(--steel); }
+.item-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.item-nom { font-size: .95rem; }
+.item-nom .qty { color: #c9b98a; font-size: .8rem; }
+.item-meta { font-size: .73rem; color: var(--fg-dim); white-space: nowrap; }
+.item-desc { font-size: .78rem; color: var(--fg-dim); font-style: italic; }
+.item-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.item-btns button {
+  background: var(--bg); border: 1px solid var(--border); color: var(--fg);
+  border-radius: 3px; padding: 13px 18px; min-height: 50px; font-size: .95rem; cursor: pointer; font-family: inherit;
+  flex: 1 1 auto; min-width: 120px;
+}
+.item-btns button:hover:not(:disabled) { border-color: var(--rust); }
+.item-btns button:disabled { opacity: .4; cursor: not-allowed; }
+.dur-bar { height: 3px; background: #000; border-radius: 1px; overflow: hidden; margin-top: 2px; }
+.dur-fill { height: 100%; background: var(--olive); }
+
+/* ---------- Corps / compétences ---------- */
+.skill-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.skill-nom { flex: 1; font-size: .9rem; }
+.skill-pips { display: flex; gap: 3px; }
+.pip { width: 11px; height: 11px; background: var(--bg3); border: 1px solid var(--border); }
+.pip.on { background: var(--rust); border-color: var(--rust); }
+.blessure-card { background: #170d0d; border: 1px solid var(--blood); border-radius: var(--radius); padding: 8px 10px; margin: 6px 0; font-size: .85rem; }
+.blessure-card.clickable { cursor: pointer; }
+.blessure-card.clickable:hover { border-color: var(--blood2); }
+.blessure-card.sel { border-color: var(--rust); }
+.soin-opts { margin-top: 8px; }
+.blessure-card .tag { font-size: .72rem; padding: 1px 6px; border-radius: 2px; margin-left: 6px; text-transform: uppercase; letter-spacing: .5px; }
+.tag.saigne { background: var(--blood2); color: #fff; animation: pulse 1.5s infinite; }
+.tag.infecte { background: #44502a; color: #cfe0a0; }
+.tag.soigne { background: #2f3d27; color: #aec79b; }
+.etat-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; margin: 6px 0; font-size: .85rem; display: flex; gap: 8px; align-items: center; }
+.etat-card .ico { width: 1.4em; height: 1.4em; flex: none; }
+.etat-card small { color: var(--fg-dim); display: block; }
+.corps-silhouette { display: flex; justify-content: center; margin: 6px 0; }
+.corps-silhouette svg { height: 130px; }
+
+/* ---------- Combat ---------- */
+.combat { display: flex; flex-direction: column; gap: 10px; }
+.combat > * { order: 0; }
+#combat-armes { order: 1; }
+.combat-log { order: 2; }
+.combat-scene { position: relative; }
+.combat-scene .illu { margin-bottom: 0; }
+.combat-scene .illu svg { width: 100%; height: clamp(90px, 18svh, 170px); }
+.combat-scene .flash { position: absolute; inset: 0; background: var(--blood2); opacity: 0; pointer-events: none; border-radius: var(--radius); }
+.combat-scene .flash.hit { animation: hitflash .35s ease-out; }
+@keyframes hitflash { 0% { opacity: .55; } 100% { opacity: 0; } }
+.combat-scene.shake { animation: shake .3s; }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
+.ennemi-nom {
+  font-size: 1.05rem; color: var(--blood2); margin: 0;
+  font-family: 'Arial Narrow', Impact, sans-serif; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold;
+}
+.ennemi-etat { font-size: .78rem; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 1px; }
+.ennemi-etat b { color: #b4584f; }
+.menace-wrap { margin: 4px 0; }
+.menace-label { font-size: .72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--fg-dim); display: flex; justify-content: space-between; }
+.menace { height: 13px; background: #000; border: 1px solid var(--blood); border-radius: 2px; overflow: hidden; }
+.menace-fill { height: 100%; background: linear-gradient(90deg, #4a0d10, var(--blood2)); width: 0%; }
+.menace-fill.imminent { background: linear-gradient(90deg, var(--blood2), #e0584a); }
+.combat-log { min-height: 56px; max-height: 20svh; overflow-y: auto; font-size: .85rem; line-height: 1.45; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; }
+.combat-log p { margin: 2px 0; }
+.combat-log .coup { color: #c9b98a; }
+.combat-log .degats { color: #b4584f; }
+.combat-log .gore { color: var(--blood2); }
+/* Ordre des actions : attaquer / défendre d'abord — toujours aux mêmes places */
+.combat-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.combat-acts button.act { padding: 8px 10px; }
+.combat-acts button.act .cout { color: #b9a96c; font-size: .73rem; }
+.defense-on { border-color: var(--steel) !important; background: #10161a !important; }
+.combat-sta { font-size: .74rem; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 1px; }
+.combat-sta b { color: #b9a96c; }
+
+/* ---------- Fenêtre d'événement (par-dessus la carte) ---------- */
+.evt-fenetre {
+  position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.82);
+  display: flex; align-items: center; justify-content: center; padding: 14px;
+}
+.evt-box {
+  background: #121214; border: 1px solid #3a3a40; border-top: 3px solid var(--blood);
+  border-radius: 4px; width: 100%; max-width: 560px; max-height: 88dvh; overflow-y: auto;
+  padding: 14px 16px 18px; box-shadow: 0 10px 50px #000;
+  animation: evt-in .18s ease-out;
+}
+@keyframes evt-in { from { opacity: 0; transform: translateY(10px); } }
+.evt-box .narration { font-size: .95rem; }
+
+/* ---------- Choix d'événement / scène ---------- */
+.scene-timer { height: 6px; background: #000; border: 1px solid var(--blood); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+.scene-timer-fill { height: 100%; background: var(--blood2); width: 100%; }
+
+/* ---------- Attente : le temps des gestes (spinner) ---------- */
+.attente {
+  position: fixed; inset: 0; z-index: 95;
+  background: rgba(5,5,6,.6);
+  display: flex; align-items: center; justify-content: center;
+  animation: attente-in .15s ease-out;
+}
+@keyframes attente-in { from { opacity: 0; } }
+.attente-box { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.attente-spinner {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: #c9b98a;
+  animation: attente-tour .7s linear infinite;
+}
+@keyframes attente-tour { to { transform: rotate(360deg); } }
+.attente-label {
+  color: var(--fg-dim); font-style: italic; font-size: .95rem; letter-spacing: .5px;
+  text-shadow: 0 1px 8px #000;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%);
+  background: var(--bg3); border: 1px solid var(--rust); color: var(--fg);
+  padding: 10px 18px; border-radius: 3px; z-index: 100; font-size: .9rem;
+  max-width: 86vw; text-align: center; box-shadow: 0 4px 20px #000a;
+}
+
+/* ---------- Mort / fin ---------- */
+.mort-titre {
+  color: var(--blood2); font-size: 2.6rem; text-align: center; margin: 6vh 0 10px;
+  text-shadow: 0 0 30px rgba(163,32,32,.4); font-weight: bold;
+  font-family: 'Arial Narrow', Impact, sans-serif; text-transform: uppercase; letter-spacing: 4px;
+}
+.stats-fin { max-width: 380px; margin: 16px auto; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; }
+.stats-fin div { display: flex; justify-content: space-between; padding: 3px 0; font-size: .9rem; }
+.stats-fin span:last-child { color: #c9b98a; }
+
+/* ---------- Divers ---------- */
+.sep { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+input[type=text] {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--fg);
+  border-radius: 2px; padding: 10px 12px; font-size: 1rem; width: 100%; font-family: inherit;
+}
+input[type=range] { width: 100%; accent-color: var(--blood2); }
+.opt-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 10px 0; font-size: .9rem; }
+.opt-row input[type=checkbox] { width: 24px; height: 24px; accent-color: var(--blood2); }
+.warn-adulte { background: #170d0d; border: 1px solid var(--blood); border-radius: var(--radius); padding: 10px 14px; font-size: .8rem; color: #b4847f; margin: 14px auto; max-width: 440px; text-align: center; }
+
+@media (min-width: 640px) {
+  .combat-acts { grid-template-columns: 1fr 1fr 1fr; }
+  .panel { align-items: center; }
+  .panel-box { border-radius: 4px; border-bottom: 1px solid #303036; max-height: 80dvh; }
+}
+
+/* ---------- Fond d'ambiance derrière la carte ----------
+   Le dessin du lieu (ciel dynamique) vit sous la grille, voilé pour que le plan
+   reste lisible. Le bouton œil le montre en grand (mode .vue-dessin). */
+.carte-wrap .carte-fond {
+  position: absolute; inset: 0; bottom: 30px; overflow: hidden;
+  transition: opacity .35s;
+}
+.carte-wrap .carte-fond svg { width: 100%; height: 100%; display: block; }
+.carte-wrap .carte-voile {
+  position: absolute; inset: 0; bottom: 30px; pointer-events: none;
+  background: linear-gradient(rgba(9,9,11,.74), rgba(9,9,11,.84));
+  transition: opacity .35s;
+}
+.carte-grille { position: relative; z-index: 1; transition: opacity .3s; }
+.carte-legende { position: relative; z-index: 2; background: rgba(10,10,11,.85); }
+/* Mode dessin : le lieu en grand, le plan s'efface */
+.carte-wrap.vue-dessin .carte-grille { opacity: 0; pointer-events: none; }
+.carte-wrap.vue-dessin .carte-voile { opacity: 0; }
+.legende-btn { margin-left: auto; min-width: 34px; }
+.legende-btn + .legende-btn { margin-left: 0; }
+.legende-btn.icone .ico { width: 1.1em; height: 1.1em; vertical-align: -0.22em; }
+
+/* ---------- Les zombies sur la carte : on les VOIT arriver ---------- */
+.carte-grille .zpion { animation: zpion-balance 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center 80%; }
+@keyframes zpion-balance { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(5deg); } }
+.carte-grille .joueur circle:last-child { animation: pulse 2.2s infinite; }
+
+/* ---------- Esquive réflexe (QTE) : le bouton surgit au centre ---------- */
+.qte {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(110,18,18,.25), rgba(0,0,0,.45));
+  animation: evt-in .1s ease-out;
+}
+.qte-btn {
+  position: relative; width: 108px; height: 108px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3a1010, #1c0808 75%);
+  border: 2px solid var(--blood2); color: #f0d8d0;
+  font-family: 'Arial Narrow', Impact, sans-serif; font-weight: bold;
+  font-size: 1.02rem; text-transform: uppercase; letter-spacing: 1.5px;
+  cursor: pointer; box-shadow: 0 0 34px rgba(163,32,32,.55), 0 6px 20px #000;
+  animation: qte-pouls .45s ease-in-out infinite;
+}
+@keyframes qte-pouls { 50% { transform: scale(1.07); } }
+.qte-anneau {
+  position: absolute; inset: -2px; border-radius: 50%; pointer-events: none;
+  border: 4px solid #e0392f; border-top-color: transparent;
+  animation-name: qte-anneau; animation-timing-function: linear; animation-fill-mode: forwards;
+}
+@keyframes qte-anneau { from { transform: rotate(0); opacity: 1; } to { transform: rotate(360deg); opacity: .15; } }
+.combat-acts button.puissance:not(:disabled) { border-left: 3px solid #6e3a12; }
+
+/* ---------- Cinématiques : la caméra bouge, le monde se montre ---------- */
+.cine {
+  position: fixed; inset: 0; z-index: 80; background: #000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  animation: attente-in .25s ease-out;
+}
+.cine-cadre {
+  width: min(100vw, 980px); aspect-ratio: 800 / 340;
+  overflow: hidden; position: relative;
+  border-top: 1px solid #1c1c20; border-bottom: 1px solid #1c1c20;
+}
+.cine-pellicule { position: absolute; top: 0; left: 0; height: 100%; will-change: transform; transform-origin: 0 0; }
+.cine-pellicule svg { width: 100%; height: 100%; display: block; }
+.cine-texte {
+  min-height: 3.4em; max-width: 640px; padding: 14px 18px 0; text-align: center;
+  font-style: italic; line-height: 1.55; color: var(--fg);
+  opacity: 0; transition: opacity 1.2s;
+}
+.cine-texte.visible { opacity: 1; }
+.cine-actions { margin-top: 8px; min-height: 58px; display: flex; justify-content: center; }
+.cine-actions .act { width: auto; min-width: 220px; text-align: center; }
+.cine-passer {
+  position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); right: 14px; z-index: 2;
+  background: rgba(19,19,21,.7); border: 1px solid var(--border); color: var(--fg-dim);
+  border-radius: 2px; padding: 8px 14px; font-family: inherit; font-size: .78rem;
+  text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer;
+}
+.cine-passer:hover { border-color: var(--rust); color: var(--fg); }
+
+/* ---------- Ken Burns : les illustrations de scène respirent ---------- */
+.illu.kb svg { animation: kenburns 26s ease-in-out infinite alternate; transform-origin: 50% 60%; }
+@keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.08) translateX(-1.5%); } }
