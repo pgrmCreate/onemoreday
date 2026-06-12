@@ -30,7 +30,13 @@ export const SCENES_LEGACY = { calme: 'interieur', rue: 'rue', sombre: 'sombre',
 // drones : [[fréquence, timbre, gain], ...]
 // stingers : [[nom, poids], ...] — tirés au sort toutes les intervalle[0..1] secondes
 // stingersNuit : s'AJOUTENT au pool la nuit (le monde mort se réveille)
-// musique : { base, gamme (demi-tons), p (chance par cycle), timbre, doux }
+// musique — deux formes possibles :
+//   { theme: 'titre' }  → thème COMPOSÉ (partition de js/data/musiques.js,
+//                         joué en boucle par le séquenceur, avec des silences
+//                         de respiration ; variante de nuit automatique si
+//                         la partition en déclare une)
+//   { base, gamme OU gammes (liste de gammes en demi-tons, tirées au sort),
+//     p (chance par cycle), timbre, doux } → motif GÉNÉRATIF du lieu
 export const SCENES_SONORES = {
   hotel: {
     vent: [300, 0.10, 0.07],
@@ -38,7 +44,7 @@ export const SCENES_SONORES = {
     stingers: [['craquement', 3], ['vent_rafale', 2], ['volet', 1], ['goutte', 1]],
     stingersNuit: [['gemissement', 2], ['grattement', 2]],
     intervalle: [9, 24],
-    musique: { base: 110, gamme: [0, 3, 5, 7, 10], p: 0.5, timbre: 'triangle' },
+    musique: { base: 110, gammes: [[0, 3, 5, 7, 10], [0, 2, 3, 7, 9]], p: 0.55, timbre: 'triangle' },
   },
   interieur: {
     vent: [320, 0.10, 0.07],
@@ -46,7 +52,7 @@ export const SCENES_SONORES = {
     stingers: [['craquement', 3], ['vent_rafale', 1], ['goutte', 1]],
     stingersNuit: [['gemissement', 1], ['grattement', 2]],
     intervalle: [10, 26],
-    musique: { base: 110, gamme: [0, 3, 5, 7, 10], p: 0.4, timbre: 'triangle' },
+    musique: { theme: 'titre' }, // le générique — joue partout où 'calme' joue (écran titre compris)
   },
   rue: {
     vent: [480, 0.16, 0.07],
@@ -54,7 +60,7 @@ export const SCENES_SONORES = {
     stingers: [['corbeau', 3], ['vent_rafale', 3], ['volet', 2], ['verre', 1], ['ferraille', 1], ['gemissement', 1], ['chien', 1]],
     stingersNuit: [['gemissement', 3], ['hibou', 1], ['cloche_morte', 1]],
     intervalle: [7, 18],
-    musique: { base: 98, gamme: [0, 3, 5, 7, 10], p: 0.45, timbre: 'sine' },
+    musique: { theme: 'exploration' }, // discret le jour, transposé et ralenti la nuit
   },
   magasin: {
     vent: [260, 0.08, 0.05],
@@ -62,7 +68,7 @@ export const SCENES_SONORES = {
     stingers: [['ferraille', 3], ['chariot', 2], ['verre', 2], ['craquement', 1], ['goutte', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1]],
     intervalle: [8, 22],
-    musique: { base: 104, gamme: [0, 3, 5, 8, 10], p: 0.35, timbre: 'triangle' },
+    musique: { base: 104, gammes: [[0, 3, 5, 8, 10], [0, 3, 7, 8, 10]], p: 0.4, timbre: 'triangle' },
   },
   eglise: {
     vent: [220, 0.07, 0.04],
@@ -70,7 +76,7 @@ export const SCENES_SONORES = {
     stingers: [['pigeons', 2], ['craquement', 2], ['goutte', 2], ['cloche_morte', 1]],
     stingersNuit: [['gemissement', 1], ['hibou', 1]],
     intervalle: [10, 28],
-    musique: { base: 82.4, gamme: [0, 2, 3, 7, 8], p: 0.55, timbre: 'sine', doux: true },
+    musique: { base: 82.4, gammes: [[0, 2, 3, 7, 8], [0, 2, 5, 7, 8]], p: 0.6, timbre: 'sine', doux: true },
   },
   musee: {
     vent: [240, 0.08, 0.05],
@@ -78,7 +84,7 @@ export const SCENES_SONORES = {
     stingers: [['craquement', 4], ['vent_rafale', 1], ['goutte', 1], ['grattement', 1]],
     stingersNuit: [['gemissement', 1], ['grattement', 2]],
     intervalle: [9, 26],
-    musique: { base: 92.5, gamme: [0, 2, 3, 5, 7], p: 0.45, timbre: 'sine' },
+    musique: { base: 92.5, gammes: [[0, 2, 3, 5, 7], [0, 2, 5, 7, 9]], p: 0.5, timbre: 'sine' },
   },
   gare: {
     vent: [520, 0.16, 0.09],
@@ -86,7 +92,7 @@ export const SCENES_SONORES = {
     stingers: [['ferraille', 3], ['corbeau', 2], ['train_loin', 2], ['goutte', 2], ['volet', 1], ['pigeons', 1]],
     stingersNuit: [['gemissement', 2], ['grattement', 1]],
     intervalle: [7, 19],
-    musique: { base: 98, gamme: [0, 3, 5, 7, 10], p: 0.4, timbre: 'triangle' },
+    musique: { base: 98, gammes: [[0, 3, 5, 7, 10], [0, 3, 5, 6, 10]], p: 0.45, timbre: 'triangle' },
   },
   triage: {
     vent: [560, 0.18, 0.10],
@@ -94,7 +100,7 @@ export const SCENES_SONORES = {
     stingers: [['ferraille', 4], ['train_loin', 3], ['corbeau', 2], ['vent_rafale', 2], ['gemissement', 1]],
     stingersNuit: [['gemissement', 3], ['hibou', 1]],
     intervalle: [6, 16],
-    musique: { base: 87.3, gamme: [0, 3, 5, 6, 10], p: 0.4, timbre: 'triangle' },
+    musique: { base: 87.3, gammes: [[0, 3, 5, 6, 10], [0, 1, 3, 6, 8]], p: 0.45, timbre: 'triangle' },
   },
   hopital: {
     vent: [200, 0.06, 0.04],
@@ -102,7 +108,7 @@ export const SCENES_SONORES = {
     stingers: [['neon', 3], ['goutte', 3], ['ferraille', 1], ['gemissement', 1], ['grattement', 1]],
     stingersNuit: [['gemissement', 3], ['grattement', 2]],
     intervalle: [6, 16],
-    musique: { base: 116.5, gamme: [0, 1, 5, 7, 8], p: 0.35, timbre: 'sine' },
+    musique: { base: 116.5, gammes: [[0, 1, 5, 7, 8], [0, 1, 3, 7, 8]], p: 0.4, timbre: 'sine' },
   },
   commissariat: {
     vent: [240, 0.08, 0.05],
@@ -110,7 +116,7 @@ export const SCENES_SONORES = {
     stingers: [['radio_statique', 2], ['craquement', 2], ['ferraille', 1], ['goutte', 1], ['volet', 1]],
     stingersNuit: [['gemissement', 2], ['grattement', 1]],
     intervalle: [8, 22],
-    musique: { base: 98, gamme: [0, 3, 5, 7, 10], p: 0.35, timbre: 'triangle' },
+    musique: { base: 98, gammes: [[0, 3, 5, 7, 10], [0, 1, 5, 7, 8]], p: 0.4, timbre: 'triangle' },
   },
   garage: {
     vent: [300, 0.09, 0.05],
@@ -118,7 +124,7 @@ export const SCENES_SONORES = {
     stingers: [['goutte', 3], ['ferraille', 3], ['craquement', 1], ['chariot', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1]],
     intervalle: [7, 20],
-    musique: { base: 92.5, gamme: [0, 3, 5, 7, 10], p: 0.3, timbre: 'triangle' },
+    musique: { base: 92.5, gammes: [[0, 3, 5, 7, 10], [0, 3, 5, 8, 10]], p: 0.35, timbre: 'triangle' },
   },
   mediatheque: {
     vent: [230, 0.07, 0.04],
@@ -126,7 +132,7 @@ export const SCENES_SONORES = {
     stingers: [['pages', 3], ['craquement', 2], ['goutte', 1], ['pigeons', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1]],
     intervalle: [9, 24],
-    musique: { base: 110, gamme: [0, 2, 5, 7, 9], p: 0.5, timbre: 'sine', doux: true },
+    musique: { base: 110, gammes: [[0, 2, 5, 7, 9], [0, 2, 4, 7, 9]], p: 0.55, timbre: 'sine', doux: true },
   },
   cinema: {
     vent: [150, 0.05, 0.03],
@@ -134,7 +140,7 @@ export const SCENES_SONORES = {
     stingers: [['craquement', 2], ['grattement', 2], ['goutte', 1], ['mouches', 1]],
     stingersNuit: [['gemissement', 2]],
     intervalle: [8, 20],
-    musique: { base: 82.4, gamme: [0, 1, 3, 7, 8], p: 0.3, timbre: 'sine' },
+    musique: { base: 82.4, gammes: [[0, 1, 3, 7, 8], [0, 1, 5, 6, 8]], p: 0.35, timbre: 'sine' },
   },
   region: {
     vent: [640, 0.20, 0.05],
@@ -142,7 +148,7 @@ export const SCENES_SONORES = {
     stingers: [['vent_rafale', 4], ['rapace', 2], ['corbeau', 2], ['ferraille', 1], ['chien', 1]],
     stingersNuit: [['hibou', 2], ['gemissement', 1], ['chien', 1]],
     intervalle: [8, 20],
-    musique: { base: 87.3, gamme: [0, 2, 3, 7, 10], p: 0.5, timbre: 'sine' },
+    musique: { theme: 'exploration' }, // la route est longue — même thème que la rue
   },
   village: {
     vent: [420, 0.12, 0.05],
@@ -150,7 +156,7 @@ export const SCENES_SONORES = {
     stingers: [['vent_rafale', 2], ['volet', 1], ['pigeons', 2], ['cloche_morte', 1], ['chien', 1]],
     stingersNuit: [['hibou', 2], ['feu_crepite', 1]],
     intervalle: [9, 24],
-    musique: { base: 130.8, gamme: [0, 2, 4, 7, 9], p: 0.6, timbre: 'triangle', doux: true },
+    musique: { base: 130.8, gammes: [[0, 2, 4, 7, 9], [0, 2, 4, 5, 9]], p: 0.65, timbre: 'triangle', doux: true },
   },
   refuge: {
     vent: [200, 0.05, 0.04],
@@ -158,7 +164,7 @@ export const SCENES_SONORES = {
     stingers: [['feu_crepite', 5], ['murmures', 2], ['craquement', 1], ['pages', 1]],
     stingersNuit: [['feu_crepite', 3], ['hibou', 1]],
     intervalle: [3, 9],
-    musique: { base: 130.8, gamme: [0, 2, 4, 7, 9], p: 0.7, timbre: 'triangle', doux: true },
+    musique: { theme: 'refuge' }, // le seul endroit où la musique ose être chaleureuse
   },
   sombre: {
     vent: [240, 0.12, 0.07],
@@ -166,7 +172,7 @@ export const SCENES_SONORES = {
     stingers: [['goutte', 3], ['grattement', 2], ['gemissement', 2], ['craquement', 1]],
     stingersNuit: [['gemissement', 2]],
     intervalle: [6, 15],
-    musique: { base: 82.4, gamme: [0, 1, 3, 6, 8], p: 0.35, timbre: 'sine' },
+    musique: { theme: 'mort' }, // un glas discret, beaucoup de silence
   },
   train: {
     vent: [700, 0.22, 1.6],
@@ -175,6 +181,6 @@ export const SCENES_SONORES = {
     stingers: [['ferraille', 2], ['train_loin', 1]],
     stingersNuit: [],
     intervalle: [8, 18],
-    musique: { base: 98, gamme: [0, 3, 5, 7, 10], p: 0.3, timbre: 'triangle' },
+    musique: { theme: 'train' }, // le voyage : une basse qui roule avec les rails
   },
 };

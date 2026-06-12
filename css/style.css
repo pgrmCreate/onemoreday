@@ -300,12 +300,13 @@ button.act .req { color: var(--danger); }
 @media (min-width: 900px) {
   .panel.plein .panel-box { padding-left: calc(50vw - 420px); padding-right: calc(50vw - 420px); }
 }
-/* Onglets du panneau plein écran (Inventaire / Fabrication) */
+/* Onglets du panneau plein écran (Sac / Porter / Fabrication) — gros pour le pouce */
 .onglets { display: flex; gap: 6px; margin: 10px 0 4px; }
 .onglet {
   flex: 1; background: var(--bg3); border: 1px solid var(--border); color: var(--fg-dim);
-  border-radius: 2px; padding: 10px 8px; font-size: .85rem; cursor: pointer;
-  font-family: 'Arial Narrow', Impact, sans-serif; text-transform: uppercase; letter-spacing: 2px;
+  border-radius: 2px; padding: 10px 6px; font-size: .85rem; cursor: pointer; min-height: 50px;
+  font-family: 'Arial Narrow', Impact, sans-serif; text-transform: uppercase; letter-spacing: 1px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
 }
 .onglet.on { border-color: var(--rust); color: #c9b98a; background: #191307; border-bottom: 2px solid var(--rust); }
 .panel-head { display: flex; justify-content: space-between; align-items: center; position: sticky; top: -14px; background: var(--bg2); padding: 4px 0; z-index: 2; border-bottom: 1px solid var(--border); }

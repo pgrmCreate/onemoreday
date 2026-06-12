@@ -3,9 +3,13 @@
 // Les vêtements/armes équipés pèsent mais n'occupent pas d'espace d'inventaire.
 // ACCÈS RAPIDE : les objets glissés dans la ceinture / le holster / le gilet.
 // En combat, on ne peut utiliser QUE l'arme en main et les objets d'accès rapide.
+// CONTENANTS D'EAU : une instance pleine porte eau:{q:'croupie'|'bouillie', L} et ne
+// s'empile pas. 1 L = 1 kg en plus du poids à vide. Un récipient OUVERT plein
+// (canette, casserole) ne va pas dans le sac : tenu en main (slot arme) ou posé au sol.
 import { G, skillLevel } from './state.js';
 import { ITEMS, item } from './data/items.js';
 import { CLOTHES, cloth } from './data/clothing.js';
+import { sfx } from './audio.js';
 
 const SLOTS_VETEMENTS = ['tete', 'torse', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
 
@@ -36,18 +40,18 @@ export function poidsTotal() {
   let p = 0;
   for (const it of G.player.inventaire) {
     const d = item(it.id) || cloth(it.id);
-    if (d) p += (d.poids || 0) * it.qty;
+    if (d) p += (d.poids || 0) * it.qty + poidsEau(it);
   }
   for (const it of accesRapide()) {
     const d = item(it.id) || cloth(it.id);
-    if (d) p += (d.poids || 0) * (it.qty || 1);
+    if (d) p += (d.poids || 0) * (it.qty || 1) + poidsEau(it);
   }
   for (const slot of Object.keys(G.player.equip)) {
     const eqv = G.player.equip[slot];
     if (!eqv) continue;
-    if (slot === 'arme') { // l'arme équipée est un objet {id, dur}
+    if (slot === 'arme') { // l'objet tenu en main : {id, dur?} ou un récipient {id, eau?}
       const d = item(eqv.id);
-      if (d) p += d.poids || 0;
+      if (d) p += (d.poids || 0) + poidsEau(eqv);
       continue;
     }
     const d = cloth(eqv) || item(eqv);
@@ -92,7 +96,7 @@ export function mettreEnAccesRapide(index) {
   const it = G.player.inventaire[index];
   if (!it) return { ok: false, raison: 'Objet introuvable.' };
   if (!peutAccesRapide(it.id)) return { ok: false, raison: 'Trop encombrant pour la ceinture.' };
-  ar.push({ id: it.id, qty: 1, dur: it.dur });
+  ar.push({ id: it.id, qty: 1, dur: it.dur, eau: it.eau }); // une gourde pleine garde son eau
   it.qty -= 1;
   if (it.qty <= 0) G.player.inventaire.splice(index, 1);
   return { ok: true };
@@ -103,18 +107,101 @@ export function retirerAccesRapide(arIndex) {
   if (!it) return false;
   if (!placePour(it.id, 1)) return false;
   ar.splice(arIndex, 1);
-  if (it.dur !== undefined) G.player.inventaire.push({ id: it.id, qty: 1, dur: it.dur });
+  if (it.dur !== undefined || it.eau) G.player.inventaire.push({ id: it.id, qty: 1, dur: it.dur, eau: it.eau });
   else addItem(it.id, 1);
   return true;
+}
+
+// ---------- Contenants d'eau ----------
+// L'eau pèse : 1 litre = 1 kg, en plus du poids à vide du récipient.
+export function poidsEau(entry) { return entry && entry.eau ? entry.eau.L : 0; }
+export function estContenant(id) { return !!(defItem(id) && defItem(id).contenance); }
+export function recipientOuvert(id) { const d = defItem(id); return !!d && d.recipient === 'ouvert'; }
+export function contenance(id) { const d = defItem(id); return (d && d.contenance) || 0; }
+const arrondiL = (n) => Math.round(n * 100) / 100;
+
+// « eau croupie, 0,5/1 L » — affichage du contenu (virgule à la française)
+export function fmtL(n) { return String(arrondiL(n)).replace('.', ','); }
+export function descEau(entry) {
+  if (!entry || !entry.eau) return '';
+  return `eau ${entry.eau.q === 'bouillie' ? 'bouillie' : 'croupie'}, ${fmtL(entry.eau.L)}/${fmtL(contenance(entry.id))} L`;
+}
+
+// Si une pile d'objets vides (qty > 1) doit recevoir de l'eau, on en détache UNE instance.
+export function instancePourEau(index) {
+  const it = G.player.inventaire[index];
+  if (!it) return null;
+  if (it.eau || it.qty === 1) return it;
+  it.qty -= 1;
+  const inst = { id: it.id, qty: 1 };
+  G.player.inventaire.push(inst);
+  return inst;
+}
+
+// Verser d'un contenant dans un autre, dans la limite des capacités.
+// Mélanger de la croupie à de la bouillie gâche tout : le résultat est croupi.
+export function verserEau(src, dst) {
+  if (!src || !src.eau || !dst) return { ok: false, raison: 'Rien à verser.' };
+  const libre = contenance(dst.id) - (dst.eau ? dst.eau.L : 0);
+  const move = arrondiL(Math.min(src.eau.L, libre));
+  if (move <= 0) return { ok: false, raison: 'Le récipient est déjà plein.' };
+  const gache = dst.eau && dst.eau.L > 0 && dst.eau.q !== src.eau.q;
+  const q = dst.eau && dst.eau.L > 0 ? (gache ? 'croupie' : dst.eau.q) : src.eau.q;
+  dst.eau = { q, L: arrondiL((dst.eau ? dst.eau.L : 0) + move) };
+  src.eau.L = arrondiL(src.eau.L - move);
+  if (src.eau.L <= 0.01) delete src.eau;
+  return { ok: true, L: move, gache };
+}
+
+// Prendre un objet EN MAIN (slot arme) — utilisé pour les récipients ouverts.
+// Ce qui occupait la main retourne au sac ; si c'était un récipient ouvert plein,
+// son eau se renverse (le récipient vide retourne au sac quand même).
+export function prendreEnMain(objet) {
+  const renverse = libererLaMain();
+  G.player.equip.arme = { id: objet.id, eau: objet.eau, dur: objet.dur };
+  return { ok: true, renverse };
+}
+// Vide la main vers le sac. Retourne le nom du récipient renversé, ou null.
+function libererLaMain() {
+  const cur = G.player.equip.arme;
+  if (!cur) return null;
+  let renverse = null;
+  if (cur.eau && recipientOuvert(cur.id)) {
+    renverse = defItem(cur.id) ? defItem(cur.id).nom : cur.id;
+    delete cur.eau;
+  }
+  G.player.inventaire.push({ id: cur.id, qty: 1, dur: cur.dur, eau: cur.eau });
+  G.player.equip.arme = null;
+  return renverse;
+}
+// Prendre en main un récipient depuis le sac (index d'inventaire).
+export function tenirRecipient(index) {
+  const it = G.player.inventaire[index];
+  if (!it || !estContenant(it.id)) return { ok: false, renverse: null };
+  const inst = instancePourEau(index);
+  G.player.inventaire.splice(G.player.inventaire.indexOf(inst), 1);
+  return prendreEnMain(inst);
+}
+// Après bu/vidé, les contenants vides se ré-empilent proprement.
+export function consolider() {
+  const inv = G.player.inventaire;
+  for (let i = inv.length - 1; i >= 0; i--) {
+    const it = inv[i];
+    if (it.eau || it.dur !== undefined) continue;
+    const j = inv.findIndex((o, k) => k < i && o.id === it.id && !o.eau && o.dur === undefined);
+    if (j >= 0) { inv[j].qty += it.qty; inv.splice(i, 1); }
+  }
 }
 
 // ---------- Manipulation ----------
 export function defItem(id) { return item(id) || cloth(id); }
 
+// NB : un contenant PLEIN ne compte pas comme l'objet « nu » (une gourde pleine
+// n'est pas une gourde vide, un bidon plein d'eau n'est pas un bidon disponible).
 export function countItem(id) {
   let n = 0;
-  for (const i of G.player.inventaire) if (i.id === id) n += i.qty;
-  for (const i of accesRapide()) if (i.id === id) n += i.qty || 1;
+  for (const i of G.player.inventaire) if (i.id === id && !i.eau) n += i.qty;
+  for (const i of accesRapide()) if (i.id === id && !i.eau) n += i.qty || 1;
   return n;
 }
 export function hasItem(id, qty = 1) { return countItem(id) >= qty; }
@@ -132,7 +219,7 @@ export function addItem(id, qty = 1) {
   if (!placePour(id, qty)) return false;
   const stackable = !d.dur; // les armes à durabilité ne s'empilent pas
   if (stackable) {
-    const ex = G.player.inventaire.find(i => i.id === id);
+    const ex = G.player.inventaire.find(i => i.id === id && !i.eau); // jamais sur un contenant plein
     if (ex) { ex.qty += qty; return true; }
     G.player.inventaire.push({ id, qty });
   } else {
@@ -142,17 +229,18 @@ export function addItem(id, qty = 1) {
 }
 
 // Retire en piochant d'abord dans l'inventaire, puis dans l'accès rapide.
+// Les contenants PLEINS sont épargnés (leur eau n'est pas un ingrédient).
 export function removeItem(id, qty = 1) {
   for (let i = G.player.inventaire.length - 1; i >= 0 && qty > 0; i--) {
     const it = G.player.inventaire[i];
-    if (it.id !== id) continue;
+    if (it.id !== id || it.eau) continue;
     const take = Math.min(it.qty, qty);
     it.qty -= take; qty -= take;
     if (it.qty <= 0) G.player.inventaire.splice(i, 1);
   }
   const ar = accesRapide();
   for (let i = ar.length - 1; i >= 0 && qty > 0; i--) {
-    if (ar[i].id !== id) continue;
+    if (ar[i].id !== id || ar[i].eau) continue;
     ar.splice(i, 1);
     qty -= 1;
   }
@@ -189,29 +277,35 @@ export function hasOutil(tag) {
 }
 
 // ---------- Équipement ----------
+// Un récipient tenu en main n'est PAS une arme : le combat le traite comme des
+// mains nues (et l'eau d'un récipient ouvert se renverse si on dégaine).
 export function armeEquipee() {
   const a = G.player.equip.arme;
-  return a || null; // {id, dur}
+  if (!a) return null;
+  const d = item(a.id);
+  if (d && !d.dmg) return null; // récipient ou objet inoffensif en main
+  return a; // {id, dur}
 }
+// Retourne { ok, renverse } — renverse : nom du récipient dont l'eau s'est répandue.
 export function equiperArme(index) {
   const it = G.player.inventaire[index];
-  if (!it) return false;
+  if (!it) return { ok: false, renverse: null };
   const d = item(it.id);
-  if (!d || !d.dmg) return false;
-  // remettre l'arme actuelle dans l'inventaire
-  if (G.player.equip.arme) {
-    const cur = G.player.equip.arme;
-    G.player.inventaire.push({ id: cur.id, qty: 1, dur: cur.dur });
-  }
+  if (!d || !d.dmg) return { ok: false, renverse: null };
+  // remettre ce qu'on tenait dans l'inventaire (l'eau d'un récipient ouvert se renverse)
+  const renverse = libererLaMain();
   G.player.equip.arme = { id: it.id, dur: it.dur ?? d.dur };
   G.player.inventaire.splice(index, 1);
-  return true;
+  return { ok: true, renverse };
 }
+// Retourne false si on tient un récipient ouvert PLEIN : il ne va pas dans le sac.
 export function desequiperArme() {
   const cur = G.player.equip.arme;
-  if (!cur) return;
-  G.player.inventaire.push({ id: cur.id, qty: 1, dur: cur.dur });
+  if (!cur) return true;
+  if (cur.eau && recipientOuvert(cur.id)) return false;
+  G.player.inventaire.push({ id: cur.id, qty: 1, dur: cur.dur, eau: cur.eau });
   G.player.equip.arme = null;
+  return true;
 }
 
 export function equiperVetement(index) {
@@ -315,7 +409,8 @@ export function soinsAccesRapide() {
   });
   return res;
 }
-// Échange : l'arme en main va dans l'emplacement de l'objet pris (ou l'emplacement se libère)
+// Échange : l'arme en main va dans l'emplacement de l'objet pris (ou l'emplacement se libère).
+// Si on tenait un récipient ouvert plein, son eau se renverse — dégainer a un prix.
 export function degainerAccesRapide(arIndex) {
   const ar = accesRapide();
   const it = ar[arIndex];
@@ -324,7 +419,15 @@ export function degainerAccesRapide(arIndex) {
   if (!d || !d.dmg) return false;
   const cur = G.player.equip.arme;
   ar.splice(arIndex, 1);
-  if (cur) ar.push({ id: cur.id, qty: 1, dur: cur.dur });
+  if (cur) {
+    if (cur.eau && recipientOuvert(cur.id)) {
+      delete cur.eau;
+      G.player.inventaire.push({ id: cur.id, qty: 1 }); // le récipient vide retourne au sac
+      sfx('eau_verse');
+    } else {
+      ar.push({ id: cur.id, qty: 1, dur: cur.dur });
+    }
+  }
   G.player.equip.arme = { id: it.id, dur: it.dur ?? d.dur };
   return true;
 }
@@ -332,9 +435,10 @@ export function degainerAccesRapide(arIndex) {
 export function rengainerArme() {
   const cur = G.player.equip.arme;
   if (!cur) return false;
+  if (cur.eau && recipientOuvert(cur.id)) return false; // une casserole pleine ne se rengaine pas
   const ar = accesRapide();
   if (ar.length >= nbSlotsAccesRapide()) return false;
-  ar.push({ id: cur.id, qty: 1, dur: cur.dur });
+  ar.push({ id: cur.id, qty: 1, dur: cur.dur, eau: cur.eau });
   G.player.equip.arme = null;
   return true;
 }

@@ -2,8 +2,12 @@
 // Les fonctions retournent des tableaux de messages [{t, c}] que l'appelant journalise.
 import { G, rng, chance, pick, estNuit } from './state.js';
 import { item } from './data/items.js';
+import { cloth } from './data/clothing.js';
 import { carteCourante } from './world.js';
-import { hasItem, removeItem, addItem, hasOutil, chaleurTotale } from './inventory.js';
+import {
+  hasItem, removeItem, addItem, hasOutil, chaleurTotale,
+  recipientOuvert, desequiperVetement, consolider,
+} from './inventory.js';
 
 export const BLESSURES = {
   egratignure: { nom: 'Égratignure', saignement: 0.025, pSaigne: 0.3, pInfectHeure: 0.015, guerison: 720 },
@@ -198,9 +202,100 @@ export function consommer(index) {
   it.qty -= 1;
   if (it.qty <= 0) G.player.inventaire.splice(index, 1);
   if (d.rend) {
-    if (addItem(d.rend, 1)) msgs.push({ t: `Tu gardes la bouteille vide.`, c: '' });
+    // boire rend le contenant : bouteille vide, canette vide... (toutes féminines)
+    const rd = item(d.rend);
+    if (addItem(d.rend, 1)) msgs.push({ t: `Tu gardes la ${rd ? rd.nom.toLowerCase() : 'bouteille vide'}.`, c: '' });
   }
   return { ok: true, messages: msgs, type: d.type };
+}
+
+// ---------- Eau en contenant ----------
+// ref : une instance d'inventaire OU l'objet tenu en main (G.player.equip.arme),
+// les deux portent eau:{q,L}. Boire prélève ~0,5 L et recharge la soif comme
+// l'eau croupie / l'eau bouillie en bouteille — mêmes risques pour la croupie.
+export const DOSE_EAU = 0.5; // litres par gorgée longue
+
+export function boireContenant(ref) {
+  if (!ref || !ref.eau || ref.eau.L <= 0) return { ok: false, messages: [] };
+  const d = item(ref.id);
+  const dose = Math.min(DOSE_EAU, ref.eau.L);
+  const croupie = ref.eau.q !== 'bouillie';
+  const gain = (croupie ? 30 : 40) * (dose / DOSE_EAU);
+  G.player.soif = Math.min(100, Math.max(0, G.player.soif + gain));
+  const msgs = [{ t: `Tu bois une longue gorgée d'eau ${croupie ? 'croupie' : 'bouillie'}${d ? ` (${d.nom.toLowerCase()})` : ''}.`, c: '' }];
+  if (croupie && chance(0.5 * (dose / DOSE_EAU))) {
+    G.player.maladie = 'intoxication';
+    G.player.maladieDuree = rng(180, 420);
+    msgs.push({ t: 'Quelques minutes plus tard, ton estomac se tord. C\'était une mauvaise idée.', c: 'bad' });
+  }
+  ref.eau.L = Math.round((ref.eau.L - dose) * 100) / 100;
+  if (ref.eau.L <= 0.01) {
+    delete ref.eau;
+    consolider();
+    msgs.push({ t: `${d ? d.nom : 'Le contenant'} : à sec.`, c: '' });
+  }
+  return { ok: true, messages: msgs };
+}
+
+// Faire bouillir l'eau croupie SUR PLACE, dans son contenant. Il faut du feu, et :
+//  — un récipient ouvert (canette, casserole) va directement sur la flamme ;
+//  — un contenant fermé (gourde, thermos, bidon) se fait bouillir par passages
+//    dans une casserole (ou un réchaud) avant d'y retourner.
+export function peutBouillirContenant(ref) {
+  if (!ref || !ref.eau || ref.eau.q === 'bouillie') return false;
+  if (!hasOutil('feu')) return false;
+  if (recipientOuvert(ref.id)) return true;
+  return hasItem('casserole') || hasItem('rechaud_camping')
+    || (G.player.equip.arme && G.player.equip.arme.id === 'casserole');
+}
+// ~20 min par litre (chauffe + ébullition prolongée), au moins 10 min, plafonné à 2 h.
+export function tempsBouillir(ref) {
+  return Math.min(120, Math.max(10, Math.round((ref && ref.eau ? ref.eau.L : 0) * 20)));
+}
+export function bouillirContenant(ref) {
+  if (!peutBouillirContenant(ref)) {
+    return { ok: false, messages: [{ t: 'Il te faut du feu — et de quoi faire bouillir (récipient en métal ou casserole).', c: 'warn' }] };
+  }
+  const d = item(ref.id);
+  const r = advanceTime(tempsBouillir(ref));
+  const msgs = [...r.messages];
+  if (!r.mort) {
+    ref.eau.q = 'bouillie';
+    msgs.push({ t: `${d ? d.nom : 'Le contenant'} : l'eau a bouilli longuement. Ce qui grouillait dedans ne grouille plus.`, c: 'good' });
+  }
+  return { ok: !r.mort, messages: msgs, mort: r.mort };
+}
+
+// ---------- Déchirer un vêtement en chiffons ----------
+// Les vêtements en tissu (champ tissu: 1|2|3 dans clothing.js) se déchirent en
+// chiffons. 5 minutes de travail, le vêtement est détruit. Liberté totale :
+// le joueur peut déchirer ce qu'il porte — il assume le froid qui suit.
+export function dechirerVetement(index) {
+  const it = G.player.inventaire[index];
+  if (!it) return { ok: false, messages: [] };
+  const c = cloth(it.id);
+  if (!c || !c.tissu) return { ok: false, messages: [{ t: 'Ça ne se déchire pas en chiffons utilisables.', c: 'warn' }] };
+  it.qty -= 1;
+  if (it.qty <= 0) G.player.inventaire.splice(index, 1);
+  addItem('chiffon', c.tissu); // espace 0 : entre toujours
+  const r = advanceTime(5);
+  const msgs = [
+    { t: `Tu tailles des bandes régulières dans le tissu (${c.nom.toLowerCase()}) : ${c.tissu} chiffon${c.tissu > 1 ? 's' : ''}.`, c: 'good' },
+    ...r.messages,
+  ];
+  return { ok: true, messages: msgs, mort: r.mort };
+}
+// Déchirer un vêtement PORTÉ : on le retire d'abord (mêmes garde-fous que
+// « Retirer » — espace, ceinture pleine), puis on le déchire depuis le sac.
+export function dechirerEquipe(slot) {
+  const id = G.player.equip[slot];
+  if (!id) return { ok: false, messages: [] };
+  if (!desequiperVetement(slot)) {
+    return { ok: false, messages: [{ t: 'Impossible : ce vêtement porte ton inventaire ou ta ceinture est pleine.', c: 'warn' }] };
+  }
+  const index = G.player.inventaire.findIndex(i => i.id === id);
+  if (index < 0) return { ok: false, messages: [] }; // ne devrait pas arriver
+  return dechirerVetement(index);
 }
 
 // ---------- Soins ----------

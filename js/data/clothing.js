@@ -3,17 +3,18 @@
 //   poids (négatif — il pèse), espace (positif — poches/sacs),
 //   protection (positif — réduit les dégâts), chaleur (négatif ou positif selon la situation),
 //   accesRapide (emplacements d'accès rapide : seuls ces objets sont utilisables en combat),
-//   portage (kg de charge en plus — façon Project Zomboid : sans sac, on ne porte presque rien)
+//   portage (kg de charge en plus — façon Project Zomboid : sans sac, on ne porte presque rien),
+//   tissu (nombre de chiffons rendus si on DÉCHIRE le vêtement — cuir et synthétique : rien)
 // slots : tete, torse, mains, jambes, pieds, sac, ceinture, holster
 export const CLOTHES = {
 
   // ---------- TÊTE ----------
   bonnet: {
-    nom: 'Bonnet de laine', slot: 'tete', poids: 0.2, espace: 0, protection: 0, chaleur: 2,
+    nom: 'Bonnet de laine', slot: 'tete', poids: 0.2, espace: 0, protection: 0, chaleur: 2, tissu: 1,
     desc: 'Gratte un peu. Garde les oreilles.',
   },
   casquette: {
-    nom: 'Casquette', slot: 'tete', poids: 0.15, espace: 0, protection: 0, chaleur: 1,
+    nom: 'Casquette', slot: 'tete', poids: 0.15, espace: 0, protection: 0, chaleur: 1, tissu: 1,
     desc: 'Logo d\'une équipe qui ne jouera plus jamais.',
   },
   casque_moto: {
@@ -27,11 +28,11 @@ export const CLOTHES = {
 
   // ---------- TORSE ----------
   tshirt: {
-    nom: 'T-shirt', slot: 'torse', poids: 0.2, espace: 0, protection: 0, chaleur: 0,
+    nom: 'T-shirt', slot: 'torse', poids: 0.2, espace: 0, protection: 0, chaleur: 0, tissu: 1,
     desc: 'Du coton fin. Autant dire rien.',
   },
   pull_laine: {
-    nom: 'Pull en laine', slot: 'torse', poids: 0.6, espace: 0, protection: 0, chaleur: 3,
+    nom: 'Pull en laine', slot: 'torse', poids: 0.6, espace: 0, protection: 0, chaleur: 3, tissu: 2,
     desc: 'Tricoté par quelqu\'un qui aimait quelqu\'un.',
   },
   veste_cuir: {
@@ -39,7 +40,7 @@ export const CLOTHES = {
     desc: 'Le cuir épais arrête les ongles et amortit les dents.',
   },
   manteau_hiver: {
-    nom: 'Manteau d\'hiver', slot: 'torse', poids: 2.6, espace: 2, protection: 1, chaleur: 4,
+    nom: 'Manteau d\'hiver', slot: 'torse', poids: 2.6, espace: 2, protection: 1, chaleur: 4, tissu: 3,
     desc: 'Encombrant mais chaud. L\'hiver tue autant que les morts.',
   },
   gilet_tactique: {
@@ -57,7 +58,7 @@ export const CLOTHES = {
 
   // ---------- MAINS ----------
   gants_laine: {
-    nom: 'Gants de laine', slot: 'mains', poids: 0.1, espace: 0, protection: 0, chaleur: 2,
+    nom: 'Gants de laine', slot: 'mains', poids: 0.1, espace: 0, protection: 0, chaleur: 2, tissu: 1,
     desc: 'Doigts au chaud, prise moyenne.',
   },
   gants_cuir: {
@@ -71,19 +72,19 @@ export const CLOTHES = {
 
   // ---------- JAMBES ----------
   jogging: {
-    nom: 'Pantalon de jogging', slot: 'jambes', poids: 0.4, espace: 0, protection: 0, chaleur: 1, agilite: 1,
+    nom: 'Pantalon de jogging', slot: 'jambes', poids: 0.4, espace: 0, protection: 0, chaleur: 1, agilite: 1, tissu: 2,
     desc: 'Souple. On court bien dedans.',
   },
   jean: {
-    nom: 'Jean', slot: 'jambes', poids: 0.7, espace: 1, protection: 1, chaleur: 1,
+    nom: 'Jean', slot: 'jambes', poids: 0.7, espace: 1, protection: 1, chaleur: 1, tissu: 2,
     desc: 'La toile épaisse a déjà sauvé bien des mollets.',
   },
   pantalon_cargo: {
-    nom: 'Pantalon cargo', slot: 'jambes', poids: 0.8, espace: 2, protection: 1, chaleur: 1,
+    nom: 'Pantalon cargo', slot: 'jambes', poids: 0.8, espace: 2, protection: 1, chaleur: 1, tissu: 2,
     desc: 'Des poches partout. Le vêtement du pillard.',
   },
   jean_genouilleres: {
-    nom: 'Jean à genouillères', slot: 'jambes', poids: 1.0, espace: 1, protection: 2, chaleur: 1,
+    nom: 'Jean à genouillères', slot: 'jambes', poids: 1.0, espace: 1, protection: 2, chaleur: 1, tissu: 2,
     desc: 'Un jean blindé de journaux pliés et de chiffons scotchés aux genoux et aux tibias. Les rampants mordent là d\'abord.',
   },
 
@@ -125,7 +126,7 @@ export const CLOTHES = {
     desc: 'Sanglé sur la cuisse. Une arme de plus, prête à sortir.',
   },
   holster_fortune: {
-    nom: 'Holster de fortune', slot: 'holster', poids: 0.25, espace: 0, protection: 0, chaleur: 0, accesRapide: 1,
+    nom: 'Holster de fortune', slot: 'holster', poids: 0.25, espace: 0, protection: 0, chaleur: 0, accesRapide: 1, tissu: 1,
     desc: 'Des chiffons cousus en étui, noués à la cuisse par de la corde. Pas élégant, mais l\'objet sort vite.',
   },
 
@@ -137,7 +138,7 @@ export const CLOTHES = {
     desc: 'Un cabas réutilisable « préservons la planète ». La planète a d\'autres soucis, mais il porte encore.',
   },
   sac_fortune: {
-    nom: 'Sac de fortune', slot: 'sac', poids: 0.3, espace: 2, protection: 0, chaleur: 0, portage: 2,
+    nom: 'Sac de fortune', slot: 'sac', poids: 0.3, espace: 2, protection: 0, chaleur: 0, portage: 2, tissu: 2,
     desc: 'Des chiffons cousus à la corde. Moche, fragile, mais des poches sont des poches.',
   },
   sacoche: {

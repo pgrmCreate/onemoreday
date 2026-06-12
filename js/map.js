@@ -28,7 +28,9 @@ import { ico } from './icons.js';
 import { svgScene } from './illustrations.js';
 import {
   addItem, hasItem, removeItem, hasOutil, poidsTotal, poidsMax, placePour,
-  espaceUtilise, espaceMax, defItem,
+  espaceUtilise, espaceMax, defItem, countItem,
+  estContenant, recipientOuvert, contenance, descEau, fmtL, instancePourEau,
+  tenirRecipient, prendreEnMain,
 } from './inventory.js';
 import { advanceTime, dormir } from './survival.js';
 import { appliquerEffets, besoinRempli, besoinTexte, jetReussi } from './effects.js';
@@ -643,6 +645,12 @@ export function renderLieu() {
     html += tuile('data-sol="1"', 'ramasser', `Ramasser (${nbSol})`, 'examiner ce qui traîne', { classe: 'trouves-btn' });
   }
   if (cd.special) html += tuileSpeciale(cd, k);
+  // Une source d'eau sans case spéciale (citerne du triage, berge d'un canal...)
+  if (accesEau(cd) && cd.special !== 'fontaine') {
+    html += tuile('data-puiser="1"', 'soif', 'Puiser de l\'eau',
+      aDeQuoiPuiser() ? 'remplir un contenant — eau croupie' : '<span class="req">aucun contenant à remplir</span>',
+      { disabled: !aDeQuoiPuiser() });
+  }
   if (C.echelle === 'interieur') {
     html += tuile('data-dormir="1"', 'dormir', 'Dormir', sommeilInfo());
   }
@@ -672,6 +680,7 @@ export function renderLieu() {
   lier('[data-entrer]', entrerCase);
   lier('[data-fouille]', () => fouiller());
   lier('[data-sol]', panneauTrouves);
+  lier('[data-puiser]', panneauPuiser);
   lier('[data-dormir]', panneauSommeil);
   lier('[data-legende]', panneauLegende);
   lier('[data-vue]', () => { vueDessin = !vueDessin; renderLieu(); });
@@ -992,9 +1001,139 @@ function terminerFouille(aTatons) {
   if (deniches.length || reveles) panneauTrouves();
 }
 
+// ---------- Puiser : remplir bouteilles et contenants à une source d'eau ----------
+// Sources reconnues : la case spéciale 'fontaine' (la Fontaine Moussue !), la
+// citerne SNCF du triage (lbl 'CITERNE'), ou la berge d'une case de terrain 'eau'
+// adjacente (canal, lavoir...). L'eau puisée est toujours CROUPIE : à bouillir.
+function accesEau(cd) {
+  if (!cd) return false;
+  if (cd.special === 'fontaine') return true;
+  if (cd.lbl === 'CITERNE') return true; // le château d'eau du triage (chapitre 2)
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const n = caseDef(G.world.carte, G.world.x + dx, G.world.y + dy);
+    if (n && n.t === 'eau') return true;
+  }
+  return false;
+}
+// A-t-on quelque chose à remplir ? (bouteille vide, ou un contenant pas plein)
+function aDeQuoiPuiser() {
+  if (hasItem('bouteille_vide')) return true;
+  const libre = (e) => estContenant(e.id) && (e.eau ? e.eau.L : 0) < contenance(e.id);
+  if (G.player.inventaire.some(libre)) return true;
+  const main = G.player.equip.arme;
+  return !!(main && libre(main));
+}
+// Remplit un contenant (instance) de `litres` d'eau croupie, capacité respectée.
+// Verser de la croupie sur de la bouillie gâche tout : le mélange est croupi.
+function remplirCroupie(ref, litres) {
+  if (!ref) return;
+  const avant = ref.eau ? ref.eau.L : 0;
+  const gache = !!(ref.eau && ref.eau.L > 0 && ref.eau.q === 'bouillie');
+  ref.eau = { q: 'croupie', L: Math.round(Math.min(contenance(ref.id), avant + litres) * 100) / 100 };
+  const d = defItem(ref.id);
+  log(`${d ? d.nom : 'Contenant'} : ${descEau(ref)}.${gache ? ' L\'eau bouillie est gâchée — tout est croupi.' : ''}`, gache ? 'warn' : 'good');
+}
+
+function panneauPuiser() {
+  let html = `<div class="panel-head"><h2>Puiser de l'eau</h2><button class="panel-close">×</button></div>
+    <p class="cap-line">L'eau sent la mousse et le calcaire — croupie. À faire bouillir, sauf envie de mourir plié en deux. L'eau pèse : 1 L = 1 kg.</p>
+    <div class="item-list">`;
+  // Le circuit historique : la bouteille vide devient une bouteille d'eau croupie.
+  const nB = countItem('bouteille_vide');
+  if (nB) {
+    html += `<div class="item-card">
+      <div class="item-line"><span class="item-nom">Bouteille vide${nB > 1 ? ` <span class="qty">×${nB}</span>` : ''}</span><span class="item-meta">5 min</span></div>
+      <div class="item-btns"><button data-pu="bouteille">Remplir une bouteille</button></div></div>`;
+  }
+  // Le contenant tenu en main (canette, casserole... déjà sorties)
+  const main = G.player.equip.arme;
+  if (main && estContenant(main.id)) {
+    const d = defItem(main.id);
+    const plein = (main.eau ? main.eau.L : 0) >= contenance(main.id);
+    html += `<div class="item-card equipped">
+      <div class="item-line"><span class="item-nom">${d.nom} (en main)</span>
+      <span class="item-meta">${main.eau ? descEau(main) : `vide — ${fmtL(contenance(main.id))} L`}</span></div>
+      <div class="item-btns">${plein ? '<button disabled>Plein</button>' : '<button data-pu="main">Remplir (5 min)</button>'}</div></div>`;
+  }
+  // Les contenants du sac : les fermés se remplissent sur place, les ouverts
+  // (canette, casserole) se remplissent EN MAIN — pleins, ils ne vont pas au sac.
+  G.player.inventaire.forEach((it, i) => {
+    if (!estContenant(it.id)) return;
+    const d = defItem(it.id);
+    const plein = (it.eau ? it.eau.L : 0) >= contenance(it.id);
+    let btns;
+    if (plein) btns = '<button disabled>Plein</button>';
+    else if (recipientOuvert(it.id)) btns = `<button data-pu="prendre:${i}">Remplir et tenir en main (5 min)</button>`;
+    else if (it.id === 'bidon_vide') btns = `<button data-pu="inv:${i}:1">+1 L (3 min)</button><button data-pu="inv:${i}:plein">À ras bord (15 min)</button>`;
+    else btns = `<button data-pu="inv:${i}:plein">Remplir (5 min)</button>`;
+    html += `<div class="item-card">
+      <div class="item-line"><span class="item-nom">${d.nom}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}</span>
+      <span class="item-meta">${it.eau ? descEau(it) : `vide — ${fmtL(contenance(it.id))} L`}</span></div>
+      <div class="item-btns">${btns}</div></div>`;
+  });
+  html += `</div>`;
+  if (!aDeQuoiPuiser()) html += `<p class="cap-line">Rien à remplir : trouve une bouteille vide, une gourde, un bidon — ou même une canette.</p>`;
+  const box = showPanel(html);
+
+  const puiser = (minutes, action) => {
+    attente('Tu puises l\'eau…', minutes, () => {
+      const r = advanceTime(minutes);
+      r.messages.forEach(m => log(m.t, m.c));
+      if (r.mort) return;
+      action();
+      sfx('eau_verse');
+      save();
+      renderLieu();
+      panneauPuiser(); // on peut enchaîner les remplissages
+    });
+  };
+  box.querySelectorAll('[data-pu]').forEach(b => {
+    b.onclick = () => {
+      sfx('clic');
+      const [mode, a, dose] = b.dataset.pu.split(':');
+      if (mode === 'bouteille') {
+        if (!removeItem('bouteille_vide', 1)) { toast('Plus de bouteille vide.'); return; }
+        puiser(5, () => {
+          addItem('eau_croupie', 1);
+          log('Tu remplis la bouteille. L\'eau est trouble, avec des choses qui flottent. À bouillir.', 'good');
+        });
+      } else if (mode === 'main') {
+        puiser(5, () => remplirCroupie(G.player.equip.arme, Infinity));
+      } else if (mode === 'prendre') {
+        const i = parseInt(a, 10);
+        puiser(5, () => {
+          const r = tenirRecipient(i);
+          if (!r.ok) return;
+          if (r.renverse) log(`${r.renverse} : l'eau se renverse pendant la manœuvre.`, 'warn');
+          remplirCroupie(G.player.equip.arme, Infinity);
+        });
+      } else { // 'inv' : un contenant fermé, rempli sur place dans le sac
+        const i = parseInt(a, 10);
+        puiser(dose === '1' ? 3 : (G.player.inventaire[i] && G.player.inventaire[i].id === 'bidon_vide' ? 15 : 5),
+          () => remplirCroupie(instancePourEau(i), dose === '1' ? 1 : Infinity));
+      }
+    };
+  });
+  return box;
+}
+
 // ---------- Objets au sol : ramassage à la main ----------
+// Garde-fou : si la fouille a empilé des récipients vides sur un récipient PLEIN
+// posé là (même id), on re-sépare — l'eau n'appartient qu'à UNE instance.
+function normaliserSol(k) {
+  const tout = solDe(k);
+  for (let i = tout.length - 1; i >= 0; i--) {
+    const e = tout[i];
+    if (e.eau && (e.qty || 1) > 1) {
+      tout.push({ id: e.id, qty: e.qty - 1, cache: e.cache });
+      e.qty = 1;
+    }
+  }
+}
+
 function panneauTrouves() {
   const k = keyCourante();
+  normaliserSol(k);
   const sol = solVisible(k);
   let html = `<div class="panel-head"><h2>Au sol</h2><button class="panel-close">×</button></div>
     <p class="cap-line">Poids : <b>${poidsTotal().toFixed(1)} / ${poidsMax()} kg</b> — Espace : <b>${espaceUtilise()} / ${espaceMax()}</b></p>
@@ -1003,13 +1142,17 @@ function panneauTrouves() {
   sol.forEach((e, i) => {
     const d = defItem(e.id);
     if (!d) return;
+    // un récipient OUVERT plein ne va pas dans le sac : il se prend EN MAIN
+    const enMain = e.eau && recipientOuvert(e.id);
     html += `<div class="item-card">
       <div class="item-line"><span class="item-nom">${d.nom}${(e.qty || 1) > 1 ? ` <span class="qty">×${e.qty}</span>` : ''}</span>
-      <span class="item-meta">${(d.poids || 0).toFixed(1)} kg · ${d.espace || 0} esp.</span></div>
+      <span class="item-meta">${e.eau ? descEau(e) + ' · ' : ''}${((d.poids || 0) + (e.eau ? e.eau.L : 0)).toFixed(1)} kg · ${d.espace || 0} esp.</span></div>
       <div class="item-desc">${d.desc}</div>
       <div class="item-btns">
-        <button data-prendre="${i}">Prendre${(e.qty || 1) > 1 ? ' (1)' : ''}</button>
-        ${(e.qty || 1) > 1 ? `<button data-prendre-tout="${i}">Tout (×${e.qty})</button>` : ''}
+        ${enMain
+          ? `<button data-tenir="${i}">Prendre en main</button>`
+          : `<button data-prendre="${i}">Prendre${(e.qty || 1) > 1 ? ' (1)' : ''}</button>
+            ${(e.qty || 1) > 1 ? `<button data-prendre-tout="${i}">Tout (×${e.qty})</button>` : ''}`}
       </div></div>`;
   });
   html += `</div>`;
@@ -1019,9 +1162,9 @@ function panneauTrouves() {
   const box = showPanel(html);
 
   const prendreUn = (e) => {
-    if (e.dur !== undefined) {
+    if (e.dur !== undefined || e.eau) { // instance unique (arme usée, contenant plein)
       if (!placePour(e.id, 1)) return false;
-      G.player.inventaire.push({ id: e.id, qty: 1, dur: e.dur });
+      G.player.inventaire.push({ id: e.id, qty: 1, dur: e.dur, eau: e.eau });
       return true;
     }
     return addItem(e.id, 1);
@@ -1046,6 +1189,23 @@ function panneauTrouves() {
   };
   box.querySelectorAll('[data-prendre]').forEach(b => b.onclick = () => prendre(parseInt(b.dataset.prendre, 10), 1));
   box.querySelectorAll('[data-prendre-tout]').forEach(b => b.onclick = () => prendre(parseInt(b.dataset.prendreTout, 10), 999));
+  // Récipient ouvert plein : il se prend en main (ce qu'on tenait retourne au sac)
+  box.querySelectorAll('[data-tenir]').forEach(b => b.onclick = () => {
+    const tout = solDe(k);
+    const e = sol[parseInt(b.dataset.tenir, 10)];
+    if (!e) return;
+    tout.splice(tout.indexOf(e), 1);
+    const r = prendreEnMain(e);
+    if (r.renverse) {
+      sfx('eau_verse');
+      log(`${r.renverse} : l'eau se renverse pendant l'échange. Le récipient vide retourne dans le sac.`, 'warn');
+    }
+    sfx('loot');
+    updateHUD();
+    save();
+    if (solVisible(k).length) panneauTrouves();
+    else { closePanel(); renderLieu(); }
+  });
   const raf = box.querySelector('[data-rafler]');
   if (raf) raf.onclick = () => {
     const tout = solDe(k);
@@ -1053,6 +1213,7 @@ function panneauTrouves() {
     for (let i = tout.length - 1; i >= 0; i--) {
       const e = tout[i];
       if (e.cache) continue;
+      if (e.eau && recipientOuvert(e.id)) continue; // se prend en main, pas dans le sac
       while ((e.qty || 1) > 0 && prendreUn(e)) { e.qty--; pris++; if (e.dur !== undefined) break; }
       if (e.qty <= 0) tout.splice(i, 1);
     }
@@ -1125,7 +1286,7 @@ function tuileSpeciale(cd, k) {
     tuile(`data-special="${sp}"`, icone, nom, ok ? sub : `<span class="req">${sub}</span>`, { disabled: !ok });
   switch (sp) {
     case 'fontaine':
-      return t('soif', 'Prélever de l\'eau', hasItem('bouteille_vide') ? 'eau douteuse, à bouillir' : 'requiert : bouteille vide', hasItem('bouteille_vide'));
+      return t('soif', 'Puiser de l\'eau', aDeQuoiPuiser() ? 'eau douteuse, à bouillir' : 'requiert : un contenant ou une bouteille vide', aDeQuoiPuiser());
     case 'peche':
       return t('soif', 'Pêcher (1 h)', hasItem('canne_peche') ? (hasItem('appat') ? 'avec appâts' : 'sans appâts') : 'requiert : canne à pêche', hasItem('canne_peche'));
     case 'chasse': {
@@ -1162,18 +1323,7 @@ function actionSpeciale(sp) {
   const cd = caseCourante();
   const k = keyCourante();
   switch (sp) {
-    case 'fontaine': {
-      if (!removeItem('bouteille_vide', 1)) { toast('Il te faut une bouteille vide.'); renderLieu(); break; }
-      attente('Tu remplis la bouteille…', 5, () => {
-        addItem('eau_croupie', 1);
-        const r = advanceTime(5);
-        r.messages.forEach(m => log(m.t, m.c));
-        if (r.mort) return;
-        log('Tu remplis la bouteille à la fontaine. L\'eau sent la mousse et le calcaire. À bouillir, sauf envie de mourir plié en deux.', 'good');
-        save(); renderLieu();
-      });
-      break;
-    }
+    case 'fontaine': panneauPuiser(); break;
     case 'peche': {
       if (!hasItem('canne_peche')) { toast('Il te faut une canne à pêche.'); renderLieu(); break; }
       if (!placePour('poisson_cru', 2)) { toast('Fais de la place dans ton sac avant de pêcher.'); renderLieu(); break; }

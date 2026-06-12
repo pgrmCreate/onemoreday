@@ -8,7 +8,11 @@ import { carteCourante, caseCourante, keyCourante } from './world.js';
 
 function outilOk(o) {
   if (o === 'feu') return hasOutil('feu');
-  if (o === 'casserole') return hasItem('casserole') || hasItem('rechaud_camping');
+  // la casserole compte aussi quand on la tient en main (même pleine d'eau)
+  if (o === 'casserole') {
+    return hasItem('casserole') || hasItem('rechaud_camping')
+      || (G.player.equip.arme && G.player.equip.arme.id === 'casserole');
+  }
   return hasItem(o) || (G.player.equip.arme && G.player.equip.arme.id === o);
 }
 

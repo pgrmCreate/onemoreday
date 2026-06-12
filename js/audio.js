@@ -1,11 +1,17 @@
 // ============ Moteur audio — tout est synthétisé via Web Audio API ============
 // La BANQUE DE SONS : chaque lieu a sa scène sonore (js/data/soundscapes.js) —
 // un lit continu (vent + drones), des bruits ponctuels qui surgissent au hasard
-// (corbeau, ferraille, gémissement au bout du couloir…), et un motif musical
-// génératif, rare, propre à l'endroit. La nuit a ses propres bruits.
-// Interface stable : playAmbiance, startCombatMusic, stopCombatMusic, sfx, setMuted.
+// (corbeau, ferraille, gémissement au bout du couloir…), et de la MUSIQUE :
+// soit un motif génératif rare propre à l'endroit, soit un THÈME COMPOSÉ
+// (partitions dans js/data/musiques.js, jouées par le mini-séquenceur).
+// La nuit a ses propres bruits et ses propres couleurs musicales.
+// Fichiers optionnels : si audio/manifest.json existe, les fichiers déclarés
+// remplacent la synthèse pour les thèmes/ambiances concernés (repli synthèse).
+// Interface stable : playAmbiance, startCombatMusic, stopCombatMusic, sfx,
+// setMuted, setHeartbeat — et setTension(0..1) pour la nappe « zombie proche ».
 import { G, estNuit } from './state.js';
 import { CARTE_SCENE, SCENES_LEGACY, SCENES_SONORES } from './data/soundscapes.js';
+import { THEMES } from './data/musiques.js';
 
 let ctx = null;
 let master = null;
@@ -18,6 +24,13 @@ let muted = localStorage.getItem('omd_muted') === '1';
 let volume = parseFloat(localStorage.getItem('omd_volume') || '0.6');
 let ambianceCourante = null; // 'scene:j' | 'scene:n'
 let echo = null;             // delay partagé (musique, sons lointains)
+let seq = null;              // état du mini-séquenceur (thème composé en cours)
+let seqNotes = [];           // notes déjà planifiées par le séquenceur (arrêt propre)
+let tension = null;          // nappe de tension temps réel (zombie proche)
+let tensionTimer = null;     // démontage différé de la nappe quand elle retombe à 0
+let fichiers = { themes: {}, ambiances: {} }; // tampons décodés depuis audio/manifest.json
+let bufferTheme = null;      // fichier de thème en boucle (remplace la synthèse)
+let combatBuf = null;        // fichier de combat en boucle
 
 export function initAudio() {
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
@@ -33,6 +46,11 @@ export function initAudio() {
     const wet = ctx.createGain(); wet.gain.value = 0.3;
     echo.connect(fb); fb.connect(echo);
     echo.connect(wet); wet.connect(master);
+    // Fichiers audio optionnels : si audio/manifest.json existe, on le charge
+    // en silence total ; sinon (cas normal), la synthèse fait tout.
+    chargerManifest();
+    // Le séquenceur se met en pause quand l'onglet est caché : on le réveille au retour.
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reprendreSeq(); });
   } catch (e) { console.warn('Audio indisponible', e); }
 }
 export function audioPret() { return !!ctx; }
@@ -40,6 +58,7 @@ export function isMuted() { return muted; }
 export function setMuted(b) {
   muted = b; localStorage.setItem('omd_muted', b ? '1' : '0');
   if (master) master.gain.linearRampToValueAtTime(b ? 0 : volume, ctx.currentTime + 0.2);
+  if (!b) reprendreSeq(); // le séquenceur s'était mis en pause pendant le silence
 }
 export function getVolume() { return volume; }
 export function setVolume(v) {
@@ -64,6 +83,8 @@ function stopAmbiance() {
   ambNodes = [];
   if (stingerTimer) { clearTimeout(stingerTimer); stingerTimer = null; }
   if (musiqueTimer) { clearTimeout(musiqueTimer); musiqueTimer = null; }
+  arreterSequenceur();
+  arreterBoucleFichier(bufferTheme); bufferTheme = null;
 }
 
 // ---------- Scène sonore d'un lieu ----------
@@ -90,49 +111,58 @@ export function playAmbiance(id) {
   g.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 2.5);
   ambNodes.push(g);
 
-  // Vent — toutes les scènes en ont un, plus ou moins fort.
-  const [vf, vg, vlfo] = sc.vent;
-  const wind = ctx.createBufferSource();
-  wind.buffer = noiseBuffer(4); wind.loop = true;
-  const wfil = ctx.createBiquadFilter(); wfil.type = 'lowpass'; wfil.frequency.value = vf;
-  const wgain = ctx.createGain(); wgain.gain.value = vg * (nuit ? 0.85 : 1);
-  wind.connect(wfil); wfil.connect(wgain); wgain.connect(g);
-  wind.start();
-  ambNodes.push(wind);
-  const lfo = ctx.createOscillator(); lfo.frequency.value = vlfo;
-  const lfoG = ctx.createGain(); lfoG.gain.value = sc.rail ? 120 : 160;
-  lfo.connect(lfoG); lfoG.connect(wfil.frequency);
-  lfo.start();
-  ambNodes.push(lfo);
+  if (fichiers.ambiances[sid]) {
+    // Un fichier fourni par l'utilisateur remplace le lit synthétisé
+    // (vent + drones + rails). Les bruits ponctuels du lieu restent.
+    const src = ctx.createBufferSource();
+    src.buffer = fichiers.ambiances[sid]; src.loop = true;
+    src.connect(g); src.start();
+    ambNodes.push(src);
+  } else {
+    // Vent — toutes les scènes en ont un, plus ou moins fort.
+    const [vf, vg, vlfo] = sc.vent;
+    const wind = ctx.createBufferSource();
+    wind.buffer = noiseBuffer(4); wind.loop = true;
+    const wfil = ctx.createBiquadFilter(); wfil.type = 'lowpass'; wfil.frequency.value = vf;
+    const wgain = ctx.createGain(); wgain.gain.value = vg * (nuit ? 0.85 : 1);
+    wind.connect(wfil); wfil.connect(wgain); wgain.connect(g);
+    wind.start();
+    ambNodes.push(wind);
+    const lfo = ctx.createOscillator(); lfo.frequency.value = vlfo;
+    const lfoG = ctx.createGain(); lfoG.gain.value = sc.rail ? 120 : 160;
+    lfo.connect(lfoG); lfoG.connect(wfil.frequency);
+    lfo.start();
+    ambNodes.push(lfo);
 
-  // Drones graves — la nuit les tire d'un demi-ton vers le bas, imperceptiblement plus lourd.
-  sc.drones.forEach(([f, type, gain], i) => {
-    const o = ctx.createOscillator(); o.type = type; o.frequency.value = nuit ? f * 0.972 : f;
-    o.detune.value = i * 6;
-    const og = ctx.createGain(); og.gain.value = gain * (nuit ? 1.15 : 1);
-    o.connect(og); og.connect(g);
-    o.start();
-    ambNodes.push(o);
-  });
+    // Drones graves — la nuit les tire d'un demi-ton vers le bas, imperceptiblement plus lourd.
+    sc.drones.forEach(([f, type, gain], i) => {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.value = nuit ? f * 0.972 : f;
+      o.detune.value = i * 6;
+      const og = ctx.createGain(); og.gain.value = gain * (nuit ? 1.15 : 1);
+      o.connect(og); og.connect(g);
+      o.start();
+      ambNodes.push(o);
+    });
 
-  // Train : rythme des rails (clac-clac régulier)
-  if (sc.rail) {
-    const railG = ctx.createGain(); railG.gain.value = 0.0; railG.connect(g);
-    ambNodes.push(railG);
-    const railOsc = ctx.createOscillator(); railOsc.type = 'square'; railOsc.frequency.value = 38;
-    railOsc.connect(railG); railOsc.start();
-    ambNodes.push(railOsc);
-    const railLfo = ctx.createOscillator(); railLfo.type = 'square'; railLfo.frequency.value = 2.1;
-    const railLfoG = ctx.createGain(); railLfoG.gain.value = 0.05;
-    railLfo.connect(railLfoG); railLfoG.connect(railG.gain);
-    railLfo.start();
-    ambNodes.push(railLfo);
+    // Train : rythme des rails (clac-clac régulier)
+    if (sc.rail) {
+      const railG = ctx.createGain(); railG.gain.value = 0.0; railG.connect(g);
+      ambNodes.push(railG);
+      const railOsc = ctx.createOscillator(); railOsc.type = 'square'; railOsc.frequency.value = 38;
+      railOsc.connect(railG); railOsc.start();
+      ambNodes.push(railOsc);
+      const railLfo = ctx.createOscillator(); railLfo.type = 'square'; railLfo.frequency.value = 2.1;
+      const railLfoG = ctx.createGain(); railLfoG.gain.value = 0.05;
+      railLfo.connect(railLfoG); railLfoG.connect(railG.gain);
+      railLfo.start();
+      ambNodes.push(railLfo);
+    }
   }
 
   // Bruits ponctuels : le monde respire, grince, appelle.
   planifierStinger(sc, nuit, cle);
-  // Et parfois, la musique du lieu se lève.
-  planifierMusique(sc, cle);
+  // Et parfois, la musique du lieu se lève : thème composé ou motif génératif.
+  planifierMusique(sc, cle, nuit);
 }
 
 function poolStingers(sc, nuit) {
@@ -156,29 +186,36 @@ function planifierStinger(sc, nuit, cle) {
 
 // ---------- Musique générative : quelques notes, puis le silence ----------
 const RACINES = [1, 1.5, 0.75]; // tonique, quinte, quarte basse — la phrase se promène
-function planifierMusique(sc, cle) {
+function planifierMusique(sc, cle, nuit) {
   const m = sc.musique;
   if (!m) return;
+  // Thème composé ? Le séquenceur prend la place du motif génératif.
+  if (m.theme) { demarrerTheme(m.theme, nuit, cle); return; }
   musiqueTimer = setTimeout(() => {
     if (ambianceCourante !== cle || !ctx) return;
-    if (Math.random() < m.p) jouerMotif(m);
-    planifierMusique(sc, cle);
-  }, 16000 + Math.random() * 26000);
+    if (Math.random() < m.p) jouerMotif(m, nuit);
+    planifierMusique(sc, cle, nuit);
+  }, 12000 + Math.random() * 22000); // un peu plus présent qu'avant, mais rare quand même
 }
 
-function jouerMotif(m) {
+function jouerMotif(m, nuit) {
   const t0 = ctx.currentTime + 0.1;
-  const racine = m.base * RACINES[Math.floor(Math.random() * RACINES.length)];
+  // Plusieurs gammes possibles par lieu : on en tire une au sort.
+  const gamme = m.gammes ? m.gammes[Math.floor(Math.random() * m.gammes.length)] : m.gamme;
+  // La nuit, la phrase descend d'un demi-ton, s'étire, et le timbre se feutre.
+  const racine = m.base * RACINES[Math.floor(Math.random() * RACINES.length)] * (nuit ? 0.944 : 1);
+  const timbre = nuit ? 'sine' : (m.timbre || 'sine');
+  const lent = nuit ? 1.2 : 1;
   const nNotes = 3 + Math.floor(Math.random() * 4);
   let t = t0;
-  let deg = Math.floor(Math.random() * m.gamme.length);
+  let deg = Math.floor(Math.random() * gamme.length);
   for (let i = 0; i < nNotes; i++) {
     // la mélodie marche par pas, avec un saut de temps en temps
-    deg = Math.max(0, Math.min(m.gamme.length - 1, deg + (Math.random() < 0.3 ? 2 : 1) * (Math.random() < 0.5 ? -1 : 1)));
+    deg = Math.max(0, Math.min(gamme.length - 1, deg + (Math.random() < 0.3 ? 2 : 1) * (Math.random() < 0.5 ? -1 : 1)));
     const oct = Math.random() < 0.3 ? 4 : 2;
-    const f = racine * Math.pow(2, m.gamme[deg] / 12) * oct;
-    const dur = (m.doux ? 1.1 : 0.85) + Math.random() * 0.7;
-    const o = ctx.createOscillator(); o.type = m.timbre || 'sine'; o.frequency.value = f;
+    const f = racine * Math.pow(2, gamme[deg] / 12) * oct;
+    const dur = ((m.doux ? 1.1 : 0.85) + Math.random() * 0.7) * lent;
+    const o = ctx.createOscillator(); o.type = timbre; o.frequency.value = f;
     const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = f; o2.detune.value = 7;
     const og = ctx.createGain();
     const peak = m.doux ? 0.045 : 0.038;
@@ -190,6 +227,218 @@ function jouerMotif(m) {
     o.start(t); o.stop(t + dur + 0.05);
     o2.start(t); o2.stop(t + dur + 0.05);
     t += dur * (0.55 + Math.random() * 0.4);
+  }
+  // Une fois sur deux, un bourdon grave tient la tonique sous toute la phrase.
+  if (Math.random() < 0.5) {
+    const fin = (t - t0) + 0.8;
+    const b = ctx.createOscillator(); b.type = 'sine'; b.frequency.value = racine;
+    const bg = ctx.createGain();
+    bg.gain.setValueAtTime(0.0001, t0);
+    bg.gain.linearRampToValueAtTime(nuit ? 0.034 : 0.028, t0 + 1);
+    bg.gain.exponentialRampToValueAtTime(0.0001, t0 + fin);
+    b.connect(bg); bg.connect(master);
+    b.start(t0); b.stop(t0 + fin + 0.1);
+  }
+}
+
+// ---------- Mini-séquenceur : les thèmes composés de js/data/musiques.js ----------
+// Planification par anticipation (lookahead) sur ctx.currentTime : un réveil
+// régulier pose les notes des prochains instants, puis se rendort. Quand le son
+// est coupé ou l'onglet caché, le séquenceur se met en pause (aucun timer ne
+// tourne) et repart au début de la partition au retour.
+const SEQ_AVANCE = 0.8;   // horizon de planification (secondes)
+const SEQ_TICK_MS = 200;  // cadence du réveil
+
+function demarrerTheme(nom, nuit, cle) {
+  let part = THEMES[nom];
+  if (!part) return;
+  let nomEffectif = nom;
+  if (nuit && part.nuit && THEMES[part.nuit]) { nomEffectif = part.nuit; part = THEMES[part.nuit]; }
+  // Fichier fourni par l'utilisateur ? Il remplace la synthèse de ce thème
+  // (la variante de nuit peut avoir son propre fichier, sinon celui du jour).
+  const buf = fichiers.themes[nomEffectif] || fichiers.themes[nom];
+  if (buf) { bufferTheme = jouerBoucleFichier(buf, 0.7); return; }
+  seq = {
+    cle, part,
+    voix: part.voix.map(v => ({ def: v, idx: 0, t: 0 })),
+    timer: null,
+    enPause: false,
+  };
+  const t0 = ctx.currentTime + 1.5; // la musique n'arrive jamais brutalement
+  seq.voix.forEach(vs => { vs.t = t0; });
+  seqTick();
+}
+
+function seqTick() {
+  if (!seq || !ctx) return;
+  if (seq.cle !== ambianceCourante) { arreterSequenceur(); return; }
+  // Pause : son coupé ou onglet caché. On ne replanifie rien ; la reprise
+  // (setMuted / visibilitychange) relancera la partition depuis le début.
+  if (muted || document.hidden) { seq.enPause = true; seq.timer = null; return; }
+  const part = seq.part;
+  const limite = ctx.currentTime + SEQ_AVANCE;
+  const battement = (60 / part.tempo) * (part.etire || 1);
+  let tousFinis = true;
+  for (const vs of seq.voix) {
+    while (vs.idx < vs.def.notes.length && vs.t < limite) {
+      const [st, dur] = vs.def.notes[vs.idx];
+      const durSec = dur * battement;
+      if (st !== null) jouerNoteSeq(part, vs.def, st, vs.t, durSec);
+      vs.t += durSec; vs.idx++;
+    }
+    if (vs.idx < vs.def.notes.length) tousFinis = false;
+  }
+  let prochainTick = SEQ_TICK_MS;
+  if (tousFinis) {
+    // Reprise après un silence de respiration — la musique doit savoir se taire.
+    const fin = Math.max(...seq.voix.map(vs => vs.t));
+    const [rMin, rMax] = part.respiration || [8, 16];
+    const t0 = fin + rMin + Math.random() * (rMax - rMin);
+    seq.voix.forEach(vs => { vs.idx = 0; vs.t = t0; });
+    // Pendant le silence, on dort presque jusqu'à la reprise au lieu de tourner à vide.
+    prochainTick = Math.max(SEQ_TICK_MS, (t0 - ctx.currentTime - SEQ_AVANCE) * 1000);
+  }
+  seq.timer = setTimeout(seqTick, prochainTick);
+}
+
+function jouerNoteSeq(part, v, st, t, durSec) {
+  const trans = (part.transpose || 0) + (v.transpose || 0);
+  const f = part.fondamentale * Math.pow(2, (st + trans) / 12) * Math.pow(2, v.octave || 0);
+  const o = ctx.createOscillator(); o.type = v.timbre || 'sine'; o.frequency.value = f;
+  const oscs = [o];
+  if (v.detune) { // un 2e oscillateur à peine désaccordé : la note respire
+    const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = f; o2.detune.value = v.detune;
+    oscs.push(o2);
+  }
+  const g = ctx.createGain();
+  const a = Math.min(v.attaque || 0.05, durSec * 0.5);
+  const rel = v.relache || 0.3;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(v.gain || 0.04, t + a);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + durSec + rel);
+  if (v.filtre) {
+    const fil = ctx.createBiquadFilter(); fil.type = 'lowpass'; fil.frequency.value = v.filtre;
+    oscs.forEach(os => os.connect(fil)); fil.connect(g);
+  } else {
+    oscs.forEach(os => os.connect(g));
+  }
+  g.connect(master);
+  if (v.echo) g.connect(echo);
+  const fin = t + durSec + rel + 0.05;
+  oscs.forEach(os => { os.start(t); os.stop(fin); });
+  seqNotes.push({ g, oscs, fin });
+  // On ne garde que les notes encore vivantes (la liste sert à l'arrêt propre).
+  if (seqNotes.length > 64) seqNotes = seqNotes.filter(n => n.fin > ctx.currentTime);
+}
+
+function arreterSequenceur() {
+  if (seq && seq.timer) clearTimeout(seq.timer);
+  seq = null;
+  if (!ctx) { seqNotes = []; return; }
+  // Étouffe les notes déjà posées dans le futur : pas de notes orphelines.
+  // (le gain est coupé tout de suite ; les oscillateurs ont déjà leur stop
+  // planifié à la création, on ne tente pas de le re-planifier)
+  const t = ctx.currentTime;
+  seqNotes.forEach(n => {
+    try {
+      n.g.gain.cancelScheduledValues(t);
+      n.g.gain.setTargetAtTime(0.0001, t, 0.08);
+    } catch (e) {}
+  });
+  seqNotes = [];
+}
+
+// Réveille le séquenceur s'il s'était mis en pause (mute ou onglet caché).
+function reprendreSeq() {
+  if (!ctx || !seq || !seq.enPause) return;
+  if (muted || document.hidden) return;
+  seq.enPause = false;
+  const t0 = ctx.currentTime + 1;
+  seq.voix.forEach(vs => { vs.idx = 0; vs.t = t0; });
+  seqTick();
+}
+
+// ---------- Fichiers audio optionnels (audio/manifest.json) ----------
+// Si l'utilisateur dépose de vrais fichiers dans audio/, ils remplacent la
+// synthèse pour les thèmes et ambiances déclarés. Tout échec est silencieux :
+// pas de manifest (404), JSON invalide, fichier manquant → repli synthèse.
+async function chargerManifest() {
+  try {
+    const rep = await fetch('audio/manifest.json');
+    if (!rep.ok) return;
+    const man = await rep.json();
+    for (const cat of ['themes', 'ambiances']) {
+      for (const [nom, fichier] of Object.entries(man[cat] || {})) {
+        try {
+          const r = await fetch('audio/' + fichier);
+          if (!r.ok) continue;
+          fichiers[cat][nom] = await ctx.decodeAudioData(await r.arrayBuffer());
+        } catch (e) { /* fichier illisible : on garde la synthèse */ }
+      }
+    }
+  } catch (e) { /* pas de manifest : cas normal, silence total */ }
+}
+
+// Joue un tampon en boucle derrière le gain maître (volume/mute respectés).
+function jouerBoucleFichier(buffer, gainCible) {
+  const src = ctx.createBufferSource();
+  src.buffer = buffer; src.loop = true;
+  const g = ctx.createGain(); g.gain.value = 0.0001;
+  g.gain.linearRampToValueAtTime(gainCible, ctx.currentTime + 2);
+  src.connect(g); g.connect(master);
+  src.start();
+  return { src, g };
+}
+
+function arreterBoucleFichier(b) {
+  if (!b || !ctx) return;
+  try {
+    const t = ctx.currentTime;
+    b.g.gain.cancelScheduledValues(t);
+    b.g.gain.setTargetAtTime(0.0001, t, 0.1);
+    b.src.stop(t + 0.5);
+  } catch (e) {}
+}
+
+// ---------- Tension temps réel : un zombie approche sur la carte ----------
+// setTension(0) = rien, setTension(1) = il est tout près. La nappe dissonante
+// monte et descend en fondu (~2 s). À 0, les oscillateurs sont démontés.
+export function setTension(niveau) {
+  if (!ctx) return;
+  niveau = Math.max(0, Math.min(1, niveau || 0));
+  const t = ctx.currentTime;
+  if (niveau > 0 && !tension) {
+    // Deux dents de scie à la seconde mineure (ça frotte), un sinus sous-jacent,
+    // et un LFO qui fait dériver l'accord : le malaise sans le vacarme.
+    const g = ctx.createGain(); g.gain.value = 0.0001; g.connect(master);
+    const fil = ctx.createBiquadFilter(); fil.type = 'lowpass'; fil.frequency.value = 850; fil.connect(g);
+    const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 110;
+    const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = 116.5;
+    const o3 = ctx.createOscillator(); o3.type = 'sine'; o3.frequency.value = 55;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.13;
+    const lg = ctx.createGain(); lg.gain.value = 2.5;
+    lfo.connect(lg); lg.connect(o2.frequency);
+    [o1, o2, o3].forEach(o => {
+      const og = ctx.createGain(); og.gain.value = o === o3 ? 0.5 : 0.3;
+      o.connect(og); og.connect(fil); o.start();
+    });
+    lfo.start();
+    tension = { oscs: [o1, o2, o3, lfo], g };
+  }
+  if (!tension) return;
+  if (tensionTimer) { clearTimeout(tensionTimer); tensionTimer = null; }
+  tension.g.gain.cancelScheduledValues(t);
+  tension.g.gain.setValueAtTime(Math.max(tension.g.gain.value, 0.0001), t);
+  tension.g.gain.linearRampToValueAtTime(Math.max(niveau * 0.085, 0.0001), t + 2);
+  if (niveau <= 0) {
+    // Une fois le fondu terminé, on démonte tout (rien ne tourne à vide).
+    tensionTimer = setTimeout(() => {
+      tensionTimer = null;
+      if (!tension) return;
+      tension.oscs.forEach(o => { try { o.stop(); } catch (e) {} });
+      try { tension.g.disconnect(); } catch (e) {}
+      tension = null;
+    }, 2400);
   }
 }
 
@@ -270,13 +519,22 @@ function jouerStinger(nom) {
   if (fn) fn(ctx.currentTime + 0.02);
 }
 
-// ---------- Musique de combat : pulsation + nappes dissonantes ----------
+// ---------- Musique de combat : pulsation, riff dissonant, montée quand PV bas ----------
 export function startCombatMusic() {
-  if (!ctx || combatTimer) return;
+  if (!ctx || combatTimer || combatBuf) return;
+  // Fichier fourni par l'utilisateur ? Il remplace la boucle procédurale.
+  if (fichiers.themes.combat) {
+    combatBuf = jouerBoucleFichier(fichiers.themes.combat, 0.8);
+    return;
+  }
   let beat = 0;
-  const bpmMs = 430;
-  combatTimer = setInterval(() => {
-    if (!ctx) return;
+  const tick = () => {
+    if (!ctx || !combatTimer) return;
+    // PV bas : le cœur bat déjà (setHeartbeat) — la musique presse le pas.
+    const pvBas = !!heartbeatTimer;
+    const pas = pvBas ? 350 : 430; // ms par temps
+    // Son coupé ou onglet caché : on ne fabrique rien, on attend.
+    if (muted || document.hidden) { combatTimer = setTimeout(tick, 400); return; }
     const t = ctx.currentTime;
     // grosse caisse
     const o = ctx.createOscillator(); o.type = 'sine';
@@ -285,22 +543,35 @@ export function startCombatMusic() {
     og.gain.setValueAtTime(0.5, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
     o.connect(og); og.connect(master);
     o.start(t); o.stop(t + 0.25);
+    // charley métallique sur le contretemps — la percussion respire
+    burstAt(t + pas / 2000, 0.03, 'highpass', 5200, pvBas ? 0.05 : 0.032);
     // nappe dissonante un temps sur quatre
     if (beat % 4 === 2) {
       const d = ctx.createOscillator(); d.type = 'sawtooth';
       d.frequency.value = beat % 8 === 2 ? 92.5 : 98;
       const df = ctx.createBiquadFilter(); df.type = 'lowpass'; df.frequency.value = 500;
       const dg = ctx.createGain();
-      dg.gain.setValueAtTime(0.001, t); dg.gain.linearRampToValueAtTime(0.07, t + 0.1);
+      dg.gain.setValueAtTime(0.001, t); dg.gain.linearRampToValueAtTime(pvBas ? 0.1 : 0.07, t + 0.1);
       dg.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
       d.connect(df); df.connect(dg); dg.connect(master);
       d.start(t); d.stop(t + 0.9);
     }
+    // riff de trois notes dissonantes toutes les deux mesures :
+    // tonique, seconde mineure, triton — ça grince exprès
+    if (beat % 8 === 4) {
+      [0, 1, -6].forEach((st, i) => {
+        const f = 98 * Math.pow(2, st / 12);
+        tonAt(t + i * (pas / 2000), f, f, 0.22, 'sawtooth', pvBas ? 0.085 : 0.055, { filtre: 700, q: 2, a: 0.01 });
+      });
+    }
     beat++;
-  }, bpmMs);
+    combatTimer = setTimeout(tick, pas);
+  };
+  combatTimer = setTimeout(tick, 10);
 }
 export function stopCombatMusic() {
-  if (combatTimer) { clearInterval(combatTimer); combatTimer = null; }
+  if (combatTimer) { clearTimeout(combatTimer); combatTimer = null; }
+  arreterBoucleFichier(combatBuf); combatBuf = null;
 }
 
 // ---------- Battement de cœur (PV bas) ----------
@@ -417,5 +688,33 @@ export function sfx(nom) {
     }
     case 'porte': burst(0.3, 'lowpass', 180, 0.4); break;
     case 'cloche': STINGERS.cloche_morte(t); break;
+    case 'alerte_infection': { // deux notes descendantes étouffées — quelque chose ne va pas
+      tonAt(t, 460, 425, 0.18, 'triangle', 0.055, { filtre: 600, a: 0.012, vib: 9, vibAmp: 6 });
+      tonAt(t + 0.22, 348, 305, 0.26, 'triangle', 0.048, { filtre: 500, a: 0.012, vib: 9, vibAmp: 6 });
+      break;
+    }
+    case 'porte_coup': { // coup sourd sur une porte en bois, avec un petit rebond
+      burst(0.14, 'lowpass', 230, 0.5);
+      tonAt(t, 85, 50, 0.13, 'sine', 0.3, { a: 0.004 });
+      burstAt(t + 0.09, 0.05, 'lowpass', 300, 0.1);
+      break;
+    }
+    case 'alerte_contact': { // tic d'alerte sec et court — un signal, pas un sursaut
+      tonAt(t, 1320, 1320, 0.045, 'square', 0.07, { a: 0.002, filtre: 2600 });
+      break;
+    }
+    case 'eau_verse': { // éclaboussure et glouglou bref
+      burst(0.28, 'bandpass', 950, 0.06);
+      [0, 0.09, 0.19, 0.28].forEach((dt, i) => {
+        tonAt(t + dt + Math.random() * 0.02, 320 + i * 70 + Math.random() * 90, 260 + i * 60, 0.07, 'sine', 0.05, { a: 0.004 });
+      });
+      break;
+    }
+    case 'tissu_dechire': { // déchirure sèche : rafale de bruit qui monte dans l'aigu
+      for (let i = 0; i < 6; i++) burstAt(t + i * 0.034, 0.03, 'highpass', 1700 + i * 380, 0.075 - i * 0.006);
+      break;
+    }
+    // Nom inconnu : on ne fait rien — les appels venus d'ailleurs ne cassent jamais.
+    default: break;
   }
 }

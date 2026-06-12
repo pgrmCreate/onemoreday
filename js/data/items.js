@@ -1,6 +1,10 @@
 // ============ Base de données des objets ============
 // poids en kg, espace en "cases" d'inventaire.
-// types : arme, munition, nourriture, boisson, soin, outil, materiau, quete, lore
+// types : arme, munition, nourriture, boisson, soin, outil, materiau, quete, lore, recipient
+// CONTENANTS D'EAU : contenance (litres) + recipient: 'ferme' | 'ouvert'.
+//   L'eau vit sur l'INSTANCE d'inventaire : { id, qty:1, eau: { q:'croupie'|'bouillie', L } }.
+//   1 litre pèse 1 kg en plus du poids à vide (géré par inventory.js).
+//   Un récipient OUVERT plein ne va pas dans le sac : tenu en main ou posé au sol.
 export const ITEMS = {
 
   // ---------- ARMES DE MÊLÉE ----------
@@ -216,8 +220,20 @@ export const ITEMS = {
   },
   soda: {
     nom: 'Canette de soda', type: 'boisson', poids: 0.35, espace: 1,
-    soif: 22, faim: 6,
+    soif: 22, faim: 6, rend: 'canette_vide',
     desc: 'Tiède et trop sucré. Le sucre, ça se respecte maintenant.',
+  },
+
+  // ---------- CONTENANTS D'EAU (fermables : ils voyagent dans le sac, même pleins) ----------
+  gourde: {
+    nom: 'Gourde', type: 'recipient', poids: 0.15, espace: 1,
+    contenance: 1, recipient: 'ferme',
+    desc: 'Un litre, bouchon à vis, mousqueton au col. Légère, étanche — l\'amie du marcheur, l\'assurance-vie du survivant.',
+  },
+  thermos: {
+    nom: 'Thermos', type: 'recipient', poids: 0.35, espace: 1,
+    contenance: 0.5, recipient: 'ferme',
+    desc: 'Un demi-litre sous double paroi d\'acier brossé. Le café qu\'il a connu manque à tout le monde.',
   },
   alcool_fort: {
     nom: 'Bouteille d\'alcool fort', type: 'boisson', poids: 0.9, espace: 1,
@@ -294,7 +310,8 @@ export const ITEMS = {
   },
   casserole: {
     nom: 'Casserole', type: 'outil', poids: 0.7, espace: 2, usage: ['cuisson'],
-    desc: 'Pour faire bouillir l\'eau ou cuire ce que tu attrapes.',
+    contenance: 1.5, recipient: 'ouvert',
+    desc: 'Pour faire bouillir l\'eau ou cuire ce que tu attrapes. Pleine, elle se porte à deux mains — pas dans le sac.',
   },
   rechaud_camping: {
     nom: 'Réchaud de camping', type: 'outil', poids: 1.1, espace: 2, usage: ['feu', 'cuisson'], besoinGaz: true,
@@ -358,7 +375,8 @@ export const ITEMS = {
   // ---------- DÉCHETS (le tout-venant des fouilles : presque rien... presque) ----------
   canette_vide: {
     nom: 'Canette vide', type: 'materiau', poids: 0.02, espace: 0,
-    desc: 'Écrasée, rouillée. Accrochée à un fil, elle fait du bruit quand on la touche.',
+    contenance: 0.25, recipient: 'ouvert',
+    desc: 'Écrasée, rouillée. Accrochée à un fil, elle fait du bruit — remplie d\'eau, elle fait un quart de litre, à condition de la tenir droite.',
   },
   sac_plastique: {
     nom: 'Sac plastique', type: 'materiau', poids: 0.01, espace: 0,
@@ -427,8 +445,9 @@ export const ITEMS = {
     desc: 'À remplir — d\'eau ou de quelque chose qui brûle.',
   },
   bidon_vide: {
-    nom: 'Bidon vide', type: 'materiau', poids: 0.6, espace: 2,
-    desc: 'Un jerrican de 10 litres, vide.',
+    nom: 'Bidon', type: 'materiau', poids: 0.6, espace: 2,
+    contenance: 10, recipient: 'ferme',
+    desc: 'Un jerrican de 10 litres, bouchon à baïonnette. Dix kilos d\'eau à ras bord — remplis-le à la mesure de ton dos.',
   },
   appat: {
     nom: 'Appâts', type: 'materiau', poids: 0.1, espace: 0,

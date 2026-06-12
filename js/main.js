@@ -11,8 +11,13 @@ import {
   equiperVetement, desequiperVetement, dropItem, protectionTotale, chaleurTotale, hasItem,
   accesRapide, nbSlotsAccesRapide, mettreEnAccesRapide, retirerAccesRapide, peutAccesRapide,
   countItem, defItem, removeItem,
+  estContenant, recipientOuvert, contenance, descEau, fmtL, verserEau, instancePourEau, consolider,
 } from './inventory.js';
-import { consommer, soigner, desinfecterAlcool, appliquerSoinCible, BLESSURES, nomBlessure, froidActuel, advanceTime } from './survival.js';
+import {
+  consommer, soigner, desinfecterAlcool, appliquerSoinCible, BLESSURES, nomBlessure, froidActuel, advanceTime,
+  boireContenant, bouillirContenant, peutBouillirContenant, tempsBouillir, dechirerVetement, dechirerEquipe,
+} from './survival.js';
+import { solDe, keyCourante } from './world.js';
 import { listeRecettes, fabriquer } from './crafting.js';
 import { renderLieu, objectifActuel, initPosition } from './map.js';
 import { jouerScene } from './scenes.js';
@@ -126,85 +131,156 @@ function lierHUD() {
   }
 }
 
-// ---------- Inventaire PLEIN ÉCRAN : onglets Inventaire / Fabrication ----------
-let ongletInv = 'sac'; // 'sac' | 'craft'
+// ---------- Inventaire PLEIN ÉCRAN : onglets Sac / Porter / Fabrication ----------
+let ongletInv = 'sac'; // 'sac' | 'porter' | 'craft'
 
 function panneauInventaire(tab = null) {
   if (tab) ongletInv = tab;
-  const entete = `<div class="panel-head"><h2>${ongletInv === 'craft' ? 'Fabrication' : 'Inventaire'}</h2><button class="panel-close">×</button></div>
+  const titres = { sac: 'Inventaire', porter: 'Porter', craft: 'Fabrication' };
+  const entete = `<div class="panel-head"><h2>${titres[ongletInv]}</h2><button class="panel-close">×</button></div>
     <div class="onglets">
-      <button class="onglet ${ongletInv === 'sac' ? 'on' : ''}" data-onglet="sac">${ico('sac')} Inventaire</button>
+      <button class="onglet ${ongletInv === 'sac' ? 'on' : ''}" data-onglet="sac">${ico('sac')} Sac</button>
+      <button class="onglet ${ongletInv === 'porter' ? 'on' : ''}" data-onglet="porter">${ico('porter')} Porter</button>
       <button class="onglet ${ongletInv === 'craft' ? 'on' : ''}" data-onglet="craft">${ico('craft')} Fabrication</button>
     </div>`;
-  const box = ongletInv === 'craft' ? remplirCraft(entete) : remplirInventaire(entete);
+  const box = ongletInv === 'craft' ? remplirCraft(entete)
+    : ongletInv === 'porter' ? remplirPorter(entete)
+    : remplirInventaire(entete);
   box.querySelectorAll('[data-onglet]').forEach(b => {
     b.onclick = () => { sfx('clic'); panneauInventaire(b.dataset.onglet); };
   });
 }
 
+// ---------- Contenants d'eau : actions communes aux onglets Sac et Porter ----------
+// spec : un index d'inventaire (chaîne numérique) ou 'main' (l'objet tenu en main).
+function refContenant(spec) {
+  return spec === 'main' ? G.player.equip.arme : G.player.inventaire[parseInt(spec, 10)];
+}
+function boutonsContenant(spec, entry) {
+  if (!entry || !entry.eau) return '';
+  let b = `<button data-c-boire="${spec}">Boire (~0,5 L)</button>`;
+  if (entry.eau.q !== 'bouillie') {
+    b += `<button data-c-bouillir="${spec}" ${peutBouillirContenant(entry) ? '' : 'disabled'}>Faire bouillir (${tempsBouillir(entry)} min)</button>`;
+  }
+  b += `<button data-c-verser="${spec}">Transvaser</button>`;
+  b += `<button data-c-vider="${spec}">Vider</button>`;
+  return b;
+}
+function lierContenants(box) {
+  box.querySelectorAll('[data-c-boire]').forEach(b => {
+    b.onclick = () => {
+      const spec = b.dataset.cBoire;
+      attente('Tu bois…', 5, () => {
+        const res = boireContenant(refContenant(spec));
+        if (res.ok) sfx('boire');
+        res.messages.forEach(m => log(m.t, m.c));
+        updateHUD(); save(); panneauInventaire();
+      });
+    };
+  });
+  box.querySelectorAll('[data-c-bouillir]').forEach(b => {
+    b.onclick = () => {
+      const ref = refContenant(b.dataset.cBouillir);
+      if (!ref || !ref.eau) return;
+      attente('L\'eau chauffe, frémit, roule…', tempsBouillir(ref), () => {
+        const res = bouillirContenant(ref);
+        res.messages.forEach(m => log(m.t, m.c));
+        if (res.ok) sfx('craft');
+        if (res.mort) { closePanel(); return; } // mort pendant l'ébullition : ne pas écraser la sauvegarde
+        updateHUD(); save(); panneauInventaire();
+      });
+    };
+  });
+  box.querySelectorAll('[data-c-verser]').forEach(b => {
+    b.onclick = () => { sfx('clic'); panneauTransvaser(b.dataset.cVerser); };
+  });
+  box.querySelectorAll('[data-c-vider]').forEach(b => {
+    b.onclick = () => {
+      const ref = refContenant(b.dataset.cVider);
+      if (!ref || !ref.eau) return;
+      delete ref.eau;
+      consolider();
+      sfx('eau_verse');
+      log('Tu vides l\'eau au sol. Elle file entre les pierres, déjà perdue.', '');
+      updateHUD(); save(); panneauInventaire();
+    };
+  });
+}
+
+// Choisir le récipient qui reçoit, puis verser (limité aux capacités).
+function panneauTransvaser(srcSpec) {
+  const src = refContenant(srcSpec);
+  if (!src || !src.eau) { panneauInventaire(); return; }
+  const dSrc = defItem(src.id);
+  let html = `<div class="panel-head"><h2>Transvaser</h2><button class="panel-close">×</button></div>
+    <p class="cap-line">Depuis : <b>${dSrc.nom}</b> — ${descEau(src)}. Choisis le récipient qui reçoit.</p>
+    <div class="item-list">`;
+  const cibles = [];
+  // l'objet tenu en main peut recevoir (c'est le seul moyen de remplir un récipient ouvert)
+  const main = G.player.equip.arme;
+  if (srcSpec !== 'main' && main && estContenant(main.id) && (main.eau ? main.eau.L : 0) < contenance(main.id)) {
+    cibles.push(['main', main, 'en main']);
+  }
+  G.player.inventaire.forEach((it, i) => {
+    if (String(i) === srcSpec || !estContenant(it.id)) return;
+    if (recipientOuvert(it.id)) return; // un récipient ouvert ne se remplit pas DANS le sac
+    if ((it.eau ? it.eau.L : 0) >= contenance(it.id)) return;
+    cibles.push([String(i), it, 'dans le sac']);
+  });
+  if (!cibles.length) html += `<p class="cap-line">Aucun récipient libre. Un récipient ouvert (canette, casserole) ne se remplit que tenu en main.</p>`;
+  cibles.forEach(([spec, it, ou]) => {
+    const d = defItem(it.id);
+    html += `<div class="item-card">
+      <div class="item-line"><span class="item-nom">${d.nom}${(it.qty || 1) > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}</span>
+      <span class="item-meta">${it.eau ? descEau(it) : `vide — ${fmtL(contenance(it.id))} L`} · ${ou}</span></div>
+      <div class="item-btns"><button data-verser-vers="${spec}">Verser ici</button></div></div>`;
+  });
+  html += `</div><div class="actions">${btnAct('data-verser-retour="1"', 'Retour')}</div>`;
+  const box = showPanel(html, { plein: true });
+  box.querySelectorAll('[data-verser-vers]').forEach(b => {
+    b.onclick = () => {
+      const dstSpec = b.dataset.verserVers;
+      const source = refContenant(srcSpec);
+      const dst = dstSpec === 'main' ? G.player.equip.arme : instancePourEau(parseInt(dstSpec, 10));
+      const r = verserEau(source, dst);
+      if (!r.ok) { toast(r.raison || 'Impossible de verser.'); return; }
+      sfx('eau_verse');
+      log(`Tu transvases ${fmtL(r.L)} L sans en perdre une goutte.${r.gache ? ' Le mélange est à rebouillir : eau croupie.' : ''}`, r.gache ? 'warn' : '');
+      consolider();
+      updateHUD(); save(); panneauInventaire();
+    };
+  });
+  box.querySelector('[data-verser-retour]').onclick = () => { sfx('clic'); panneauInventaire(); };
+  return box;
+}
+
+// ---------- Onglet SAC : la liste des objets et la jauge poids/espace ----------
 function remplirInventaire(entete) {
   const inv = G.player.inventaire;
   const eq = G.player.equip;
-  const ar = accesRapide();
   const slotsAR = nbSlotsAccesRapide();
   const pt = poidsTotal(), pm = poidsMax(), eu = espaceUtilise(), em = espaceMax();
   const sacEq = eq.sac ? cloth(eq.sac) : null;
   let html = `${entete}
-    <p class="cap-line">Poids : <b class="${pt > pm ? 'over' : ''}">${pt.toFixed(1)} / ${pm} kg</b> — Espace : <b class="${eu > em ? 'over' : ''}">${eu} / ${em}</b> — Protection : <b>${protectionTotale()}</b> — Chaleur : <b>${chaleurTotale()}</b></p>
+    <p class="cap-line">Poids : <b class="${pt > pm ? 'over' : ''}">${pt.toFixed(1)} / ${pm} kg</b> — Espace : <b class="${eu > em ? 'over' : ''}">${eu} / ${em}</b></p>
     <p class="cap-line">Sac : <b>${sacEq ? sacEq.nom : 'aucun'}</b>${sacEq
       ? ` — espace +${sacEq.espace}, portage +${sacEq.portage || 0} kg`
       : ' — tes poches et tes bras, c\'est tout. Trouve ou fabrique un sac : chacun donne de l\'espace et du portage.'}</p>`;
 
-  // --- Équipé ---
-  html += `<h3>Sur toi</h3><div class="item-list">`;
-  if (eq.arme) {
-    const d = item(eq.arme.id);
-    html += `<div class="item-card equipped">
-      <div class="item-line"><span class="item-nom">En main : ${d.nom}</span><span class="item-meta">${d.dmg[0]}–${d.dmg[1]} dégâts</span></div>
-      ${d.dur ? `<div class="dur-bar"><div class="dur-fill" style="width:${(eq.arme.dur / d.dur) * 100}%"></div></div>` : ''}
-      <div class="item-btns"><button data-deq="arme">Ranger dans le sac</button></div></div>`;
-  } else {
-    html += `<div class="item-card"><div class="item-line"><span class="item-nom">En main : rien</span></div>
-      <div class="item-desc">Équipe une arme depuis le sac.</div></div>`;
-  }
-  for (const [slot, nomSlot] of Object.entries(SLOTS)) {
-    const id = eq[slot];
-    if (id) {
-      const c = cloth(id);
-      html += `<div class="item-card equipped">
-        <div class="item-line"><span class="item-nom">${nomSlot} : ${c.nom}</span>
-        <span class="item-meta">${c.poids} kg · prot. ${c.protection}${c.espace ? ' · espace +' + c.espace : ''}${c.portage ? ' · portage +' + c.portage + ' kg' : ''}${c.accesRapide ? ' · accès rapide +' + c.accesRapide : ''}</span></div>
-        <div class="item-btns"><button data-deq="${slot}">Retirer</button></div></div>`;
-    }
-  }
-  html += `</div>`;
-
-  // --- Accès rapide ---
-  html += `<h3>Accès rapide — ${ar.length}/${slotsAR} emplacement${slotsAR > 1 ? 's' : ''}</h3><div class="item-list">`;
-  if (!slotsAR) html += `<p class="cap-line">Aucun emplacement : trouve une <b>ceinture</b>, un holster ou un gilet. Sans ça, en combat, tu te bats avec ce que tu as en main.</p>`;
-  else if (!ar.length) html += `<p class="cap-line">Vide. Seuls les objets d'accès rapide sont utilisables en combat.</p>`;
-  ar.forEach((it, i) => {
-    const d = defItem(it.id);
-    if (!d) return;
-    html += `<div class="item-card acces-rapide">
-      <div class="item-line"><span class="item-nom">${d.nom}</span><span class="item-meta">${d.dmg ? `${d.dmg[0]}–${d.dmg[1]} dégâts` : (d.type || '')}</span></div>
-      <div class="item-btns"><button data-ar-retire="${i}">Remettre dans le sac</button></div></div>`;
-  });
-  html += `</div>`;
-
-  // --- Sac ---
   html += `<h3>Dans le sac</h3><div class="item-list">`;
   if (!inv.length) html += `<p class="cap-line">Ton sac est vide.</p>`;
   inv.forEach((it, i) => {
     const d = item(it.id) || cloth(it.id);
     if (!d) return;
-    const meta = `${((d.poids || 0) * it.qty).toFixed(1)} kg · ${(d.espace || 0) * it.qty} esp.`;
+    const meta = `${it.eau ? descEau(it) + ' · ' : ''}${((d.poids || 0) * it.qty + (it.eau ? it.eau.L : 0)).toFixed(1)} kg · ${(d.espace || 0) * it.qty} esp.`;
     let boutons = '';
     if (d.type === 'nourriture') boutons += `<button data-act="manger" data-i="${i}">Manger</button>`;
     if (d.type === 'boisson') boutons += `<button data-act="manger" data-i="${i}">Boire</button>`;
     if (d.type === 'soin') boutons += `<button data-act="soigner" data-i="${i}">Utiliser</button>`;
     if (d.dmg) boutons += `<button data-act="equiper-arme" data-i="${i}">Prendre en main</button>`;
     if (d.slot) boutons += `<button data-act="equiper-vet" data-i="${i}">Porter</button>`;
+    if (d.slot && d.tissu) boutons += `<button data-act="dechirer" data-i="${i}">Déchirer (${d.tissu} chiffon${d.tissu > 1 ? 's' : ''})</button>`;
+    boutons += boutonsContenant(String(i), it);
     if (peutAccesRapide(it.id) && slotsAR > accesRapide().length) boutons += `<button data-act="ceinture" data-i="${i}">À la ceinture</button>`;
     if (it.id === 'alcool_fort') boutons += `<button data-act="desinfecter" data-i="${i}">Désinfecter une plaie</button>`;
     if (it.id === 'radio_portable') boutons += `<button data-act="radio" data-i="${i}" ${countItem('piles') ? '' : 'disabled'}>Écouter${countItem('piles') ? '' : ' (piles requises)'}</button>`;
@@ -219,22 +295,7 @@ function remplirInventaire(entete) {
   });
   html += '</div>';
   const box = showPanel(html, { plein: true });
-  box.querySelectorAll('[data-deq]').forEach(b => {
-    b.onclick = () => {
-      const slot = b.dataset.deq;
-      if (slot === 'arme') desequiperArme();
-      else if (!desequiperVetement(slot)) toast('Pas assez de place : ce vêtement portait ton inventaire ou ta ceinture est pleine.');
-      sfx('clic');
-      updateHUD(); save(); panneauInventaire();
-    };
-  });
-  box.querySelectorAll('[data-ar-retire]').forEach(b => {
-    b.onclick = () => {
-      if (!retirerAccesRapide(parseInt(b.dataset.arRetire, 10))) toast('Pas de place dans le sac.');
-      sfx('clic');
-      updateHUD(); save(); panneauInventaire();
-    };
-  });
+  lierContenants(box);
   box.querySelectorAll('[data-act]').forEach(b => {
     b.onclick = () => {
       const i = parseInt(b.dataset.i, 10);
@@ -264,7 +325,21 @@ function remplirInventaire(entete) {
         case 'radio':
           attente('Tu balaies les fréquences…', 10, () => finir(ecouterRadio()));
           return;
-        case 'equiper-arme': equiperArme(i); sfx('clic'); break;
+        case 'dechirer':
+          attente('Tu déchires le tissu…', 5, () => {
+            const res = dechirerVetement(i);
+            if (res.ok) sfx('tissu_dechire');
+            finir(res);
+          });
+          return;
+        case 'equiper-arme': {
+          const r = equiperArme(i);
+          if (r.ok && r.renverse) {
+            sfx('eau_verse');
+            log(`${r.renverse} : l'eau se renverse sur tes chaussures. Le récipient vide retourne dans le sac.`, 'warn');
+          } else sfx('clic');
+          break;
+        }
         case 'equiper-vet':
           if (!equiperVetement(i)) toast('Impossible de porter ça (place ou ceinture pleine).');
           else sfx('clic');
@@ -280,6 +355,117 @@ function remplirInventaire(entete) {
       finir(null);
     };
   });
+  return box;
+}
+
+// ---------- Onglet PORTER : en main, vêtements portés, accès rapide ----------
+function remplirPorter(entete) {
+  const eq = G.player.equip;
+  const ar = accesRapide();
+  const slotsAR = nbSlotsAccesRapide();
+  const pt = poidsTotal(), pm = poidsMax();
+  let html = `${entete}
+    <p class="cap-line">Poids : <b class="${pt > pm ? 'over' : ''}">${pt.toFixed(1)} / ${pm} kg</b> — Protection : <b>${protectionTotale()}</b> — Chaleur : <b>${chaleurTotale()}</b></p>`;
+
+  // --- En main ---
+  html += `<h3>En main</h3><div class="item-list">`;
+  if (eq.arme) {
+    const d = item(eq.arme.id);
+    const cont = estContenant(eq.arme.id);
+    const meta = eq.arme.eau ? descEau(eq.arme)
+      : d.dmg ? `${d.dmg[0]}–${d.dmg[1]} dégâts`
+      : cont ? `vide — ${fmtL(contenance(eq.arme.id))} L` : '';
+    html += `<div class="item-card equipped">
+      <div class="item-line"><span class="item-nom">${d.nom}</span><span class="item-meta">${meta}</span></div>
+      ${d.dur && eq.arme.dur !== undefined ? `<div class="dur-bar"><div class="dur-fill" style="width:${(eq.arme.dur / d.dur) * 100}%"></div></div>` : ''}
+      <div class="item-btns">
+        ${cont ? boutonsContenant('main', eq.arme) : ''}
+        ${cont && eq.arme.eau && recipientOuvert(eq.arme.id) ? `<button data-poser-main="1">Poser au sol</button>` : ''}
+        <button data-deq="arme">Ranger dans le sac</button>
+      </div></div>`;
+  } else {
+    html += `<div class="item-card"><div class="item-line"><span class="item-nom">Rien</span></div>
+      <div class="item-desc">Équipe une arme depuis le sac — ou porte un récipient ouvert plein d'eau, à deux mains, en priant pour ne croiser personne.</div></div>`;
+  }
+  html += `</div>`;
+
+  // --- Vêtements portés ---
+  html += `<h3>Sur toi</h3><div class="item-list">`;
+  for (const [slot, nomSlot] of Object.entries(SLOTS)) {
+    const id = eq[slot];
+    if (id) {
+      const c = cloth(id);
+      html += `<div class="item-card equipped">
+        <div class="item-line"><span class="item-nom">${nomSlot} : ${c.nom}</span>
+        <span class="item-meta">${c.poids} kg · prot. ${c.protection}${c.espace ? ' · espace +' + c.espace : ''}${c.portage ? ' · portage +' + c.portage + ' kg' : ''}${c.accesRapide ? ' · accès rapide +' + c.accesRapide : ''}</span></div>
+        <div class="item-btns"><button data-deq="${slot}">Retirer</button>${c.tissu ? `<button data-dech-eq="${slot}">Déchirer (${c.tissu} chiffon${c.tissu > 1 ? 's' : ''})</button>` : ''}</div></div>`;
+    } else {
+      html += `<div class="item-card"><div class="item-line"><span class="item-nom">${nomSlot} : —</span></div></div>`;
+    }
+  }
+  html += `</div>`;
+
+  // --- Accès rapide ---
+  html += `<h3>Accès rapide — ${ar.length}/${slotsAR} emplacement${slotsAR > 1 ? 's' : ''}</h3><div class="item-list">`;
+  if (!slotsAR) html += `<p class="cap-line">Aucun emplacement : trouve une <b>ceinture</b>, un holster ou un gilet. Sans ça, en combat, tu te bats avec ce que tu as en main.</p>`;
+  else if (!ar.length) html += `<p class="cap-line">Vide. Seuls les objets d'accès rapide sont utilisables en combat.</p>`;
+  ar.forEach((it, i) => {
+    const d = defItem(it.id);
+    if (!d) return;
+    html += `<div class="item-card acces-rapide">
+      <div class="item-line"><span class="item-nom">${d.nom}</span><span class="item-meta">${it.eau ? descEau(it) : d.dmg ? `${d.dmg[0]}–${d.dmg[1]} dégâts` : (d.type || '')}</span></div>
+      <div class="item-btns"><button data-ar-retire="${i}">Remettre dans le sac</button></div></div>`;
+  });
+  html += `</div>`;
+
+  const box = showPanel(html, { plein: true });
+  lierContenants(box);
+  box.querySelectorAll('[data-deq]').forEach(b => {
+    b.onclick = () => {
+      const slot = b.dataset.deq;
+      if (slot === 'arme') {
+        if (!desequiperArme()) { toast('Un récipient ouvert plein ne va pas dans le sac : bois-le, vide-le ou pose-le au sol.'); return; }
+      } else if (!desequiperVetement(slot)) {
+        toast('Pas assez de place : ce vêtement portait ton inventaire ou ta ceinture est pleine.');
+      }
+      sfx('clic');
+      updateHUD(); save(); panneauInventaire();
+    };
+  });
+  box.querySelectorAll('[data-ar-retire]').forEach(b => {
+    b.onclick = () => {
+      if (!retirerAccesRapide(parseInt(b.dataset.arRetire, 10))) toast('Pas de place dans le sac.');
+      sfx('clic');
+      updateHUD(); save(); panneauInventaire();
+    };
+  });
+  box.querySelectorAll('[data-dech-eq]').forEach(b => {
+    b.onclick = () => {
+      const slot = b.dataset.dechEq;
+      attente('Tu déchires le tissu…', 5, () => {
+        const res = dechirerEquipe(slot);
+        res.messages.forEach(m => log(m.t, m.c));
+        if (res.ok) sfx('tissu_dechire');
+        if (res.mort) { closePanel(); return; }
+        updateHUD(); save(); panneauInventaire();
+      });
+    };
+  });
+  const poser = box.querySelector('[data-poser-main]');
+  if (poser) poser.onclick = () => {
+    const cur = G.player.equip.arme;
+    if (!cur) return;
+    // posé sur la case : le mécanisme « objets au sol » de la fouille le garde au chaud
+    solDe(keyCourante()).push({ id: cur.id, qty: 1, eau: cur.eau });
+    G.player.equip.arme = null;
+    const d = defItem(cur.id);
+    // les récipients ouverts actuels (canette, casserole) sont tous féminins
+    log(`Tu poses la ${d ? d.nom.toLowerCase() : 'casserole'} au sol, doucement, sans renverser une goutte.`, '');
+    sfx('clic');
+    updateHUD(); save();
+    renderLieu(); // la carte derrière montre le point ocre des objets au sol
+    panneauInventaire();
+  };
   return box;
 }
 
