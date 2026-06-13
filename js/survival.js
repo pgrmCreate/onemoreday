@@ -51,25 +51,42 @@ export function mortJoueur(cause) {
 // ---------- Avancée du temps ----------
 // opts : { sommeil:false, repos:false } — retourne { messages, mort }
 // repos : attente volontaire (bouton Attendre) — l'endurance remonte bien plus vite.
+// Le temps s'écoule désormais en TEMPS RÉEL (1 min de jeu par seconde), donc cette
+// fonction est appelée en boucle avec de petits dt. Deux conséquences :
+//  — opts.sansHorloge : l'INVITÉ co-op n'avance pas l'horloge (l'hôte fait foi et
+//    la diffuse) ; il applique seulement la survie de son côté.
+//  — les alertes récurrentes (saignement, froid) ne doivent se redire qu'au
+//    compte-gouttes, sinon elles inonderaient le journal à chaque seconde.
+function alerteRare(key, intervalMin) {
+  if (!G.world.alertes) G.world.alertes = {};
+  const now = G.world.statsTemps;
+  const last = G.world.alertes[key];
+  if (last !== undefined && now - last < intervalMin) return false;
+  G.world.alertes[key] = now;
+  return true;
+}
+
 export function advanceTime(minutes, opts = {}) {
   const msgs = [];
   let mort = null;
   const p = G.player;
   const pas = 10; // traitement par tranches de 10 minutes
   let restant = minutes;
-  let saignementSignale = false, froidSignale = false;
 
   while (restant > 0 && !mort) {
     const dt = Math.min(pas, restant);
     restant -= dt;
 
-    // Horloge
-    G.world.minute += dt;
+    // Horloge — l'invité la saute (il adopte celle de l'hôte) mais garde le
+    // compteur de temps écoulé, qui cadence la survie et les alertes rares.
     G.world.statsTemps += dt;
-    while (G.world.minute >= 60) {
-      G.world.minute -= 60;
-      G.world.heure++;
-      if (G.world.heure >= 24) { G.world.heure = 0; G.world.jour++; msgs.push({ t: `Jour ${G.world.jour}. Tu as survécu un jour de plus.`, c: 'good' }); }
+    if (!opts.sansHorloge) {
+      G.world.minute += dt;
+      while (G.world.minute >= 60) {
+        G.world.minute -= 60;
+        G.world.heure++;
+        if (G.world.heure >= 24) { G.world.heure = 0; G.world.jour++; msgs.push({ t: `Jour ${G.world.jour}. Tu as survécu un jour de plus.`, c: 'good' }); }
+      }
     }
 
     // Faim / soif
@@ -100,7 +117,7 @@ export function advanceTime(minutes, opts = {}) {
       if (deficit > 0) {
         p.sta = Math.max(0, p.sta - 0.06 * deficit * dt);
         if (deficit >= 3) p.pv = Math.max(0, p.pv - 0.02 * deficit * dt);
-        if (!froidSignale) { msgs.push({ t: 'Le froid te transperce. Il te faudrait des vêtements plus chauds.', c: 'warn' }); froidSignale = true; }
+        if (alerteRare('froid', 30)) msgs.push({ t: 'Le froid te transperce. Il te faudrait des vêtements plus chauds.', c: 'warn' });
       }
     }
 
@@ -111,7 +128,7 @@ export function advanceTime(minutes, opts = {}) {
       b.age += dt;
       if (b.saigne && !b.bandee) {
         p.pv = Math.max(0, p.pv - def.saignement * dt);
-        if (!saignementSignale) { msgs.push({ t: 'Tu perds du sang. Il te faut un bandage, vite.', c: 'bad' }); saignementSignale = true; }
+        if (alerteRare('saigne', 20)) msgs.push({ t: 'Tu perds du sang. Il te faut un bandage, vite.', c: 'bad' });
       }
       // Infection (par tranche de 10 min)
       if (!b.infecte && !b.desinfectee) {
@@ -276,13 +293,10 @@ export function bouillirContenant(ref) {
     return { ok: false, messages: [{ t: 'Il te faut du feu — et de quoi faire bouillir (récipient en métal ou casserole).', c: 'warn' }] };
   }
   const d = item(ref.id);
-  const r = advanceTime(tempsBouillir(ref));
-  const msgs = [...r.messages];
-  if (!r.mort) {
-    ref.eau.q = 'bouillie';
-    msgs.push({ t: `${d ? d.nom : 'Le contenant'} : l'eau a bouilli longuement. Ce qui grouillait dedans ne grouille plus.`, c: 'good' });
-  }
-  return { ok: !r.mort, messages: msgs, mort: r.mort };
+  // L'ébullition prend du temps réel (barre d'attente côté appelant) — plus de saut d'horloge.
+  ref.eau.q = 'bouillie';
+  const msgs = [{ t: `${d ? d.nom : 'Le contenant'} : l'eau a bouilli longuement. Ce qui grouillait dedans ne grouille plus.`, c: 'good' }];
+  return { ok: true, messages: msgs, mort: null };
 }
 
 // ---------- Déchirer un vêtement en chiffons ----------
@@ -297,12 +311,10 @@ export function dechirerVetement(index) {
   it.qty -= 1;
   if (it.qty <= 0) G.player.inventaire.splice(index, 1);
   addItem('chiffon', c.tissu); // espace 0 : entre toujours
-  const r = advanceTime(5);
   const msgs = [
     { t: `Tu tailles des bandes régulières dans le tissu (${c.nom.toLowerCase()}) : ${c.tissu} chiffon${c.tissu > 1 ? 's' : ''}.`, c: 'good' },
-    ...r.messages,
   ];
-  return { ok: true, messages: msgs, mort: r.mort };
+  return { ok: true, messages: msgs, mort: null };
 }
 // Déchirer un vêtement PORTÉ : on le retire d'abord (mêmes garde-fous que
 // « Retirer » — espace, ceinture pleine), puis on le déchire depuis le sac.
@@ -477,13 +489,15 @@ export function desinfecterAlcool() {
 // ---------- Sommeil ----------
 // Retourne { messages, attaque } — l'appelant déclenche le combat si attaque.
 // piege : un piège sonore divise le risque d'attaque et supprime l'effet de surprise.
-export function dormir(heures, securise, piege = false) {
+// sansHorloge : en co-op, l'INVITÉ applique la survie du sommeil mais n'avance pas
+// l'horloge (l'hôte fait foi et la diffuse) — sinon les deux dormiraient « deux fois ».
+export function dormir(heures, securise, piege = false, sansHorloge = false) {
   const msgs = [{ t: securise ? 'Tu fermes les yeux dans un endroit sûr.' : 'Tu t\'endors d\'un œil, l\'oreille tendue vers chaque bruit.', c: '' }];
   let attaque = false;
   const p = G.player;
   let dormies = 0; // heures réellement dormies (le réveil en sursaut écourte la nuit)
   for (let h = 0; h < heures; h++) {
-    const r = advanceTime(60, { sommeil: true });
+    const r = advanceTime(60, { sommeil: true, sansHorloge });
     msgs.push(...r.messages);
     if (r.mort) return { messages: msgs, attaque: false };
     dormies++;

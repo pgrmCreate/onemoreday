@@ -28,9 +28,92 @@ let seq = null;              // état du mini-séquenceur (thème composé en co
 let seqNotes = [];           // notes déjà planifiées par le séquenceur (arrêt propre)
 let tension = null;          // nappe de tension temps réel (zombie proche)
 let tensionTimer = null;     // démontage différé de la nappe quand elle retombe à 0
-let fichiers = { themes: {}, ambiances: {} }; // tampons décodés depuis audio/manifest.json
+let fichiers = { themes: {}, ambiances: {} }; // {buffer,gain} décodés (banque + audio/manifest.json)
 let bufferTheme = null;      // fichier de thème en boucle (remplace la synthèse)
 let combatBuf = null;        // fichier de combat en boucle
+
+// ---------- Banque de sons fichier (dossier audio/) ----------
+// Ces fichiers REMPLACENT la synthèse pour les noms concernés. Tout échec (404,
+// décodage) retombe en silence sur la synthèse. La NORMALISATION ramène chaque
+// fichier à un même niveau de crête avant d'appliquer son volume cible : c'est ce
+// qui rééquilibre automatiquement les fichiers trop forts. Plusieurs fichiers pour
+// un même nom : on en tire un au sort à chaque jeu (pas, douleur, râle…).
+const BANQUE_SFX = {
+  pas:              { f: ['effect/step-wood-simple.mp3'], vol: 0.4 }, // un pas bref et net (0,6 s)
+  pas_craque:       { f: ['effect/step-wood-creaks-calm.mp3'], vol: 0.55 }, // craquement appuyé, occasionnel, qui fait du bruit
+  porte:            { f: ['effect/door-wood-opening.mp3'], vol: 0.7 },
+  porte_coup:       { f: ['effect/door-wood-hitting.mp3'], vol: 0.7 },
+  porte_casse:      { f: ['effect/door-wood-break.mp3'], vol: 0.85 },
+  coup:             { f: ['effect/hit-with-hand.mp3'], vol: 0.8 },
+  coup_critique:    { f: ['effect/small-knife-hit.mp3'], vol: 0.9 },
+  manger:           { f: ['action/eat-crunshy.mp3'], vol: 0.7 },
+  degats:           { f: ['action/medium-pain.mp3', 'action/medium-pain-2.mp3', 'action/light-pain-male.mp3', 'action/femal-light-pain.mp3'], vol: 0.7 },
+  mort:             { f: ['action/terrible-pain-agony.mp3'], vol: 0.85 },
+  zombie:           { f: ['monster/zombie-alone-growl.mp3'], vol: 0.7 },
+  zombie_loin:      { f: ['monster/zombie-alone-calm-growl.mp3'], vol: 0.45 },
+  hurlement:        { f: ['monster/zombie-agonie.mp3', 'monster/zombie-alone-agony-2.mp3'], vol: 0.8 },
+  alerte_infection: { f: ['effect/little-horror-suspence.mp3'], vol: 0.55 },
+};
+const BANQUE_THEMES = {
+  titre:       { f: 'musique/intro-horror.mp3', vol: 0.6 },
+  exploration: { f: 'musique/empty-city.mp3', vol: 0.55 },
+  train:       { f: 'musique/on-the-road.mp3', vol: 0.6 },
+  refuge:      { f: 'musique/suspence-calm.mp3', vol: 0.6 },
+};
+const FICHIER_CHRONO = 'effect/chrono.mp3';
+const FICHIERS_PLUIE = { legere: 'environnement/light-rain-background.mp3', forte: 'environnement/rain-hard-background.mp3' };
+const SCENES_EXTERIEURES = new Set(['rue', 'region', 'village', 'triage', 'gare']);
+let sons = {};         // nom sfx -> [{buffer, gain}]
+let chronoBuf = null;  // tampon du tic-tac (barre d'attente)
+let chronoNode = null; // boucle chrono en cours
+let pluieBuf = {};     // tampons de pluie (legere/forte)
+let pluieNode = null;  // averse en cours
+let pluieTimer = null;
+
+function crete(buffer) {
+  let p = 0;
+  const ch = Math.min(buffer.numberOfChannels, 2);
+  for (let c = 0; c < ch; c++) {
+    const d = buffer.getChannelData(c);
+    for (let i = 0; i < d.length; i += 64) { const a = Math.abs(d[i]); if (a > p) p = a; }
+  }
+  return p || 1;
+}
+// Crête ramenée à ~0,9, puis volume cible : un fichier deux fois trop fort est
+// automatiquement divisé par deux. On borne pour ne pas trop pousser un son faible.
+function gainNormalise(buffer, vol) { return Math.min(vol * (0.9 / crete(buffer)), vol * 4); }
+async function decoder(chemin) {
+  const r = await fetch('audio/' + chemin);
+  if (!r.ok) throw new Error('404');
+  return ctx.decodeAudioData(await r.arrayBuffer());
+}
+async function chargerBanque() {
+  for (const [nom, def] of Object.entries(BANQUE_SFX)) {
+    const liste = [];
+    for (const f of def.f) { try { const b = await decoder(f); liste.push({ buffer: b, gain: gainNormalise(b, def.vol) }); } catch (e) {} }
+    if (liste.length) sons[nom] = liste;
+  }
+  for (const [nom, def] of Object.entries(BANQUE_THEMES)) {
+    try { const b = await decoder(def.f); fichiers.themes[nom] = { buffer: b, gain: gainNormalise(b, def.vol) }; } catch (e) {}
+  }
+  // Chrono + pluie : on garde un facteur de normalisation (certains de ces fichiers
+  // sont enregistrés très bas — la pluie a une crête à ~0,08 : il faut la remonter).
+  try { const b = await decoder(FICHIER_CHRONO); chronoBuf = { buffer: b, norm: Math.min(0.9 / crete(b), 12) }; } catch (e) {}
+  for (const [k, f] of Object.entries(FICHIERS_PLUIE)) { try { const b = await decoder(f); pluieBuf[k] = { buffer: b, norm: Math.min(0.9 / crete(b), 12) }; } catch (e) {} }
+}
+// Banque d'abord, puis le manifest utilisateur (qui peut tout remplacer).
+async function chargerSons() {
+  try { await chargerBanque(); } catch (e) {}
+  try { await chargerManifest(); } catch (e) {}
+}
+function jouerSonFichier(entree) {
+  if (!entree || !ctx) return;
+  const src = ctx.createBufferSource(); src.buffer = entree.buffer;
+  const g = ctx.createGain(); g.gain.value = entree.gain;
+  src.connect(g); g.connect(master);
+  src.start();
+  src.onended = () => { try { src.disconnect(); g.disconnect(); } catch (e) {} };
+}
 
 export function initAudio() {
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
@@ -46,9 +129,9 @@ export function initAudio() {
     const wet = ctx.createGain(); wet.gain.value = 0.3;
     echo.connect(fb); fb.connect(echo);
     echo.connect(wet); wet.connect(master);
-    // Fichiers audio optionnels : si audio/manifest.json existe, on le charge
-    // en silence total ; sinon (cas normal), la synthèse fait tout.
-    chargerManifest();
+    // Banque de sons fichier (audio/) + manifest optionnel : ils remplacent la
+    // synthèse pour les sons concernés. Tout échec retombe en silence sur la synthèse.
+    chargerSons();
     // Le séquenceur se met en pause quand l'onglet est caché : on le réveille au retour.
     document.addEventListener('visibilitychange', () => { if (!document.hidden) reprendreSeq(); });
   } catch (e) { console.warn('Audio indisponible', e); }
@@ -85,6 +168,7 @@ function stopAmbiance() {
   if (musiqueTimer) { clearTimeout(musiqueTimer); musiqueTimer = null; }
   arreterSequenceur();
   arreterBoucleFichier(bufferTheme); bufferTheme = null;
+  arreterPluie();
 }
 
 // ---------- Scène sonore d'un lieu ----------
@@ -114,10 +198,12 @@ export function playAmbiance(id) {
   if (fichiers.ambiances[sid]) {
     // Un fichier fourni par l'utilisateur remplace le lit synthétisé
     // (vent + drones + rails). Les bruits ponctuels du lieu restent.
+    const e = fichiers.ambiances[sid];
     const src = ctx.createBufferSource();
-    src.buffer = fichiers.ambiances[sid]; src.loop = true;
-    src.connect(g); src.start();
-    ambNodes.push(src);
+    src.buffer = e.buffer; src.loop = true;
+    const ag = ctx.createGain(); ag.gain.value = e.gain;
+    src.connect(ag); ag.connect(g); src.start();
+    ambNodes.push(src, ag);
   } else {
     // Vent — toutes les scènes en ont un, plus ou moins fort.
     const [vf, vg, vlfo] = sc.vent;
@@ -163,6 +249,45 @@ export function playAmbiance(id) {
   planifierStinger(sc, nuit, cle);
   // Et parfois, la musique du lieu se lève : thème composé ou motif génératif.
   planifierMusique(sc, cle, nuit);
+  // Couche météo : sur les scènes à découvert, une averse occasionnelle (fichiers).
+  if (SCENES_EXTERIEURES.has(sid)) planifierPluie(cle); else arreterPluie();
+}
+
+// ---------- Couche météo : averses occasionnelles (fichiers environnement/) ----------
+function planifierPluie(cle) {
+  if (pluieTimer) clearTimeout(pluieTimer);
+  const delai = (60 + Math.random() * 180) * 1000; // 1 à 4 min de répit avant l'averse
+  pluieTimer = setTimeout(() => {
+    if (ambianceCourante !== cle || !ctx) return;
+    demarrerPluie(Math.random() < 0.4 ? 'forte' : 'legere', cle);
+  }, delai);
+}
+function demarrerPluie(type, cle) {
+  const ent = pluieBuf[type] || pluieBuf.legere;
+  if (!ent) { planifierPluie(cle); return; }
+  arreterPluie(true);
+  const src = ctx.createBufferSource(); src.buffer = ent.buffer; src.loop = true;
+  const g = ctx.createGain(); g.gain.value = 0.0001;
+  const cible = (type === 'forte' ? 0.22 : 0.13) * ent.norm; // normalisé (la pluie est faible)
+  g.gain.linearRampToValueAtTime(cible, ctx.currentTime + 6); // l'averse arrive en fondu
+  src.connect(g); g.connect(master); src.start();
+  pluieNode = { src, g };
+  const duree = (90 + Math.random() * 150) * 1000; // elle dure 1,5 à 4 min
+  pluieTimer = setTimeout(() => {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    try { g.gain.cancelScheduledValues(t); g.gain.linearRampToValueAtTime(0.0001, t + 6); src.stop(t + 6.3); } catch (e) {}
+    pluieNode = null;
+    if (ambianceCourante === cle) planifierPluie(cle);
+  }, duree);
+}
+function arreterPluie(douxEnchaine = false) {
+  if (pluieTimer && !douxEnchaine) { clearTimeout(pluieTimer); pluieTimer = null; }
+  if (pluieNode && ctx) {
+    const t = ctx.currentTime;
+    try { pluieNode.g.gain.cancelScheduledValues(t); pluieNode.g.gain.setTargetAtTime(0.0001, t, 0.4); pluieNode.src.stop(t + 1.2); } catch (e) {}
+    pluieNode = null;
+  }
 }
 
 function poolStingers(sc, nuit) {
@@ -255,10 +380,10 @@ function demarrerTheme(nom, nuit, cle) {
   if (!part) return;
   let nomEffectif = nom;
   if (nuit && part.nuit && THEMES[part.nuit]) { nomEffectif = part.nuit; part = THEMES[part.nuit]; }
-  // Fichier fourni par l'utilisateur ? Il remplace la synthèse de ce thème
+  // Fichier (banque ou manifest) ? Il remplace la synthèse de ce thème
   // (la variante de nuit peut avoir son propre fichier, sinon celui du jour).
-  const buf = fichiers.themes[nomEffectif] || fichiers.themes[nom];
-  if (buf) { bufferTheme = jouerBoucleFichier(buf, 0.7); return; }
+  const ent = fichiers.themes[nomEffectif] || fichiers.themes[nom];
+  if (ent) { bufferTheme = jouerBoucleFichier(ent.buffer, ent.gain); return; }
   seq = {
     cle, part,
     voix: part.voix.map(v => ({ def: v, idx: 0, t: 0 })),
@@ -373,7 +498,9 @@ async function chargerManifest() {
         try {
           const r = await fetch('audio/' + fichier);
           if (!r.ok) continue;
-          fichiers[cat][nom] = await ctx.decodeAudioData(await r.arrayBuffer());
+          const b = await ctx.decodeAudioData(await r.arrayBuffer());
+          // Le manifest a la priorité sur la banque ; même normalisation des volumes.
+          fichiers[cat][nom] = { buffer: b, gain: gainNormalise(b, cat === 'themes' ? 0.65 : 0.5) };
         } catch (e) { /* fichier illisible : on garde la synthèse */ }
       }
     }
@@ -583,7 +710,7 @@ export function startCombatMusic() {
   if (!ctx || combatTimer || combatBuf) return;
   // Fichier fourni par l'utilisateur ? Il remplace la boucle procédurale.
   if (fichiers.themes.combat) {
-    combatBuf = jouerBoucleFichier(fichiers.themes.combat, 0.8);
+    combatBuf = jouerBoucleFichier(fichiers.themes.combat.buffer, fichiers.themes.combat.gain);
     return;
   }
   let beat = 0;
@@ -653,9 +780,30 @@ export function setHeartbeat(on) {
   }
 }
 
+// ---------- Tic-tac de la barre d'attente (actions longues) ----------
+// Joué en boucle pendant qu'une action immersive se déroule (fichier chrono.mp3).
+export function setChrono(on) {
+  if (!ctx || !chronoBuf) return;
+  if (on && !chronoNode) {
+    const src = ctx.createBufferSource(); src.buffer = chronoBuf.buffer; src.loop = true;
+    const g = ctx.createGain(); g.gain.value = 0.0001;
+    g.gain.linearRampToValueAtTime(0.12 * chronoBuf.norm, ctx.currentTime + 0.25);
+    src.connect(g); g.connect(master); src.start();
+    chronoNode = { src, g };
+  } else if (!on && chronoNode) {
+    const t = ctx.currentTime;
+    try { chronoNode.g.gain.cancelScheduledValues(t); chronoNode.g.gain.setTargetAtTime(0.0001, t, 0.05); chronoNode.src.stop(t + 0.2); } catch (e) {}
+    chronoNode = null;
+  }
+}
+
 // ---------- Effets sonores ----------
 export function sfx(nom) {
   if (!ctx) return;
+  // Un fichier de la banque pour ce nom ? Il remplace la synthèse (tirage au sort
+  // s'il y en a plusieurs : pas, douleur, râle…).
+  const banque = sons[nom];
+  if (banque && banque.length) { jouerSonFichier(banque[Math.floor(Math.random() * banque.length)]); return; }
   const t = ctx.currentTime;
   const burst = (dur, fType, fFreq, peak) => burstAt(t, dur, fType, fFreq, peak);
   switch (nom) {

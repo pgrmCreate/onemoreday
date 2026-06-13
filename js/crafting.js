@@ -3,7 +3,6 @@ import { G, skillLevel, gainSkill } from './state.js';
 import { RECIPES } from './data/recipes.js';
 import { item } from './data/items.js';
 import { countItem, removeItem, addItem, hasOutil, hasItem, defItem, espaceUtilise, espaceMax } from './inventory.js';
-import { advanceTime } from './survival.js';
 import { carteCourante, caseCourante, keyCourante } from './world.js';
 
 function outilOk(o) {
@@ -70,7 +69,7 @@ export function fabriquer(recetteId) {
     const lvlUp = gainSkill(sk, xp);
     if (lvlUp) niveaux.push(lvlUp);
   }
-  const time = advanceTime(r.tempsMin);
-  msgs.push(...time.messages);
-  return { ok: true, messages: msgs, niveaux, mort: time.mort };
+  // Le temps de fabrication n'est plus « sauté » : il s'écoule en temps réel
+  // pendant la barre de progression (attente), identique pour les deux en co-op.
+  return { ok: true, messages: msgs, niveaux, mort: null };
 }

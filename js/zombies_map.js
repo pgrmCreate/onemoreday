@@ -20,6 +20,7 @@ import { G, chance, pick, estNuit } from './state.js';
 import { CARTES } from './data/world.js';
 import {
   passagePossible, ckey, estSecurisee, liaison, porteCassee, frapperPorte,
+  estGraphe, voisinsCandidats, sontLies,
 } from './world.js';
 import { zombie } from './data/zombies.js';
 
@@ -53,6 +54,42 @@ function uidSuivant() {
 function dirVers(x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;
   return Math.abs(dx) >= Math.abs(dy) ? [Math.sign(dx) || 1, 0] : [0, Math.sign(dy) || 1];
+}
+
+// ---------- Cartes « plan » à nœuds libres : position, regard, distance ----------
+function posPlan(c, x, y) {
+  const cd = c.cases[`${x},${y}`];
+  return cd ? { cx: cd.cx ?? (x * 74 + 50), cy: cd.cy ?? (y * 74 + 50) } : { cx: x, cy: y };
+}
+// Regard normalisé : en plan, vers le nœud cible (espace cx,cy) ; sinon orthogonal.
+function regard(c, x1, y1, x2, y2) {
+  if (!c || !c.graphe) return dirVers(x1, y1, x2, y2);
+  const a = posPlan(c, x1, y1), b = posPlan(c, x2, y2);
+  const dx = b.cx - a.cx, dy = b.cy - a.cy, n = Math.hypot(dx, dy) || 1;
+  return [dx / n, dy / n];
+}
+// Distance en SAUTS depuis (px,py) sur le graphe (perception + poursuite).
+function champHops(carteId, px, py) {
+  const df = new Map([[`${px},${py}`, 0]]);
+  let front = [[px, py]];
+  for (let d = 1; d < 40 && front.length; d++) {
+    const next = [];
+    for (const [x, y] of front) for (const [nx, ny] of voisinsCandidats(carteId, x, y)) {
+      const k = `${nx},${ny}`;
+      if (df.has(k) || !passageZombie(carteId, x, y, nx, ny)) continue;
+      df.set(k, d); next.push([nx, ny]);
+    }
+    front = next;
+  }
+  return df;
+}
+// Au contact : même case, OU adjacent AVEC un passage réellement ouvert entre les
+// deux. Le passage compte : un mort dans le couloir, derrière TA porte fermée, n'est
+// PAS au contact — il doit d'abord enfoncer la porte (sinon il mordrait au travers).
+function auContact(carteId, ax, ay, bx, by) {
+  if (ax === bx && ay === by) return true;
+  if (estGraphe(carteId)) return passageZombie(carteId, ax, ay, bx, by);
+  return Math.abs(ax - bx) + Math.abs(ay - by) === 1 && passageZombie(carteId, ax, ay, bx, by);
 }
 
 // Migration douce des sauvegardes d'avant : identité, regard, liste des morts.
@@ -139,14 +176,13 @@ export function fauxMortEn(carteId, x, y) {
 export function reveillerFauxMort(z) {
   delete z.faitLeMort;
   z.ag = 1; z.mx = G.world.x; z.my = G.world.y; z.sans = 0;
-  z.dir = dirVers(z.x, z.y, G.world.x, G.world.y);
-  if (Math.abs(z.x - G.world.x) + Math.abs(z.y - G.world.y) <= 1) z.spin = SPIN_TICKS;
+  z.dir = regard(CARTES[G.world.carte], z.x, z.y, G.world.x, G.world.y);
+  if (auContact(G.world.carte, z.x, z.y, G.world.x, G.world.y)) z.spin = SPIN_TICKS;
 }
 
 // Le zombie au contact et ses congénères adjacents : ils arrivent ENSEMBLE.
 export function meuteAuContact(carteId, x, y) {
-  return zombiesSur(carteId).filter(z => !z.faitLeMort
-    && Math.abs(z.x - x) + Math.abs(z.y - y) <= 1);
+  return zombiesSur(carteId).filter(z => !z.faitLeMort && auContact(carteId, z.x, z.y, x, y));
 }
 
 // Le joueur vient d'arriver au contact (marche) : les adjacents se figent,
@@ -157,7 +193,7 @@ export function declencherSpins(carteId) {
     if (z.spin) continue;
     z.spin = SPIN_TICKS;
     z.ag = 1; z.mx = G.world.x; z.my = G.world.y; z.sans = 0;
-    z.dir = dirVers(z.x, z.y, G.world.x, G.world.y);
+    z.dir = regard(CARTES[carteId], z.x, z.y, G.world.x, G.world.y);
     n++;
   }
   return n;
@@ -181,13 +217,16 @@ function passageZombie(carteId, x1, y1, x2, y2) {
 // ligne de vue dégagée (la vue est réciproque : on réutilise TA visibilité,
 // qui passe par les mêmes murs et portes) — OU à portée de bras (dist ≤ 1) —
 // OU la nuit à dist ≤ 2 (ils sentent).
-function teVoit(z, px, py, vis) {
-  const dist = Math.abs(z.x - px) + Math.abs(z.y - py);
+function teVoit(carteId, z, px, py, vis, dist) {
   if (dist <= 1) return true;
   if (estNuit() && dist <= 2) return true;
   if (dist > CONE_PORTEE) return false;
   if (!vis.has(`${z.x},${z.y}`)) return false;
-  const dx = px - z.x, dy = py - z.y;
+  // Cône : en plan, on mesure l'angle dans l'espace (cx,cy) ; en grille, en cases.
+  const c = CARTES[carteId];
+  let dx, dy;
+  if (c && c.graphe) { const a = posPlan(c, z.x, z.y), b = posPlan(c, px, py); dx = b.cx - a.cx; dy = b.cy - a.cy; }
+  else { dx = px - z.x; dy = py - z.y; }
   const [fx, fy] = z.dir || [0, 1];
   const devant = dx * fx + dy * fy;          // composante devant lui
   return devant > 0 && Math.abs(dx * fy - dy * fx) <= devant; // cône à ~45° de part et d'autre
@@ -208,24 +247,30 @@ export function tickZombies(carteId, vis) {
   if (!e || !e.z.length) return ev;
   const px = G.world.x, py = G.world.y;
   const occupe = new Set(e.z.filter(v => !v.faitLeMort).map(v => `${v.x},${v.y}`));
+  // Sur un plan à nœuds, la distance au joueur est un nombre de SAUTS (champ BFS
+  // recalculé à chaque tick) ; la poursuite descend ce gradient vers toi.
+  const c = CARTES[carteId];
+  const graphe = !!(c && c.graphe);
+  const df = graphe ? champHops(carteId, px, py) : null;
+  const distJ = (xx, yy) => graphe ? (df.get(`${xx},${yy}`) ?? 99) : Math.abs(xx - px) + Math.abs(yy - py);
   for (const z of e.z) {
     if (z.faitLeMort) continue; // il attend son heure
     const def = zombie(z.id) || {};
-    const dist = Math.abs(z.x - px) + Math.abs(z.y - py);
+    const dist = distJ(z.x, z.y);
 
     // --- anneau de contact en cours : il est sur toi, l'instant se fige ---
     if (z.spin) {
       z.spin--;
       if (z.spin <= 0) {
         delete z.spin;
-        if (dist <= 1) { if (!ev.contact) ev.contact = z; }
-        // sinon : tu t'es arraché à temps — il reprend la poursuite au tick suivant
+        if (auContact(carteId, z.x, z.y, px, py)) { if (!ev.contact) ev.contact = z; }
+        // sinon : tu t'es arraché à temps (ou la porte tient) — il reprend au tick suivant
       }
       continue;
     }
 
     // --- perception : cône de vue, contact, flair nocturne, mémoire ---
-    if (teVoit(z, px, py, vis)) {
+    if (teVoit(carteId, z, px, py, vis, dist)) {
       z.ag = 1; z.mx = px; z.my = py; z.sans = 0;
     } else if (z.ag) {
       z.sans = (z.sans || 0) + 1;
@@ -235,10 +280,10 @@ export function tickZombies(carteId, vis) {
       }
     }
 
-    // --- adjacent et en chasse : il s'immobilise, l'anneau démarre ---
-    if (z.ag && dist <= 1) {
+    // --- au contact (passage ouvert) et en chasse : il s'immobilise, l'anneau démarre ---
+    if (z.ag && auContact(carteId, z.x, z.y, px, py)) {
       z.spin = SPIN_TICKS;
-      z.dir = dirVers(z.x, z.y, px, py);
+      z.dir = regard(c, z.x, z.y, px, py);
       ev.spins.push(z);
       continue;
     }
@@ -252,11 +297,15 @@ export function tickZombies(carteId, vis) {
 
     // --- mouvement ---
     let pasV = null;
-    if (z.ag) {
+    const voisinsZ = (zz) => (graphe ? voisinsCandidats(carteId, zz.x, zz.y) : DIRS.map(([dx, dy]) => [zz.x + dx, zz.y + dy]))
+      .filter(([nx, ny]) => passageZombie(carteId, zz.x, zz.y, nx, ny));
+    if (z.ag && graphe) {
+      // Plan : on descend le gradient de distance (en sauts) vers le joueur.
+      const options = voisinsZ(z).sort((a, b) => distJ(a[0], a[1]) - distJ(b[0], b[1]));
+      pasV = (options.length && distJ(options[0][0], options[0][1]) < dist) ? options[0] : (options[0] || null);
+    } else if (z.ag) {
       const d = (xx, yy) => Math.abs(xx - z.mx) + Math.abs(yy - z.my);
-      const options = DIRS.map(([dx, dy]) => [z.x + dx, z.y + dy])
-        .filter(([nx, ny]) => passageZombie(carteId, z.x, z.y, nx, ny))
-        .sort((a, b) => d(a[0], a[1]) - d(b[0], b[1]));
+      const options = voisinsZ(z).sort((a, b) => d(a[0], a[1]) - d(b[0], b[1]));
       const ici = d(z.x, z.y);
       if (options.length && d(options[0][0], options[0][1]) < ici) {
         pasV = options[0];
@@ -277,9 +326,7 @@ export function tickZombies(carteId, vis) {
         pasV = options[0] || null; // pas de porte : il prend le moins mauvais des pas
       }
     } else {
-      const options = DIRS.map(([dx, dy]) => [z.x + dx, z.y + dy])
-        .filter(([nx, ny]) => passageZombie(carteId, z.x, z.y, nx, ny)
-          && !estSecurisee(ckey(carteId, nx, ny)));
+      const options = voisinsZ(z).filter(([nx, ny]) => !estSecurisee(ckey(carteId, nx, ny)));
       pasV = options.length ? pick(options) : null;
     }
     if (!pasV) continue;
@@ -287,7 +334,7 @@ export function tickZombies(carteId, vis) {
     const k = `${pasV[0]},${pasV[1]}`;
     if (occupe.has(k)) continue;
     occupe.delete(`${z.x},${z.y}`);
-    z.dir = [Math.sign(pasV[0] - z.x), Math.sign(pasV[1] - z.y)];
+    z.dir = regard(c, z.x, z.y, pasV[0], pasV[1]);
     z.x = pasV[0]; z.y = pasV[1];
     occupe.add(k);
     ev.bouges.add(z.uid);
@@ -312,11 +359,13 @@ export function rattraperTours(carteId, vis, tours = 1) {
 // Un grand bruit (fouille brutale, cloche, coup de feu) : les zombies du coin
 // tournent la tête vers la source — et s'y rendent, de mémoire, avant d'abandonner.
 export function attirerZombies(carteId, x, y, rayon = 5) {
+  const graphe = estGraphe(carteId);
+  const df = graphe ? champHops(carteId, x, y) : null; // distance en sauts sur le plan
   for (const z of zombiesSur(carteId)) {
     if (z.faitLeMort) continue;
-    const dist = Math.abs(z.x - x) + Math.abs(z.y - y);
+    const dist = graphe ? (df.get(`${z.x},${z.y}`) ?? 99) : Math.abs(z.x - x) + Math.abs(z.y - y);
     if (dist > rayon || dist === 0) continue;
-    z.dir = dirVers(z.x, z.y, x, y);
+    z.dir = regard(CARTES[carteId], z.x, z.y, x, y);
     z.ag = 1; z.mx = x; z.my = y; z.sans = 0;
   }
 }

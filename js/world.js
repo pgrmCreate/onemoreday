@@ -17,6 +17,43 @@ export function caseDef(carteId, x, y) {
 }
 export function caseCourante() { return caseDef(G.world.carte, G.world.x, G.world.y); }
 
+// ---------- Cartes « graphe » : nœuds libres au lieu d'une grille ----------
+// Au zoom quartier, une carte peut être un PLAN à nœuds libres (carte.graphe:true).
+// Chaque nœud reste une « case » keyée 'x,y' (donc sol/fouille/zombies/brouillard
+// marchent tels quels), mais porte en plus cx,cy (position sur le plan), une taille,
+// et liens:['x,y',…] (adjacence explicite). Tout le reste du moteur se branche ici.
+export function estGraphe(carteId) { const c = CARTES[carteId]; return !!(c && c.graphe); }
+
+// Adjacence symétrique construite une fois depuis les liens (mémorisée sur la carte).
+function adjacence(c) {
+  if (c._adj) return c._adj;
+  const adj = {};
+  const ajout = (a, b) => { (adj[a] || (adj[a] = new Set())).add(b); };
+  for (const [pos, cd] of Object.entries(c.cases)) {
+    if (cd.liens) { // liens explicites : adjacence dessinée à la main
+      for (const l of cd.liens) if (c.cases[l]) { ajout(pos, l); ajout(l, pos); }
+    } else if (c.liensAuto) { // sinon : déduits de la grille (les nœuds qui se touchent)
+      const [x, y] = pos.split(',').map(Number);
+      for (const [dx, dy] of DIRS4) { const nk = `${x + dx},${y + dy}`; if (c.cases[nk]) { ajout(pos, nk); ajout(nk, pos); } }
+    }
+  }
+  c._adj = adj;
+  return adj;
+}
+// Voisins CANDIDATS d'une case (à filtrer ensuite par passagePossible) :
+//   grille → les 4 orthogonales ; graphe → les nœuds liés.
+const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+export function voisinsCandidats(carteId, x, y) {
+  const c = CARTES[carteId];
+  if (c && c.graphe) return [...(adjacence(c)[`${x},${y}`] || [])].map(k => k.split(',').map(Number));
+  return DIRS4.map(([dx, dy]) => [x + dx, y + dy]);
+}
+export function sontLies(carteId, x1, y1, x2, y2) {
+  const c = CARTES[carteId];
+  const s = c && c.graphe && adjacence(c)[`${x1},${y1}`];
+  return !!(s && s.has(`${x2},${y2}`));
+}
+
 // Une case est franchissable si elle existe et n'est pas un obstacle pur
 export function franchissable(carteId, x, y) {
   const cd = caseDef(carteId, x, y);
@@ -33,6 +70,8 @@ const CIRCULATION = new Set(['couloir', 'escalier', 'porte']);
 export function passagePossible(carteId, x1, y1, x2, y2) {
   if (!franchissable(carteId, x2, y2)) return false;
   const c = CARTES[carteId];
+  // Graphe : on ne passe qu'entre nœuds explicitement liés (les rues du plan).
+  if (c && c.graphe) return sontLies(carteId, x1, y1, x2, y2);
   if (!c || c.echelle !== 'interieur') return true;
   const k1 = `${x1},${y1}`, k2 = `${x2},${y2}`;
   // murs déclarés : bloquent même la circulation (étages superposés sur la grille...)
@@ -60,6 +99,7 @@ export function niveauSombre(cd) {
 export function liaison(carteId, x1, y1, x2, y2) {
   if (!passagePossible(carteId, x1, y1, x2, y2)) return null;
   const c = CARTES[carteId];
+  if (c && c.graphe) return 'ouvert'; // un plan extérieur : pas de battants entre nœuds
   if (!c || c.echelle !== 'interieur' || c.ouvert) return 'ouvert';
   const k1 = `${x1},${y1}`, k2 = `${x2},${y2}`;
   const p = (c.passages || []).find(([a, b]) => (a === k1 && b === k2) || (a === k2 && b === k1));
@@ -131,6 +171,19 @@ export function casesVisibles(carteId, px, py, opts = {}) {
   const vis = new Set([`${px},${py}`]);
   const c = CARTES[carteId];
   if (!c) return vis;
+  // Graphe : on voit quelques nœuds dans chaque direction le long des rues
+  // (propagation bornée dans le graphe), buildings non liés = hors de vue.
+  if (c.graphe) {
+    const adj = adjacence(c);
+    const hops = opts.hops ?? 4;
+    let front = [`${px},${py}`];
+    for (let d = 0; d < hops; d++) {
+      const next = [];
+      for (const k of front) for (const nk of (adj[k] || [])) { if (!vis.has(nk)) { vis.add(nk); next.push(nk); } }
+      front = next;
+    }
+    return vis;
+  }
   const nappe = opts.nappe ?? 4;
   const rayon = opts.rayon ?? (c.echelle === 'interieur' ? 8 : 9);
   let front = [[px, py]];
@@ -164,6 +217,11 @@ export function decouvrirAutour(carteId, x, y) {
   for (const k of casesVisibles(carteId, x, y)) {
     const [vx, vy] = k.split(',').map(Number);
     decouvrir(carteId, vx, vy);
+  }
+  // Les voisins immédiats : on sait qu'ils sont là (mur/porte ou nœud lié).
+  if (estGraphe(carteId)) {
+    for (const [vx, vy] of voisinsCandidats(carteId, x, y)) decouvrir(carteId, vx, vy);
+    return;
   }
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {

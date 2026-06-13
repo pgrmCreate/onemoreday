@@ -7,7 +7,7 @@
 import { G, gainSkill, rng, setFlag, pick, skillLevel as skillLvl } from './state.js';
 import { item } from './data/items.js';
 import { addItem, removeItem, countItem } from './inventory.js';
-import { ajouterBlessure, advanceTime, mortJoueur } from './survival.js';
+import { ajouterBlessure, mortJoueur } from './survival.js';
 import { log, updateHUD, panelOuvert, evtOuvert } from './ui.js';
 import { demarrerCombat, enCombat } from './combat.js';
 import { sfx } from './audio.js';
@@ -115,11 +115,9 @@ export function appliquerEffets(effets, apresCombat = null) {
     }
   }
   if (effets.flag) setFlag(effets.flag);
-  if (effets.tempsMin) {
-    const r = advanceTime(effets.tempsMin);
-    r.messages.forEach(m => log(m.t, m.c));
-    if (r.mort) return true; // l'écran de mort prend le relais
-  }
+  // effets.tempsMin ne « saute » plus l'horloge : le temps s'écoule en temps réel
+  // (pendant la barre d'attente de l'événement). On garde le champ pour calibrer
+  // la durée de cette barre côté appelant.
   updateHUD();
 
   if (effets.combat) {

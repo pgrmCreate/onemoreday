@@ -3,6 +3,7 @@ import { G, heureTxt, estNuit } from './state.js';
 import { poidsTotal, poidsMax, surcharge, enSurpoids } from './inventory.js';
 import { froidActuel } from './survival.js';
 import { ico } from './icons.js';
+import { setChrono } from './audio.js';
 
 export const $ = (sel) => document.querySelector(sel);
 
@@ -128,19 +129,38 @@ export function closeEvt() {
 export function evtOuvert() { return !$('#evt').classList.contains('hidden'); }
 
 // ---------- Attente : le temps des gestes ----------
-// Chaque action a un poids : un petit voile avec spinner bloque l'écran un instant,
-// d'autant plus longtemps que l'action mange de minutes de jeu (~0,3 s à 1,5 s max).
-// done() ne s'exécute qu'à la fin : les conséquences (combat, butin, mort) attendent.
-export function attente(label, minutes, done) {
+// Les actions prennent un vrai temps à l'écran, avec une barre de progression :
+// d'un geste bref (~3 s, déchirer un tissu) aux gros travaux (~14 s, fabrication).
+// La durée est proportionnelle aux minutes de jeu de l'action ; opts.ms force une
+// durée fixe (sauts de temps : sommeil…). done() n'arrive qu'à la fin : les
+// conséquences (combat, butin, mort) attendent. Pendant ce temps, le « battement
+// du monde » continue de faire couler l'horloge — identique pour les deux en co-op.
+// opts.ms : durée fixe (sauts) · opts.noCancel : action non annulable · opts.onAnnule : rappel si annulée.
+export function attente(label, minutes, done, opts = {}) {
   const a = $('#attente');
   if (!a) { done(); return; }
-  const ms = Math.min(1500, Math.round(280 + (minutes || 0) * 14));
+  const ms = opts.ms != null ? opts.ms
+    : Math.max(2600, Math.min(14000, Math.round(2000 + (minutes || 0) * 380)));
   a.querySelector('.attente-label').textContent = label;
-  a.classList.remove('hidden');
-  setTimeout(() => {
-    a.classList.add('hidden');
-    done();
-  }, ms);
+  a.classList.remove('hidden'); // d'abord visible : sinon (display:none) la barre ne s'anime pas
+  const bar = a.querySelector('.attente-bar > i');
+  if (bar) {
+    bar.style.transition = 'none';
+    bar.style.width = '0%';
+    void bar.offsetWidth; // reflow : la barre repart de zéro à chaque action
+    bar.style.transition = `width ${ms}ms linear`;
+    bar.style.width = '100%';
+  }
+  setChrono(true); // tic-tac pendant l'action
+  let fini = false;
+  const fermer = () => { a.classList.add('hidden'); setChrono(false); };
+  const t = setTimeout(() => { if (fini) return; fini = true; fermer(); done(); }, ms);
+  // Bouton Annuler : on peut interrompre une action en cours (rien ne s'applique).
+  const annul = a.querySelector('.attente-annuler');
+  if (annul) {
+    annul.classList.toggle('hidden', !!opts.noCancel);
+    annul.onclick = () => { if (fini) return; fini = true; clearTimeout(t); fermer(); if (opts.onAnnule) opts.onAnnule(); };
+  }
 }
 
 // ---------- Toast ----------

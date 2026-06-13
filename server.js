@@ -124,15 +124,24 @@ function traiterWs(socket, txt) {
   let msg; try { msg = JSON.parse(txt); } catch (e) { return; }
   const st = socket.wsState;
   if (msg.t === 'hello') {
-    const code = String(msg.salon || '').toUpperCase().slice(0, 8);
-    if (!code) { envoyerWs(socket, { t: 'erreur', raison: 'Code de salon vide.' }); return; }
-    let salon = salons.get(code);
+    let code = String(msg.salon || '').toUpperCase().slice(0, 8);
+    let salon;
     if (msg.role === 'host') {
+      if (!code) { envoyerWs(socket, { t: 'erreur', raison: 'Code de salon vide.' }); return; }
+      salon = salons.get(code);
       if (salon && salon.some(s => s.wsState.role === 'host')) { envoyerWs(socket, { t: 'erreur', raison: 'Ce code est déjà hébergé.' }); return; }
       if (!salon) { salon = []; salons.set(code, salon); }
       st.role = 'host';
     } else {
-      if (!salon || !salon.some(s => s.wsState.role === 'host')) { envoyerWs(socket, { t: 'erreur', raison: 'Aucune partie à ce code.' }); return; }
+      // Invité : sans code, on rejoint DIRECTEMENT la (seule) partie ouverte sur ce
+      // serveur — plus besoin de code en LAN. Avec un code, on vise ce salon précis
+      // (utile si plusieurs hôtes tournaient sur le même serveur).
+      if (!code) {
+        for (const [c, s] of salons) { if (s.some(x => x.wsState.role === 'host') && s.length < 2) { code = c; break; } }
+        if (!code) { envoyerWs(socket, { t: 'erreur', raison: 'Aucune partie ouverte. Demande à l\'autre joueur d\'héberger d\'abord.' }); return; }
+      }
+      salon = salons.get(code);
+      if (!salon || !salon.some(s => s.wsState.role === 'host')) { envoyerWs(socket, { t: 'erreur', raison: 'Aucune partie à rejoindre.' }); return; }
       if (salon.length >= 2) { envoyerWs(socket, { t: 'erreur', raison: 'La partie est déjà complète.' }); return; }
       st.role = 'guest';
     }

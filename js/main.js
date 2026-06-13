@@ -15,7 +15,7 @@ import {
   estLampe, basculerLampe, tenirLampe,
 } from './inventory.js';
 import {
-  consommer, soigner, desinfecterAlcool, appliquerSoinCible, BLESSURES, nomBlessure, froidActuel, advanceTime,
+  consommer, soigner, desinfecterAlcool, appliquerSoinCible, BLESSURES, nomBlessure, froidActuel,
   boireContenant, bouillirContenant, peutBouillirContenant, tempsBouillir, dechirerVetement, dechirerEquipe,
 } from './survival.js';
 import { solDe, keyCourante } from './world.js';
@@ -215,8 +215,8 @@ function ecranCoopHote(nom) {
   chargerLan().then(() => {
     const adr = adresseLan();
     render(`
-      <h2 class="lieu-nom">Héberger — code ${code}</h2>
-      <div class="narration">Donne à l'autre joueur :\n\n${adr ? `• l'adresse <b class="code">${adr}</b> (à ouvrir dans son navigateur)` : '• ton adresse réseau (visible dans la fenêtre du serveur)'}\n• le code de salon <b class="code">${code}</b>\n\nTu peux commencer tout de suite : il pourra te rejoindre quand il veut, il atterrira là où tu en seras.</div>
+      <h2 class="lieu-nom">Héberger la partie</h2>
+      <div class="narration">Donne à l'autre joueur ${adr ? `l'adresse <b class="code">${adr}</b> à ouvrir dans son navigateur (même Wi-Fi)` : 'ton adresse réseau (visible dans la fenêtre du serveur)'}.\n\nIl n'a plus qu'à choisir « Rejoindre une partie » : il te rejoint directement, sans code. Tu peux commencer tout de suite — il atterrira là où tu en seras.</div>
       <div class="menu">
         ${btnAct('data-d="normal"', 'Créer et jouer — Survivant', 'la mort te ramène à ta dernière sauvegarde', { classe: 'primary' })}
         ${btnAct('data-d="extreme"', 'Créer et jouer — Un seul jour', 'mort permanente')}
@@ -235,8 +235,8 @@ function ecranCoopHote(nom) {
       showHUD(true);
       updateHUD();
       demarrerAlertes();
-      toast(`Partie hébergée — code ${code}. Donne ce code à l'autre joueur.`, 7000);
-      log(`Co-op : tu héberges la partie. Code de salon : ${code} (rappelé sous le nom du lieu et dans les Options). En attente d'un coéquipier…`, 'good');
+      toast('Partie hébergée. L\'autre joueur n\'a qu\'à choisir « Rejoindre une partie ».', 7000);
+      log('Co-op : tu héberges la partie. Sur l\'autre appareil (même Wi-Fi, ton adresse), il choisit « Rejoindre une partie » et te rejoint directement. En attente d\'un coéquipier…', 'good');
       jouerIntro();
     });
   });
@@ -245,21 +245,18 @@ function ecranCoopHote(nom) {
 function ecranCoopRejoindre(nom) {
   render(`
     <h2 class="lieu-nom">Rejoindre une partie</h2>
-    <div class="narration">Tu as ouvert cette page depuis l'appareil de l'hôte (même Wi-Fi) ? Entre simplement son code de salon.</div>
+    <div class="narration">Tu as ouvert cette page depuis l'appareil de l'hôte (même Wi-Fi), et il a déjà lancé la partie ? Rejoins-le directement — plus aucun code à saisir.</div>
     <div class="menu">
-      <input type="text" id="inp-code" maxlength="8" placeholder="Code de salon (ex. ABCD)" autocomplete="off" style="text-transform:uppercase">
-      ${btnAct('data-j="go"', 'Rejoindre', 'entrer dans le monde de l\'hôte', { classe: 'primary' })}
+      ${btnAct('data-j="go"', 'Rejoindre la partie', 'entrer dans le monde de l\'hôte', { classe: 'primary' })}
       ${btnAct('data-j="retour"', 'Retour')}
     </div>
     <div id="coop-statut" class="cap-line"></div>`);
   document.querySelectorAll('[data-j]').forEach(b => b.onclick = async () => {
     sfx('clic');
     if (b.dataset.j === 'retour') return ecranCoop(nom);
-    const code = ($('#inp-code').value || '').trim().toUpperCase();
-    if (code.length < 3) { toast('Entre le code de salon de l\'hôte.'); return; }
     const statut = $('#coop-statut');
-    if (statut) statut.textContent = 'Connexion…';
-    rejoindrePartie(code, nom, statut);
+    if (statut) statut.textContent = 'Connexion à la partie ouverte…';
+    rejoindrePartie('', nom, statut); // code vide = rejoindre la seule partie ouverte
   });
 }
 
@@ -667,10 +664,7 @@ function remplirPorter(entete) {
 // ---------- Radio portable : écouter les ondes ----------
 function ecouterRadio() {
   if (!hasItem('piles')) return { ok: false, messages: [{ t: 'La radio reste muette : il lui faut des piles.', c: 'warn' }] };
-  const msgs = [];
-  const r = advanceTime(10); // dix minutes à balayer les fréquences, l'oreille collée au haut-parleur
-  msgs.push(...r.messages);
-  if (r.mort) return { ok: true, messages: msgs, mort: true };
+  const msgs = []; // le temps d'écoute s'écoule en temps réel (barre d'attente), plus de saut d'horloge
   if (getFlag('chapitre2')) {
     msgs.push({ t: '« …ici le Refuge de Miramas-le-Vieux… la citerne est basse… si vous entendez ceci, méfiez-vous de la plaine : des bêtes échappées du zoo de La Barben rôdent le long de la Touloubre… »', c: '' });
   } else {
@@ -859,7 +853,7 @@ function panneauOptions() {
       ${btnAct('data-o="titre"', 'Sauvegarder et retourner au titre')}
       ${btnAct('data-o="reset"', 'Abandonner la partie', 'efface définitivement la sauvegarde')}
     </div>
-    ${multi.estMulti() ? `<p class="cap-line">Co-op : tu es <b>${multi.estHote() ? 'l\'hôte' : 'invité'}</b>${multi.estHote() ? ` — code de salon <b class="code">${multi.monCode()}</b>${multi.pairPresent() ? ' — coéquipier connecté' : ' — en attente'}` : multi.pairPresent() ? ' — connecté à l\'hôte' : ' — hôte déconnecté'}.</p>` : ''}
+    ${multi.estMulti() ? `<p class="cap-line">Co-op : tu es <b>${multi.estHote() ? 'l\'hôte' : 'invité'}</b>${multi.estHote() ? (multi.pairPresent() ? ' — coéquipier connecté' : ' — en attente d\'un joueur') : multi.pairPresent() ? ' — connecté à l\'hôte' : ' — hôte déconnecté'}.</p>` : ''}
     <p class="cap-line">One More Day — Salon-de-Provence, jour 23. Les intérieurs fouillés sont sûrs ; les rues ne le sont jamais.</p>`);
   box.querySelector('#opt-vol').oninput = (e) => setVolume(parseFloat(e.target.value));
   box.querySelector('#opt-mute').onchange = (e) => setMuted(e.target.checked);

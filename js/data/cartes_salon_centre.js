@@ -197,6 +197,7 @@ export const CARTES_SALON_CENTRE = {
   q_centre: {
     nom: 'Le centre ancien', sousTitre: 'Salon-de-Provence — intra-muros',
     echelle: 'quartier', tempsParCase: 3, largeur: 9, hauteur: 8,
+    graphe: true, liensAuto: true, // plan à nœuds : rues dessinées, déplacement de nœud en nœud
     exterieur: true, ambiance: 'rue', illu: 'ruelle',
     zombiesPool: ['errant', 'errant', 'rampant', 'coureur', 'putrefie', 'hurleur', 'traqueur'],
     cases: {

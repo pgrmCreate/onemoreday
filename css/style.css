@@ -464,6 +464,21 @@ b.code, .code {
   color: var(--fg-dim); font-style: italic; font-size: .95rem; letter-spacing: .5px;
   text-shadow: 0 1px 8px #000;
 }
+.attente-bar {
+  width: 180px; max-width: 60vw; height: 5px; border-radius: 3px;
+  background: rgba(255,255,255,.08); border: 1px solid var(--border); overflow: hidden;
+}
+.attente-bar > i {
+  display: block; height: 100%; width: 0;
+  background: linear-gradient(90deg, #8a7d5a, #c9b98a);
+}
+.attente-annuler {
+  margin-top: 6px; background: transparent; border: 1px solid var(--border);
+  color: var(--fg-dim); padding: 6px 16px; border-radius: 16px; font-size: .85rem;
+  cursor: pointer; letter-spacing: .5px;
+}
+.attente-annuler:hover { color: var(--fg); border-color: var(--rust); }
+.attente-annuler.hidden { display: none; }
 
 /* ---------- Toast ---------- */
 .toast {

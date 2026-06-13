@@ -12,6 +12,7 @@ export const CARTES_MIRAMAS = {
   q_miramas_vieux: {
     nom: 'Miramas-le-Vieux', sousTitre: 'le Refuge — un rocher de vivants au-dessus du monde mort',
     echelle: 'quartier', tempsParCase: 2, largeur: 7, hauteur: 6,
+    graphe: true, liensAuto: true, // plan à nœuds : rues dessinées, déplacement de nœud en nœud
     exterieur: true, ambiance: 'calme', illu: 'camp',
     zombiesPool: ['errant'],
     cases: {
@@ -109,6 +110,7 @@ export const CARTES_MIRAMAS = {
   q_triage: {
     nom: 'Le triage de Miramas', sousTitre: 'la plus grande gare de triage du sud-est — et la plus peuplée',
     echelle: 'quartier', tempsParCase: 3, largeur: 8, hauteur: 6,
+    graphe: true, liensAuto: true, // plan à nœuds : rues dessinées, déplacement de nœud en nœud
     exterieur: true, ambiance: 'sombre', illu: 'gare',
     zombiesPool: ['errant', 'errant', 'coureur', 'hurleur', 'rampant', 'gonfle', 'traqueur'],
     cases: {

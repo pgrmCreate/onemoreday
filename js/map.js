@@ -10,7 +10,7 @@ import {
   carte, carteCourante, caseDef, caseCourante, franchissable, passagePossible, ckey, keyCourante,
   decouvrir, decouvrirAutour, estDecouverte, casesVisibles, solDe, solVisible, deposerAuSol, revelerSol,
   fouilleEtat, estSecurisee, securiser, zombiesPoolCourant, interieurSecurise,
-  niveauSombre, liaison, porteCassee,
+  niveauSombre, liaison, porteCassee, estGraphe, voisinsCandidats,
 } from './world.js';
 import { svgAmbiance, aAmbiance } from './ambiance.js';
 import { jouerCineUneFois, cineEnCours, jouerCine } from './cinema.js';
@@ -48,6 +48,7 @@ let selection = null; // case sélectionnée sur la carte (info avant déplaceme
 let vueDessin = false; // bascule plan ↔ dessin d'ambiance (bouton œil)
 let enMarche = false;  // déplacement animé en cours : on ne clique pas pendant
 let chemPrev = new Map(); // BFS : d'où on vient, pour reconstruire le chemin
+let pasDepuisCraque = 0; // pas écoulés depuis le dernier craquement (pas bruyant occasionnel)
 
 // ---------- Position de départ ----------
 export function initPosition() {
@@ -140,8 +141,8 @@ function atteignables(portee) {
   for (let d = 1; d <= portee; d++) {
     const next = [];
     for (const [x, y] of front) {
-      for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-        const nx = x + dx, ny = y + dy, k = `${nx},${ny}`;
+      for (const [nx, ny] of voisinsCandidats(G.world.carte, x, y)) {
+        const k = `${nx},${ny}`;
         if (res.has(k) || !passagePossible(G.world.carte, x, y, nx, ny)) continue;
         res.set(k, d);
         chemPrev.set(k, `${x},${y}`);
@@ -552,7 +553,7 @@ function pairBarre(vis) {
   if (!multi.estMulti()) return '';
   const pr = multi.pairEtat();
   let txt;
-  if (!multi.pairPresent()) txt = multi.estHote() ? `Co-op · code ${multi.monCode()} · en attente d'un joueur` : 'coéquipier hors ligne';
+  if (!multi.pairPresent()) txt = multi.estHote() ? 'Co-op · en attente d\'un joueur' : 'coéquipier hors ligne';
   else if (!pr) txt = 'coéquipier connecté…';
   else if (pr.carte !== G.world.carte) { const c = carte(pr.carte); txt = `${pr.nom || 'Coéquipier'} : à ${c ? c.nom : 'un autre lieu'}`; }
   else {
@@ -634,10 +635,20 @@ function brancherMulti() {
       jouerCine(id, () => { if (document.querySelector('.carte-grille')) rafraichirCarteSeule(); }, true);
     }
   });
+  // Horloge de l'hôte adoptée par l'invité : on rafraîchit l'affichage et la
+  // bascule jour/nuit (ambiance + ombrage) sans toucher à sa propre survie.
+  multi.poser('onHeure', () => { verifierBasculeNuit(); updateHUD(); });
+  // Sommeil partagé : l'autre s'est (dé)préparé → on rafraîchit le panneau Dormir
+  // s'il est ouvert ; le « go » à deux déclenche le sommeil de chacun.
+  multi.poser('onDodo', () => {
+    if (panelOuvert() && (($('.panel-head h2') || {}).textContent === 'Dormir')) panneauSommeil();
+  });
+  multi.poser('onDodoGo', (heures) => executerSommeil(heures));
 }
 brancherMulti();
 
 function svgCarte(reach, vis) {
+  if (estGraphe(G.world.carte)) return svgCartePlan(reach, vis); // plan à nœuds libres
   const C = carteCourante();
   const interieur = C.echelle === 'interieur';
   // Cases plus petites au zoom moyen (quartier) : on voit la rue plus loin.
@@ -731,6 +742,120 @@ function svgCarte(reach, vis) {
     if (interieur) murs += mursDeCase(cd, x, y, px, py, CS, connue);
   }
   return `<svg class="carte-grille" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${cells}${murs ? `<g fill="none" stroke="${MUR_TRAIT}" stroke-width="3" stroke-linecap="square">${murs}</g>` : ''}</svg>`;
+}
+
+// ============ Rendu « plan » : carte quartier à nœuds libres ============
+// Un vrai plan de ville : les RUES sont des rubans entre nœuds liés, les BÂTIMENTS
+// des blocs cernés (les murs), les places/parcs des nœuds plus larges. On se déplace
+// de nœud en nœud comme avant, mais on voit enfin le tracé des rues et les façades.
+const TAILLE_NOEUD = { place: 34, parc: 30, rue: 21, route: 23, autoroute: 23, batiment: 28, ville: 30, village: 28, site: 28, eau: 24, porte: 18 };
+const BATI = new Set(['batiment', 'ville', 'village', 'site']);
+// Position d'un nœud sur le plan : explicite (cx,cy) si dessinée à la main, sinon
+// dérivée de la grille AVEC un décalage déterministe par nœud — ça casse l'alignement
+// rigide et donne un tracé de rues organique, sans rien placer à la main.
+function posN(cd, x, y) {
+  if (cd.cx != null && cd.cy != null) return { cx: cd.cx, cy: cd.cy };
+  const h = graine(x, y);
+  return { cx: x * 78 + 52 + ((h & 31) - 15), cy: y * 78 + 52 + (((h >> 6) & 31) - 15) };
+}
+function rayonN(cd) { return cd.r ?? TAILLE_NOEUD[cd.t] ?? 21; }
+function anneauN(cx, cy, r, couleur, dash = false) {
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${couleur}" stroke-width="1.6" ${dash ? 'stroke-dasharray="3 2.5"' : ''}/>`;
+}
+function glypheN(cd, cx, cy, r) {
+  const g = (s) => `<g stroke="${T_TRAIT}" stroke-width="1.3" fill="none" stroke-linecap="round">${s}</g>`;
+  if (BATI.has(cd.t)) { // quelques fenêtres sur la façade
+    const w = r * 0.34;
+    return g(`<line x1="${cx - w}" y1="${cy - r * .35}" x2="${cx - w}" y2="${cy + r * .35}"/><line x1="${cx + w}" y1="${cy - r * .35}" x2="${cx + w}" y2="${cy + r * .35}"/>`);
+  }
+  if (cd.t === 'parc' || cd.t === 'vegetal') return `<circle cx="${cx}" cy="${cy - 1}" r="${r * .42}" fill="#3c5436" stroke="#2c3f29" stroke-width="1"/><line x1="${cx}" y1="${cy + r * .1}" x2="${cx}" y2="${cy + r * .5}" stroke="#2c3f29" stroke-width="2"/>`;
+  if (cd.t === 'eau') return g(`<path d="M${cx - r * .5} ${cy} q${r * .25} -6 ${r * .5} 0 t${r * .5} 0"/>`);
+  return ''; // rue/place : la chaussée parle d'elle-même
+}
+const T_TRAIT = '#6d5d42';
+function svgCartePlan(reach, vis) {
+  const C = carteCourante();
+  const toutConnu = hasItem('carte_quartier');
+  const connue = (vx, vy) => toutConnu || estDecouverte(G.world.carte, vx, vy);
+  const vivante = carteVivante(G.world.carte);
+  const zombies = vivante ? zombiesSur(G.world.carte) : [];
+  const morts = vivante ? mortsSur(G.world.carte) : [];
+  const pair = multi.estMulti() ? multi.pairEtat() : null;
+  const lampe = lumiereActive();
+  // Dimensions du plan : carte.vue, sinon enveloppe des nœuds.
+  let W = C.vue && C.vue.x, H = C.vue && C.vue.y;
+  if (!W || !H) {
+    W = 0; H = 0;
+    for (const [pos, cd] of Object.entries(C.cases)) {
+      const [x, y] = pos.split(',').map(Number); const { cx, cy } = posN(cd, x, y); const r = rayonN(cd);
+      W = Math.max(W, cx + r + 18); H = Math.max(H, cy + r + 22);
+    }
+  }
+  // 1) Les rues : un ruban par paire de nœuds liés (dessiné une seule fois).
+  let rues = '', cells = '';
+  const fait = new Set();
+  for (const [pos, cd] of Object.entries(C.cases)) {
+    const [x, y] = pos.split(',').map(Number);
+    const a = posN(cd, x, y);
+    for (const [bx, by] of voisinsCandidats(G.world.carte, x, y)) {
+      const lk = `${bx},${by}`;
+      const bcd = C.cases[lk]; if (!bcd) continue;
+      const cle = pos < lk ? pos + '|' + lk : lk + '|' + pos; if (fait.has(cle)) continue; fait.add(cle);
+      if (!connue(x, y) && !connue(bx, by)) continue;
+      const b = posN(bcd, bx, by);
+      const route = ROUTIER.has(cd.t) || ROUTIER.has(bcd.t);
+      const large = route ? 15 : 9;
+      rues += `<line x1="${a.cx}" y1="${a.cy}" x2="${b.cx}" y2="${b.cy}" stroke="${BANDE}" stroke-width="${large}" stroke-linecap="round"/>`;
+      if (route) rues += `<line x1="${a.cx}" y1="${a.cy}" x2="${b.cx}" y2="${b.cy}" stroke="#3a3a40" stroke-width="1" stroke-dasharray="4 6" stroke-linecap="round"/>`;
+    }
+  }
+  // 2) Les nœuds.
+  for (const [pos, cd] of Object.entries(C.cases)) {
+    const [x, y] = pos.split(',').map(Number);
+    if (!connue(x, y)) continue;
+    const { cx, cy } = posN(cd, x, y); const r = rayonN(cd);
+    const ici = x === G.world.x && y === G.world.y;
+    const aVue = vis.has(pos);
+    const atteign = reach.has(pos);
+    const sel = selection === pos;
+    const k = ckey(G.world.carte, x, y);
+    const t = TERRAIN[cd.t] || TERRAIN.rue;
+    const bati = BATI.has(cd.t);
+    let inner = bati
+      ? `<rect x="${cx - r}" y="${(cy - r * 0.82).toFixed(1)}" width="${r * 2}" height="${(r * 1.64).toFixed(1)}" rx="3" fill="${t.fill}" stroke="${MUR_TRAIT}" stroke-width="2"/>`
+      : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="1.3"/>`;
+    inner += glypheN(cd, cx, cy, r);
+    if (cd.vers) inner += `<rect x="${cx - 5}" y="${(cy + r - 7).toFixed(1)}" width="10" height="13" rx="1" fill="#16130e" stroke="${cd.verrou && !G.world.verrous[k] ? '#8a5a28' : '#6d5d42'}" stroke-width="1.3"/>`;
+    if (solVisible(k).length) inner += `<circle cx="${(cx + r - 5).toFixed(1)}" cy="${(cy - r + 5).toFixed(1)}" r="3" fill="${CODES.sol}"/>`;
+    if (estSecurisee(k)) inner += anneauN(cx, cy, r + 3, CODES.securisee);
+    else if ((cd.danger || 0) >= 0.4) inner += anneauN(cx, cy, r + 3, CODES.danger);
+    const niv = niveauSombre(cd);
+    const eclairee = lampe && (ici || aVue);
+    if (niv === 2 && !eclairee) inner += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#050507" opacity=".44"/>`;
+    if (niv === 1) inner += anneauN(cx, cy, r + 5, CODES.sombre, true);
+    else if (niv === 2) inner += anneauN(cx, cy, r + 5, CODES.sombre);
+    const lbl = cd.lbl !== undefined ? cd.lbl : (cd.nom ? cd.nom.split(' ')[0] : '');
+    if (lbl && !ici) inner += `<text x="${cx}" y="${(cy + r + 16).toFixed(1)}" text-anchor="middle" font-size="16" fill="#e3d8bd" stroke="#0a0a0b" stroke-width="3" paint-order="stroke" style="font-weight:600">${lbl.slice(0, 14)}</text>`;
+    if (!aVue && !ici) inner += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#08080a" opacity=".4"/>`;
+    const box = [cx - 14, cy - 14, 28]; // boîte synthétique pour réutiliser les pions
+    if (aVue) {
+      const corps = morts.some(m => m.x === x && m.y === y) || zombies.some(z => z.faitLeMort && z.x === x && z.y === y);
+      if (corps) inner += pictoCadavre(box[0], box[1], box[2]);
+      const zlist = zombies.filter(z => !z.faitLeMort && z.x === x && z.y === y);
+      if (zlist.length) inner += pionZombie(box[0], box[1], box[2], zlist.length, zlist[0].dir, !!zlist[0].spin);
+    }
+    if (pair && aVue && pair.carte === G.world.carte && pair.x === x && pair.y === y) inner += pionAllie(box[0], box[1], box[2], pair, ici ? 4 : 0);
+    if (ici) {
+      const off = (pair && pair.carte === G.world.carte && pair.x === x && pair.y === y) ? -4 : 0;
+      inner += `<g class="joueur"><circle cx="${cx + off}" cy="${cy + off}" r="6" fill="#c9b98a" stroke="#0b0b0c" stroke-width="1.8"/>
+        <circle cx="${cx + off}" cy="${cy + off}" r="9" fill="none" stroke="#c9b98a" stroke-width="1" opacity=".5"/></g>`;
+    }
+    const hl = bati
+      ? `<rect class="hl" x="${cx - r - 2}" y="${(cy - r * 0.82 - 2).toFixed(1)}" width="${r * 2 + 4}" height="${(r * 1.64 + 4).toFixed(1)}" rx="4"/>`
+      : `<circle class="hl" cx="${cx}" cy="${cy}" r="${r + 2.5}"/>`;
+    cells += `<g class="case ${atteign ? 'atteignable' : ''} ${sel ? 'selection' : ''}" data-case="${pos}">${inner}${hl}</g>`;
+  }
+  return `<svg class="carte-grille plan" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><g class="rues">${rues}</g>${cells}</svg>`;
 }
 
 function tagsCase(cd, k) {
@@ -917,6 +1042,16 @@ function basculerLampePortee() {
 
 // ---------- Attendre : laisser filer le temps pour reprendre son souffle ----------
 function panneauAttendre() {
+  // En co-op, on ne « saute » pas le temps tout seul (ça désynchroniserait les
+  // deux horloges) : le temps s'écoule déjà en continu. Pour franchir la nuit,
+  // on dort à deux. Le bouton ne propose donc que ce rappel.
+  if (multi.estMulti() && multi.pairPresent()) {
+    showPanel(`
+      <div class="panel-head"><h2>Attendre</h2><button class="panel-close">×</button></div>
+      <p class="cap-line">En co-op, le temps s'écoule en continu, à l'identique pour vous deux : pas besoin d'attendre.
+      Pour sauter une longue période (la nuit), <b>dormez en même temps</b> depuis le menu Dormir.</p>`);
+    return;
+  }
   const box = showPanel(`
     <div class="panel-head"><h2>Attendre</h2><button class="panel-close">×</button></div>
     <p class="cap-line">S'asseoir, souffler, guetter. Le repos rend l'endurance bien plus vite que la marche —
@@ -1030,11 +1165,17 @@ function marcher(chemin) {
   const pas = () => {
     if (!enMarche || !G) return;
     const [x, y] = chemin.shift();
-    const r = advanceTime(C.tempsParCase);
-    r.messages.forEach(m => log(m.t, m.c));
-    if (r.mort) { enMarche = false; return; }
+    // Le temps n'est plus « sauté » par pas : il coule en temps réel (boucle du
+    // monde), donc marcher coûte le temps réel de la marche — pareil pour les deux.
     G.world.x = x; G.world.y = y;
-    sfx('pas');
+    sfx('pas'); // un pas bref et net à chaque case
+    // De temps en temps, une lame craque sous le pied : ça s'entend, et ça peut
+    // attirer un mort tout proche. La nuit, on est plus lourd, plus maladroit.
+    if (carteVivante(G.world.carte) && ++pasDepuisCraque >= 5 && chance(estNuit() ? 0.55 : 0.38)) {
+      pasDepuisCraque = 0;
+      sfx('pas_craque');
+      attirerZombies(G.world.carte, x, y, estNuit() ? 3 : 2);
+    }
     decouvrirAutour(G.world.carte, x, y);
     G.player.sta = Math.max(0, G.player.sta - 0.6); // marcher use, un peu
     const vis = casesVisibles(G.world.carte, x, y);
@@ -1045,7 +1186,7 @@ function marcher(chemin) {
       if (fm) { reveillerFauxMort(fm); sfx('zombie'); }
       const ev = tickZombies(G.world.carte, vis);
       if (ev.portes.length) {
-        sfx('porte_coup');
+        sfx(ev.portes.some(p => p.cassee) ? 'porte_casse' : 'porte_coup');
         if (ev.portes.some(p => p.cassee)) log('Une porte cède sous les coups, tout près.', 'bad');
       }
       contact = ev.contact;
@@ -1097,9 +1238,8 @@ function entrerCase() {
   const cible = carte(cd.vers.carte);
   const minutes = cd.vers.temps ?? C.tempsParCase;
   attente(cible && cible.echelle === 'interieur' ? 'Tu entres…' : 'Tu ressors…', minutes, () => {
-    const r = advanceTime(minutes);
-    r.messages.forEach(m => log(m.t, m.c));
-    if (r.mort) return;
+    // Plus de saut d'horloge ici : le temps coule en temps réel pendant l'attente
+    // (boucle « battement du monde »), identique pour les deux joueurs en co-op.
     G.world.carte = cd.vers.carte;
     G.world.x = cd.vers.x; G.world.y = cd.vers.y;
     peuplerCarte(G.world.carte);
@@ -1198,9 +1338,7 @@ function fouiller(aTatons = false) {
   // Le temps s'accélère quand on agit : chaque fouille mange de longues minutes.
   const minutes = tempsFouille(f.n);
   attente(aTatons ? 'Tu fouilles à tâtons…' : 'Tu fouilles…', minutes, () => {
-    const r = advanceTime(minutes);
-    r.messages.forEach(m => log(m.t, m.c));
-    if (r.mort) return;
+    // Le temps file en temps réel pendant l'attente : pas de saut d'horloge ici.
     G.player.sta = Math.max(0, G.player.sta - (4 + 2 * f.n));
 
     // Danger : farfouiller fait du bruit, et plus longtemps on reste, plus on en fait.
@@ -1354,9 +1492,6 @@ function panneauPuiser() {
 
   const puiser = (minutes, action) => {
     attente('Tu puises l\'eau…', minutes, () => {
-      const r = advanceTime(minutes);
-      r.messages.forEach(m => log(m.t, m.c));
-      if (r.mort) return;
       action();
       sfx('eau_verse');
       save();
@@ -1558,9 +1693,6 @@ function ecranVerrou(cd, k) {
       const o = cd.verrou.options[parseInt(b.dataset.vopt, 10)];
       closeEvt();
       attente(`${o.label}…`, o.tempsMin || 5, () => {
-        const r = advanceTime(o.tempsMin || 5);
-        r.messages.forEach(m => log(m.t, m.c));
-        if (r.mort) return;
         if (o.methode === 'skill' || o.methode === 'skillItem') {
           const up = gainSkill(o.skill, 10);
           if (up) log(`Compétence ${o.skill} : niveau ${up.niveau} !`, 'good');
@@ -1635,9 +1767,6 @@ function actionSpeciale(sp) {
       if (!hasItem('canne_peche')) { toast('Il te faut une canne à pêche.'); renderLieu(); break; }
       if (!placePour('poisson_cru', 2)) { toast('Fais de la place dans ton sac avant de pêcher.'); renderLieu(); break; }
       attente('Tu pêches, l\'œil sur le fil…', 60, () => {
-        const r = advanceTime(60);
-        r.messages.forEach(m => log(m.t, m.c));
-        if (r.mort) return;
         const bonus = hasItem('appat') ? 0.2 : 0;
         if (bonus) removeItem('appat', 1);
         if (jetReussi({ skill: 'chasse', base: 0.35 + bonus, parNiveau: 0.15 })) {
@@ -1660,9 +1789,6 @@ function actionSpeciale(sp) {
         if (!removeItem('collet', 1)) { toast('Il te faut un collet.'); renderLieu(); break; }
         attente('Tu poses le collet…', 15, () => {
           v.colletPose = G.world.statsTemps;
-          const r = advanceTime(15);
-          r.messages.forEach(m => log(m.t, m.c));
-          if (r.mort) return;
           log('Tu dissimules le collet sur une coulée fraîche. Reviens dans quelques heures.', 'good');
           gainSkill('chasse', 6);
           save(); renderLieu();
@@ -1693,9 +1819,6 @@ function actionSpeciale(sp) {
     }
     case 'siphon': {
       attente('Tu siphonnes le gasoil…', 20, () => {
-        const r = advanceTime(20);
-        r.messages.forEach(m => log(m.t, m.c));
-        if (r.mort) return;
         const continuer = () => {
           if (!hasItem('tuyau_plastique') || !hasItem('bidon_vide')) { toast('Il te faut un tuyau et un bidon vide.'); renderLieu(); return; }
           const libere = (defItem('bidon_vide').espace || 0);
@@ -1752,9 +1875,6 @@ function actionSpeciale(sp) {
 // ---------- Scènes spéciales : commissariat, gare ----------
 function ecranCellules() {
   attente('Tu t\'enfonces dans le couloir…', 10, () => {
-    const r = advanceTime(10);
-    r.messages.forEach(m => log(m.t, m.c));
-    if (r.mort) return;
     const box = showEvt(`<h2 class="lieu-nom">Le couloir des cellules</h2>
       <div class="narration">Ta lumière accroche les barreaux un à un. Des cellules de garde à vue ouvertes, des traces de lutte. Dans la dernière, une silhouette en uniforme est assise contre le mur — un gardien, mort à son poste, les clés encore à la ceinture et un post-it dans sa pochette de poitrine.\n\nDans la cellule d'en face, <span class="gore">quelque chose se jette contre les barreaux</span>. Un détenu. Enfin, ça l'était. La moitié de son visage reste accrochée aux barreaux quand il recule pour charger à nouveau.</div>
       <div class="actions">
@@ -1821,9 +1941,6 @@ function transporterBatterie() {
   box.querySelector('[data-bat="go"]').onclick = () => {
     closeEvt();
     attente('Le grand portage…', 60, () => {
-      const r = advanceTime(60);
-      r.messages.forEach(m => log(m.t, m.c));
-      if (r.mort) return;
       G.player.sta = Math.max(5, G.player.sta - 45);
       const arriverGare = () => {
         setFlag('batterie_a_la_gare');
@@ -2010,7 +2127,7 @@ function tickTempsReel() {
   majTension(vis);
   if (ev.contact) { lancerCombatContact(ev.contact); return; }
   if (ev.portes.length) {
-    sfx('porte_coup');
+    sfx(ev.portes.some(p => p.cassee) ? 'porte_casse' : 'porte_coup');
     if (ev.portes.some(p => p.cassee)) log('Une porte cède sous les coups — le passage n\'est plus sûr. Reste sur tes gardes.', 'bad');
     else if (chance(0.45)) log('Des coups sourds contre une porte, tout près. Quelque chose veut entrer.', 'warn');
   }
@@ -2030,35 +2147,101 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// ---------- Le battement du monde : le temps s'écoule en TEMPS RÉEL ----------
+// 1 minute de jeu par seconde réelle (12 min réelles = une demi-journée). En solo
+// et chez l'HÔTE, ce battement fait avancer l'horloge ; l'INVITÉ n'avance pas sa
+// propre horloge (il adopte celle de l'hôte via onHeure) mais applique sa survie.
+// Plus aucun saut de temps « par action » : le temps passe parce qu'il passe.
+const BATTEMENT_MS = 1000;
+let prevNuit = null;
+let battementsDepuisSave = 0;
+function enJeu() {
+  const tb = $('#topbar');
+  return !!(G && G.world && tb && !tb.classList.contains('hidden'));
+}
+function mondeActif() {
+  if (typeof document === 'undefined' || document.hidden) return false;
+  if (!enJeu()) return false;
+  if (enCombat() || cineEnCours()) return false; // combat tour par tour / cinématique : le temps se fige
+  return true;
+}
+// La bascule jour↔nuit doit rafraîchir l'ambiance et l'ombrage de la carte.
+function verifierBasculeNuit() {
+  const nuit = estNuit();
+  if (nuit === prevNuit) return;
+  const etaitConnu = prevNuit !== null;
+  prevNuit = nuit;
+  if (etaitConnu && document.querySelector('.carte-grille') && !modaleBloque() && !enMarche) renderLieu();
+}
+function battementMonde() {
+  if (!mondeActif()) return;
+  const invite = multi.estInvite();
+  const r = advanceTime(1, invite ? { sansHorloge: true } : {});
+  r.messages.forEach(m => log(m.t, m.c));
+  verifierBasculeNuit();
+  updateHUD();
+  if (r.mort) return; // l'écran de mort (omd-mort) prend le relais
+  if (multi.estHote()) multi.diffuserHeure(); // l'hôte fait foi et diffuse l'heure
+  if (++battementsDepuisSave >= 20) { battementsDepuisSave = 0; save(); }
+}
+if (typeof window !== 'undefined') setInterval(battementMonde, BATTEMENT_MS);
+
+// Effectue réellement le sommeil (effets, réveil, éventuelle attaque). Durée fixe
+// à l'écran (c'est un saut de temps, pas un geste). En co-op, l'invité applique la
+// survie sans avancer l'horloge — l'hôte fait foi et diffuse le nouveau « Jour J ».
+function executerSommeil(h) {
+  closePanel();
+  const sur = lieuSur();
+  const piege = hasItem('piege_sonore');
+  attente('Vous dormez…', 0, () => {
+    const r = dormir(h, sur, piege, multi.estInvite());
+    r.messages.forEach(m => log(m.t, m.c));
+    if (G.player.pv <= 0) return;
+    save();
+    if (r.attaque) {
+      if (piege) log('Le piège sonore a claqué dans le noir : tu es debout, arme en main, avant que la chose ne t\'atteigne.', 'good');
+      demarrerCombat([pick(zombiesPoolCourant())], { surprise: !piege, onFin: () => renderLieu() });
+    } else {
+      renderLieu();
+    }
+  }, { ms: 2600, noCancel: multi.estMulti() }); // en co-op on ne peut pas annuler (ça désyncerait)
+}
+
 function panneauSommeil() {
   const sur = lieuSur();
   const piege = hasItem('piege_sonore');
   const jusquauMatin = G.world.heure >= 19 || G.world.heure < 7
     ? (G.world.heure >= 19 ? (24 - G.world.heure) + 7 : 7 - G.world.heure)
     : null;
+  // En co-op, on ne dort qu'à DEUX : chacun propose une durée, et le sommeil ne
+  // s'enclenche (pour tout le monde, durée la plus courte) que lorsque les deux
+  // sont prêts. Tant qu'on attend l'autre, le panneau affiche l'état d'attente.
+  const coop = multi.estMulti() && multi.pairPresent();
+  const enAttente = coop && multi.dodoEtat().moi != null;
+  const lib = (base) => coop ? base.replace('Faire', 'Proposer').replace('Dormir', 'Proposer de dormir') : base;
   const box = showPanel(`
     <div class="panel-head"><h2>Dormir</h2><button class="panel-close">×</button></div>
-    <p class="cap-line">${sommeilInfo()}.${!sur && piege ? ' Ton piège sonore montera la garde.' : ''}</p>
+    <p class="cap-line">${sommeilInfo()}.${!sur && piege ? ' Ton piège sonore montera la garde.' : ''}${coop ? '<br><b>Co-op :</b> vous dormez en même temps — propose une durée, ton coéquipier doit la rejoindre (on dort de la plus courte des deux).' : ''}</p>
     <div class="actions">
-      ${btnAct('data-sieste="3"', 'Faire une sieste (3 h)')}
-      ${jusquauMatin ? btnAct(`data-sieste="${jusquauMatin}"`, `Dormir jusqu'au matin (${jusquauMatin} h)`) : btnAct('data-sieste="8"', 'Dormir longuement (8 h)')}
+      ${enAttente
+        ? `<p class="cap-line">En attente que ton coéquipier dorme aussi…</p>${btnAct('data-dodo-annule="1"', 'Annuler')}`
+        : `${btnAct('data-sieste="3"', lib('Faire une sieste (3 h)'))}
+           ${jusquauMatin ? btnAct(`data-sieste="${jusquauMatin}"`, lib(`Dormir jusqu'au matin (${jusquauMatin} h)`)) : btnAct('data-sieste="8"', lib('Dormir longuement (8 h)'))}`}
     </div>`);
+  if (enAttente) {
+    box.querySelector('[data-dodo-annule]').onclick = () => { multi.annulerDodo(); closePanel(); };
+    return;
+  }
   box.querySelectorAll('[data-sieste]').forEach(b => {
     b.onclick = () => {
-      closePanel();
       const h = parseInt(b.dataset.sieste, 10);
-      attente('Tu dors…', h * 60, () => {
-        const r = dormir(h, lieuSur(), piege);
-        r.messages.forEach(m => log(m.t, m.c));
-        if (G.player.pv <= 0) return;
-        save();
-        if (r.attaque) {
-          if (piege) log('Le piège sonore a claqué dans le noir : tu es debout, arme en main, avant que la chose ne t\'atteigne.', 'good');
-          demarrerCombat([pick(zombiesPoolCourant())], { surprise: !piege, onFin: () => renderLieu() });
-        } else {
-          renderLieu();
-        }
-      });
+      if (coop) {
+        multi.proposerDodo(h);
+        toast('Tu te prépares à dormir — en attente de ton coéquipier.');
+        panneauSommeil(); // bascule l'affichage en mode « attente »
+      } else {
+        executerSommeil(h);
+      }
     };
   });
 }

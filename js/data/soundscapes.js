@@ -46,7 +46,7 @@ export const SCENES_SONORES = {
     stingersNuit: [['gemissement', 2], ['grattement', 2]],
     stingersJour: [['cigales', 3], ['fontaine', 2]], // place Crousillat, la Fontaine Moussue à deux pas
     intervalle: [9, 24],
-    musique: { base: 110, gammes: [[0, 3, 5, 7, 10], [0, 2, 3, 7, 9]], p: 0.55, timbre: 'triangle' },
+    musique: { theme: 'refuge' }, // une vraie nappe dès le départ (l'hôtel, ton terrier) — plus de long silence
   },
   interieur: {
     vent: [320, 0.10, 0.07],

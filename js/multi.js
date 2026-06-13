@@ -37,6 +37,7 @@ export async function demarrer(opts) {
       if (cbs.onSysteme) cbs.onSysteme(`${(m && m.nom) || net.nomPair() || 'Ton coéquipier'} a rejoint la partie.`, 'good');
     } else {
       pair = null;
+      dodo = { moi: null, pair: null }; // un dormeur s'en va : on oublie sa demande
       if (cbs.onPairMaj) cbs.onPairMaj(null);
       if (cbs.onSysteme) cbs.onSysteme('Ton coéquipier a quitté la partie.', 'warn');
     }
@@ -47,7 +48,7 @@ export async function demarrer(opts) {
   });
   return r;
 }
-export function arreter() { actif = false; monRole = null; pair = null; net.deconnecter(); }
+export function arreter() { actif = false; monRole = null; pair = null; dodo = { moi: null, pair: null }; net.deconnecter(); }
 
 // ---------- Émissions ----------
 // L'hôte envoie le monde complet à l'invité (adopté tel quel côté invité).
@@ -75,6 +76,40 @@ export function diffuserEvenement(ev) { if (actif) net.envoyer({ t: 'evt', ...ev
 // Une cinématique déclenchée par moi : l'autre doit la voir aussi.
 export function diffuserCine(id) { if (actif) net.envoyer({ t: 'cine', id }); }
 
+// ---------- Horloge : l'hôte fait foi ----------
+// Le temps s'écoule en temps réel chez l'hôte ; il diffuse l'heure en continu et
+// l'invité l'adopte telle quelle (il n'avance jamais sa propre horloge). C'est ce
+// qui garde le « Jour J — HH:MM » identique des deux côtés.
+export function diffuserHeure() {
+  if (!actif || !estHote()) return;
+  net.envoyer({ t: 'heure', jour: G.world.jour, heure: G.world.heure, minute: G.world.minute, statsTemps: G.world.statsTemps });
+}
+
+// ---------- Sommeil partagé ----------
+// On ne dort qu'à deux : chacun se met « prêt à dormir (Xh) » ; quand les deux le
+// sont, l'HÔTE arbitre (durée la plus courte), avance le temps pour tout le monde
+// et diffuse le « go ». Personne ne saute le temps tout seul → pas de re-désync.
+let dodo = { moi: null, pair: null }; // heures proposées de part et d'autre (null = pas prêt)
+export function dodoEtat() { return { ...dodo }; }
+export function proposerDodo(heures) {
+  if (!actif) return;
+  dodo.moi = heures;
+  net.envoyer({ t: 'dodo', sub: 'set', heures });
+  evaluerDodo();
+}
+export function annulerDodo() {
+  if (!actif) return;
+  dodo.moi = null;
+  net.envoyer({ t: 'dodo', sub: 'cancel' });
+}
+function evaluerDodo() {
+  if (!estHote() || dodo.moi == null || dodo.pair == null) return;
+  const heures = Math.min(dodo.moi, dodo.pair);
+  dodo = { moi: null, pair: null };
+  net.envoyer({ t: 'dodo', sub: 'go', heures });
+  if (cbs.onDodoGo) cbs.onDodoGo(heures);
+}
+
 function pvTier() { const p = G.player.pv; return p > 66 ? 'ok' : p > 33 ? 'amoche' : 'critique'; }
 
 // ---------- Réception ----------
@@ -101,6 +136,18 @@ function recevoir(m) {
       break;
     case 'cine':
       if (cbs.onCine) cbs.onCine(m.id);
+      break;
+    case 'heure':
+      if (estInvite()) {
+        G.world.jour = m.jour; G.world.heure = m.heure; G.world.minute = m.minute;
+        if (typeof m.statsTemps === 'number') G.world.statsTemps = m.statsTemps;
+        if (cbs.onHeure) cbs.onHeure();
+      }
+      break;
+    case 'dodo':
+      if (m.sub === 'set') { dodo.pair = m.heures; if (cbs.onDodo) cbs.onDodo(dodoEtat()); evaluerDodo(); }
+      else if (m.sub === 'cancel') { dodo.pair = null; if (cbs.onDodo) cbs.onDodo(dodoEtat()); }
+      else if (m.sub === 'go') { dodo = { moi: null, pair: null }; if (cbs.onDodoGo) cbs.onDodoGo(m.heures); }
       break;
   }
 }

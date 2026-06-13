@@ -10,6 +10,7 @@ export const CARTES_SALON_QUARTIERS = {
   q_cours: {
     nom: 'Les cours', sousTitre: 'l\'anneau des boulevards — jour de marché, pour toujours',
     echelle: 'quartier', tempsParCase: 3, largeur: 10, hauteur: 8,
+    graphe: true, liensAuto: true, // plan à nœuds : rues dessinées, déplacement de nœud en nœud
     exterieur: true, ambiance: 'rue', illu: 'avenue',
     zombiesPool: ['errant', 'errant', 'coureur', 'hurleur', 'gonfle', 'chien_infecte', 'traqueur'],
     cases: {
@@ -253,6 +254,7 @@ export const CARTES_SALON_QUARTIERS = {
   q_gare: {
     nom: 'Quartier de la gare', sousTitre: 'le bout de la ville, le début de la voie',
     echelle: 'quartier', tempsParCase: 3, largeur: 6, hauteur: 6,
+    graphe: true, liensAuto: true, // plan à nœuds : rues dessinées, déplacement de nœud en nœud
     exterieur: true, ambiance: 'rue', illu: 'avenue',
     zombiesPool: ['errant', 'coureur', 'rampant', 'hurleur', 'brule'],
     cases: {
