@@ -7,10 +7,10 @@ import { item } from './data/items.js';
 import { cloth, CLOTHES, SLOTS } from './data/clothing.js';
 import { MORTS, SCENES } from './data/story.js';
 import {
-  poidsTotal, poidsMax, espaceUtilise, espaceMax, equiperArme, desequiperArme,
+  poidsTotal, poidsMax, poidsPlafond, surcharge, enSurpoids, espaceUtilise, espaceMax, equiperArme, desequiperArme,
   equiperVetement, desequiperVetement, dropItem, protectionTotale, chaleurTotale, hasItem,
   accesRapide, nbSlotsAccesRapide, mettreEnAccesRapide, retirerAccesRapide, peutAccesRapide,
-  countItem, defItem, removeItem,
+  countItem, defItem, removeItem, libelleJetes,
   estContenant, recipientOuvert, contenance, descEau, fmtL, verserEau, instancePourEau, consolider,
   estLampe, basculerLampe, tenirLampe,
 } from './inventory.js';
@@ -20,12 +20,13 @@ import {
 } from './survival.js';
 import { solDe, keyCourante } from './world.js';
 import { listeRecettes, fabriquer } from './crafting.js';
-import { renderLieu, objectifActuel, initPosition } from './map.js';
+import { renderLieu, objectifActuel, initPosition, syncCaseCourante } from './map.js';
 import { jouerScene } from './scenes.js';
 import { jouerCine } from './cinema.js';
 import { enCombat } from './combat.js';
 import { demarrerAlertes, stopperAlertes } from './effects.js';
 import { initAudio, playAmbiance, sfx, setMuted, isMuted, getVolume, setVolume, stopCombatMusic, setHeartbeat } from './audio.js';
+import * as multi from './multi.js';
 
 // La partie est-elle terminée (mort affichée, fin de chapitre, abandon) ?
 // Tant que c'est vrai, l'autosauvegarde est coupée pour ne jamais écraser
@@ -97,6 +98,7 @@ function ecranTitre() {
   showHUD(false);
   stopCombatMusic();
   setHeartbeat(false);
+  multi.arreter(); // on quitte toute session co-op en revenant au titre
   stopperAlertes(); // pas de voile d'infection sur l'écran titre
   render(`
     <div class="illu">${svgScene('titre')}</div>
@@ -151,12 +153,14 @@ function ecranNouvelle() {
       <input type="text" id="inp-nom" maxlength="16" placeholder="Ton prénom (Sam)" autocomplete="off">
       ${btnAct('data-d="normal"', 'Commencer — Survivant', 'la mort te ramène à ta dernière sauvegarde', { classe: 'primary' })}
       ${btnAct('data-d="extreme"', 'Commencer — Un seul jour', 'mort permanente : la mort efface ta partie')}
+      ${btnAct('data-d="coop"', 'Jouer à deux →', 'co-op sur le même Wi-Fi (héberger ou rejoindre)')}
       ${btnAct('data-d="retour"', 'Retour')}
     </div>`);
   document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => {
     sfx('clic');
     if (b.dataset.d === 'retour') return ecranTitre();
     const nom = ($('#inp-nom').value || 'Sam').trim().slice(0, 16);
+    if (b.dataset.d === 'coop') return ecranCoop(nom);
     clearSave();
     newGame(nom, b.dataset.d);
     initPosition();
@@ -166,6 +170,122 @@ function ecranNouvelle() {
     updateHUD();
     demarrerAlertes();
     jouerIntro();
+  });
+}
+
+// ---------- Co-op : héberger ou rejoindre (2 joueurs, même Wi-Fi) ----------
+let infosLan = null; // { port, ips } récupéré de /api/lan, pour afficher l'adresse à partager
+function codeSalon() {
+  const lettres = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans I/O/0/1 (ambigus)
+  let c = '';
+  for (let i = 0; i < 4; i++) c += lettres[Math.floor(Math.random() * lettres.length)];
+  return c;
+}
+async function chargerLan() {
+  if (infosLan) return infosLan;
+  try { const r = await fetch('/api/lan'); if (r.ok) infosLan = await r.json(); } catch (e) {}
+  return infosLan;
+}
+function adresseLan() {
+  if (!infosLan || !infosLan.ips || !infosLan.ips.length) return null;
+  return `http://${infosLan.ips[0]}:${infosLan.port}`;
+}
+
+function ecranCoop(nom) {
+  render(`
+    <h2 class="lieu-nom">Jouer à deux</h2>
+    <div class="narration">Deux survivants, le même Salon. L'un <em>héberge</em> la partie sur son appareil ; l'autre ouvre la même adresse sur le sien (même Wi-Fi) et la <em>rejoint</em> avec le code.\n\nVous vous voyez sur la carte quand vous êtes dans le champ de vision l'un de l'autre, et vous pouvez vous prêter main-forte dans un combat.</div>
+    <div class="menu">
+      <input type="text" id="inp-nom" maxlength="16" placeholder="Ton prénom (Sam)" autocomplete="off" value="${(nom || '').replace(/"/g, '')}">
+      ${btnAct('data-c="hote"', 'Héberger une partie', 'tu crées le monde, l\'autre te rejoint', { classe: 'primary' })}
+      ${btnAct('data-c="rejoindre"', 'Rejoindre une partie', 'entre dans le monde de l\'hôte')}
+      ${btnAct('data-c="retour"', 'Retour')}
+    </div>`);
+  document.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
+    sfx('clic');
+    const n = ($('#inp-nom').value || 'Sam').trim().slice(0, 16);
+    if (b.dataset.c === 'retour') return ecranNouvelle();
+    if (b.dataset.c === 'hote') return ecranCoopHote(n);
+    return ecranCoopRejoindre(n);
+  });
+}
+
+function ecranCoopHote(nom) {
+  const code = codeSalon();
+  chargerLan().then(() => {
+    const adr = adresseLan();
+    render(`
+      <h2 class="lieu-nom">Héberger — code ${code}</h2>
+      <div class="narration">Donne à l'autre joueur :\n\n${adr ? `• l'adresse <b class="code">${adr}</b> (à ouvrir dans son navigateur)` : '• ton adresse réseau (visible dans la fenêtre du serveur)'}\n• le code de salon <b class="code">${code}</b>\n\nTu peux commencer tout de suite : il pourra te rejoindre quand il veut, il atterrira là où tu en seras.</div>
+      <div class="menu">
+        ${btnAct('data-d="normal"', 'Créer et jouer — Survivant', 'la mort te ramène à ta dernière sauvegarde', { classe: 'primary' })}
+        ${btnAct('data-d="extreme"', 'Créer et jouer — Un seul jour', 'mort permanente')}
+        ${btnAct('data-d="retour"', 'Retour')}
+      </div>`);
+    document.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => {
+      sfx('clic');
+      if (b.dataset.d === 'retour') return ecranCoop(nom);
+      const r = await multi.demarrer({ code, role: 'host', nom });
+      if (!r.ok) { toast('Hébergement impossible : ' + (r.raison || 'serveur injoignable.')); return; }
+      clearSave();
+      newGame(nom, b.dataset.d);
+      initPosition();
+      partieTerminee = false;
+      save();
+      showHUD(true);
+      updateHUD();
+      demarrerAlertes();
+      toast(`Partie hébergée — code ${code}. Donne ce code à l'autre joueur.`, 7000);
+      log(`Co-op : tu héberges la partie. Code de salon : ${code} (rappelé sous le nom du lieu et dans les Options). En attente d'un coéquipier…`, 'good');
+      jouerIntro();
+    });
+  });
+}
+
+function ecranCoopRejoindre(nom) {
+  render(`
+    <h2 class="lieu-nom">Rejoindre une partie</h2>
+    <div class="narration">Tu as ouvert cette page depuis l'appareil de l'hôte (même Wi-Fi) ? Entre simplement son code de salon.</div>
+    <div class="menu">
+      <input type="text" id="inp-code" maxlength="8" placeholder="Code de salon (ex. ABCD)" autocomplete="off" style="text-transform:uppercase">
+      ${btnAct('data-j="go"', 'Rejoindre', 'entrer dans le monde de l\'hôte', { classe: 'primary' })}
+      ${btnAct('data-j="retour"', 'Retour')}
+    </div>
+    <div id="coop-statut" class="cap-line"></div>`);
+  document.querySelectorAll('[data-j]').forEach(b => b.onclick = async () => {
+    sfx('clic');
+    if (b.dataset.j === 'retour') return ecranCoop(nom);
+    const code = ($('#inp-code').value || '').trim().toUpperCase();
+    if (code.length < 3) { toast('Entre le code de salon de l\'hôte.'); return; }
+    const statut = $('#coop-statut');
+    if (statut) statut.textContent = 'Connexion…';
+    rejoindrePartie(code, nom, statut);
+  });
+}
+
+// Le flux invité : on prépare un joueur neuf, on se connecte, et on ADOPTE le monde
+// de l'hôte dès qu'il arrive (onMonde). On n'entre dans le jeu qu'à ce moment-là.
+function rejoindrePartie(code, nom, statut) {
+  let entre = false;
+  clearSave();
+  newGame(nom, 'normal'); // un joueur neuf ; le MONDE viendra de l'hôte
+  multi.poser('onMonde', (world, nomHote) => {
+    if (entre) return; // une seule adoption
+    entre = true;
+    G.world = JSON.parse(JSON.stringify(world)); // copie profonde du monde de l'hôte
+    partieTerminee = false;
+    save();
+    showHUD(true);
+    updateHUD();
+    demarrerAlertes();
+    log(`Tu rejoins la partie de ${nomHote || 'l\'hôte'}. Vous voilà dans le même Salon.`, 'good');
+    renderLieu();
+  });
+  multi.demarrer({ code, role: 'guest', nom }).then((r) => {
+    if (!r.ok) { if (statut) statut.textContent = 'Échec : ' + (r.raison || 'connexion impossible.'); return; }
+    if (statut) statut.textContent = 'Connecté — en attente du monde de l\'hôte…';
+    // garde-fou : si le monde n'arrive pas, on prévient
+    setTimeout(() => { if (!entre && statut) statut.textContent = 'Toujours en attente de l\'hôte… (est-il bien dans une partie ?)'; }, 7000);
   });
 }
 
@@ -331,7 +451,7 @@ function remplirInventaire(entete) {
   const pt = poidsTotal(), pm = poidsMax(), eu = espaceUtilise(), em = espaceMax();
   const sacEq = eq.sac ? cloth(eq.sac) : null;
   let html = `${entete}
-    <p class="cap-line">Poids : <b class="${pt > pm ? 'over' : ''}">${pt.toFixed(1)} / ${pm} kg</b> — Espace : <b class="${eu > em ? 'over' : ''}">${eu} / ${em}</b></p>
+    <p class="cap-line">Poids : <b class="${surcharge() ? 'over' : enSurpoids() ? 'warn' : ''}">${pt.toFixed(1)} / ${pm} kg</b>${enSurpoids() ? ` <small>(surpoids — plafond ${poidsPlafond()})</small>` : ''} — Espace : <b class="${eu > em ? 'over' : ''}">${eu} / ${em}</b></p>
     <p class="cap-line">Sac : <b>${sacEq ? sacEq.nom : 'aucun'}</b>${sacEq
       ? ` — espace +${sacEq.espace}, portage +${sacEq.portage || 0} kg`
       : ' — tes poches et tes bras, c\'est tout. Trouve ou fabrique un sac : chacun donne de l\'espace et du portage.'}</p>`;
@@ -409,17 +529,20 @@ function remplirInventaire(entete) {
           } else sfx('clic');
           break;
         }
-        case 'equiper-vet':
-          if (!equiperVetement(i)) toast('Impossible de porter ça (place ou ceinture pleine).');
-          else sfx('clic');
+        case 'equiper-vet': {
+          const r = equiperVetement(i);
+          if (!r.ok) { toast('Impossible de porter ça.'); break; }
+          sfx('clic');
+          if (r.auSol.length) { log(`Plus de place : tu poses au sol — ${libelleJetes(r.auSol)}.`, 'warn'); syncCaseCourante(); renderLieu(); }
           break;
+        }
         case 'ceinture': {
           const r = mettreEnAccesRapide(i);
           if (!r.ok) toast(r.raison);
           else sfx('clic');
           break;
         }
-        case 'jeter': dropItem(i, 1); sfx('clic'); break;
+        case 'jeter': dropItem(i, 1); sfx('clic'); syncCaseCourante(); break;
       }
       finir(null);
     };
@@ -434,7 +557,7 @@ function remplirPorter(entete) {
   const slotsAR = nbSlotsAccesRapide();
   const pt = poidsTotal(), pm = poidsMax();
   let html = `${entete}
-    <p class="cap-line">Poids : <b class="${pt > pm ? 'over' : ''}">${pt.toFixed(1)} / ${pm} kg</b> — Protection : <b>${protectionTotale()}</b> — Chaleur : <b>${chaleurTotale()}</b></p>`;
+    <p class="cap-line">Poids : <b class="${surcharge() ? 'over' : enSurpoids() ? 'warn' : ''}">${pt.toFixed(1)} / ${pm} kg</b>${enSurpoids() ? ` <small>(surpoids)</small>` : ''} — Protection : <b>${protectionTotale()}</b> — Chaleur : <b>${chaleurTotale()}</b></p>`;
 
   // --- En main ---
   html += `<h3>En main</h3><div class="item-list">`;
@@ -492,12 +615,14 @@ function remplirPorter(entete) {
   box.querySelectorAll('[data-deq]').forEach(b => {
     b.onclick = () => {
       const slot = b.dataset.deq;
+      let auSol = [];
       if (slot === 'arme') {
         if (!desequiperArme()) { toast('Un récipient ouvert plein ne va pas dans le sac : bois-le, vide-le ou pose-le au sol.'); return; }
-      } else if (!desequiperVetement(slot)) {
-        toast('Pas assez de place : ce vêtement portait ton inventaire ou ta ceinture est pleine.');
+      } else {
+        auSol = desequiperVetement(slot).auSol;
       }
       sfx('clic');
+      if (auSol.length) { log(`Tu poses au sol ce qui ne rentre plus — ${libelleJetes(auSol)}.`, 'warn'); syncCaseCourante(); renderLieu(); }
       updateHUD(); save(); panneauInventaire();
     };
   });
@@ -532,6 +657,7 @@ function remplirPorter(entete) {
     log(`Tu poses la ${d ? d.nom.toLowerCase() : 'casserole'} au sol, doucement, sans renverser une goutte.`, '');
     sfx('clic');
     updateHUD(); save();
+    syncCaseCourante();
     renderLieu(); // la carte derrière montre le point ocre des objets au sol
     panneauInventaire();
   };
@@ -733,6 +859,7 @@ function panneauOptions() {
       ${btnAct('data-o="titre"', 'Sauvegarder et retourner au titre')}
       ${btnAct('data-o="reset"', 'Abandonner la partie', 'efface définitivement la sauvegarde')}
     </div>
+    ${multi.estMulti() ? `<p class="cap-line">Co-op : tu es <b>${multi.estHote() ? 'l\'hôte' : 'invité'}</b>${multi.estHote() ? ` — code de salon <b class="code">${multi.monCode()}</b>${multi.pairPresent() ? ' — coéquipier connecté' : ' — en attente'}` : multi.pairPresent() ? ' — connecté à l\'hôte' : ' — hôte déconnecté'}.</p>` : ''}
     <p class="cap-line">One More Day — Salon-de-Provence, jour 23. Les intérieurs fouillés sont sûrs ; les rues ne le sont jamais.</p>`);
   box.querySelector('#opt-vol').oninput = (e) => setVolume(parseFloat(e.target.value));
   box.querySelector('#opt-mute').onchange = (e) => setMuted(e.target.checked);
@@ -842,6 +969,9 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 // Jamais en combat, jamais après la fin de partie, jamais avec un joueur mort :
 // la dernière bonne sauvegarde ne doit pas pouvoir être écrasée par un état perdu.
 setInterval(() => { if (G && !enCombat() && !partieTerminee && G.player.pv > 0) save(); }, 90000);
+
+// ---------- Co-op : messages système (arrivée/départ du coéquipier, perte du lien) ----------
+multi.poser('onSysteme', (txt, c) => { if (G && document.querySelector('#gamelog')) log(txt, c || ''); else toast(txt); });
 
 // ---------- Démarrage ----------
 lierHUD();

@@ -13,7 +13,7 @@ import {
   niveauSombre, liaison, porteCassee,
 } from './world.js';
 import { svgAmbiance, aAmbiance } from './ambiance.js';
-import { jouerCineUneFois, cineEnCours } from './cinema.js';
+import { jouerCineUneFois, cineEnCours, jouerCine } from './cinema.js';
 import {
   carteVivante, peuplerCarte, zombiesSur, retirerZombie, meuteAuContact,
   tickZombies, attirerZombies,
@@ -31,15 +31,18 @@ import { svgScene } from './illustrations.js';
 import {
   addItem, hasItem, removeItem, poidsTotal, poidsMax, placePour,
   espaceUtilise, espaceMax, defItem, countItem,
+  surcharge, enSurpoids, poidsPlafond, equiperDepuisSol, libelleJetes,
   estContenant, recipientOuvert, contenance, descEau, fmtL, instancePourEau,
   tenirRecipient, prendreEnMain,
   lumiereActive, lampePortee, basculerLampe,
 } from './inventory.js';
+import { cloth } from './data/clothing.js';
 import { advanceTime, dormir, attendre } from './survival.js';
 import { appliquerEffets, besoinRempli, besoinTexte, jetReussi } from './effects.js';
-import { demarrerCombat, enCombat } from './combat.js';
+import { demarrerCombat, enCombat, noteCombat, appliquerCombatDistant, pauseCombatPourCine, reprendreCombatAvecDecompte } from './combat.js';
 import { playAmbiance, sfx, setTension } from './audio.js';
 import { jouerScene } from './scenes.js';
+import * as multi from './multi.js';
 
 let selection = null; // case sélectionnée sur la carte (info avant déplacement)
 let vueDessin = false; // bascule plan ↔ dessin d'ambiance (bouton œil)
@@ -121,6 +124,7 @@ function porteeActuelle() {
   let p = C.portee ?? PORTEE_BASE[C.echelle] ?? 1;
   const pl = G.player;
   if (poidsTotal() > poidsMax() * 0.85) p -= 1;
+  if (enSurpoids()) p -= 1; // chargé au-delà du raisonnable : on traîne la patte
   if (pl.sta < 15) p -= 1;
   if (pl.blessures.some(b => ['à la cuisse', 'au genou', 'au mollet', 'à la cheville', 'au pied'].includes(b.zone) && !b.bandee)) p -= 1;
   return Math.max(1, p);
@@ -339,11 +343,19 @@ function mursDeCase(cd, x, y, px, py, s, connue) {
       ? `<line x1="${b.x1}" y1="${b.y1}" x2="${b.x1}" y2="${my - demi}"/><line x1="${b.x1}" y1="${my + demi}" x2="${b.x1}" y2="${b.y2}"/>`
       : `<line x1="${b.x1}" y1="${b.y1}" x2="${mx - demi}" y2="${b.y1}"/><line x1="${mx + demi}" y1="${b.y1}" x2="${b.x2}" y2="${b.y1}"/>`;
     if (li === 'porte') {
-      const ferme = (voisin.verrou && !G.world.verrous[ckey(id, nx, ny)]) || (cd.verrou && !G.world.verrous[ckey(id, x, y)]);
-      const coul = ferme ? '#8a5a28' : '#6d5d42';
-      out += vert
-        ? `<rect x="${b.x1 - 2.5}" y="${my - demi}" width="5" height="${demi * 2}" rx="1" fill="#16130e" stroke="${coul}" stroke-width="1.2"/>`
-        : `<rect x="${mx - demi}" y="${b.y1 - 2.5}" width="${demi * 2}" height="5" rx="1" fill="#16130e" stroke="${coul}" stroke-width="1.2"/>`;
+      if (porteCassee(id, x, y, nx, ny)) {
+        // Porte ENFONCÉE : un battant de travers, sombre et rougeâtre — elle ne protège plus.
+        const br = '#8a3a2a';
+        out += vert
+          ? `<g transform="rotate(30 ${b.x1} ${my})"><rect x="${b.x1 - 1.5}" y="${my - demi}" width="3.5" height="${demi * 2}" rx="1" fill="#0f0807" stroke="${br}" stroke-width="1.3"/></g>`
+          : `<g transform="rotate(30 ${mx} ${b.y1})"><rect x="${mx - demi}" y="${b.y1 - 1.5}" width="${demi * 2}" height="3.5" rx="1" fill="#0f0807" stroke="${br}" stroke-width="1.3"/></g>`;
+      } else {
+        const ferme = (voisin.verrou && !G.world.verrous[ckey(id, nx, ny)]) || (cd.verrou && !G.world.verrous[ckey(id, x, y)]);
+        const coul = ferme ? '#8a5a28' : '#6d5d42';
+        out += vert
+          ? `<rect x="${b.x1 - 2.5}" y="${my - demi}" width="5" height="${demi * 2}" rx="1" fill="#16130e" stroke="${coul}" stroke-width="1.2"/>`
+          : `<rect x="${mx - demi}" y="${b.y1 - 2.5}" width="${demi * 2}" height="5" rx="1" fill="#16130e" stroke="${coul}" stroke-width="1.2"/>`;
+      }
     }
   }
   return out;
@@ -519,6 +531,112 @@ function pointOuie(px, py, CS) {
   return `<circle class="zouie" cx="${cx}" cy="${cy}" r="4.5" fill="#a83226"/>`;
 }
 
+// ---------- Co-op : le pion du coéquipier ----------
+// Bleu (jamais confondu avec ton or ni leur rouge). Sa couleur vire selon ses PV ;
+// un anneau d'alerte s'il est en plein combat.
+function pionAllie(px, py, CS, pr, off = 0) {
+  const cx = px + CS / 2 + off, cy = py + CS / 2 + off;
+  const c = pr.pvTier === 'critique' ? '#c0603a' : pr.pvTier === 'amoche' ? '#c9a14a' : '#5ab0c9';
+  let s = `<g class="allie">`;
+  if (pr.enCombat) s += `<circle class="zspin" cx="${cx}" cy="${cy}" r="10" fill="none" stroke="#e0503e" stroke-width="1.5" opacity=".85"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="5.5" fill="#0e1a1d" stroke="${c}" stroke-width="1.8"/>
+    <circle cx="${cx}" cy="${cy}" r="8" fill="none" stroke="${c}" stroke-width="1" opacity=".45"/>
+    <circle cx="${cx}" cy="${cy - 1.8}" r="1.7" fill="${c}"/>`;
+  return s + '</g>';
+}
+
+function manhattanPair(pr) { return Math.abs(pr.x - G.world.x) + Math.abs(pr.y - G.world.y); }
+
+// La ligne d'état du coéquipier sous le nom du lieu (où il est, son état, en combat).
+function pairBarre(vis) {
+  if (!multi.estMulti()) return '';
+  const pr = multi.pairEtat();
+  let txt;
+  if (!multi.pairPresent()) txt = multi.estHote() ? `Co-op · code ${multi.monCode()} · en attente d'un joueur` : 'coéquipier hors ligne';
+  else if (!pr) txt = 'coéquipier connecté…';
+  else if (pr.carte !== G.world.carte) { const c = carte(pr.carte); txt = `${pr.nom || 'Coéquipier'} : à ${c ? c.nom : 'un autre lieu'}`; }
+  else {
+    const ou = vis.has(`${pr.x},${pr.y}`) ? 'dans ta ligne de mire' : 'dans ce secteur';
+    const etat = pr.enCombat ? ' — EN COMBAT' : pr.pvTier === 'critique' ? ' — mal en point' : pr.pvTier === 'amoche' ? ' — entamé' : '';
+    txt = `${pr.nom || 'Coéquipier'} : ${ou}${etat}`;
+  }
+  const cls = (pr && pr.enCombat) ? 'lb-pair combat' : multi.pairPresent() ? 'lb-pair' : 'lb-pair off';
+  return `<span class="${cls}" id="lb-pair">${txt}</span>`;
+}
+function majBarrePair() {
+  const el = document.querySelector('#lb-pair');
+  if (el) el.outerHTML = pairBarre(casesVisibles(G.world.carte, G.world.x, G.world.y));
+}
+
+// La tuile « Rejoindre le combat » : ton coéquipier se bat tout près, sur ta carte.
+function tuilePairCombat() {
+  if (!multi.estMulti() || enCombat()) return '';
+  const pr = multi.pairEtat();
+  if (!pr || !pr.enCombat || !pr.combat || pr.carte !== G.world.carte) return '';
+  if (manhattanPair(pr) > 4) return '';
+  return tuile('data-rejoindre="1"', 'attaque', 'Rejoindre le combat', `${pr.nom || 'ton coéquipier'} se bat tout près`, { classe: 'trouves-btn' });
+}
+function rejoindreCombatPair() {
+  const pr = multi.pairEtat();
+  if (!pr || !pr.enCombat || !pr.combat) { toast('Le combat est déjà fini.'); return; }
+  const ids = (pr.combat.ids && pr.combat.ids.length) ? [...pr.combat.ids] : [pick(zombiesPoolCourant())];
+  multi.diffuserCombat({ sub: 'rejoint', nom: G.player.nom });
+  log('Tu te jettes dans la mêlée pour épauler ton coéquipier.', 'good');
+  demarrerCombat(ids, { onFin: () => renderLieu(), rejointPair: true, enc: pr.combat && pr.combat.enc });
+}
+
+// Co-op : pousser l'état « monde » d'une case (objets au sol + fouille + sécurisée)
+// au coéquipier. Appelé après chaque action qui touche le sol ou la fouille.
+function syncCaseMonde(k) {
+  if (!multi.estMulti()) return;
+  multi.diffuserEvenement({ e: 'case', k, sol: solDe(k), fouille: G.world.fouilles[k] || null, secur: !!G.world.securisees[k] });
+}
+export function syncCaseCourante() { syncCaseMonde(keyCourante()); }
+
+// Câblage co-op : posé une fois, dort tant qu'on n'est pas en multi.
+let pairCombatPrec = false;
+function brancherMulti() {
+  // Monde partagé : on adopte l'état de case reçu (butin/fouille communs, dernier écrivain).
+  multi.poser('onEvenement', (m) => {
+    if (m.e !== 'case') return;
+    if (Array.isArray(m.sol)) { if (m.sol.length) G.world.sol[m.k] = m.sol; else delete G.world.sol[m.k]; }
+    if (m.fouille) G.world.fouilles[m.k] = m.fouille;
+    if (m.secur) G.world.securisees[m.k] = true; else delete G.world.securisees[m.k];
+    if (m.k.split(':')[0] !== G.world.carte) return; // pas ma carte : appliqué en mémoire, rien à redessiner
+    const surAuSol = panelOuvert() && (($('.panel-head h2') || {}).textContent === 'Au sol') && m.k === keyCourante();
+    if (surAuSol) panneauTrouves(); // le panneau « Au sol » ouvert sur cette case : on le rafraîchit
+    else if (document.querySelector('.carte-grille') && !modaleBloque() && !enMarche) rafraichirCarteSeule();
+  });
+  multi.poser('onPairMaj', (pr) => {
+    if (!document.querySelector('.carte-grille') || modaleBloque() || enMarche) return;
+    const combatNow = !!(pr && pr.enCombat);
+    const flip = combatNow !== pairCombatPrec;
+    pairCombatPrec = combatNow;
+    if (flip) renderLieu();              // (dis)parition de la tuile « Rejoindre »
+    else { rafraichirCarteSeule(); majBarrePair(); } // simple déplacement du pion
+  });
+  multi.poser('onCombat', (m) => {
+    if (m.sub === 'rejoint') {
+      const txt = `${m.nom || 'Ton coéquipier'} t'a rejoint dans le combat !`;
+      if (enCombat()) noteCombat(`<b>${txt}</b>`); else { toast(txt); sfx('alerte'); }
+    } else if (m.sub === 'degats' || m.sub === 'fin') {
+      appliquerCombatDistant(m);
+    }
+  });
+  // Cinématique partagée : si le coéquipier en déclenche une, je la vois aussi.
+  // En plein combat, le combat se fige, la scène se joue, puis reprend après un décompte.
+  multi.poser('onCine', (id) => {
+    if (cineEnCours()) return; // déjà une scène à l'écran
+    if (enCombat()) {
+      if (pauseCombatPourCine()) jouerCine(id, () => reprendreCombatAvecDecompte(), true);
+      else jouerCine(id, () => {}, true);
+    } else {
+      jouerCine(id, () => { if (document.querySelector('.carte-grille')) rafraichirCarteSeule(); }, true);
+    }
+  });
+}
+brancherMulti();
+
 function svgCarte(reach, vis) {
   const C = carteCourante();
   const interieur = C.echelle === 'interieur';
@@ -532,6 +650,7 @@ function svgCarte(reach, vis) {
   const vivante = carteVivante(G.world.carte);
   const zombies = vivante ? zombiesSur(G.world.carte) : [];
   const morts = vivante ? mortsSur(G.world.carte) : [];
+  const pair = multi.estMulti() ? multi.pairEtat() : null; // le coéquipier, s'il y en a un
   // Une lampe allumée en main ou à la ceinture troue le noir autour de toi.
   const lampe = lumiereActive();
   let cells = '', murs = '';
@@ -594,9 +713,17 @@ function svgCarte(reach, vis) {
         inner += pointOuie(px, py, CS);
       }
     }
+    // Le coéquipier (co-op) : on ne le voit QUE dans sa ligne de mire, comme eux.
+    // Sur la même case que toi, on le décale pour que les deux ronds restent lisibles.
+    if (pair && aVue && pair.carte === G.world.carte && pair.x === x && pair.y === y) {
+      inner += pionAllie(px, py, CS, pair, ici ? 3 : 0);
+    }
     if (ici) {
-      inner += `<g class="joueur"><circle cx="${px + CS / 2}" cy="${py + CS / 2}" r="8" fill="#c9b98a" stroke="#0b0b0c" stroke-width="2"/>
-        <circle cx="${px + CS / 2}" cy="${py + CS / 2}" r="12" fill="none" stroke="#c9b98a" stroke-width="1" opacity=".5"/></g>`;
+      // Pion joueur : un petit rond discret, légèrement décalé (au-dessus du contenu de la case).
+      const off = (pair && pair.carte === G.world.carte && pair.x === x && pair.y === y) ? -3 : 0;
+      const jx = px + CS / 2 + off, jy = py + CS / 2 + off;
+      inner += `<g class="joueur"><circle cx="${jx}" cy="${jy}" r="5.5" fill="#c9b98a" stroke="#0b0b0c" stroke-width="1.8"/>
+        <circle cx="${jx}" cy="${jy}" r="8" fill="none" stroke="#c9b98a" stroke-width="1" opacity=".5"/></g>`;
     }
     cells += `<g class="case ${atteign ? 'atteignable' : ''} ${sel ? 'selection' : ''}" data-case="${pos}">
       <rect class="fond" x="${px}" y="${py}" width="${CS}" height="${CS}" rx="${interieur ? 0 : 2}" fill="${t.fill}" ${interieur ? '' : `stroke="${t.stroke}"`}/>
@@ -689,7 +816,7 @@ export function renderLieu() {
   const fond = aAmbiance(G.world.carte) ? svgAmbiance(G.world.carte, G.world.heure + G.world.minute / 60) : '';
   let html = `
   <div class="lieu-bar"><span class="lb-nom">${C.nom}</span>
-    <span class="lb-sub">${ECHELLE_NOM[C.echelle]}${C.exterieur ? ' — à découvert' : ''}${estNuit() ? ' — nuit' : ''}</span></div>
+    <span class="lb-sub">${ECHELLE_NOM[C.echelle]}${C.exterieur ? ' — à découvert' : ''}${estNuit() ? ' — nuit' : ''}</span>${pairBarre(vis)}</div>
   <div class="carte-wrap${vueDessin && fond ? ' vue-dessin' : ''}">
     ${fond ? `<div class="carte-fond">${fond}</div><div class="carte-voile"></div>` : ''}
     ${svgCarte(reach, vis)}
@@ -735,11 +862,13 @@ export function renderLieu() {
   if (C.echelle === 'interieur') {
     html += tuile('data-dormir="1"', 'dormir', 'Dormir', sommeilInfo());
   }
+  html += tuilePairCombat(); // co-op : rejoindre le combat du coéquipier tout proche
   html += `</div></div>
   <div class="gamelog" id="gamelog">${logHtml()}</div>`;
 
   render(html);
   updateHUD();
+  if (multi.estMulti()) multi.diffuserPosition(); // co-op : signaler ma position/état au coéquipier
 
   // --- interactions carte ---
   lierCasesCarte(reach);
@@ -753,6 +882,7 @@ export function renderLieu() {
   lier('[data-vue]', () => { vueDessin = !vueDessin; renderLieu(); });
   lier('[data-attendre]', panneauAttendre);
   lier('[data-lampe]', basculerLampePortee);
+  lier('[data-rejoindre]', rejoindreCombatPair);
   const sp = $('[data-special]');
   if (sp) sp.onclick = () => { if (enMarche) return; sfx('clic'); actionSpeciale(sp.dataset.special); };
 
@@ -888,7 +1018,7 @@ function majInfoCase(pos, reach) {
 // Tout contact interrompt la marche et déclenche le combat.
 function allerEnCase(pos) {
   if (enMarche) return;
-  if (poidsTotal() > poidsMax()) { toast('Trop chargé pour bouger. Allège ton sac.'); return; }
+  if (surcharge()) { toast('Beaucoup trop chargé pour bouger. Pose des objets au sol pour t\'alléger.'); return; }
   const chemin = cheminVers(pos);
   if (!chemin.length) return;
   marcher(chemin);
@@ -914,7 +1044,10 @@ function marcher(chemin) {
       const fm = fauxMortEn(G.world.carte, x, y); // marcher SUR un faux-mort le réveille
       if (fm) { reveillerFauxMort(fm); sfx('zombie'); }
       const ev = tickZombies(G.world.carte, vis);
-      if (ev.portes.length) sfx('porte_coup');
+      if (ev.portes.length) {
+        sfx('porte_coup');
+        if (ev.portes.some(p => p.cassee)) log('Une porte cède sous les coups, tout près.', 'bad');
+      }
       contact = ev.contact;
       majTension(vis);
     }
@@ -1134,6 +1267,7 @@ function terminerFouille(aTatons) {
     if (interieurSecurise(G.world.carte)) log(`${C.nom} : tout est fouillé. L'endroit est à toi.`, 'good');
   }
   save();
+  syncCaseMonde(k); // co-op : la fouille et le butin sont communs
   // Pendant que tu farfouillais, eux marchaient.
   if (carteVivante(G.world.carte)) {
     const vis = casesVisibles(G.world.carte, G.world.x, G.world.y);
@@ -1278,8 +1412,10 @@ function panneauTrouves() {
   const k = keyCourante();
   normaliserSol(k);
   const sol = solVisible(k);
+  const pt = poidsTotal(), pm = poidsMax();
+  const poidsClasse = surcharge() ? 'over' : enSurpoids() ? 'warn' : '';
   let html = `<div class="panel-head"><h2>Au sol</h2><button class="panel-close">×</button></div>
-    <p class="cap-line">Poids : <b>${poidsTotal().toFixed(1)} / ${poidsMax()} kg</b> — Espace : <b>${espaceUtilise()} / ${espaceMax()}</b></p>
+    <p class="cap-line">Poids : <b class="${poidsClasse}">${pt.toFixed(1)} / ${pm} kg</b>${enSurpoids() ? ` <small>(en surpoids, plafond ${poidsPlafond()})</small>` : ''} — Espace : <b>${espaceUtilise()} / ${espaceMax()}</b></p>
     <div class="item-list">`;
   if (!sol.length) html += `<p class="cap-line">Plus rien à ramasser ici. Fouille pour dénicher davantage.</p>`;
   sol.forEach((e, i) => {
@@ -1287,11 +1423,14 @@ function panneauTrouves() {
     if (!d) return;
     // un récipient OUVERT plein ne va pas dans le sac : il se prend EN MAIN
     const enMain = e.eau && recipientOuvert(e.id);
+    // un vêtement / sac / ceinture : on peut l'ENFILER directement, même trop grand pour le sac
+    const portable = !!cloth(e.id) && !e.eau;
     html += `<div class="item-card">
       <div class="item-line"><span class="item-nom">${d.nom}${(e.qty || 1) > 1 ? ` <span class="qty">×${e.qty}</span>` : ''}</span>
       <span class="item-meta">${e.eau ? descEau(e) + ' · ' : ''}${((d.poids || 0) + (e.eau ? e.eau.L : 0)).toFixed(1)} kg · ${d.espace || 0} esp.</span></div>
       <div class="item-desc">${d.desc}</div>
       <div class="item-btns">
+        ${portable ? `<button data-porter="${i}">Porter</button>` : ''}
         ${enMain
           ? `<button data-tenir="${i}">Prendre en main</button>`
           : `<button data-prendre="${i}">Prendre${(e.qty || 1) > 1 ? ' (1)' : ''}</button>
@@ -1327,11 +1466,34 @@ function panneauTrouves() {
     sfx('loot');
     updateHUD();
     save();
+    syncCaseMonde(k);
     if (solVisible(k).length) panneauTrouves();
     else { closePanel(); renderLieu(); }
   };
   box.querySelectorAll('[data-prendre]').forEach(b => b.onclick = () => prendre(parseInt(b.dataset.prendre, 10), 1));
   box.querySelectorAll('[data-prendre-tout]').forEach(b => b.onclick = () => prendre(parseInt(b.dataset.prendreTout, 10), 999));
+  // Enfiler directement un vêtement / sac / ceinture posé au sol (sans passer par
+  // l'espace du sac). On retire UNE unité du sol, on l'équipe, et l'ancien + le
+  // débordement éventuel retombent au sol.
+  box.querySelectorAll('[data-porter]').forEach(b => b.onclick = () => {
+    const tout = solDe(k);
+    const e = sol[parseInt(b.dataset.porter, 10)];
+    if (!e) return;
+    const entry = { id: e.id };
+    e.qty = (e.qty || 1) - 1;
+    if (e.qty <= 0) tout.splice(tout.indexOf(e), 1);
+    const r = equiperDepuisSol(entry);
+    if (!r.ok) { addItem(e.id, 1); toast('Impossible d\'enfiler ça.'); return; }
+    sfx('clic');
+    const d = defItem(entry.id);
+    log(`Tu enfiles ${d ? d.nom.toLowerCase() : 'l\'équipement'}.${r.auSol.length ? ` Ce qui ne rentre plus tombe au sol — ${libelleJetes(r.auSol)}.` : ''}`, r.auSol.length ? 'warn' : 'good');
+    updateHUD();
+    save();
+    syncCaseMonde(k);
+    renderLieu();
+    if (solVisible(k).length) panneauTrouves();
+    else closePanel();
+  });
   // Récipient ouvert plein : il se prend en main (ce qu'on tenait retourne au sac)
   box.querySelectorAll('[data-tenir]').forEach(b => b.onclick = () => {
     const tout = solDe(k);
@@ -1346,6 +1508,7 @@ function panneauTrouves() {
     sfx('loot');
     updateHUD();
     save();
+    syncCaseMonde(k);
     if (solVisible(k).length) panneauTrouves();
     else { closePanel(); renderLieu(); }
   });
@@ -1364,6 +1527,7 @@ function panneauTrouves() {
     if (solVisible(k).length) toast('Le reste ne rentre pas : fais du tri.');
     updateHUD();
     save();
+    syncCaseMonde(k);
     if (solVisible(k).length) panneauTrouves();
     else { closePanel(); renderLieu(); }
   };
@@ -1847,7 +2011,8 @@ function tickTempsReel() {
   if (ev.contact) { lancerCombatContact(ev.contact); return; }
   if (ev.portes.length) {
     sfx('porte_coup');
-    if (ev.portes.some(p => p.cassee)) log('Une porte cède sous les coups — le chemin n\'est plus sûr.', 'bad');
+    if (ev.portes.some(p => p.cassee)) log('Une porte cède sous les coups — le passage n\'est plus sûr. Reste sur tes gardes.', 'bad');
+    else if (chance(0.45)) log('Des coups sourds contre une porte, tout près. Quelque chose veut entrer.', 'warn');
   }
   if (ev.spins.length) sfx('alerte_contact');
   else if (ev.bouges.size && chance(0.12)) sfx('zombie_loin');

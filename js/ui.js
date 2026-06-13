@@ -1,6 +1,6 @@
 // ============ Aides d'interface ============
 import { G, heureTxt, estNuit } from './state.js';
-import { poidsTotal, poidsMax } from './inventory.js';
+import { poidsTotal, poidsMax, surcharge, enSurpoids } from './inventory.js';
 import { froidActuel } from './survival.js';
 import { ico } from './icons.js';
 
@@ -56,7 +56,8 @@ function calculerEtats() {
   else if (froid > 0) etats.push({ ico: 'froid', n: 1, label: 'Froid', desc: 'Il te faudrait des vêtements plus chauds.' });
 
   const pt = poidsTotal(), pm = poidsMax();
-  if (pt > pm) etats.push({ ico: 'surcharge', n: 3, label: 'Surchargé', desc: 'Trop lourd pour bouger. Allège ton sac.' });
+  if (surcharge()) etats.push({ ico: 'surcharge', n: 4, label: 'Surchargé', desc: 'Beaucoup trop lourd : impossible de bouger. Pose des objets au sol.' });
+  else if (enSurpoids()) etats.push({ ico: 'surcharge', n: 2, label: 'En surpoids', desc: 'Tu portes plus que de raison : tu te bats plus mal et tu traînes la patte.' });
   else if (pt > pm * 0.85) etats.push({ ico: 'surcharge', n: 1, label: 'Chargé', desc: 'Tu approches de la limite de poids.' });
 
   return etats;

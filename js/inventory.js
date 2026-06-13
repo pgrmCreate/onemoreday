@@ -10,6 +10,7 @@ import { G, skillLevel } from './state.js';
 import { ITEMS, item } from './data/items.js';
 import { CLOTHES, cloth } from './data/clothing.js';
 import { sfx } from './audio.js';
+import { deposerAuSol, keyCourante } from './world.js';
 
 const SLOTS_VETEMENTS = ['tete', 'torse', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
 
@@ -67,7 +68,75 @@ export function espaceUtilise() {
   }
   return e;
 }
-export function surcharge() { return poidsTotal() > poidsMax(); }
+// Le POIDS est une limite SOUPLE. Jusqu'au max, tout va bien. Entre le max et un
+// PLAFOND dur, on est « en surpoids » : on bouge encore (plus lentement) mais le
+// combat se paie cher. Au-delà du plafond, on ne peut plus rien ajouter de son
+// plein gré — l'excédent file au sol (cf. equiperVetement / equiperDepuisSol).
+export function poidsPlafond() { return Math.round(poidsMax() * 1.5); }
+export function enSurpoids() { const p = poidsTotal(); return p > poidsMax() && p <= poidsPlafond(); }
+// surcharge = au-delà du plafond : déplacement bloqué (garde-fou, on y arrive rarement).
+export function surcharge() { return poidsTotal() > poidsPlafond(); }
+// Sévérité du surpoids, 0 (au max) → 1 (au plafond), pour doser les malus de combat.
+export function surpoidsFacteur() {
+  const pm = poidsMax(), pl = poidsPlafond();
+  if (pl <= pm) return 0;
+  return Math.max(0, Math.min(1, (poidsTotal() - pm) / (pl - pm)));
+}
+
+// ---------- Objets jetés au sol (débordement) ----------
+// Quand une action fait porter plus que ce qu'on peut contenir (sac troqué contre
+// un plus petit, ceinture aux emplacements réduits…), l'excédent tombe sur la case
+// courante. Ces helpers RETIRENT du sac / de l'accès rapide et renvoient la liste
+// de ce qui a été jeté, pour que l'appelant l'annonce.
+function jeterAuSol(entry) {
+  const e = { id: entry.id, qty: entry.qty || 1, ...champsInstance(entry) };
+  deposerAuSol(keyCourante(), e);
+  return { id: e.id, qty: e.qty };
+}
+// Vide l'excédent d'ESPACE du sac vers le sol jusqu'à repasser sous la capacité.
+function viderExcesEspace() {
+  const jetes = [];
+  let garde = 60; // garde-fou anti-boucle
+  while (espaceUtilise() > espaceMax() && garde-- > 0) {
+    const inv = G.player.inventaire;
+    // On jette d'abord ce qui occupe le plus d'espace (libère le plus vite).
+    let idx = -1, max = 0;
+    inv.forEach((it, i) => { const e = defItem(it.id)?.espace || 0; if (e > max) { max = e; idx = i; } });
+    if (idx < 0) break; // plus que des objets sans encombrement : en jeter ne libère rien
+    const it = inv[idx];
+    // détache UNE unité (les piles tombent une par une)
+    const unite = { id: it.id, qty: 1, ...champsInstance(it) };
+    it.qty -= 1;
+    if (it.qty <= 0) inv.splice(idx, 1);
+    deposerAuSol(keyCourante(), unite);
+    jetes.push({ id: unite.id, qty: 1 });
+  }
+  return fusionnerJetes(jetes);
+}
+// Vide l'excédent d'ACCÈS RAPIDE (emplacements perdus) vers le sac, sinon le sol.
+function viderExcesAccesRapideAuSol() {
+  const jetes = [];
+  const ar = accesRapide();
+  while (ar.length > nbSlotsAccesRapide()) {
+    const it = ar.pop();
+    if (placePour(it.id, 1)) {
+      G.player.inventaire.push({ id: it.id, qty: 1, ...champsInstance(it) });
+    } else {
+      deposerAuSol(keyCourante(), { id: it.id, qty: 1, ...champsInstance(it) });
+      jetes.push({ id: it.id, qty: 1 });
+    }
+  }
+  return fusionnerJetes(jetes);
+}
+function fusionnerJetes(jetes) {
+  const m = new Map();
+  for (const j of jetes) m.set(j.id, (m.get(j.id) || 0) + j.qty);
+  return [...m.entries()].map(([id, qty]) => ({ id, qty }));
+}
+// Libellé « pied-de-biche, 2 chiffons » à partir d'une liste {id, qty}.
+export function libelleJetes(jetes) {
+  return jetes.map(j => `${defItem(j.id)?.nom || j.id}${j.qty > 1 ? ` ×${j.qty}` : ''}`).join(', ');
+}
 
 // ---------- Accès rapide ----------
 export function accesRapide() {
@@ -266,7 +335,10 @@ export function removeItem(id, qty = 1) {
 export function dropItem(index, qty = 1) {
   const it = G.player.inventaire[index];
   if (!it) return;
-  it.qty -= qty;
+  const n = Math.min(qty, it.qty);
+  // Jeté = posé au sol de la case courante : récupérable (par toi, ou par ton coéquipier en co-op).
+  deposerAuSol(keyCourante(), { id: it.id, qty: n, ...champsInstance(it) });
+  it.qty -= n;
   if (it.qty <= 0) G.player.inventaire.splice(index, 1);
 }
 
@@ -412,54 +484,55 @@ export function desequiperArme() {
   return true;
 }
 
+// Enfiler un vêtement venu du sac. L'opération RÉUSSIT toujours côté place :
+// l'ancien vêtement retourne au sac s'il y rentre, sinon il tombe au sol ; et si la
+// capacité diminue (sac plus petit, ceinture aux emplacements réduits), le trop-plein
+// file au sol aussi. Retourne { ok, auSol:[{id,qty}] } — la liste de ce qui est tombé.
 export function equiperVetement(index) {
   const it = G.player.inventaire[index];
-  if (!it) return false;
+  if (!it) return { ok: false, auSol: [] };
   const c = cloth(it.id);
-  if (!c) return false;
+  if (!c) return { ok: false, auSol: [] };
   const slot = c.slot;
   const ancien = G.player.equip[slot];
-  // retirer une ceinture pleine : il faut d'abord pouvoir vider ses emplacements
-  if (ancien && !videExcesAccesRapide(cloth(ancien), c)) return false;
-  // retirer le nouveau de l'inventaire et l'enfiler
   const nouveauId = it.id;
   it.qty -= 1;
   if (it.qty <= 0) G.player.inventaire.splice(index, 1);
   G.player.equip[slot] = nouveauId;
-  // ranger l'ancien : s'il ne rentre pas (ex. troquer le grand sac contre une sacoche), on annule tout
-  if (ancien && !addItem(ancien, 1)) {
-    G.player.equip[slot] = ancien;
-    addItem(nouveauId, 1); // la place qu'il occupait vient d'être libérée : toujours possible
-    return false;
-  }
-  return true;
+  return rangerApresEquip(slot, ancien, c);
 }
+// Enfiler un vêtement DIRECTEMENT depuis le sol, sans le faire transiter par
+// l'espace du sac : un sac (ou une ceinture) qu'on met sur le dos AJOUTE de la
+// place — exiger de la place pour le ramasser serait absurde. L'appelant aura déjà
+// retiré une unité du sol. Retourne { ok, auSol }.
+export function equiperDepuisSol(solEntry) {
+  const c = cloth(solEntry.id);
+  if (!c) return { ok: false, auSol: [] };
+  const slot = c.slot;
+  const ancien = G.player.equip[slot];
+  G.player.equip[slot] = solEntry.id;
+  return rangerApresEquip(slot, ancien, c);
+}
+// Range l'ancien vêtement après un changement d'équipement et évacue tout
+// débordement (place / accès rapide) vers le sol. Facteur commun aux deux entrées.
+function rangerApresEquip(slot, ancien, nouveauDef) {
+  const auSol = [];
+  if (ancien && !addItem(ancien, 1)) auSol.push(jeterAuSol({ id: ancien, qty: 1 }));
+  auSol.push(...viderExcesAccesRapideAuSol());
+  auSol.push(...viderExcesEspace());
+  return { ok: true, auSol: fusionnerJetes(auSol) };
+}
+// Retirer un vêtement. Réussit toujours côté place : il retourne au sac s'il y
+// rentre (sinon au sol), et la capacité qui diminue peut faire déborder le reste.
 export function desequiperVetement(slot) {
   const id = G.player.equip[slot];
-  if (!id) return false;
-  const c = cloth(id);
-  // l'espace total diminue : vérifier que ça rentre encore
-  const espaceApres = espaceMax() - (c.espace || 0);
-  if (espaceUtilise() + (c.espace || 0) > espaceApres) return false;
-  if (!videExcesAccesRapide(c, null)) return false;
+  if (!id) return { ok: false, auSol: [] };
   G.player.equip[slot] = null;
-  addItem(id, 1);
-  return true;
-}
-
-// En retirant un vêtement à accès rapide, les objets en trop retournent dans le sac.
-// Retourne false si le sac ne peut pas les absorber (on garde alors le vêtement).
-function videExcesAccesRapide(ancienDef, nouveauDef) {
-  const perdus = (ancienDef?.accesRapide || 0) - (nouveauDef?.accesRapide || 0);
-  if (perdus <= 0) return true;
-  const ar = accesRapide();
-  const slotsApres = nbSlotsAccesRapide() - perdus;
-  while (ar.length > Math.max(0, slotsApres)) {
-    const it = ar[ar.length - 1];
-    if (!placePour(it.id, 1)) return false;
-    retirerAccesRapide(ar.length - 1);
-  }
-  return true;
+  const auSol = [];
+  if (!addItem(id, 1)) auSol.push(jeterAuSol({ id, qty: 1 }));
+  auSol.push(...viderExcesAccesRapideAuSol());
+  auSol.push(...viderExcesEspace());
+  return { ok: true, auSol: fusionnerJetes(auSol) };
 }
 
 export function protectionTotale() {

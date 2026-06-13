@@ -6,7 +6,7 @@ import { cloth } from './data/clothing.js';
 import { carteCourante } from './world.js';
 import {
   hasItem, removeItem, addItem, hasOutil, chaleurTotale,
-  recipientOuvert, desequiperVetement, consolider, usureLampes,
+  recipientOuvert, desequiperVetement, consolider, usureLampes, libelleJetes,
 } from './inventory.js';
 
 export const BLESSURES = {
@@ -309,12 +309,15 @@ export function dechirerVetement(index) {
 export function dechirerEquipe(slot) {
   const id = G.player.equip[slot];
   if (!id) return { ok: false, messages: [] };
-  if (!desequiperVetement(slot)) {
-    return { ok: false, messages: [{ t: 'Impossible : ce vêtement porte ton inventaire ou ta ceinture est pleine.', c: 'warn' }] };
-  }
+  const r = desequiperVetement(slot);
   const index = G.player.inventaire.findIndex(i => i.id === id);
-  if (index < 0) return { ok: false, messages: [] }; // ne devrait pas arriver
-  return dechirerVetement(index);
+  // Faute de place, le vêtement a pu tomber au sol : on ne peut pas le déchirer en main.
+  if (index < 0) {
+    return { ok: false, messages: [{ t: 'Pas la place de le tenir pour le déchirer : il est tombé au sol. Ramasse-le d\'abord.', c: 'warn' }] };
+  }
+  const prelude = r.auSol.length ? [{ t: `Tu poses au sol ce qui débordait — ${libelleJetes(r.auSol)}.`, c: 'warn' }] : [];
+  const res = dechirerVetement(index);
+  return { ...res, messages: [...prelude, ...res.messages] };
 }
 
 // ---------- Soins ----------

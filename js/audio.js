@@ -168,6 +168,7 @@ export function playAmbiance(id) {
 function poolStingers(sc, nuit) {
   const pool = [...(sc.stingers || [])];
   if (nuit) pool.push(...(sc.stingersNuit || []));
+  else pool.push(...(sc.stingersJour || [])); // cigales, fontaine… : le plein jour seulement
   return pool;
 }
 
@@ -512,6 +513,64 @@ const STINGERS = {
   murmures(t) { tonAt(t, 160, 140, 1.4, 'sawtooth', 0.012, { filtre: 380, q: 6, a: 0.5, vib: 3.5, vibAmp: 30, echo: true }); },
   rapace(t) { tonAt(t, 1150, 700, 0.7, 'sine', 0.03, { a: 0.04, echo: true }); },
   train_loin(t) { tonAt(t, 60, 52, 2.4, 'triangle', 0.035, { a: 0.8, filtre: 200 }); burstAt(t + 0.5, 1.2, 'bandpass', 320, 0.025, 3, true); },
+
+  // --- Le Sud : cigales en plein jour, mistral, eau de la Fontaine Moussue ---
+  cigales(t) {
+    const dur = 1.4 + Math.random() * 1.3;
+    const s = ctx.createBufferSource(); s.buffer = noiseBuffer(dur + 0.2); s.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 4200 + Math.random() * 900; bp.Q.value = 6;
+    const trem = ctx.createGain(); trem.gain.value = 0.5; // base du crépitement
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.02, t + 0.5);
+    g.gain.setValueAtTime(0.02, t + dur - 0.5);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const lfo = ctx.createOscillator(); lfo.type = 'sawtooth'; lfo.frequency.value = 42 + Math.random() * 16;
+    const lg = ctx.createGain(); lg.gain.value = 0.5; // ±0.5 : le rythme sec de la cigale
+    lfo.connect(lg); lg.connect(trem.gain);
+    s.connect(bp); bp.connect(trem); trem.connect(g); g.connect(master);
+    s.start(t); s.stop(t + dur + 0.2);
+    lfo.start(t); lfo.stop(t + dur + 0.2);
+  },
+  mistral(t) {
+    const dur = 2.8 + Math.random() * 1.6;
+    const s = ctx.createBufferSource(); s.buffer = noiseBuffer(dur + 0.2); s.loop = true;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(280, t);
+    lp.frequency.linearRampToValueAtTime(950, t + dur * 0.4);
+    lp.frequency.linearRampToValueAtTime(240, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.16, t + dur * 0.45);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(lp); lp.connect(g); g.connect(master);
+    s.start(t); s.stop(t + dur + 0.2);
+  },
+  fontaine(t) {
+    burstAt(t, 1.6, 'bandpass', 1300, 0.028, 3, true);
+    for (let i = 0; i < 7; i++) tonAt(t + Math.random() * 1.4, 1200 + Math.random() * 900, 700, 0.06, 'sine', 0.028, { a: 0.003, echo: true });
+  },
+  tole(t) {
+    tonAt(t, 180, 90, 0.5, 'sawtooth', 0.045, { filtre: 500, q: 4, a: 0.02, vib: 7, vibAmp: 30 });
+    burstAt(t + 0.05, 0.3, 'bandpass', 600, 0.03, 5, true);
+  },
+  branche(t) {
+    burstAt(t, 0.04, 'highpass', 2400, 0.06);
+    tonAt(t, 140, 70, 0.08, 'square', 0.04, { filtre: 500, a: 0.002 });
+    for (let i = 0; i < 2; i++) burstAt(t + 0.05 + i * 0.04, 0.03, 'highpass', 1800, 0.03);
+  },
+  klaxon_loin(t) {
+    const dur = 1.2 + Math.random() * 1.4;
+    [330, 392].forEach(f => tonAt(t, f, f, dur, 'sawtooth', 0.02, { filtre: 900, a: 0.06, echo: true }));
+  },
+  effondrement(t) {
+    burstAt(t, 0.9, 'lowpass', 220, 0.12);
+    tonAt(t, 70, 35, 1.0, 'sine', 0.11, { a: 0.02 });
+    for (let i = 0; i < 6; i++) burstAt(t + 0.3 + Math.random() * 0.7, 0.06, 'bandpass', 700 + Math.random() * 500, 0.03, 4, true);
+  },
+  rideau_fer(t) {
+    for (let i = 0; i < 8; i++) burstAt(t + i * 0.045, 0.035, 'bandpass', 1400 - i * 60, 0.04, 6, i % 2 === 0);
+  },
 };
 
 function jouerStinger(nom) {

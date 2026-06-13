@@ -8,6 +8,13 @@ Mais si vous voulez remplacer certains thèmes musicaux ou certaines
 ambiances par de VRAIS fichiers audio, déposez-les ici et décrivez-les
 dans un fichier "manifest.json" placé dans ce même dossier.
 
+DÉMARRAGE RAPIDE
+----------------
+- Un modèle prêt à l'emploi est fourni : "manifest.example.json".
+  Copiez-le en "manifest.json" et gardez les lignes dont vous avez le fichier.
+- Pour trouver de la musique et des ambiances LIBRES DE DROIT (CC0 / CC-BY)
+  adaptées à chaque thème du jeu, voir "MUSIQUE_LIBRE.md".
+
 FORMAT DU MANIFEST (audio/manifest.json)
 -----------------------------------------
 

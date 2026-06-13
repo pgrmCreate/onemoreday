@@ -30,6 +30,7 @@ export const SCENES_LEGACY = { calme: 'interieur', rue: 'rue', sombre: 'sombre',
 // drones : [[fréquence, timbre, gain], ...]
 // stingers : [[nom, poids], ...] — tirés au sort toutes les intervalle[0..1] secondes
 // stingersNuit : s'AJOUTENT au pool la nuit (le monde mort se réveille)
+// stingersJour : s'AJOUTENT au pool le jour seulement (cigales, fontaine, mistral du Sud)
 // musique — deux formes possibles :
 //   { theme: 'titre' }  → thème COMPOSÉ (partition de js/data/musiques.js,
 //                         joué en boucle par le séquenceur, avec des silences
@@ -41,8 +42,9 @@ export const SCENES_SONORES = {
   hotel: {
     vent: [300, 0.10, 0.07],
     drones: [[55, 'triangle', 0.034], [82.5, 'sine', 0.026]],
-    stingers: [['craquement', 3], ['vent_rafale', 2], ['volet', 1], ['goutte', 1]],
+    stingers: [['craquement', 3], ['vent_rafale', 2], ['volet', 1], ['goutte', 1], ['fontaine', 1]],
     stingersNuit: [['gemissement', 2], ['grattement', 2]],
+    stingersJour: [['cigales', 3], ['fontaine', 2]], // place Crousillat, la Fontaine Moussue à deux pas
     intervalle: [9, 24],
     musique: { base: 110, gammes: [[0, 3, 5, 7, 10], [0, 2, 3, 7, 9]], p: 0.55, timbre: 'triangle' },
   },
@@ -57,15 +59,16 @@ export const SCENES_SONORES = {
   rue: {
     vent: [480, 0.16, 0.07],
     drones: [[49, 'triangle', 0.030], [73.5, 'sine', 0.024]],
-    stingers: [['corbeau', 3], ['vent_rafale', 3], ['volet', 2], ['verre', 1], ['ferraille', 1], ['gemissement', 1], ['chien', 1]],
+    stingers: [['corbeau', 3], ['vent_rafale', 3], ['mistral', 2], ['volet', 2], ['verre', 1], ['ferraille', 1], ['tole', 2], ['klaxon_loin', 1], ['effondrement', 1], ['gemissement', 1], ['chien', 1]],
     stingersNuit: [['gemissement', 3], ['hibou', 1], ['cloche_morte', 1]],
+    stingersJour: [['cigales', 3], ['fontaine', 1]],
     intervalle: [7, 18],
     musique: { theme: 'exploration' }, // discret le jour, transposé et ralenti la nuit
   },
   magasin: {
     vent: [260, 0.08, 0.05],
     drones: [[49, 'triangle', 0.032], [98, 'sine', 0.014]],
-    stingers: [['ferraille', 3], ['chariot', 2], ['verre', 2], ['craquement', 1], ['goutte', 1]],
+    stingers: [['ferraille', 3], ['chariot', 2], ['verre', 2], ['rideau_fer', 2], ['tole', 1], ['craquement', 1], ['goutte', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1]],
     intervalle: [8, 22],
     musique: { base: 104, gammes: [[0, 3, 5, 8, 10], [0, 3, 7, 8, 10]], p: 0.4, timbre: 'triangle' },
@@ -89,16 +92,18 @@ export const SCENES_SONORES = {
   gare: {
     vent: [520, 0.16, 0.09],
     drones: [[49, 'triangle', 0.032], [65, 'sine', 0.020]],
-    stingers: [['ferraille', 3], ['corbeau', 2], ['train_loin', 2], ['goutte', 2], ['volet', 1], ['pigeons', 1]],
+    stingers: [['ferraille', 3], ['corbeau', 2], ['train_loin', 2], ['goutte', 2], ['volet', 1], ['pigeons', 1], ['tole', 2], ['rideau_fer', 1], ['mistral', 1]],
     stingersNuit: [['gemissement', 2], ['grattement', 1]],
+    stingersJour: [['cigales', 2]],
     intervalle: [7, 19],
     musique: { base: 98, gammes: [[0, 3, 5, 7, 10], [0, 3, 5, 6, 10]], p: 0.45, timbre: 'triangle' },
   },
   triage: {
     vent: [560, 0.18, 0.10],
     drones: [[46, 'triangle', 0.034], [69, 'sine', 0.018]],
-    stingers: [['ferraille', 4], ['train_loin', 3], ['corbeau', 2], ['vent_rafale', 2], ['gemissement', 1]],
+    stingers: [['ferraille', 4], ['train_loin', 3], ['corbeau', 2], ['vent_rafale', 2], ['mistral', 2], ['tole', 2], ['effondrement', 1], ['gemissement', 1]],
     stingersNuit: [['gemissement', 3], ['hibou', 1]],
+    stingersJour: [['cigales', 2]],
     intervalle: [6, 16],
     musique: { base: 87.3, gammes: [[0, 3, 5, 6, 10], [0, 1, 3, 6, 8]], p: 0.45, timbre: 'triangle' },
   },
@@ -121,7 +126,7 @@ export const SCENES_SONORES = {
   garage: {
     vent: [300, 0.09, 0.05],
     drones: [[49, 'triangle', 0.032], [98, 'sine', 0.012]],
-    stingers: [['goutte', 3], ['ferraille', 3], ['craquement', 1], ['chariot', 1]],
+    stingers: [['goutte', 3], ['ferraille', 3], ['tole', 2], ['rideau_fer', 1], ['craquement', 1], ['chariot', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1]],
     intervalle: [7, 20],
     musique: { base: 92.5, gammes: [[0, 3, 5, 7, 10], [0, 3, 5, 8, 10]], p: 0.35, timbre: 'triangle' },
@@ -145,16 +150,18 @@ export const SCENES_SONORES = {
   region: {
     vent: [640, 0.20, 0.05],
     drones: [[49, 'triangle', 0.026], [73.5, 'sine', 0.018]],
-    stingers: [['vent_rafale', 4], ['rapace', 2], ['corbeau', 2], ['ferraille', 1], ['chien', 1]],
+    stingers: [['vent_rafale', 4], ['mistral', 3], ['rapace', 2], ['corbeau', 2], ['branche', 2], ['ferraille', 1], ['chien', 1]],
     stingersNuit: [['hibou', 2], ['gemissement', 1], ['chien', 1]],
+    stingersJour: [['cigales', 4]], // la garrigue salonaise en plein cagnard
     intervalle: [8, 20],
     musique: { theme: 'exploration' }, // la route est longue — même thème que la rue
   },
   village: {
     vent: [420, 0.12, 0.05],
     drones: [[65.4, 'triangle', 0.026], [98, 'sine', 0.016]],
-    stingers: [['vent_rafale', 2], ['volet', 1], ['pigeons', 2], ['cloche_morte', 1], ['chien', 1]],
+    stingers: [['vent_rafale', 2], ['mistral', 2], ['volet', 1], ['pigeons', 2], ['branche', 1], ['cloche_morte', 1], ['chien', 1]],
     stingersNuit: [['hibou', 2], ['feu_crepite', 1]],
+    stingersJour: [['cigales', 4], ['fontaine', 1]], // Miramas-le-Vieux perché, ses ruelles écrasées de soleil
     intervalle: [9, 24],
     musique: { base: 130.8, gammes: [[0, 2, 4, 7, 9], [0, 2, 4, 5, 9]], p: 0.65, timbre: 'triangle', doux: true },
   },

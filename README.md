@@ -34,7 +34,11 @@ jouable ensuite **hors-ligne** grâce au service worker.
 - **États (pas de barres)** : douleur, fatigue, faim, soif, saignement, froid... s'affichent
   en haut à droite, façon Project Zomboid. Écoute ton corps.
 - **Inventaire à double limite** : chaque objet a un *poids* (kg) et un *encombrement* (cases).
-  Trop lourd = impossible de se déplacer. Sacs et vêtements à poches augmentent l'espace.
+  Le poids est une limite **souple** : au-delà du confort tu passes **« en surpoids »** (tu bouges
+  encore mais plus lentement, et tu te bats moins bien) ; un *plafond* dur finit par te clouer sur
+  place. Sacs et vêtements à poches augmentent l'espace **et** le portage. Un sac ou une ceinture
+  posé au sol s'**enfile directement** (bouton *Porter*), même s'il est trop grand pour ton sac — et
+  toute action qui te ferait trop porter **jette l'excédent au sol** plutôt que de te bloquer.
 - **Accès rapide** : sans **ceinture** (puis holster, gilet...), impossible d'ouvrir le sac en
   combat — on se bat avec ce qu'on a en main. Les objets glissés à la ceinture, eux, se dégainent.
 - **Combat en temps réel** : la jauge de **menace** du zombie se remplit — pleine, il attaque.
@@ -51,6 +55,25 @@ jouable ensuite **hors-ligne** grâce au service worker.
   se couvrir contre le froid.
 - **Compétences** : force, dextérité, agilité, mains nues, visée, construction, mécanique,
   entretien, pêche/chasse — progressent à l'usage.
+
+## Jouer à deux (co-op, même Wi-Fi)
+
+Deux survivants peuvent partager le **même** Salon. Au lancement d'une nouvelle partie,
+choisis **« Jouer à deux → »** :
+
+1. **L'hôte** choisit *Héberger une partie* : l'écran affiche son **adresse réseau**
+   (`http://<ip>:8420`) et un **code de salon** à 4 lettres. Il commence à jouer tout de suite.
+2. **Le second joueur** ouvre cette adresse dans son navigateur (même Wi-Fi, comme pour Android),
+   choisit *Rejoindre une partie* et saisit le code. Il atterrit dans le monde de l'hôte, là où il en est.
+
+Ensuite : vous vous **voyez sur la carte quand vous êtes dans le champ de vision** l'un de l'autre
+(pion bleu), une ligne d'état indique où est votre coéquipier, et lorsqu'il se bat tout près un bouton
+**« Rejoindre le combat »** apparaît pour lui prêter main-forte.
+
+Côté technique, le serveur Node n'est qu'un **relais WebSocket** (rendez-vous par code) : toute la
+logique reste dans le navigateur de l'hôte, qui fait autorité. Le même protocole pourra viser un hôte
+**en ligne** plus tard sans rien changer au jeu. *(Premier jet : le monde de chacun tourne ensuite
+localement — la synchronisation continue des zombies/butin est la prochaine étape.)*
 
 ## Structure du code
 
@@ -69,9 +92,12 @@ js/crafting.js             fabrication
 js/scenes.js               lecteur de scènes scriptées (prologue, train, fin)
 js/effects.js              résolveur d'effets déclaratifs (événements & scènes)
 js/audio.js                sons et musiques générés en Web Audio (remplaçables par des fichiers)
+js/net.js                  couche transport co-op (WebSocket, LAN ou en ligne)
+js/multi.js                session co-op hôte-autoritaire (présence, monde partagé, rejoindre un combat)
 js/illustrations.js        illustrations SVG d'ambiance et de combat
 js/data/*.js               contenu : objets, vêtements, recettes, zombies, lieux, événements, histoire
-server.js                  mini serveur statique Node (aucune dépendance)
+audio/MUSIQUE_LIBRE.md     sources de musique/ambiances libres de droit + manifeste d'exemple
+server.js                  mini serveur statique Node + relais WebSocket co-op (aucune dépendance)
 sw.js + manifest.webmanifest   PWA (hors-ligne + installation Android)
 ```
 
@@ -86,7 +112,9 @@ sw.js + manifest.webmanifest   PWA (hors-ligne + installation Android)
   vérifie tout (liens entre cartes, connexité, ids, graphe des scènes).
 
 ## Feuille de route
-- Mode 2 joueurs (prévu pour une phase ultérieure).
+- **Co-op 2 joueurs** : premier jet jouable (LAN) — présence en ligne de mire + rejoindre un combat.
+  À venir : synchronisation continue du monde (zombies/butin/temps partagés), puis jeu **en ligne**.
 - Chapitre 2 (commencé) : la vie au Refuge de Miramas-le-Vieux — la citerne à remplir au triage,
   les fauves échappés du zoo de La Barben, la BA 701 silencieuse.
-- Remplacement optionnel des sons synthétiques par de vrais enregistrements.
+- Remplacement optionnel des sons synthétiques par de vrais enregistrements
+  (voir `audio/MUSIQUE_LIBRE.md`).

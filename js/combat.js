@@ -12,12 +12,14 @@ import { zombiesPoolCourant, deposerAuSol, keyCourante } from './world.js';
 import {
   armeEquipee, armesDisponibles, soinsAccesRapide, degainerAccesRapide, rengainerArme,
   nbSlotsAccesRapide, removeItem, protectionTotale, bonusAgiliteVetements, countItem, munitionsPour,
+  enSurpoids, surpoidsFacteur,
 } from './inventory.js';
 import { ajouterBlessure, mortJoueur } from './survival.js';
 import { render, updateHUD, log, $ } from './ui.js';
 import { ico } from './icons.js';
 import { svgCombat } from './illustrations.js';
 import { startCombatMusic, stopCombatMusic, sfx, setHeartbeat } from './audio.js';
+import * as multi from './multi.js';
 
 let C = null; // état du combat en cours
 
@@ -57,14 +59,86 @@ export function demarrerCombat(zombieIds, opts = {}) {
     contreJusqua: 0,  // après une esquive réussie : une seconde pour frapper
     chg: null,        // charge en cours (bouton maintenu) : { type, c, prev, raf, ... }
     frappe: null,     // coup de mêlée relâché mais pas encore arrivé : { c, timer }
+    enc: opts.enc || null,    // co-op : identifiant de rencontre PARTAGÉE (combat à deux)
+    appliquantDistant: false, // garde anti-boucle pendant l'application d'un coup distant
   };
   startCombatMusic();
   sfx('zombie');
   clog(`<span class="gore">${C.z.def.desc}</span>`);
   if (C.queue.length) clog(`Et derrière... ${C.queue.length} autre${C.queue.length > 1 ? 's' : ''} silhouette${C.queue.length > 1 ? 's' : ''} approche${C.queue.length > 1 ? 'nt' : ''}.`);
   if (opts.surprise) { C.z.menace = 0.65; clog('Il t\'a surpris — il est déjà sur toi !'); }
+  if (enSurpoids()) clog('Le poids de ton barda te scie les épaules — tes gestes sont lourds, tes esquives molles.', 'degats');
   renderCombat();
   C.timer = setInterval(tick, 100);
+  // Co-op : signaler que je suis en combat ici (le coéquipier peut venir m'épauler).
+  // Un combat en multi a une rencontre PARTAGÉE (enc) : rejoindre reprend le même id.
+  if (multi.estMulti()) {
+    if (!C.enc) C.enc = 'e' + Math.floor(Math.random() * 1e9);
+    multi.diffuserPosition({ enCombat: true, combat: { ids: [C.z.id, ...C.queue], enc: C.enc } });
+  }
+}
+
+// Co-op : un message externe (ex. « X t'a rejoint ») glissé dans le journal de combat.
+export function noteCombat(html) { if (C) clog(html, 'coup'); }
+
+// Co-op : une cinématique déclenchée par le coéquipier surgit pendant mon combat.
+// On FIGE le combat (la menace ne monte plus, la charge en cours est annulée) ;
+// la scène se joue par-dessus, puis le combat reprend après un décompte.
+export function pauseCombatPourCine() {
+  if (!C || C.fini || C.pause) return false;
+  C.pause = true;
+  if (C.timer) { clearInterval(C.timer); C.timer = null; }
+  if (C.qteTimer) { clearTimeout(C.qteTimer); C.qteTimer = null; }
+  if (C.frappe) { clearTimeout(C.frappe.timer); C.frappe = null; }
+  if (C.chg && C.chg.raf) { cancelAnimationFrame(C.chg.raf); C.chg = null; }
+  const qte = document.querySelector('.qte'); if (qte) qte.remove();
+  resetAnneau();
+  setHeartbeat(false);
+  return true;
+}
+// Le combat reprend dans l'état EXACT où il était, après un 5-4-3-2-1 (pas de surprise).
+export function reprendreCombatAvecDecompte() {
+  if (!C || C.fini) return;
+  const ov = document.createElement('div');
+  ov.className = 'reprise-combat';
+  ov.innerHTML = `<div class="reprise-num">5</div><div class="reprise-lbl">Le combat reprend…</div>`;
+  document.body.appendChild(ov);
+  const num = ov.querySelector('.reprise-num');
+  let n = 5;
+  num.textContent = n; sfx('alerte_contact');
+  const tic = () => {
+    n--;
+    if (n <= 0) {
+      ov.remove();
+      if (C && !C.fini) { C.pause = false; C.dernierTick = performance.now(); C.timer = setInterval(tick, 100); renderCombat(true); majBarres(); }
+      return;
+    }
+    num.textContent = n;
+    sfx('alerte_contact');
+    setTimeout(tic, 1000);
+  };
+  setTimeout(tic, 1000);
+}
+
+// Co-op : appliquer un événement de combat venu du coéquipier (même rencontre enc).
+//   'degats' — son coup use aussi LE zombie (usure visible, jamais létale de mon côté) ;
+//   'fin'    — il a achevé la rencontre : mon combat se termine en victoire aussi.
+export function appliquerCombatDistant(m) {
+  if (!C || !C.enc || m.enc !== C.enc) return false;
+  if (m.sub === 'degats') {
+    C.appliquantDistant = true;
+    C.z.hp = Math.max(1, C.z.hp - (m.deg || 0)); // l'achèvement reste l'affaire de celui qui frappe le coup mortel
+    C.appliquantDistant = false;
+    clog('Ton coéquipier le frappe aussi — il encaisse de partout.', 'coup');
+    majBarres();
+    return true;
+  }
+  if (m.sub === 'fin') {
+    clog('<b>Ton coéquipier a porté le coup fatal. Le combat est terminé.</b>', 'coup');
+    finVictoire(true);
+    return true;
+  }
+  return false;
 }
 
 function creerZombie(id) {
@@ -108,8 +182,9 @@ function tick() {
   // Récupération d'endurance
   p.sta = Math.min(p.staMax, p.sta + (C.defense ? 9 : 2.2) * (dt / 1000));
 
-  // Jauge de menace
-  C.z.menace += dt / (C.z.def.vitesse * C.z.facteur);
+  // Jauge de menace — en surpoids, tes parades molles le laissent presser le pas.
+  const sevSP = enSurpoids() ? surpoidsFacteur() : 0;
+  C.z.menace += (dt / (C.z.def.vitesse * C.z.facteur)) * (1 + 0.35 * sevSP);
   if (C.z.menace >= 1) {
     C.z.menace = 0;
     C.z.facteur = 0.85 + Math.random() * 0.3;
@@ -220,6 +295,7 @@ function resoudreAttaque(factEsquive) {
   const agi = skillLevel('agilite') + bonusAgiliteVetements();
   let pEsquive = (0.1 + agi * 0.05 + (C.defense ? 0.3 : 0)) * factEsquive;
   if (p.sta < 15) pEsquive *= 0.5;
+  if (enSurpoids()) pEsquive *= (1 - 0.55 * surpoidsFacteur()); // chargé comme une mule : on esquive mal
   if (chance(pEsquive)) {
     sfx('rate');
     clog(C.defense ? 'Tu bloques son assaut, arc-bouté derrière ta garde.' : 'Tu te jettes sur le côté — ses ongles fendent l\'air à un cheveu de ton visage.');
@@ -427,6 +503,7 @@ function frappeMelee(c) {
   if (G.player.sta < 15) pTouche -= 0.15;
   if (arme.def && arme.def.allonge) pTouche += 0.05;
   pTouche *= Math.min(1, 1 - 0.28 * c + agi * 0.035);
+  if (enSurpoids()) pTouche *= (1 - 0.25 * surpoidsFacteur()); // le barda gêne aussi tes coups
   if (chance(Math.max(0.12, pTouche))) {
     if (c >= 0.7) sfx('puissance');
     const crit = chance(0.08 + skillLevel('dexterite') * 0.02 + c * 0.18);
@@ -508,6 +585,8 @@ function resoudreTir(a) {
 function infligerDegats(deg, crit, arme) {
   C.derniereDistance = !!arme.feu; // tir ou projectile : on n'est pas au contact
   C.z.hp -= deg;
+  // Co-op : mon coup use aussi le zombie commun chez mon coéquipier (rencontre partagée).
+  if (multi.estMulti() && C.enc && !C.appliquantDistant) multi.diffuserCombat({ sub: 'degats', enc: C.enc, deg });
   sfx(crit ? 'coup_critique' : 'coup');
   const fl = $('.combat-scene .flash');
   if (fl) { fl.classList.remove('hit'); void fl.offsetWidth; fl.classList.add('hit'); }
@@ -735,11 +814,13 @@ function nettoyer() {
   if (qte) qte.remove();
   stopCombatMusic();
   setHeartbeat(false);
+  if (multi.estMulti()) multi.diffuserPosition({ enCombat: false }); // co-op : je ne suis plus en combat
 }
 
-function finVictoire() {
+function finVictoire(distant = false) {
   nettoyer();
   C.fini = true;
+  const enc = C.enc;
   // Les armes jetées restent au sol : il suffira de fouiller la zone.
   // Si le jet a raté sa cible, l'arme a pu glisser n'importe où — parfois perdue.
   let msgArme = '';
@@ -753,6 +834,8 @@ function finVictoire() {
   }
   const opts = C.opts;
   C = null;
+  // Co-op : si la rencontre était partagée, prévenir le coéquipier que c'est fini.
+  if (multi.estMulti() && enc && !distant) multi.diffuserCombat({ sub: 'fin', enc });
   log(`Combat gagné.${msgArme}`, 'good');
   updateHUD();
   if (opts.onFin) opts.onFin('victoire');

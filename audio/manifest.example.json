@@ -1,0 +1,19 @@
+{
+  "_comment": "Renomme ce fichier en 'manifest.json' une fois tes fichiers déposés dans audio/. Supprime les lignes dont tu n'as PAS le fichier — toute entrée manquante retombe en silence sur la synthèse. Voir MUSIQUE_LIBRE.md pour des sources libres de droit.",
+  "themes": {
+    "titre": "titre.ogg",
+    "exploration": "exploration.ogg",
+    "exploration_nuit": "exploration_nuit.ogg",
+    "tension": "tension.ogg",
+    "combat": "combat.ogg",
+    "refuge": "refuge.ogg",
+    "train": "train.ogg",
+    "mort": "mort.ogg"
+  },
+  "ambiances": {
+    "rue": "amb_rue.ogg",
+    "hopital": "amb_hopital.ogg",
+    "eglise": "amb_eglise.ogg",
+    "region": "amb_region.ogg"
+  }
+}

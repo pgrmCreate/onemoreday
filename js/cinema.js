@@ -8,6 +8,7 @@ import { CINEMATIQUES } from './data/cinematiques.js';
 import { svgPano } from './ambiance.js';
 import { PANO_W, PANO_H } from './art/panoramas/index.js';
 import { playAmbiance, sfx } from './audio.js';
+import * as multi from './multi.js';
 
 let etat = null; // { el, timer, fin }
 
@@ -23,11 +24,14 @@ function nettoyer() {
 export function cineEnCours() { return !!etat; }
 
 // Joue une cinématique. onFin est appelé une seule fois, cinématique passée ou finie.
-export function jouerCine(id, onFin = () => {}) {
+// distant=true : c'est une scène RELAYÉE par le coéquipier — on ne la re-diffuse pas.
+export function jouerCine(id, onFin = () => {}, distant = false) {
   const def = CINEMATIQUES[id];
   if (!def || etat) { onFin(); return; }
   const svg = svgPano(def.plans[0].pano, heureJeu());
   if (!svg) { onFin(); return; } // panorama indisponible : on ne bloque jamais le jeu
+  // Co-op : ma cinématique, le coéquipier doit la voir aussi (no-op en solo).
+  if (!distant) multi.diffuserCine(id);
 
   const el = document.createElement('div');
   el.className = 'cine';
