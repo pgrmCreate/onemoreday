@@ -5,7 +5,7 @@ import { ico, ICONS } from './icons.js';
 import { svgScene } from './illustrations.js';
 import { item } from './data/items.js';
 import { cloth, CLOTHES, SLOTS } from './data/clothing.js';
-import { MORTS } from './data/story.js';
+import { MORTS, SCENES } from './data/story.js';
 import {
   poidsTotal, poidsMax, espaceUtilise, espaceMax, equiperArme, desequiperArme,
   equiperVetement, desequiperVetement, dropItem, protectionTotale, chaleurTotale, hasItem,
@@ -22,6 +22,7 @@ import { solDe, keyCourante } from './world.js';
 import { listeRecettes, fabriquer } from './crafting.js';
 import { renderLieu, objectifActuel, initPosition } from './map.js';
 import { jouerScene } from './scenes.js';
+import { jouerCine } from './cinema.js';
 import { enCombat } from './combat.js';
 import { demarrerAlertes, stopperAlertes } from './effects.js';
 import { initAudio, playAmbiance, sfx, setMuted, isMuted, getVolume, setVolume, stopCombatMusic, setHeartbeat } from './audio.js';
@@ -164,8 +165,15 @@ function ecranNouvelle() {
     showHUD(true);
     updateHUD();
     demarrerAlertes();
-    jouerScene('intro_1');
+    jouerIntro();
   });
+}
+
+// La grande introduction : Salon paisible (cinématique) → la vie d'avant (texte)
+// → l'effondrement (cinématique) → la fuite (texte) → le réveil à l'hôtel.
+// Le « Passer l'introduction » de intro_av1 court-circuite jusqu'au réveil.
+function jouerIntro() {
+  jouerCine('intro_avant', () => jouerScene('intro_av1'));
 }
 
 // ---------- Boutons fixes ----------
@@ -720,6 +728,7 @@ function panneauOptions() {
     <div class="opt-row"><span>Volume</span><input type="range" id="opt-vol" min="0" max="1" step="0.05" value="${getVolume()}" style="max-width:160px"></div>
     <div class="opt-row"><span>Son coupé</span><input type="checkbox" id="opt-mute" ${isMuted() ? 'checked' : ''}></div>
     <div class="actions">
+      ${pleinEcranDispo() ? btnAct('data-o="plein-ecran"', estPleinEcran() ? 'Quitter le plein écran' : 'Plein écran', 'idéal sur mobile') : ''}
       ${btnAct('data-o="save"', 'Sauvegarder', 'la partie se sauvegarde aussi toute seule')}
       ${btnAct('data-o="titre"', 'Sauvegarder et retourner au titre')}
       ${btnAct('data-o="reset"', 'Abandonner la partie', 'efface définitivement la sauvegarde')}
@@ -730,6 +739,7 @@ function panneauOptions() {
   box.querySelectorAll('[data-o]').forEach(b => {
     b.onclick = () => {
       switch (b.dataset.o) {
+        case 'plein-ecran': sfx('clic'); basculerPleinEcran(); break;
         case 'save': save(); toast('Partie sauvegardée.'); break;
         case 'titre': save(); closePanel(); ecranTitre(); break;
         case 'reset':

@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v7';
+const CACHE = 'onemoreday-v8';
 const FICHIERS = [
   './',
   './index.html',
@@ -56,6 +56,14 @@ const FICHIERS = [
   './js/art/panoramas/sortie_hotel.js',
   './js/art/panoramas/gare.js',
   './js/art/panoramas/miramas.js',
+  './js/art/panoramas/salon_avant.js',
+  './js/art/panoramas/salon_chaos.js',
+  './js/art/panoramas/clocher.js',
+  './js/art/panoramas/premiere_nuit.js',
+  './js/art/panoramas/hopital.js',
+  './js/art/panoramas/emperi.js',
+  './js/art/panoramas/depart_train.js',
+  './js/art/panoramas/refuge_miramas.js',
   './js/data/items.js',
   './js/data/clothing.js',
   './js/data/recipes.js',
@@ -76,6 +84,7 @@ const FICHIERS = [
   './js/data/cartes_miramas.js',
   './js/data/soundscapes.js',
   './js/data/cinematiques.js',
+  './js/data/musiques.js',
 ];
 
 self.addEventListener('install', (e) => {

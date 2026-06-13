@@ -16,15 +16,43 @@ import { CH2_SCENES } from './story_ch2.js';
 
 const BASE_SCENES = {
 
-  // ---------- PROLOGUE ----------
+  // ---------- PROLOGUE 1/3 : LA VIE D'AVANT ----------
+  // Ces panneaux sont joués par la grande introduction de main.js (jouerIntro),
+  // qui intercale les cinématiques intro_avant et intro_chaos. Leurs cibles
+  // restent de vraies scènes : le moteur normal sait aussi les enchaîner.
+  intro_av1: {
+    illu: 'cuisine_radio', musique: 'calme',
+    texte: 'Un mois plus tôt.\n\nUn mardi soir ordinaire. La casserole refroidit sur la cuisinière, la radio parle toute seule : un « incident sanitaire » aux urgences de Salon, des « mouvements de foule » à Marseille. Le présentateur enchaîne sur la météo — mistral demain, gel en fin de semaine.\n\nTu éteins la radio. Par la fenêtre, la ville ronronne : les terrasses de la place Crousillat, les phares sur le cours Carnot, l\'horloge qui sonne la demie.\n\nTu te souviens d\'avoir pensé : ça ne nous concerne pas.',
+    auto: { label: 'Continuer', suivant: 'intro_av2' },
+    choix: [{ label: 'Passer l\'introduction', sous: 'aller directement au réveil', suivant: 'intro_1' }],
+  },
+  intro_av2: {
+    illu: 'cuisine_radio', musique: 'calme',
+    texte: 'Les jours suivants, le bruit monte. Des sirènes la nuit, de plus en plus, de moins en moins loin. Les hélicoptères de la base aérienne rasent les toits. À la radio, plus de météo : des consignes. Restez chez vous. Fermez vos portes. N\'approchez pas des personnes désorientées.\n\nMardi soir, les voisins du dessous chargent leur break en silence. La petite serre un lapin en peluche contre sa bouche. Personne ne te propose de monter.\n\nTu restes. On reste toujours : c\'est chez toi, ça va passer.\n\nLe lendemain, c\'était mercredi. Jour de grand marché.',
+    auto: { label: 'Continuer', suivant: '#intro_chaos' },
+  },
+
+  // ---------- PROLOGUE 2/3 : LA FUITE ----------
+  intro_fu1: {
+    illu: 'exode', musique: 'sombre',
+    texte: 'Ça s\'est déchiré en une matinée. Les cris ont traversé la foule du marché comme une vague, et la ville a essayé de partir d\'un seul bloc — les cours bouchés en vingt minutes, les klaxons, puis plus de klaxons.\n\nTu es parti à pied, le sac d\'une autre vie sur l\'épaule : des papiers, un chargeur de téléphone, rien d\'utile. Tu as longé les voitures abandonnées, les étals renversés, les fruits écrasés sous les semelles.\n\nTu as vu de près ce que la radio appelait des personnes désorientées. Tu as vu ce qu\'elles faisaient à ceux qu\'elles rattrapaient. Après ça, tu as couru sans regarder derrière.',
+    auto: { label: 'Continuer', suivant: 'intro_fu2' },
+  },
+  intro_fu2: {
+    illu: 'hall_hotel', musique: 'sombre',
+    texte: 'Le Grand Hôtel de la Poste avait sa porte entrouverte et son hall vide. Tu es entré parce que c\'était là. Parce que les murs étaient épais. Parce qu\'il fallait un dedans.\n\nTu as poussé contre la porte tout ce que tes bras pouvaient soulever : l\'armoire de la lingerie, les fauteuils du salon, le grand bureau de la réception. Tes mains tremblaient trop pour faire des nœuds, alors tu as empilé, coincé, cloué.\n\nPuis tu es monté au deuxième. Chambre 203. Le petit verrou doré, ridicule, a claqué — et le noir t\'a pris d\'un coup, comme une trappe.',
+    auto: { label: 'Continuer', suivant: 'intro_1' },
+  },
+
+  // ---------- PROLOGUE 3/3 : LE RÉVEIL (raccord avec le début de jeu) ----------
   intro_1: {
     illu: 'appartement', musique: 'calme',
-    texte: 'Jour 23.\n\nÇa a commencé un mercredi matin, jour de grand marché — les cours de Salon noirs de monde quand les premiers cris ont traversé la foule. Quatre jours en tout : les hôpitaux saturés, l\'armée dans les rues, puis plus d\'armée. Plus de rues. Juste eux.\n\nTu as tenu vingt-trois jours dans la chambre 203 du Grand Hôtel de la Poste, à manger froid et à pisser dans des bouteilles, à écouter les ongles gratter les portes du couloir. Par la fenêtre, au-dessus de la place Crousillat, l\'horloge de la Tour de l\'Horloge est arrêtée — comme en 1909, après le séisme. Cette fois, personne ne viendra la remonter.',
+    texte: 'Jour 23.\n\nTu ouvres les yeux dans la chambre 203, sous trois couvertures qui sentent la poussière. Sur le papier peint, au canif : vingt-trois entailles, une par matin. Quatre jours pour que Salon tombe ; dix-neuf à manger froid et à écouter les ongles gratter les portes du couloir.\n\nPar la fenêtre, au-dessus de la place Crousillat, l\'horloge de la Tour de l\'Horloge est arrêtée — comme en 1909, après le séisme. Cette fois, personne ne viendra la remonter.',
     auto: { label: 'Continuer', suivant: 'intro_2' },
   },
   intro_2: {
     illu: 'appartement', musique: 'calme',
-    texte: 'Cette nuit, la radio à piles a accroché un signal. Une voix de femme, épuisée, en boucle :\n\n« ...Miramas-le-Vieux... le village tient. Le Refuge accueille les survivants. Vivres, médecins, murs. Suivez la voie ferrée vers le sud... »\n\nMiramas-le-Vieux. Quinze kilomètres. Vingt minutes de train, avant. Autant dire la Lune, à pied, en plein hiver, à travers eux.\n\nLa base aérienne, à trois kilomètres au sud, n\'émet plus depuis une semaine. Quand même la Patrouille de France se tait, il ne reste que la voie ferrée.\n\nMais il y a la gare. Et sur la voie de service, peut-être, une machine.',
+    texte: 'Cette nuit, la radio à piles a accroché un signal. Une voix de femme, épuisée, en boucle :\n\n« ...Miramas-le-Vieux... le village tient. Le Refuge accueille les survivants. Vivres, médecins, murs. Suivez la voie ferrée vers le sud... »\n\nMiramas-le-Vieux. Quinze kilomètres. Vingt minutes de train, avant. Autant dire la Lune, à pied, en plein hiver, à travers eux.\n\nMais il y a la gare. Et sur la voie de service, peut-être, une machine.',
     auto: { label: 'Continuer', suivant: 'intro_3' },
   },
   intro_3: {

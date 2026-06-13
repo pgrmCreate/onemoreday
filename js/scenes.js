@@ -7,7 +7,7 @@ import { render, updateHUD, log, btnAct, $ } from './ui.js';
 import { svgScene } from './illustrations.js';
 import { appliquerEffets, besoinRempli, besoinTexte, jetReussi } from './effects.js';
 import { playAmbiance, startCombatMusic, stopCombatMusic, sfx } from './audio.js';
-import { jouerCineUneFois } from './cinema.js';
+import { jouerCine, jouerCineUneFois } from './cinema.js';
 
 let sceneTimer = null;
 let timerAnim = null;
@@ -50,6 +50,11 @@ function goTo(cible) {
   }
   if (cible === '#mort') {
     window.dispatchEvent(new CustomEvent('omd-mort', { detail: { cause: 'combat' } }));
+    return;
+  }
+  if (cible === '#intro_chaos') {
+    // Grande intro : l'effondrement (cinématique) puis la fuite (texte) jusqu'au réveil.
+    jouerCine('intro_chaos', () => jouerScene('intro_fu1'));
     return;
   }
   jouerScene(cible);

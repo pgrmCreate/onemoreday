@@ -10,19 +10,21 @@ import {
   carte, carteCourante, caseDef, caseCourante, franchissable, passagePossible, ckey, keyCourante,
   decouvrir, decouvrirAutour, estDecouverte, casesVisibles, solDe, solVisible, deposerAuSol, revelerSol,
   fouilleEtat, estSecurisee, securiser, zombiesPoolCourant, interieurSecurise,
-  niveauSombre, liaison,
+  niveauSombre, liaison, porteCassee,
 } from './world.js';
 import { svgAmbiance, aAmbiance } from './ambiance.js';
-import { jouerCineUneFois } from './cinema.js';
+import { jouerCineUneFois, cineEnCours } from './cinema.js';
 import {
-  carteVivante, peuplerCarte, zombiesSur, zombieEn, retirerZombie, meuteAuContact,
-  tourZombies, attirerZombies,
+  carteVivante, peuplerCarte, zombiesSur, retirerZombie, meuteAuContact,
+  tickZombies, attirerZombies,
+  fauxMortEn, reveillerFauxMort, ajouterMort, mortsSur,
+  TICK_MS, OUIE_JOUEUR,
 } from './zombies_map.js';
 import { EVENTS } from './data/events.js';
 import { item } from './data/items.js';
 import {
   render, updateHUD, setLieuLabel, log, logHtml, btnAct, $, toast,
-  showPanel, closePanel, showEvt, closeEvt, attente,
+  showPanel, closePanel, showEvt, closeEvt, attente, panelOuvert, evtOuvert,
 } from './ui.js';
 import { ico } from './icons.js';
 import { svgScene } from './illustrations.js';
@@ -35,8 +37,8 @@ import {
 } from './inventory.js';
 import { advanceTime, dormir, attendre } from './survival.js';
 import { appliquerEffets, besoinRempli, besoinTexte, jetReussi } from './effects.js';
-import { demarrerCombat } from './combat.js';
-import { playAmbiance, sfx } from './audio.js';
+import { demarrerCombat, enCombat } from './combat.js';
+import { playAmbiance, sfx, setTension } from './audio.js';
 import { jouerScene } from './scenes.js';
 
 let selection = null; // case sélectionnée sur la carte (info avant déplacement)
@@ -473,9 +475,22 @@ function dessinExterieur(cd, x, y, px, py, s) {
 }
 
 // Pion de zombie sur la carte : silhouette rouge, bras en avant.
-function pionZombie(px, py, CS, n) {
+// dir = vecteur du regard (petit cône dessiné devant lui) ; spin = anneau de
+// contact en cours (il est sur toi : bouge, ou le combat s'engage).
+function pionZombie(px, py, CS, n, dir, spin) {
   const cx = px + CS / 2, cy = py + CS / 2;
-  let s = `<g class="zpion">
+  let s = '<g>';
+  // Cône de vue : un éventail estompé dans la direction du regard.
+  if (dir && (dir[0] || dir[1])) {
+    const ang = Math.atan2(dir[1], dir[0]);
+    const L = 15, demi = 0.5; // ~±28°
+    const ax = cx + Math.cos(ang - demi) * L, ay = cy + Math.sin(ang - demi) * L;
+    const bx = cx + Math.cos(ang + demi) * L, by = cy + Math.sin(ang + demi) * L;
+    s += `<path d="M${cx} ${cy}L${ax.toFixed(1)} ${ay.toFixed(1)}L${bx.toFixed(1)} ${by.toFixed(1)}Z" fill="#a83226" opacity=".16"/>`;
+  }
+  // Anneau de contact : le décompte avant la morsure (anime en CSS).
+  if (spin) s += `<circle class="zspin" cx="${cx}" cy="${cy}" r="13" fill="none" stroke="#e0503e" stroke-width="2"/>`;
+  s += `<g class="zpion">
     <circle cx="${cx}" cy="${cy}" r="9.5" fill="#160b0b" stroke="#a83226" stroke-width="1.6"/>
     <circle cx="${cx - 0.5}" cy="${cy - 3.6}" r="2.6" fill="#c4574a"/>
     <path d="M${cx - 3.6} ${cy + 6.5}L${cx - 1.5} ${cy - 0.5}M${cx + 3.6} ${cy + 6.5}L${cx + 1.5} ${cy - 0.5}M${cx - 4.5} ${cy + 0.5}l9 -1.6" stroke="#c4574a" stroke-width="1.7" fill="none" stroke-linecap="round"/>
@@ -484,7 +499,24 @@ function pionZombie(px, py, CS, n) {
     s += `<circle cx="${px + CS - 9}" cy="${py + 9}" r="6.5" fill="#a83226"/>
       <text x="${px + CS - 9}" y="${py + 12}" text-anchor="middle" font-size="9" fill="#fff">${n}</text>`;
   }
-  return s;
+  return s + '</g>';
+}
+
+// Cadavre au sol (zombie abattu, ou faux-mort tant qu'il n'est pas réveillé) :
+// une forme tassée, sombre, sans agitation.
+function pictoCadavre(px, py, CS) {
+  const cx = px + CS / 2, cy = py + CS / 2;
+  return `<g class="zmort" opacity=".72">
+    <ellipse cx="${cx}" cy="${cy + 1}" rx="10" ry="6.5" fill="#0e0808" stroke="#5a2420" stroke-width="1.3"/>
+    <path d="M${cx - 6} ${cy + 1}l5 -2.5M${cx + 6} ${cy - 1}l-5 2" stroke="#7a2f28" stroke-width="1.4" stroke-linecap="round"/>
+  </g>`;
+}
+
+// Ouïe : un zombie tout proche, hors de ta vue — un point rouge estompé qui
+// pulse (parfois à travers les murs). Tu l'ENTENDS avant de le voir.
+function pointOuie(px, py, CS) {
+  const cx = px + CS / 2, cy = py + CS / 2;
+  return `<circle class="zouie" cx="${cx}" cy="${cy}" r="4.5" fill="#a83226"/>`;
 }
 
 function svgCarte(reach, vis) {
@@ -499,6 +531,7 @@ function svgCarte(reach, vis) {
   const connue = (vx, vy) => toutConnu || estDecouverte(G.world.carte, vx, vy);
   const vivante = carteVivante(G.world.carte);
   const zombies = vivante ? zombiesSur(G.world.carte) : [];
+  const morts = vivante ? mortsSur(G.world.carte) : [];
   // Une lampe allumée en main ou à la ceinture troue le noir autour de toi.
   const lampe = lumiereActive();
   let cells = '', murs = '';
@@ -546,10 +579,20 @@ function svgCarte(reach, vis) {
     if (!aVue && !ici) {
       inner += `<rect x="${px}" y="${py}" width="${CS}" height="${CS}" fill="#08080a" opacity=".4"/>`;
     }
-    // Eux. Visibles seulement dans ta ligne de vue — on les voit ARRIVER.
+    // Eux, et leurs morts. Visibles dans ta ligne de vue : on les voit ARRIVER.
     if (aVue) {
-      const zlist = zombies.filter(z => z.x === x && z.y === y);
-      if (zlist.length) inner += pionZombie(px, py, CS, zlist.length);
+      // cadavres au sol + faux-morts (affichés comme des corps tant qu'ils dorment)
+      const corps = morts.some(m => m.x === x && m.y === y)
+        || zombies.some(z => z.faitLeMort && z.x === x && z.y === y);
+      if (corps) inner += pictoCadavre(px, py, CS);
+      const zlist = zombies.filter(z => !z.faitLeMort && z.x === x && z.y === y);
+      if (zlist.length) inner += pionZombie(px, py, CS, zlist.length, zlist[0].dir, !!zlist[0].spin);
+    } else if (!ici) {
+      // Ouïe : un zombie vivant tout proche, hors de vue → point rouge estompé.
+      const dist = Math.abs(x - G.world.x) + Math.abs(y - G.world.y);
+      if (dist <= OUIE_JOUEUR && zombies.some(z => !z.faitLeMort && z.x === x && z.y === y)) {
+        inner += pointOuie(px, py, CS);
+      }
     }
     if (ici) {
       inner += `<g class="joueur"><circle cx="${px + CS / 2}" cy="${py + CS / 2}" r="8" fill="#c9b98a" stroke="#0b0b0c" stroke-width="2"/>
@@ -584,6 +627,38 @@ function tagsCase(cd, k) {
 function tuile(attrs, icone, nom, sub = '', opts = {}) {
   return `<button class="tile${opts.classe ? ' ' + opts.classe : ''}" ${attrs} ${opts.disabled ? 'disabled' : ''}>
     <span class="t-ico">${ico(icone)}</span><span class="t-nom">${nom}</span>${sub ? `<span class="t-sub">${sub}</span>` : ''}</button>`;
+}
+
+// (Re)lie les clics sur les cases de la carte. Extrait pour pouvoir rafraîchir
+// la grille seule (boucle temps réel) sans reconstruire tout l'écran.
+function lierCasesCarte(reach) {
+  document.querySelectorAll('[data-case]').forEach(g => {
+    g.onclick = () => {
+      if (enMarche) return; // on ne change pas de cap en pleine marche
+      const pos = g.dataset.case;
+      if (pos === `${G.world.x},${G.world.y}`) { selection = null; renderLieu(); return; }
+      if (selection === pos && reach.has(pos)) {
+        selection = null;
+        sfx('clic');
+        allerEnCase(pos);
+        return;
+      }
+      selection = pos;
+      majInfoCase(pos, reach);
+    };
+  });
+}
+
+// Redessine UNIQUEMENT la grille (pions, points d'ouïe, cadavres, portes
+// enfoncées) sans toucher au reste de l'écran : c'est ce que joue la boucle
+// temps réel à chaque pas des zombies, pour ne pas tout reconstruire.
+function rafraichirCarteSeule() {
+  const svg = document.querySelector('.carte-wrap .carte-grille');
+  if (!svg) return;
+  const reach = atteignables(porteeActuelle());
+  const vis = casesVisibles(G.world.carte, G.world.x, G.world.y);
+  svg.outerHTML = svgCarte(reach, vis);
+  lierCasesCarte(reach);
 }
 
 export function renderLieu() {
@@ -667,21 +742,7 @@ export function renderLieu() {
   updateHUD();
 
   // --- interactions carte ---
-  document.querySelectorAll('[data-case]').forEach(g => {
-    g.onclick = () => {
-      if (enMarche) return; // on ne change pas de cap en pleine marche
-      const pos = g.dataset.case;
-      if (pos === `${G.world.x},${G.world.y}`) { selection = null; renderLieu(); return; }
-      if (selection === pos && reach.has(pos)) {
-        selection = null;
-        sfx('clic');
-        allerEnCase(pos);
-        return;
-      }
-      selection = pos;
-      majInfoCase(pos, reach);
-    };
-  });
+  lierCasesCarte(reach);
   const lier = (sel, fn) => { const b = $(sel); if (b) b.onclick = () => { if (enMarche) return; sfx('clic'); fn(); }; };
   lier('[data-entrer]', entrerCase);
   lier('[data-fouille]', () => fouiller());
@@ -694,6 +755,11 @@ export function renderLieu() {
   lier('[data-lampe]', basculerLampePortee);
   const sp = $('[data-special]');
   if (sp) sp.onclick = () => { if (enMarche) return; sfx('clic'); actionSpeciale(sp.dataset.special); };
+
+  // La toute première nuit de l'aventure : un plan sur la place, du noir total.
+  if (estNuit() && !getFlag('cine_premiere_nuit') && !getFlag('chapitre2') && !enMarche) {
+    jouerCineUneFois('premiere_nuit');
+  }
 }
 
 // ---------- Boutons ronds sous la carte : lampe (si à portée) et attendre ----------
@@ -750,8 +816,8 @@ function panneauAttendre() {
         // Pendant que tu soufflais, eux marchaient.
         if (carteVivante(G.world.carte)) {
           const vis = casesVisibles(G.world.carte, G.world.x, G.world.y);
-          const contact = tourZombies(G.world.carte, vis) || zombieEn(G.world.carte, G.world.x, G.world.y);
-          if (contact) { renderLieu(); lancerCombatContact(contact); return; }
+          const ev = tickZombies(G.world.carte, vis);
+          if (ev.contact) { renderLieu(); lancerCombatContact(ev.contact); return; }
         }
         renderLieu();
       });
@@ -843,8 +909,15 @@ function marcher(chemin) {
     G.player.sta = Math.max(0, G.player.sta - 0.6); // marcher use, un peu
     const vis = casesVisibles(G.world.carte, x, y);
     // Eux aussi avancent — et le contact arrête tout.
-    let contact = carteVivante(G.world.carte) ? tourZombies(G.world.carte, vis) : null;
-    if (!contact) contact = zombieEn(G.world.carte, x, y);
+    let contact = null;
+    if (carteVivante(G.world.carte)) {
+      const fm = fauxMortEn(G.world.carte, x, y); // marcher SUR un faux-mort le réveille
+      if (fm) { reveillerFauxMort(fm); sfx('zombie'); }
+      const ev = tickZombies(G.world.carte, vis);
+      if (ev.portes.length) sfx('porte_coup');
+      contact = ev.contact;
+      majTension(vis);
+    }
     if (contact) {
       enMarche = false;
       save();
@@ -866,12 +939,20 @@ function marcher(chemin) {
 
 // Combat au contact d'un zombie de la carte : lui, et ceux collés à lui.
 function lancerCombatContact(z) {
+  poserTension(0); // la musique de combat prend le relais
   const cd = caseCourante() || {};
-  const meute = meuteAuContact(G.world.carte, G.world.x, G.world.y);
+  const carteId = G.world.carte;
+  const meute = meuteAuContact(carteId, G.world.x, G.world.y);
   const groupe = meute.includes(z) ? meute : [z, ...meute];
-  groupe.forEach(v => retirerZombie(G.world.carte, v));
+  const positions = groupe.map(v => ({ x: v.x, y: v.y })); // pour y laisser les cadavres
+  groupe.forEach(v => retirerZombie(carteId, v));
   log(`${cd.nom || 'Ici'} : ${groupe.length > 1 ? 'ils sont' : 'il est'} sur toi.`, 'bad');
-  demarrerCombat(groupe.map(v => v.id), { onFin: () => renderLieu() });
+  demarrerCombat(groupe.map(v => v.id), {
+    onFin: (res) => {
+      if (res === 'victoire') positions.forEach(p => ajouterMort(carteId, p.x, p.y));
+      renderLieu();
+    },
+  });
 }
 
 function entrerCase() {
@@ -902,6 +983,9 @@ function entrerCase() {
     const suite = () => arrivee();
     if (G.world.carte === 'q_centre' && getFlag('sorti_hotel')) jouerCineUneFois('sortie_hotel', suite);
     else if (G.world.carte === 'int_gare') jouerCineUneFois('quais_gare', suite);
+    else if (G.world.carte === 'int_hopital') jouerCineUneFois('hopital', suite);
+    else if (G.world.carte === 'int_emperi') jouerCineUneFois('emperi', suite);
+    else if (G.world.carte === 'int_refuge') jouerCineUneFois('refuge_miramas', suite);
     else suite();
   });
 }
@@ -909,6 +993,12 @@ function entrerCase() {
 function arrivee() {
   const cd = caseCourante() || {};
   const k = keyCourante();
+  // Grand moment « vue d'en haut » : la première fois au pied de la Tour de
+  // l'Horloge, la caméra prend de la hauteur avant de rendre la main.
+  if (cd.special === 'cloches' && !getFlag('cine_clocher')) {
+    jouerCineUneFois('clocher', () => renderLieu());
+    return;
+  }
   // Rencontre tirée au sort : SEULEMENT aux échelles abstraites (ville, région).
   // Sur les cartes vivantes, les zombies sont visibles et le combat se joue au contact —
   // ce que tes yeux couvrent ne peut plus te sauter dessus par surprise.
@@ -1047,8 +1137,8 @@ function terminerFouille(aTatons) {
   // Pendant que tu farfouillais, eux marchaient.
   if (carteVivante(G.world.carte)) {
     const vis = casesVisibles(G.world.carte, G.world.x, G.world.y);
-    const contact = tourZombies(G.world.carte, vis) || zombieEn(G.world.carte, G.world.x, G.world.y);
-    if (contact) { renderLieu(); lancerCombatContact(contact); return; }
+    const ev = tickZombies(G.world.carte, vis);
+    if (ev.contact) { renderLieu(); lancerCombatContact(ev.contact); return; }
   }
   renderLieu();
   if (deniches.length || reveles) panneauTrouves();
@@ -1619,7 +1709,8 @@ function ecranLocomotive() {
     removeItem('bidon_gasoil', 1); // la clé reste sur le contacteur
     noteJournal('La locomotive a démarré. Direction : Miramas-le-Vieux.');
     save();
-    jouerScene('loco_demarrage');
+    // Le grand départ en cinématique, PUIS la scène texte de la traversée.
+    jouerCineUneFois('depart_train', () => jouerScene('loco_demarrage'));
   };
 }
 
@@ -1707,6 +1798,71 @@ if (typeof window !== 'undefined') {
     decouvrirAutour(carteId, x, y);
     renderLieu();
   };
+}
+
+// ---------- La vie qui rôde : boucle TEMPS RÉEL des zombies ----------
+// Le monde respire même quand tu ne fais rien : sur les cartes vivantes, les
+// zombies avancent à leur horloge (TICK_MS) — tu les vois ARRIVER. On ne tourne
+// que quand l'écran carte est devant toi, hors marche, hors combat, hors modale,
+// onglet visible ; sinon la nappe de tension retombe et on patiente.
+let tensionCourante = -1;
+function poserTension(t) {
+  t = Math.round(Math.max(0, Math.min(1, t)) * 20) / 20;
+  if (t === tensionCourante) return; // évite de réarmer la nappe à chaque tick
+  tensionCourante = t;
+  setTension(t);
+}
+
+function modaleBloque() {
+  if (enCombat() || cineEnCours() || panelOuvert() || evtOuvert()) return true;
+  const att = $('#attente');
+  return !!(att && !att.classList.contains('hidden'));
+}
+
+// Tension musicale d'après le zombie le plus menaçant alentour.
+function majTension(vis) {
+  let t = 0;
+  for (const z of zombiesSur(G.world.carte)) {
+    if (z.faitLeMort) continue;
+    if (z.spin) { t = 1; break; }
+    const d = Math.abs(z.x - G.world.x) + Math.abs(z.y - G.world.y);
+    if (d <= 7) {
+      const vu = vis.has(`${z.x},${z.y}`);
+      t = Math.max(t, (z.ag ? 1 : 0.55) * (1 - d / 9) * (vu ? 1 : 0.8));
+    }
+  }
+  poserTension(t);
+}
+
+function tickTempsReel() {
+  if (!G || !G.world || enMarche) return;
+  if (typeof document === 'undefined' || document.hidden) return;
+  if (!carteVivante(G.world.carte) || !document.querySelector('.carte-grille') || modaleBloque()) {
+    poserTension(0);
+    return;
+  }
+  const vis = casesVisibles(G.world.carte, G.world.x, G.world.y);
+  const ev = tickZombies(G.world.carte, vis);
+  majTension(vis);
+  if (ev.contact) { lancerCombatContact(ev.contact); return; }
+  if (ev.portes.length) {
+    sfx('porte_coup');
+    if (ev.portes.some(p => p.cassee)) log('Une porte cède sous les coups — le chemin n\'est plus sûr.', 'bad');
+  }
+  if (ev.spins.length) sfx('alerte_contact');
+  else if (ev.bouges.size && chance(0.12)) sfx('zombie_loin');
+  if (ev.bouges.size || ev.spins.length || ev.portes.length) rafraichirCarteSeule();
+}
+
+if (typeof window !== 'undefined') {
+  setInterval(tickTempsReel, TICK_MS);
+  // L'onglet revient au premier plan : on resynchronise la grille d'un coup.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && G && G.world && carteVivante(G.world.carte)
+      && document.querySelector('.carte-grille') && !modaleBloque() && !enMarche) {
+      rafraichirCarteSeule();
+    }
+  });
 }
 
 function panneauSommeil() {

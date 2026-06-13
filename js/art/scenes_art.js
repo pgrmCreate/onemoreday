@@ -1089,6 +1089,194 @@ const SCENES_SVG = {
       <ellipse cx="380" cy="328" rx="130" ry="13" fill="#a31621" opacity="0.22"/>
       <path d="M270 318q-20 -8 -34 -4M540 320q22 -10 38 -6" stroke="#1d070b" stroke-width="7" opacity="0.8" fill="none"/>`);
   },
+
+  // ----- CUISINE_RADIO : la vie d'avant — cuisine au soir, radio qui parle seule -----
+  cuisine_radio: () => {
+    const p = 'cuisine_radio';
+    return cadre(p, fond(p, '#1c1b21', '#100f13')
+      // la fenêtre sur le crépuscule : la ville d'avant, fenêtres dorées
+      + `<rect x="52" y="42" width="226" height="196" fill="#0c0d12"/>
+      <defs><linearGradient id="${p}-soir" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#322e48"/><stop offset="1" stop-color="#8c5a34"/></linearGradient></defs>
+      <rect x="64" y="54" width="202" height="172" fill="url(#${p}-soir)"/>
+      <path d="M64 170l36 -18 30 12 38 -22 40 16 32 -10 26 12v66H64z" fill="#15151d"/>`
+      + dots([[110, 184], [148, 178], [196, 172], [216, 186], [240, 180], [126, 200], [206, 202], [232, 198]], 3.2, '#d8a93e', 0.7)
+      + `<path d="M150 150q-3 -10 3 -18M218 158q-3 -8 2 -14" stroke="#2a2731" stroke-width="3" fill="none" opacity="0.6"/>
+      <path d="M165 54v172M64 140h202" stroke="#0c0d12" stroke-width="8"/>`
+      // rideau tiré d'un côté — on regardait encore dehors sans peur
+      + `<path d="M278 42q12 96 0 196l-36 0q20 -100 8 -196z" fill="#1e1824" opacity="0.92"/>`
+      // suspension allumée : la dernière électricité tranquille
+      + `<path d="M520 0v32" stroke="#0e0e12" stroke-width="3"/>
+      <path d="M496 58l24 -24 24 24z" fill="#16151b"/>`
+      + halo(p, 'lampe', 520, 110, 210, 160, '#c9882a', 0.3)
+      + `<ellipse cx="520" cy="59" rx="14" ry="5" fill="#e0b04a" opacity="0.85"/>`
+      // le calendrier au mur — un mois encore entier
+      + `<rect x="330" y="84" width="44" height="56" fill="#16151c" stroke="#23242c" stroke-width="2"/>
+      <path d="M334 96h36M334 108h36M334 120h36M345 96v36M356 96v36" stroke="#23242c" stroke-width="1.2" opacity="0.7"/>`
+      // la table sous la lampe
+      + `<rect x="368" y="224" width="318" height="10" fill="#191510"/>
+      <path d="M380 234l-8 70M672 234l8 70M520 234v66" stroke="#13100c" stroke-width="6"/>`
+      // la radio : cadran vert pâle, antenne, elle parle toute seule
+      + halo(p, 'dial', 600, 206, 56, 30, '#6f8a4a', 0.22)
+      + `<rect x="556" y="190" width="92" height="34" rx="4" fill="#1a1b22"/>
+      <rect x="564" y="198" width="38" height="18" rx="2" fill="#10130d"/>
+      <path d="M568 207h30" stroke="#6f8a4a" stroke-width="1.6" opacity="0.8"/>
+      <path d="M583 200v14" stroke="#9ab06a" stroke-width="1.8" opacity="0.85"/>
+      <circle cx="618" cy="207" r="6" fill="#0c0d11"/><circle cx="636" cy="207" r="6" fill="#0c0d11"/>
+      <path d="M644 190l14 -22" stroke="#1a1b22" stroke-width="2"/>`
+      // le bol, le journal plié, la casserole qui refroidit
+      + `<ellipse cx="428" cy="222" rx="20" ry="7" fill="#15161c"/><path d="M442 214l8 -8" stroke="#15161c" stroke-width="2.4"/>
+      <g transform="rotate(-4 488 218)"><rect x="462" y="212" width="52" height="10" fill="#23242c" opacity="0.8"/>
+      <path d="M466 216h44M466 219h32" stroke="#15161c" stroke-width="1.4"/></g>`
+      // la cuisinière, à gauche : casserole, vapeur fine — le dîner de ce soir-là
+      + `<rect x="290" y="232" width="76" height="72" fill="#15151b"/>
+      <rect x="290" y="228" width="76" height="8" fill="#1b1b22"/>
+      <circle cx="310" cy="232" r="5" fill="#0d0d12"/><circle cx="344" cy="232" r="5" fill="#0d0d12"/>
+      <rect x="300" y="214" width="44" height="14" rx="2" fill="#101116"/>
+      <path d="M344 218h12" stroke="#101116" stroke-width="4"/>
+      <path d="M312 208q-3 -9 2 -16M330 206q-2 -8 3 -14" stroke="#3a4150" stroke-width="2" fill="none" opacity="0.5"/>`
+      // le frigo, photos aimantées — des visages qu'on ne reverra pas
+      + `<rect x="702" y="92" width="86" height="186" fill="#1a1a21"/><rect x="702" y="92" width="86" height="58" fill="#1d1d24"/>
+      <path d="M708 110v22M708 168v60" stroke="#0e0e13" stroke-width="3"/>
+      <rect x="724" y="170" width="22" height="16" fill="#23242c" transform="rotate(-3 735 178)"/>
+      <rect x="754" y="200" width="18" height="13" fill="#2c2530" transform="rotate(4 763 206)"/>`
+      + dots([[731, 166], [765, 197], [749, 226]], 2.2, '#8a4a20', 0.6)
+      // la chaise, le sol
+      + `<path d="M398 250v54M448 250v54M398 268h50M398 250v-44h8v44" stroke="#13100c" stroke-width="5" fill="none"/>`
+      + `<rect y="296" width="${W}" height="44" fill="#0c0b0e"/>
+      <path d="M0 312h800M0 330h800" stroke="#111015" stroke-width="1.5" opacity="0.7"/>
+      <path d="M140 296l-22 44M380 296l-8 44M620 296l14 44" stroke="#111015" stroke-width="1.5" opacity="0.55"/>`);
+  },
+
+  // ----- EXODE : la rue au ras du sol — voitures bloquées, ceux qui courent -----
+  exode: () => {
+    const p = 'exode';
+    return cadre(p, fond(p, '#1c1015', '#3a1c10')
+      // l'incendie derrière les façades : la lueur, pas les flammes
+      + halo(p, 'feu', 430, 196, 320, 110, '#c25a20', 0.34)
+      + `<path d="M236 188q-8 -34 4 -62M460 192q-10 -38 2 -70M580 200q-6 -26 4 -48" stroke="#120e14" stroke-width="22" fill="none" opacity="0.85" stroke-linecap="round"/>`
+      + toits(23, 208, 42, '#0c0b11')
+      // quelques fenêtres où le feu est déjà entré
+      + `<path d="M310 182v8M338 182v8M520 190v8" stroke="#d8742a" stroke-width="5" opacity="0.8"/>`
+      // un gyrophare coincé quelque part entre les façades
+      + halo(p, 'gyr', 658, 230, 60, 30, '#46628f', 0.26)
+      // la chaussée, vue d'en bas : les lignes filent vers le bouchon
+      + `<rect y="228" width="${W}" height="112" fill="#121117"/>
+      <path d="M0 340L380 232M800 340L470 232M210 340L420 232M620 340L452 232" stroke="#0c0b10" stroke-width="2" opacity="0.6"/>
+      <path d="M404 252l-10 20M386 290l-12 24M430 252l8 22M452 296l10 26" stroke="#3c414c" stroke-width="3" opacity="0.3"/>`
+      // le bouchon : des toits de voitures à perte de rue, feux rouges en chapelet
+      + `${[[420, 240, 0.34], [448, 244, 0.4], [398, 246, 0.42], [466, 252, 0.5], [382, 256, 0.55]].map(([x, y, s]) =>
+        `<g transform="translate(${x},${y}) scale(${s})"><path d="M-30 0q2 -9 10 -10l5 -8q15 -5 30 0l5 8q9 1 11 10l-2 5h-57z" fill="#0d0c12"/></g>
+        <circle cx="${R(x - 22 * s)}" cy="${R(y - 1)}" r="1.7" fill="#a32020" opacity="0.85"/><circle cx="${R(x + 22 * s)}" cy="${R(y - 1)}" r="1.7" fill="#a32020" opacity="0.8"/>`).join('')}`
+      // à gauche : la voiture abandonnée portières ouvertes, coffre béant
+      + `<g transform="translate(150,304)">
+      <path d="M-62 0q3 -16 19 -18l9 -14q28 -9 56 0l9 14q17 2 20 18l-3 9h-107z" fill="#100f15"/>
+      <path d="M-30 -30l-6 12h22l3 -12zM3 -30l-3 12h23l-6 -12z" fill="#06060b"/>
+      <path d="M26 -18l22 -24 6 4 -18 24z" fill="#100f15"/>
+      <path d="M-58 -16l-20 -18 5 -5 19 17z" fill="#100f15"/>
+      <circle cx="-34" cy="9" r="10" fill="#060609"/><circle cx="34" cy="9" r="10" fill="#060609"/>
+      </g>`
+      + halo(p, 'phare', 244, 296, 70, 20, '#d8cfae', 0.28)
+      + `<circle cx="212" cy="292" r="3" fill="#e8e0c0" opacity="0.9"/>`
+      // à droite : l'arrière d'un break surchargé, hayon ouvert, feux rouges
+      + `<g transform="translate(636,296)">
+      <rect x="-58" y="-44" width="116" height="44" rx="7" fill="#121118"/>
+      <rect x="-46" y="-40" width="92" height="20" fill="#08080d"/>
+      <path d="M-58 -44l8 -12h100l8 12" stroke="#121118" stroke-width="5" fill="none"/>
+      <rect x="-52" y="-18" width="12" height="7" fill="#a32020" opacity="0.9"/><rect x="40" y="-18" width="12" height="7" fill="#a32020" opacity="0.9"/>
+      <circle cx="-36" cy="4" r="9" fill="#060609"/><circle cx="36" cy="4" r="9" fill="#060609"/>
+      <rect x="-30" y="-36" width="24" height="14" fill="#15141b"/><rect x="2" y="-34" width="18" height="12" fill="#15141b"/>
+      </g>`
+      + halo(p, 'fr', 588, 280, 30, 14, '#a32020', 0.3)
+      // ceux qui courent, entre les voitures
+      + `${[[330, 290, 0.8, 1], [536, 280, 0.66, 1], [488, 264, 0.5, -1]].map(([x, y, s, f]) =>
+        `<g transform="translate(${x},${y}) scale(${R(s * f)},${s})" fill="#0d0c12" stroke="#0d0c12" stroke-linecap="round">
+        <circle cx="9" cy="-45" r="5.4" stroke="none"/>
+        <path d="M1 -40l13 3 4 18h-15z" stroke="none"/>
+        <path d="M5 -19l-13 15M10 -19l7 17" stroke-width="4.4" fill="none"/>
+        <path d="M3 -35l-11 7M15 -33l10 11" stroke-width="3.1" fill="none"/></g>`).join('')}`
+      // une silhouette chargée d'un sac trop lourd, qui marche encore
+      + `<g transform="translate(706,302)" fill="#0d0c12" stroke="#0d0c12" stroke-linecap="round">
+      <circle cx="0" cy="-48" r="5.6" stroke="none"/>
+      <path d="M-6 -42h12l3 24h-18z" stroke="none"/>
+      <path d="M-3 -18l-4 18M3 -18l6 17" stroke-width="4.6" fill="none"/>
+      <path d="M-6 -38l-7 16M6 -38l8 12" stroke-width="3.2" fill="none"/>
+      <rect x="-16" y="-40" width="11" height="18" rx="3" stroke="none"/>
+      </g>`
+      // LE PREMIER PLAN, au ras du bitume : ce que l'exode a laissé tomber
+      + `<rect y="318" width="${W}" height="22" fill="#0b0a0e"/>`
+      + valise(372, 330, 1.5, '#13121a', true)
+      + `<path d="M404 322h12M422 327h9M396 332h10" stroke="#2c2530" stroke-width="3" stroke-linecap="round"/>`
+      // l'ours en peluche, face contre terre
+      + `<g transform="translate(508,326) rotate(8)" fill="#1d1812">
+      <ellipse cx="0" cy="0" rx="9" ry="6"/><circle cx="-10" cy="-3" r="5"/>
+      <circle cx="-13" cy="-8" r="2.2"/><circle cx="-6" cy="-8" r="2.2"/>
+      <path d="M7 -2l7 -3M7 2l8 2" stroke="#1d1812" stroke-width="3" stroke-linecap="round"/>
+      </g>`
+      // un téléphone, écran encore allumé, qui sonne pour personne
+      + halo(p, 'tel', 262, 326, 26, 12, '#9aa4b8', 0.3)
+      + `<rect x="254" y="322" width="17" height="9" rx="2" fill="#1a1b22"/>
+      <rect x="256" y="324" width="13" height="5" fill="#3c4456" opacity="0.9"/>`
+      + dots([[120, 326], [180, 332], [320, 322], [450, 330], [560, 324], [650, 332], [720, 326]], 2, '#3c414c', 0.35)
+      + sang(580, 318, 54, 0.3));
+  },
+
+  // ----- HALL_HOTEL : le hall du Grand Hôtel de la Poste, barricadé de l'intérieur -----
+  hall_hotel: () => {
+    const p = 'hall_hotel';
+    return cadre(p, fond(p, '#16151b', '#0b0a0e')
+      // la double porte d'entrée, condamnée : planches, meubles, le dehors en rais
+      + `<rect x="64" y="52" width="172" height="220" fill="#0d0c11"/>
+      <rect x="76" y="64" width="64" height="208" fill="#111016"/>
+      <rect x="160" y="64" width="64" height="208" fill="#111016"/>
+      <path d="M150 64v208" stroke="#0a090e" stroke-width="6"/>
+      <circle cx="134" cy="180" r="3" fill="#23242c"/><circle cx="166" cy="180" r="3" fill="#23242c"/>`
+      // la lumière froide du dehors filtre entre les planches
+      + `<path d="M150 80v30M150 130v24M150 196v28" stroke="#3a4150" stroke-width="2.4" opacity="0.6"/>`
+      + halo(p, 'jour', 150, 160, 60, 110, '#3a4150', 0.12)
+      // les planches clouées en travers, à la hâte
+      + `${[[78, 96, -6], [70, 152, 4], [78, 208, -3], [72, 250, 6]].map(([x, y, a2]) =>
+        `<g transform="rotate(${a2} ${x + 80} ${y})"><rect x="${x}" y="${y - 8}" width="164" height="15" fill="#1b1610"/>
+        <path d="M${x + 10} ${y}h.1M${x + 152} ${y}h.1" stroke="#06070a" stroke-width="3" stroke-linecap="round"/></g>`).join('')}`
+      // l'armoire et le fauteuil poussés contre la porte
+      + `<rect x="218" y="148" width="74" height="138" fill="#191510"/>
+      <path d="M255 148v138M218 176h74" stroke="#0e0c08" stroke-width="3"/>
+      <circle cx="248" cy="216" r="2.6" fill="#0e0c08"/><circle cx="262" cy="216" r="2.6" fill="#0e0c08"/>
+      <g transform="rotate(-94 320 282)"><path d="M290 282q0 -34 30 -34t30 34l-8 0q-2 -24 -22 -24t-22 24z" fill="#15141b"/>
+      <rect x="296" y="270" width="48" height="14" rx="4" fill="#15141b"/></g>`
+      // le comptoir de la réception, la lampe à huile — la seule lumière qui reste
+      + halo(p, 'lampe', 548, 196, 150, 110, '#c9882a', 0.34)
+      + `<rect x="436" y="218" width="250" height="14" fill="#1c1812"/>
+      <rect x="446" y="232" width="230" height="62" fill="#15110c"/>
+      <path d="M468 232v62M560 232v62M652 232v62" stroke="#0e0b07" stroke-width="3"/>`
+      // la lampe : pied, verre, flamme
+      + `<rect x="540" y="200" width="16" height="18" rx="3" fill="#23242c"/>
+      <path d="M543 200q-4 -16 5 -22q9 6 5 22z" fill="#1a1b22" opacity="0.8"/>
+      <ellipse cx="548" cy="190" rx="3" ry="6" fill="#e8c25a"/><ellipse cx="548" cy="192" rx="1.4" ry="3" fill="#fbe9b0"/>`
+      // la sonnette et le registre ouvert, abandonné au milieu d'une ligne
+      + `<path d="M596 212q2 -8 10 -8t10 8z" fill="#23242c"/><rect x="602" y="212" width="8" height="4" fill="#15161c"/>
+      <g transform="rotate(3 478 210)"><rect x="452" y="204" width="52" height="13" fill="#23242c" opacity="0.85"/>
+      <path d="M456 209h20M480 209h18M456 213h16" stroke="#101116" stroke-width="1.4"/></g>`
+      // le tableau des clés : presque toutes pendues — l'hôtel était vide
+      + `<rect x="470" y="84" width="180" height="92" fill="#12100c"/>
+      <path d="M470 114h180M470 144h180M506 84v92M542 84v92M578 84v92M614 84v92" stroke="#0c0a07" stroke-width="2.4"/>`
+      + dots([[488, 102], [524, 102], [596, 102], [632, 102], [488, 132], [560, 132], [596, 132], [632, 132], [488, 162], [524, 162], [560, 162], [632, 162]], 3.2, '#c9a227', 0.4)
+      // un crochet vide, le 203 — ta clé, déjà dans ta poche
+      + `<circle cx="596" cy="159" r="4.5" fill="none" stroke="#3c414c" stroke-width="1.4" opacity="0.7"/>`
+      // l'escalier vers les étages, à droite — la suite de l'histoire
+      + `<path d="M700 286V258h22v-26h22v-26h22v-26h34v106z" fill="#15141a"/>
+      <path d="M700 258h22M722 232h22M744 206h22M766 180h22" stroke="#0d0c10" stroke-width="2.4"/>
+      <path d="M706 250L788 156" stroke="#0e0d12" stroke-width="5"/>
+      <path d="M714 252v-26M740 226v-26M766 200v-26" stroke="#0e0d12" stroke-width="3"/>`
+      // la valise de la fuite, posée là, jamais rouverte
+      + valise(392, 312, 1.2, '#13121a')
+      // le sol en damier du vieux hall
+      + `<rect y="286" width="${W}" height="54" fill="#0d0c10"/>
+      <path d="M0 304h800M0 324h800" stroke="#121116" stroke-width="1.6" opacity="0.8"/>
+      <path d="M120 286l-30 54M310 286l-12 54M500 286l12 54M690 286l30 54" stroke="#121116" stroke-width="1.6" opacity="0.6"/>`
+      // la poussière du noir qui vient
+      + brume(p, 268, '#2a2530', 0.14));
+  },
 };
 
 export function svgScene(nom) {

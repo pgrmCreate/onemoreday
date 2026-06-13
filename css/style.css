@@ -498,6 +498,13 @@ input[type=range] { width: 100%; accent-color: var(--blood2); }
 .carte-grille .zpion { animation: zpion-balance 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center 80%; }
 @keyframes zpion-balance { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(5deg); } }
 .carte-grille .joueur circle:last-child { animation: pulse 2.2s infinite; }
+/* Ouïe : un point rouge estompé qui pulse — tu l'entends avant de le voir. */
+.carte-grille .zouie { animation: zouie-pouls 1.15s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes zouie-pouls { 0%, 100% { opacity: .22; transform: scale(.7); } 50% { opacity: .6; transform: scale(1.15); } }
+/* Anneau de contact : le décompte serré avant la morsure. */
+.carte-grille .zspin { animation: zspin-pouls .5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes zspin-pouls { 0%, 100% { opacity: 1; transform: scale(.82); } 50% { opacity: .45; transform: scale(1.08); } }
+.carte-grille .zmort { animation: none; }
 
 /* ---------- Esquive réflexe (QTE) : le bouton surgit au centre ---------- */
 .qte {

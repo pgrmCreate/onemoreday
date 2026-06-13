@@ -51,20 +51,53 @@ export function niveauSombre(cd) {
 }
 
 // Nature de la liaison entre deux cases voisines (pour dessiner le plan) :
-//   null     — mur : on ne passe pas
-//   'ouvert' — on circule sans battant (même plateau, couloir qui continue)
-//   'porte'  — un battant de porte sur le mur
-// Un passage déclaré ['a','b','ouvert'] force une ouverture sans battant.
+//   null        — mur : on ne passe pas
+//   'ouvert'    — on circule sans battant (même plateau, couloir qui continue)
+//   'porte'     — un battant de porte en BOIS sur le mur (cassable par eux)
+//   'porte_fer' — une grille / porte métallique : eux ne la casseront jamais
+// Un passage déclaré ['a','b','ouvert'] force une ouverture sans battant ;
+// ['a','b','porte'] (ou sans marqueur) = bois ; ['a','b','porte_fer'] = métal.
 export function liaison(carteId, x1, y1, x2, y2) {
   if (!passagePossible(carteId, x1, y1, x2, y2)) return null;
   const c = CARTES[carteId];
   if (!c || c.echelle !== 'interieur' || c.ouvert) return 'ouvert';
   const k1 = `${x1},${y1}`, k2 = `${x2},${y2}`;
   const p = (c.passages || []).find(([a, b]) => (a === k1 && b === k2) || (a === k2 && b === k1));
-  if (p) return p[2] === 'ouvert' ? 'ouvert' : 'porte';
+  if (p) return p[2] === 'ouvert' || p[2] === 'porte_fer' ? p[2] : 'porte';
   const a = caseDef(carteId, x1, y1), b = caseDef(carteId, x2, y2);
   if (a && b && CIRCULATION.has(a.t) && CIRCULATION.has(b.t)) return 'ouvert';
   return 'porte';
+}
+
+// ---------- Portes à points de vie ----------
+// Le joueur passe les portes normalement ; EUX ne savent pas les ouvrir.
+// Un battant en bois encaisse PORTE_PV coups avant de céder pour de bon ;
+// le fer ne cède jamais. État runtime, persistant en sauvegarde :
+// G.world.portes[carteId] = { 'x1,y1|x2,y2' (paire triée): { pv, cassee } }
+export const PORTE_PV = 8;
+export function clePorte(x1, y1, x2, y2) {
+  const a = `${x1},${y1}`, b = `${x2},${y2}`;
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+export function porteCassee(carteId, x1, y1, x2, y2) {
+  const parCarte = G && G.world.portes && G.world.portes[carteId];
+  const p = parCarte && parCarte[clePorte(x1, y1, x2, y2)];
+  return !!(p && p.cassee);
+}
+// Un coup dans la porte. Le bois compte ses points de vie ; le fer ignore.
+export function frapperPorte(carteId, x1, y1, x2, y2) {
+  const li = liaison(carteId, x1, y1, x2, y2);
+  if (li === 'porte_fer') return { cassee: false, fer: true };
+  if (li !== 'porte') return { cassee: false, fer: false };
+  if (!G.world.portes) G.world.portes = {};
+  const parCarte = G.world.portes[carteId] || (G.world.portes[carteId] = {});
+  const cle = clePorte(x1, y1, x2, y2);
+  const p = parCarte[cle] || (parCarte[cle] = { pv: PORTE_PV, cassee: false });
+  if (!p.cassee) {
+    p.pv -= 1;
+    if (p.pv <= 0) { p.pv = 0; p.cassee = true; }
+  }
+  return { cassee: p.cassee, fer: false };
 }
 
 // ---------- Brouillard de guerre & ligne de vue ----------
@@ -79,13 +112,16 @@ export function estDecouverte(carteId, x, y) {
 
 // La VUE passe-t-elle d'une case à sa voisine ? Dehors : tout ce qui existe se
 // voit (les bâtiments pleins — cases absentes — bouchent). Dedans : le regard
-// circule par les ouvertures libres, mais un battant de porte fermé l'arrête.
+// circule par les ouvertures libres, mais un battant de porte fermé l'arrête —
+// un battant ENFONCÉ, lui, ne cache plus rien.
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 function vuePasse(carteId, x1, y1, x2, y2) {
   const c = CARTES[carteId];
   if (!c) return false;
   if (c.echelle !== 'interieur') return !!caseDef(carteId, x2, y2);
-  return liaison(carteId, x1, y1, x2, y2) === 'ouvert';
+  const li = liaison(carteId, x1, y1, x2, y2);
+  if (li === 'ouvert') return true;
+  return (li === 'porte' || li === 'porte_fer') && porteCassee(carteId, x1, y1, x2, y2);
 }
 
 // Toutes les cases actuellement DANS TA VUE depuis (px,py) :

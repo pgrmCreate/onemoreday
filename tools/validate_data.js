@@ -37,7 +37,7 @@ function checkBesoin(b, ctx) {
 }
 
 // ---------- Scènes ----------
-const cibles = new Set([...Object.keys(SCENES), '#retour', '#mort', '#arrivee', '#chapitre2']);
+const cibles = new Set([...Object.keys(SCENES), '#retour', '#mort', '#arrivee', '#chapitre2', '#intro_chaos']);
 for (const [id, sc] of Object.entries(SCENES)) {
   const cc = (c, ctx) => { if (c !== undefined && c !== null && !cibles.has(c)) err.push(`scène ${id} : cible inconnue '${c}' (${ctx})`); };
   if (sc.auto) cc(sc.auto.suivant, 'auto');

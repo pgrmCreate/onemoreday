@@ -70,7 +70,9 @@ export function newGame(nom, difficulte) {
       securisees: {}, // 'carte:x,y' -> true : case intérieure nettoyée
       barricades: {}, // 'carte:x,y' -> true : case barricadée (sommeil sûr)
       verrous: {},    // 'carte:x,y' -> true : accès forcé/ouvert
-      zmap: {},       // carteId -> { t, z: [{x,y,id,pas}] } : zombies SUR la carte
+      zmap: {},       // carteId -> { t, z: [{x,y,id,pas,uid,dir,...}], morts: [{x,y}] } : zombies SUR la carte
+      zseq: 0,        // compteur d'identités de zombies (uid stables pour l'affichage)
+      portes: {},     // carteId -> { 'x1,y1|x2,y2': {pv, cassee} } : portes attaquées par eux
       flags: {},      // drapeaux d'histoire
       eventsVus: [],  // ids d'événements "once" déjà joués
       statsTemps: 0,  // minutes écoulées au total
@@ -96,7 +98,8 @@ export function load() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     G = JSON.parse(raw);
-    if (!G.world.zmap) G.world.zmap = {}; // sauvegardes d'avant les zombies sur carte
+    if (!G.world.zmap) G.world.zmap = {};   // sauvegardes d'avant les zombies sur carte
+    if (!G.world.portes) G.world.portes = {}; // sauvegardes d'avant les portes à PV
     return G;
   } catch (e) { console.error('Chargement impossible', e); return null; }
 }
