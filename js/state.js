@@ -48,8 +48,8 @@ export function newGame(nom, difficulte) {
       nom: nom || 'Sam',
       pv: 100, pvMax: 100,
       sta: 100, staMax: 100,
-      faim: 72,   // 100 = rassasié, 0 = affamé
-      soif: 65,   // 100 = hydraté, 0 = déshydraté
+      faim: 100,  // 100 = rassasié, 0 = affamé — on démarre toutes jauges pleines
+      soif: 100,  // 100 = hydraté, 0 = déshydraté
       skillXp: { force: 20, dexterite: 20, agilite: 20, mainsNues: 0, visee: 0, construction: 0, mecanique: 0, entretien: 0, chasse: 0 },
       inventaire: [], // [{id, qty, dur?}]
       // Tenue de départ : des vêtements de tous les jours, rien de plus.

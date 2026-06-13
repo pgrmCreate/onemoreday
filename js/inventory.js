@@ -96,7 +96,8 @@ export function mettreEnAccesRapide(index) {
   const it = G.player.inventaire[index];
   if (!it) return { ok: false, raison: 'Objet introuvable.' };
   if (!peutAccesRapide(it.id)) return { ok: false, raison: 'Trop encombrant pour la ceinture.' };
-  ar.push({ id: it.id, qty: 1, dur: it.dur, eau: it.eau }); // une gourde pleine garde son eau
+  // une gourde pleine garde son eau, une lampe allumée reste allumée
+  ar.push({ id: it.id, qty: 1, ...champsInstance(it) });
   it.qty -= 1;
   if (it.qty <= 0) G.player.inventaire.splice(index, 1);
   return { ok: true };
@@ -107,8 +108,9 @@ export function retirerAccesRapide(arIndex) {
   if (!it) return false;
   if (!placePour(it.id, 1)) return false;
   ar.splice(arIndex, 1);
-  if (it.dur !== undefined || it.eau) G.player.inventaire.push({ id: it.id, qty: 1, dur: it.dur, eau: it.eau });
-  else addItem(it.id, 1);
+  if (it.dur !== undefined || it.eau || it.on !== undefined || it.usure) {
+    G.player.inventaire.push({ id: it.id, qty: 1, ...champsInstance(it) });
+  } else addItem(it.id, 1);
   return true;
 }
 
@@ -153,12 +155,23 @@ export function verserEau(src, dst) {
   return { ok: true, L: move, gache };
 }
 
+// Les champs qui appartiennent à UNE instance (et non à une pile d'objets) :
+// durabilité d'arme, eau embarquée, lampe allumée, usure des piles / de la torche.
+function champsInstance(src) {
+  const o = {};
+  if (src.dur !== undefined) o.dur = src.dur;
+  if (src.eau) o.eau = src.eau;
+  if (src.on !== undefined) o.on = src.on;
+  if (src.usure) o.usure = src.usure;
+  return o;
+}
+
 // Prendre un objet EN MAIN (slot arme) — utilisé pour les récipients ouverts.
 // Ce qui occupait la main retourne au sac ; si c'était un récipient ouvert plein,
 // son eau se renverse (le récipient vide retourne au sac quand même).
 export function prendreEnMain(objet) {
   const renverse = libererLaMain();
-  G.player.equip.arme = { id: objet.id, eau: objet.eau, dur: objet.dur };
+  G.player.equip.arme = { id: objet.id, ...champsInstance(objet) };
   return { ok: true, renverse };
 }
 // Vide la main vers le sac. Retourne le nom du récipient renversé, ou null.
@@ -170,7 +183,7 @@ function libererLaMain() {
     renverse = defItem(cur.id) ? defItem(cur.id).nom : cur.id;
     delete cur.eau;
   }
-  G.player.inventaire.push({ id: cur.id, qty: 1, dur: cur.dur, eau: cur.eau });
+  G.player.inventaire.push({ id: cur.id, qty: 1, ...champsInstance(cur) });
   G.player.equip.arme = null;
   return renverse;
 }
@@ -183,12 +196,14 @@ export function tenirRecipient(index) {
   return prendreEnMain(inst);
 }
 // Après bu/vidé, les contenants vides se ré-empilent proprement.
+// Les instances marquées (eau, durabilité, lampe allumée/entamée) restent seules.
 export function consolider() {
   const inv = G.player.inventaire;
+  const marque = (o) => o.eau || o.dur !== undefined || o.on !== undefined || o.usure;
   for (let i = inv.length - 1; i >= 0; i--) {
     const it = inv[i];
-    if (it.eau || it.dur !== undefined) continue;
-    const j = inv.findIndex((o, k) => k < i && o.id === it.id && !o.eau && o.dur === undefined);
+    if (marque(it)) continue;
+    const j = inv.findIndex((o, k) => k < i && o.id === it.id && !marque(o));
     if (j >= 0) { inv[j].qty += it.qty; inv.splice(i, 1); }
   }
 }
@@ -219,7 +234,8 @@ export function addItem(id, qty = 1) {
   if (!placePour(id, qty)) return false;
   const stackable = !d.dur; // les armes à durabilité ne s'empilent pas
   if (stackable) {
-    const ex = G.player.inventaire.find(i => i.id === id && !i.eau); // jamais sur un contenant plein
+    // jamais sur un contenant plein ni sur une lampe allumée/entamée
+    const ex = G.player.inventaire.find(i => i.id === id && !i.eau && i.on === undefined && !i.usure);
     if (ex) { ex.qty += qty; return true; }
     G.player.inventaire.push({ id, qty });
   } else {
@@ -262,9 +278,6 @@ export function hasOutil(tag) {
     if (hasItem('rechaud_camping') && hasItem('cartouche_gaz')) return true;
     return false;
   }
-  if (tag === 'lumiere') {
-    return ((hasItem('lampe_torche') || hasItem('lampe_frontale')) && hasItem('piles')) || hasItem('torche');
-  }
   const aTag = (it) => { const d = item(it.id); return d && d.usage && d.usage.includes(tag); };
   if (G.player.inventaire.some(aTag) || accesRapide().some(aTag)) return true;
   // l'arme équipée peut servir d'outil (pied-de-biche...)
@@ -274,6 +287,97 @@ export function hasOutil(tag) {
     if (d && d.usage && d.usage.includes(tag)) return true;
   }
   return false;
+}
+
+// ---------- Lampes : la lumière est un INTERRUPTEUR, pas un état passif ----------
+// Une lampe n'éclaire QUE tenue en main ou à la ceinture, ET allumée (champ
+// d'instance on:true). Allumée, elle consomme en continu : les lampes à piles
+// mangent une paire de piles en ~3 h de jeu (champ usure 0→1), la torche
+// artisanale se consume en ~45 min puis part en cendres.
+const MIN_PAR_PILES = 180; // ~3 h de jeu par paire de piles
+const MIN_TORCHE = 45;     // une torche brûle ~45 min
+
+export function estLampe(id) { return id === 'lampe_torche' || id === 'lampe_frontale' || id === 'torche'; }
+
+// true si une lampe ALLUMÉE est en main ou en accès rapide : c'est ÇA, avoir de la lumière.
+export function lumiereActive() {
+  const allumee = (e) => !!(e && estLampe(e.id) && e.on);
+  if (allumee(G.player.equip.arme)) return true;
+  return accesRapide().some(allumee);
+}
+
+// La lampe « à portée » (pour le bouton sous la carte) : une allumée d'abord,
+// sinon la première en main ou à la ceinture. null si aucune.
+export function lampePortee() {
+  const cands = [];
+  const main = G.player.equip.arme;
+  if (main && estLampe(main.id)) cands.push(main);
+  for (const e of accesRapide()) if (estLampe(e.id)) cands.push(e);
+  return cands.find(e => e.on) || cands[0] || null;
+}
+
+// Allumer / éteindre une instance de lampe. Retourne { ok, on, raison? }.
+export function basculerLampe(ref) {
+  if (!ref || !estLampe(ref.id)) return { ok: false, raison: 'Pas une lampe.' };
+  if (ref.on) {
+    // éteinte : une lampe aux piles intactes redevient un objet ordinaire (empilable)
+    delete ref.on;
+    if (!ref.usure) delete ref.usure;
+    return { ok: true, on: false };
+  }
+  if (ref.id === 'torche') {
+    if (!hasOutil('feu')) return { ok: false, raison: 'Rien pour enflammer la torche.' };
+  } else if (!hasItem('piles')) {
+    return { ok: false, raison: 'Pas de piles.' };
+  }
+  ref.on = true;
+  if (!ref.usure) ref.usure = 0;
+  return { ok: true, on: true };
+}
+
+// Prendre une lampe du sac EN MAIN (elle n'a pas de dégâts : equiperArme la refuse).
+export function tenirLampe(index) {
+  const it = G.player.inventaire[index];
+  if (!it || !estLampe(it.id)) return { ok: false, renverse: null };
+  const inst = instancePourEau(index); // détache UNE instance de la pile
+  G.player.inventaire.splice(G.player.inventaire.indexOf(inst), 1);
+  return prendreEnMain(inst);
+}
+
+// Drain continu, appelé par advanceTime (dt en minutes de jeu).
+// Toute lampe allumée consomme, où qu'elle soit — une lampe oubliée allumée
+// au fond du sac vide ses piles sans éclairer personne.
+export function usureLampes(dt) {
+  const msgs = [];
+  const allumees = [];
+  const main = G.player.equip.arme;
+  if (main && estLampe(main.id) && main.on) allumees.push({ ref: main, ou: 'main' });
+  for (const e of accesRapide()) if (estLampe(e.id) && e.on) allumees.push({ ref: e, ou: 'ar' });
+  for (const e of G.player.inventaire) if (estLampe(e.id) && e.on) allumees.push({ ref: e, ou: 'sac' });
+  for (const { ref, ou } of allumees) {
+    if (ref.id === 'torche') {
+      ref.usure = (ref.usure || 0) + dt / MIN_TORCHE;
+      if (ref.usure >= 1) {
+        if (ou === 'main') G.player.equip.arme = null;
+        else if (ou === 'ar') accesRapide().splice(accesRapide().indexOf(ref), 1);
+        else G.player.inventaire.splice(G.player.inventaire.indexOf(ref), 1);
+        msgs.push({ t: 'Ta torche s\'est consumée jusqu\'au manche. Tu lâches le tison.', c: 'warn' });
+      }
+    } else {
+      ref.usure = (ref.usure || 0) + dt / MIN_PAR_PILES;
+      if (ref.usure >= 1) {
+        ref.usure = 0;
+        removeItem('piles', 1); // la paire morte part à la poubelle
+        if (hasItem('piles')) {
+          msgs.push({ t: 'Le faisceau jaunit, meurt — tu remplaces les piles à tâtons.', c: 'warn' });
+        } else {
+          ref.on = false;
+          msgs.push({ t: 'La lampe s\'éteint. Plus de piles.', c: 'warn' });
+        }
+      }
+    }
+  }
+  return msgs;
 }
 
 // ---------- Équipement ----------
@@ -303,7 +407,7 @@ export function desequiperArme() {
   const cur = G.player.equip.arme;
   if (!cur) return true;
   if (cur.eau && recipientOuvert(cur.id)) return false;
-  G.player.inventaire.push({ id: cur.id, qty: 1, dur: cur.dur, eau: cur.eau });
+  G.player.inventaire.push({ id: cur.id, qty: 1, ...champsInstance(cur) });
   G.player.equip.arme = null;
   return true;
 }
@@ -425,7 +529,7 @@ export function degainerAccesRapide(arIndex) {
       G.player.inventaire.push({ id: cur.id, qty: 1 }); // le récipient vide retourne au sac
       sfx('eau_verse');
     } else {
-      ar.push({ id: cur.id, qty: 1, dur: cur.dur });
+      ar.push({ id: cur.id, qty: 1, ...champsInstance(cur) }); // une lampe allumée reste allumée
     }
   }
   G.player.equip.arme = { id: it.id, dur: it.dur ?? d.dur };
@@ -438,7 +542,7 @@ export function rengainerArme() {
   if (cur.eau && recipientOuvert(cur.id)) return false; // une casserole pleine ne se rengaine pas
   const ar = accesRapide();
   if (ar.length >= nbSlotsAccesRapide()) return false;
-  ar.push({ id: cur.id, qty: 1, dur: cur.dur, eau: cur.eau });
+  ar.push({ id: cur.id, qty: 1, ...champsInstance(cur) });
   G.player.equip.arme = null;
   return true;
 }

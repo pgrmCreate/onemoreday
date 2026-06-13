@@ -12,6 +12,7 @@ import {
   accesRapide, nbSlotsAccesRapide, mettreEnAccesRapide, retirerAccesRapide, peutAccesRapide,
   countItem, defItem, removeItem,
   estContenant, recipientOuvert, contenance, descEau, fmtL, verserEau, instancePourEau, consolider,
+  estLampe, basculerLampe, tenirLampe,
 } from './inventory.js';
 import {
   consommer, soigner, desinfecterAlcool, appliquerSoinCible, BLESSURES, nomBlessure, froidActuel, advanceTime,
@@ -22,6 +23,7 @@ import { listeRecettes, fabriquer } from './crafting.js';
 import { renderLieu, objectifActuel, initPosition } from './map.js';
 import { jouerScene } from './scenes.js';
 import { enCombat } from './combat.js';
+import { demarrerAlertes, stopperAlertes } from './effects.js';
 import { initAudio, playAmbiance, sfx, setMuted, isMuted, getVolume, setVolume, stopCombatMusic, setHeartbeat } from './audio.js';
 
 // La partie est-elle terminée (mort affichée, fin de chapitre, abandon) ?
@@ -36,11 +38,65 @@ document.addEventListener('pointerdown', function once() {
   document.removeEventListener('pointerdown', once);
 }, { once: true });
 
+// ---------- Plein écran (mobile) ----------
+// API Fullscreen avec préfixes webkit ; sur iOS Safari (pas d'API), les boutons
+// n'apparaissent pas. La préférence (omd_fullscreen) est rejouée au premier
+// geste de la session — les navigateurs exigent un geste utilisateur.
+const FS_KEY = 'omd_fullscreen';
+function pleinEcranDispo() {
+  const el = document.documentElement;
+  return !!(el.requestFullscreen || el.webkitRequestFullscreen);
+}
+function estPleinEcran() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+function entrerPleinEcran() {
+  const el = document.documentElement;
+  try {
+    if (el.requestFullscreen) {
+      const p = el.requestFullscreen({ navigationUI: 'hide' });
+      if (p && p.catch) p.catch(() => {});
+    } else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  } catch (e) { /* silencieux : certains contextes refusent */ }
+}
+function sortirPleinEcran() {
+  try {
+    if (document.exitFullscreen) {
+      const p = document.exitFullscreen();
+      if (p && p.catch) p.catch(() => {});
+    } else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  } catch (e) { /* silencieux */ }
+}
+function basculerPleinEcran() {
+  if (estPleinEcran()) { sortirPleinEcran(); try { localStorage.setItem(FS_KEY, '0'); } catch (e) {} }
+  else { entrerPleinEcran(); try { localStorage.setItem(FS_KEY, '1'); } catch (e) {} }
+}
+// Les libellés / icônes reflètent l'état réel (la touche Échap sort aussi du plein écran)
+function majBoutonsPleinEcran() {
+  const plein = estPleinEcran();
+  const coin = $('#btn-fs-titre');
+  if (coin) {
+    coin.innerHTML = ico(plein ? 'reduire_ecran' : 'plein_ecran');
+    coin.title = plein ? 'Quitter le plein écran' : 'Plein écran';
+  }
+  const opt = $('[data-o="plein-ecran"]');
+  if (opt) opt.firstChild.textContent = plein ? 'Quitter le plein écran' : 'Plein écran';
+}
+document.addEventListener('fullscreenchange', majBoutonsPleinEcran);
+document.addEventListener('webkitfullscreenchange', majBoutonsPleinEcran);
+// Préférence active : on replonge en plein écran au PREMIER geste de la session.
+if (pleinEcranDispo() && localStorage.getItem(FS_KEY) === '1') {
+  document.addEventListener('pointerdown', function fsOnce() {
+    if (!estPleinEcran()) entrerPleinEcran();
+  }, { once: true });
+}
+
 // ---------- Écran titre ----------
 function ecranTitre() {
   showHUD(false);
   stopCombatMusic();
   setHeartbeat(false);
+  stopperAlertes(); // pas de voile d'infection sur l'écran titre
   render(`
     <div class="illu">${svgScene('titre')}</div>
     <h1 class="title">One More <em>Day</em></h1>
@@ -51,13 +107,17 @@ function ecranTitre() {
       ${btnAct('data-m="aide"', 'Comment survivre')}
     </div>
     <div class="warn-adulte">Jeu pour adultes — violence et gore explicites.
-    Sur Android : ouvre cette page dans Chrome puis « Ajouter à l'écran d'accueil » pour l'installer.</div>`);
+    Sur Android : ouvre cette page dans Chrome puis « Ajouter à l'écran d'accueil » pour l'installer.</div>
+    ${pleinEcranDispo() ? `<button class="fs-coin" id="btn-fs-titre" title="${estPleinEcran() ? 'Quitter le plein écran' : 'Plein écran'}">${ico(estPleinEcran() ? 'reduire_ecran' : 'plein_ecran')}</button>` : ''}`);
+  const fsBtn = $('#btn-fs-titre');
+  if (fsBtn) fsBtn.onclick = () => { sfx('clic'); basculerPleinEcran(); };
   const map = {
     continuer: () => {
       if (!load()) return toast('Sauvegarde illisible.');
       partieTerminee = false;
       showHUD(true);
       updateHUD();
+      demarrerAlertes();
       if (G.world.sceneCourante) jouerScene(G.world.sceneCourante);
       else renderLieu();
     },
@@ -103,6 +163,7 @@ function ecranNouvelle() {
     save();
     showHUD(true);
     updateHUD();
+    demarrerAlertes();
     jouerScene('intro_1');
   });
 }

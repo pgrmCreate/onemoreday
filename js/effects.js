@@ -8,9 +8,51 @@ import { G, gainSkill, rng, setFlag, pick, skillLevel as skillLvl } from './stat
 import { item } from './data/items.js';
 import { addItem, removeItem, countItem } from './inventory.js';
 import { ajouterBlessure, advanceTime, mortJoueur } from './survival.js';
-import { log, updateHUD } from './ui.js';
-import { demarrerCombat } from './combat.js';
+import { log, updateHUD, panelOuvert, evtOuvert } from './ui.js';
+import { demarrerCombat, enCombat } from './combat.js';
 import { sfx } from './audio.js';
+
+// ---------- Alertes d'infection : le corps rappelle qu'il pourrit ----------
+// Tant qu'une blessure est infectée, un voile vert-jaunâtre pulse à l'écran
+// toutes les 25 à 40 s réelles (jamais en combat, jamais sous une modale),
+// avec un son discret. Et un pulse immédiat à l'instant où une blessure
+// DEVIENT infectée (événement 'omd-infection' émis par survival.js).
+let timerInfection = null; // timer unique : jamais en double
+
+export function pulseInfection() {
+  const el = document.getElementById('voile-infection');
+  if (!el) return;
+  el.classList.remove('pulse');
+  void el.offsetWidth; // force le reflow : l'animation peut se rejouer
+  el.classList.add('pulse');
+  sfx('alerte_infection');
+}
+
+function alerteInfectionPossible() {
+  if (!G || !G.player || !G.player.blessures.some(b => b.infecte)) return false;
+  const topbar = document.getElementById('topbar');
+  if (!topbar || topbar.classList.contains('hidden')) return false; // HUD caché : titre, mort...
+  return !enCombat() && !panelOuvert() && !evtOuvert();
+}
+
+export function demarrerAlertes() {
+  stopperAlertes();
+  const planifier = () => {
+    timerInfection = setTimeout(() => {
+      if (alerteInfectionPossible()) pulseInfection();
+      planifier();
+    }, rng(25000, 40000));
+  };
+  planifier();
+}
+export function stopperAlertes() {
+  if (timerInfection) { clearTimeout(timerInfection); timerInfection = null; }
+}
+
+// Le moment précis où une blessure tourne : le voile pulse tout de suite.
+if (typeof window !== 'undefined') {
+  window.addEventListener('omd-infection', () => { if (G) pulseInfection(); });
+}
 
 // Applique les effets. Si effets.combat : lance le combat et appelle apresCombat(resultat) à la fin.
 // Retourne true si un combat a été lancé (l'appelant ne doit alors PAS re-rendre l'écran).

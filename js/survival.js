@@ -6,7 +6,7 @@ import { cloth } from './data/clothing.js';
 import { carteCourante } from './world.js';
 import {
   hasItem, removeItem, addItem, hasOutil, chaleurTotale,
-  recipientOuvert, desequiperVetement, consolider,
+  recipientOuvert, desequiperVetement, consolider, usureLampes,
 } from './inventory.js';
 
 export const BLESSURES = {
@@ -49,7 +49,8 @@ export function mortJoueur(cause) {
 }
 
 // ---------- Avancée du temps ----------
-// opts : { sommeil:false } — retourne { messages, mort }
+// opts : { sommeil:false, repos:false } — retourne { messages, mort }
+// repos : attente volontaire (bouton Attendre) — l'endurance remonte bien plus vite.
 export function advanceTime(minutes, opts = {}) {
   const msgs = [];
   let mort = null;
@@ -79,10 +80,17 @@ export function advanceTime(minutes, opts = {}) {
     if (opts.sommeil) {
       p.sta = Math.min(p.staMax, p.sta + 0.14 * dt);
       if (p.faim > 30 && p.soif > 20) p.pv = Math.min(p.pvMax, p.pv + 0.03 * dt);
+    } else if (opts.repos) {
+      // repos volontaire : assis, immobile, on souffle vraiment
+      const regen = (p.faim > 20 && p.soif > 20) ? 0.9 : 0.3;
+      p.sta = Math.min(p.staMax, p.sta + regen * dt);
     } else {
       const regen = (p.faim > 20 && p.soif > 20) ? 0.35 : 0.1;
       p.sta = Math.min(p.staMax, p.sta + regen * dt);
     }
+
+    // Lumière : une lampe allumée mange ses piles, une torche se consume
+    msgs.push(...usureLampes(dt));
 
     // Froid (dehors, l'hiver mord)
     const carteDef = carteCourante();
@@ -114,6 +122,8 @@ export function advanceTime(minutes, opts = {}) {
         if (chance(pInf)) {
           b.infecte = true;
           msgs.push({ t: `${nomBlessure(def, true)} ${b.zone} a une vilaine couleur. Elle est infectée.`, c: 'bad' });
+          // le voile maladif pulse tout de suite (écouté par effects.js — pas d'import croisé)
+          window.dispatchEvent(new CustomEvent('omd-infection'));
         }
       }
       if (b.infecte) {
@@ -167,6 +177,15 @@ export function advanceTime(minutes, opts = {}) {
   }
   if (mort) mortJoueur(mort);
   return { messages: msgs, mort };
+}
+
+// ---------- Attendre : le repos volontaire ----------
+// Le temps passe normalement (faim, soif, zombies...), mais l'endurance remonte
+// nettement plus vite que la récupération passive. Retourne aussi le gain réel.
+export function attendre(minutes) {
+  const avant = G.player.sta;
+  const r = advanceTime(minutes, { repos: true });
+  return { ...r, staGain: Math.max(0, Math.round(G.player.sta - avant)) };
 }
 
 // ---------- Manger / boire ----------

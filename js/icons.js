@@ -60,6 +60,11 @@ export const ICONS = {
   lumiere: P('M9 3h6l1 4a5 5 0 0 1-2 4v2h-4v-2a5 5 0 0 1-2-4l1-4zm1 13h4v3l-2 2-2-2v-3z'),
   radio: P('M4 9h16v11H4V9zm0 0 12-6M8 13a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm7-1h4m-4 3h4'),
   marche: P('M12 4a1.8 1.8 0 1 0 0-3.6M9.5 21l1.5-6-2-4 1-5 3 1 1.5 3 3 1M8 10l-3 1m5 4-4 6'),
+  // Sablier : attendre, laisser filer le temps
+  sablier: P('M6.5 3h11m-11 18h11M8 3v2.5c0 2 1.6 3.6 4 5.5 2.4-1.9 4-3.5 4-5.5V3M8 21v-2.5c0-2 1.6-3.6 4-5.5 2.4 1.9 4 3.5 4 5.5V21m-4-8.5v1.5m-2.5 5.5h5'),
+  // Plein écran : entrer / sortir (flèches vers les coins, puis vers le centre)
+  plein_ecran: P('M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5'),
+  reduire_ecran: P('M9 4v5H4m16 0h-5V4M4 15h5v5m6 0v-5h5'),
 };
 
 export function ico(name, cls = '') {

@@ -556,3 +556,67 @@ input[type=range] { width: 100%; accent-color: var(--blood2); }
 /* ---------- Ken Burns : les illustrations de scène respirent ---------- */
 .illu.kb svg { animation: kenburns 26s ease-in-out infinite alternate; transform-origin: 50% 60%; }
 @keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.08) translateX(-1.5%); } }
+
+/* ---------- Voile d'infection : le corps rappelle qu'il pourrit ---------- */
+#voile-infection {
+  position: fixed; inset: 0; pointer-events: none; z-index: 15;
+  opacity: 0;
+  background: radial-gradient(ellipse at 50% 55%, transparent 40%, rgba(96, 112, 38, .34) 100%);
+}
+#voile-infection.pulse { animation: infection-pouls 1.2s ease-in-out; }
+@keyframes infection-pouls {
+  0% { opacity: 0; } 35% { opacity: 1; } 60% { opacity: .55; } 100% { opacity: 0; }
+}
+
+/* ---------- Boutons ronds de la barre carte (lampe, attendre) ---------- */
+.brond {
+  width: 36px; height: 36px; border-radius: 50%; flex: none;
+  background: var(--bg3); border: 1px solid var(--border); color: #c9b98a;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.brond .ico { width: 1.15em; height: 1.15em; vertical-align: 0; }
+.brond:hover { border-color: var(--rust); }
+.brond.on {
+  color: #e8d27a; border-color: #8a6d28;
+  background: radial-gradient(circle at 50% 38%, rgba(232, 210, 122, .22), var(--bg3) 70%);
+  box-shadow: 0 0 10px rgba(232, 210, 122, .18);
+}
+
+/* ---------- Bouton plein écran en coin de l'écran titre ---------- */
+.fs-coin {
+  position: fixed; top: 10px; right: 10px; z-index: 40;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(19, 19, 21, .7); border: 1px solid var(--border); color: var(--fg-dim);
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.fs-coin:hover { color: var(--fg); border-color: var(--rust); }
+
+/* ---------- Attaque chargée (.chg-*) : maintenir = charger/viser, relâcher = frapper/tirer ---------- */
+.combat-acts button.chg-btn {
+  position: relative;
+  padding-right: 46px;                /* place pour la jauge */
+  touch-action: none;                 /* le doigt charge, il ne scrolle pas */
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;        /* pas de loupe/menu sur appui long iOS */
+}
+.chg-jauge {
+  position: absolute; right: 6px; top: 50%;
+  width: 36px; height: 36px; margin-top: -18px;
+  pointer-events: none; opacity: .5; transition: opacity .15s;
+}
+.chg-btn.chg-active .chg-jauge { opacity: 1; }
+.chg-jauge svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+.chg-jauge .chg-fond { fill: rgba(0,0,0,.5); stroke: #2b2b30; stroke-width: 3; }
+.chg-jauge .chg-prog {
+  fill: none; stroke: #cfc9b8; stroke-width: 3.5;
+  stroke-dasharray: 97.4; stroke-dashoffset: 97.4;
+}
+/* Pleine charge : le bouton s'embrase (la couleur de l'anneau est pilotée en JS) */
+.chg-btn.chg-pleine { border-color: var(--blood2); box-shadow: inset 0 0 18px rgba(163,32,32,.3); }
+.chg-btn.chg-pleine.chg-tir { border-color: var(--steel); box-shadow: inset 0 0 18px rgba(68,80,90,.5); }
+.chg-btn.chg-pleine .chg-jauge { animation: chg-pouls .45s ease-in-out infinite; }
+@keyframes chg-pouls { 50% { transform: scale(1.12); } }
+/* L'endurance ne suit plus : l'anneau bute */
+.chg-btn.chg-plafond .chg-jauge { animation: chg-bute .35s steps(2) infinite; }
+@keyframes chg-bute { 50% { transform: translateX(1.5px); } }

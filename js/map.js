@@ -27,12 +27,13 @@ import {
 import { ico } from './icons.js';
 import { svgScene } from './illustrations.js';
 import {
-  addItem, hasItem, removeItem, hasOutil, poidsTotal, poidsMax, placePour,
+  addItem, hasItem, removeItem, poidsTotal, poidsMax, placePour,
   espaceUtilise, espaceMax, defItem, countItem,
   estContenant, recipientOuvert, contenance, descEau, fmtL, instancePourEau,
   tenirRecipient, prendreEnMain,
+  lumiereActive, lampePortee, basculerLampe,
 } from './inventory.js';
-import { advanceTime, dormir } from './survival.js';
+import { advanceTime, dormir, attendre } from './survival.js';
 import { appliquerEffets, besoinRempli, besoinTexte, jetReussi } from './effects.js';
 import { demarrerCombat } from './combat.js';
 import { playAmbiance, sfx } from './audio.js';
@@ -498,6 +499,8 @@ function svgCarte(reach, vis) {
   const connue = (vx, vy) => toutConnu || estDecouverte(G.world.carte, vx, vy);
   const vivante = carteVivante(G.world.carte);
   const zombies = vivante ? zombiesSur(G.world.carte) : [];
+  // Une lampe allumée en main ou à la ceinture troue le noir autour de toi.
+  const lampe = lumiereActive();
   let cells = '', murs = '';
   for (const [pos, cd] of Object.entries(C.cases)) {
     const [x, y] = pos.split(',').map(Number);
@@ -522,8 +525,10 @@ function svgCarte(reach, vis) {
     if (solVisible(k).length) {
       inner += `<circle cx="${px + CS - 8}" cy="${py + CS - 8}" r="3" fill="${CODES.sol}"/>`;
     }
-    // noir total : la case s'enfonce dans l'ombre
-    if (niv === 2) inner += `<rect x="${px + 1}" y="${py + 1}" width="${CS - 2}" height="${CS - 2}" fill="#050507" opacity=".44"/>`;
+    // noir total : la case s'enfonce dans l'ombre — sauf dans le halo de ta lampe
+    // (ta case et les cases adjacentes visibles ; le noir lointain reste noir)
+    const eclairee = lampe && Math.abs(x - G.world.x) <= 1 && Math.abs(y - G.world.y) <= 1 && (ici || aVue);
+    if (niv === 2 && !eclairee) inner += `<rect x="${px + 1}" y="${py + 1}" width="${CS - 2}" height="${CS - 2}" fill="#050507" opacity=".44"/>`;
     // Liserés : codes couleur de la case (voir Légende)
     const insetEtat = interieur ? 3 : 1.5;
     if (secur) inner += cadreCase(px, py, CS, insetEtat, CODES.securisee);
@@ -569,8 +574,8 @@ function tagsCase(cd, k) {
   }
   if (cd.vers) tags.push(`<span class="ci-tag">${cd.verrou && !G.world.verrous[k] ? 'accès bloqué' : 'on peut entrer'}</span>`);
   const niv = niveauSombre(cd);
-  if (niv === 1) tags.push(`<span class="ci-tag sombre">pénombre${hasOutil('lumiere') ? ' — tu as de la lumière' : ' — fouilles moins sûres'}</span>`);
-  else if (niv === 2) tags.push(`<span class="ci-tag sombre">noir total${hasOutil('lumiere') ? ' — tu as de la lumière' : ' — lumière nécessaire'}</span>`);
+  if (niv === 1) tags.push(`<span class="ci-tag sombre">pénombre${lumiereActive() ? ' — ta lampe éclaire' : ' — fouilles moins sûres'}</span>`);
+  else if (niv === 2) tags.push(`<span class="ci-tag sombre">noir total${lumiereActive() ? ' — ta lampe éclaire' : ' — lumière nécessaire'}</span>`);
   const nSol = solVisible(k).reduce((s, e) => s + (e.qty || 1), 0);
   if (nSol) tags.push(`<span class="ci-tag">${nSol} objet${nSol > 1 ? 's' : ''} au sol</span>`);
   return tags.join('');
@@ -623,6 +628,7 @@ export function renderLieu() {
     ${cd.desc ? `<div class="ci-desc">${cd.desc}</div>` : ''}
     <div class="ci-tags">${tagsCase(cd, k)}</div>
   </div>
+  ${barreRonde()}
   <div class="actions"><div class="tiles">`;
 
   // --- actions sur la case courante ---
@@ -684,8 +690,73 @@ export function renderLieu() {
   lier('[data-dormir]', panneauSommeil);
   lier('[data-legende]', panneauLegende);
   lier('[data-vue]', () => { vueDessin = !vueDessin; renderLieu(); });
+  lier('[data-attendre]', panneauAttendre);
+  lier('[data-lampe]', basculerLampePortee);
   const sp = $('[data-special]');
   if (sp) sp.onclick = () => { if (enMarche) return; sfx('clic'); actionSpeciale(sp.dataset.special); };
+}
+
+// ---------- Boutons ronds sous la carte : lampe (si à portée) et attendre ----------
+function barreRonde() {
+  const lampe = lampePortee();
+  const allume = lumiereActive();
+  return `<div class="actions-rondes">
+    ${lampe ? `<button class="brond ${allume ? 'on' : ''}" data-lampe="1"
+      title="${allume ? 'Éteindre' : 'Allumer'} (${defItem(lampe.id).nom.toLowerCase()})">${ico('lumiere')}</button>` : ''}
+    <button class="brond" data-attendre="1" title="Attendre">${ico('sablier')}</button>
+  </div>`;
+}
+
+function basculerLampePortee() {
+  const lampe = lampePortee();
+  if (!lampe) return;
+  const r = basculerLampe(lampe);
+  if (!r.ok) { toast(r.raison || 'Impossible.'); return; }
+  const d = defItem(lampe.id);
+  if (lampe.id === 'torche') log(r.on ? 'La torche s\'embrase. La flamme danse — et se voit de loin.' : 'Tu étouffes la torche.', '');
+  else log(r.on ? `Clic. ${d.nom} troue l'obscurité.` : `Tu éteins ${d.nom.toLowerCase() === 'torche' ? 'la torche' : 'la ' + d.nom.toLowerCase()}.`, '');
+  save();
+  renderLieu();
+}
+
+// ---------- Attendre : laisser filer le temps pour reprendre son souffle ----------
+function panneauAttendre() {
+  const box = showPanel(`
+    <div class="panel-head"><h2>Attendre</h2><button class="panel-close">×</button></div>
+    <p class="cap-line">S'asseoir, souffler, guetter. Le repos rend l'endurance bien plus vite que la marche —
+    mais le temps passe pour tout le monde : la faim, la soif... et eux.</p>
+    <div class="actions">
+      ${btnAct('data-att="10"', 'Reprendre son souffle', '10 minutes')}
+      ${btnAct('data-att="30"', 'Faire une vraie pause', '30 minutes')}
+      ${btnAct('data-att="60"', 'Attendre une heure', '1 h')}
+    </div>`);
+  box.querySelectorAll('[data-att]').forEach(b => {
+    b.onclick = () => {
+      sfx('clic');
+      closePanel();
+      const min = parseInt(b.dataset.att, 10);
+      attente('Tu attends, l\'oreille tendue…', min, () => {
+        const r = attendre(min);
+        r.messages.forEach(m => log(m.t, m.c));
+        if (r.mort) return;
+        if (r.staGain > 0) {
+          log(`Tu reprends ton souffle (+${r.staGain} endurance).`, 'good');
+          toast(`+${r.staGain} endurance — tu reprends ton souffle.`);
+        } else {
+          log('Le temps passe. Tu n\'avais pas vraiment besoin de souffler.', '');
+        }
+        updateHUD();
+        save();
+        // Pendant que tu soufflais, eux marchaient.
+        if (carteVivante(G.world.carte)) {
+          const vis = casesVisibles(G.world.carte, G.world.x, G.world.y);
+          const contact = tourZombies(G.world.carte, vis) || zombieEn(G.world.carte, G.world.x, G.world.y);
+          if (contact) { renderLieu(); lancerCombatContact(contact); return; }
+        }
+        renderLieu();
+      });
+    };
+  });
 }
 
 // ---------- Légende de la carte ----------
@@ -890,11 +961,11 @@ function fouiller(aTatons = false) {
   const f = fouilleEtat(k);
   if (f.n >= cd.fouille.max) { toast('Tu as déjà tout retourné ici.'); return; }
 
-  if (niveauSombre(cd) === 2 && !hasOutil('lumiere') && !aTatons) {
-    const box = showEvt(`<div class="narration">Il fait noir là-dedans. Sans lumière, tu ne verras rien venir — ni les objets, ni le reste.</div>
+  if (niveauSombre(cd) === 2 && !lumiereActive() && !aTatons) {
+    const box = showEvt(`<div class="narration">Il fait noir là-dedans. Sans lumière allumée, tu ne verras rien venir — ni les objets, ni le reste.</div>
       <div class="actions">
         ${btnAct('data-tatons="1"', 'Fouiller à tâtons', 'tu trouveras moins, et ils te verront avant que tu les voies')}
-        ${btnAct('data-renonce="1"', 'Renoncer', 'revenir avec une lampe')}
+        ${btnAct('data-renonce="1"', 'Renoncer', 'revenir avec une lampe allumée')}
       </div>`);
     box.querySelector('[data-tatons]').onclick = () => { closeEvt(); fouiller(true); };
     box.querySelector('[data-renonce]').onclick = () => closeEvt();
@@ -915,7 +986,7 @@ function fouiller(aTatons = false) {
     let danger = (cd.danger ?? 0.2) * (1 + 0.2 * f.n);
     if (estSecurisee(k)) danger *= 0.15;
     if (aTatons) danger *= 1.6;
-    if (niveauSombre(cd) === 1 && !hasOutil('lumiere')) danger *= 1.2; // en pénombre, on les voit venir tard
+    if (niveauSombre(cd) === 1 && !lumiereActive()) danger *= 1.2; // en pénombre, on les voit venir tard
     if (estNuit()) danger *= 1.3;
     if (carteVivante(G.world.carte)) {
       attirerZombies(G.world.carte, G.world.x, G.world.y, 4 + f.n);
@@ -933,33 +1004,15 @@ function fouiller(aTatons = false) {
   });
 }
 
-// Fouiller dans le noir use la lumière : la lampe mange ses piles, la torche se consume.
-function usureLumiere() {
-  if ((hasItem('lampe_torche') || hasItem('lampe_frontale')) && hasItem('piles')) {
-    if (chance(0.25)) {
-      removeItem('piles', 1);
-      log(hasItem('piles')
-        ? 'Le faisceau de ta lampe jaunit : une paire de piles est morte.'
-        : 'Ta lampe clignote, faiblit, s\'éteint. Plus de piles.', 'warn');
-    }
-  } else if (hasItem('torche')) {
-    if (chance(0.2)) {
-      removeItem('torche', 1);
-      log('Ta torche s\'est consumée jusqu\'au manche. Tu lâches le tison.', 'warn');
-    }
-  }
-}
-
 function terminerFouille(aTatons) {
   const cd = caseCourante();
   const k = keyCourante();
   const f = fouilleEtat(k);
   const niv = niveauSombre(cd);
-  if (niv === 2 && !aTatons) usureLumiere();
-  else if (niv === 1 && hasOutil('lumiere') && chance(0.5)) usureLumiere(); // on s'éclaire par confort
+  // (la lumière se consomme désormais EN CONTINU, tant que la lampe est allumée — cf. usureLampes)
   // Plus on creuse, plus on a de chances de mettre la main sur ce qui reste.
-  // En pénombre sans lampe, on passe à côté d'une partie des choses.
-  const malusPenombre = (niv === 1 && !hasOutil('lumiere')) ? 0.75 : 1;
+  // En pénombre sans lampe allumée, on passe à côté d'une partie des choses.
+  const malusPenombre = (niv === 1 && !lumiereActive()) ? 0.75 : 1;
   const profondeur = Math.min(1.15, (0.55 + 0.3 * f.n)) * (aTatons ? 0.5 : 1) * malusPenombre;
   const deniches = [];
   for (const entry of (cd.fouille.table || [])) {
@@ -1162,9 +1215,9 @@ function panneauTrouves() {
   const box = showPanel(html);
 
   const prendreUn = (e) => {
-    if (e.dur !== undefined || e.eau) { // instance unique (arme usée, contenant plein)
+    if (e.dur !== undefined || e.eau || e.on !== undefined || e.usure) { // instance unique (arme usée, contenant plein, lampe entamée)
       if (!placePour(e.id, 1)) return false;
-      G.player.inventaire.push({ id: e.id, qty: 1, dur: e.dur, eau: e.eau });
+      G.player.inventaire.push({ id: e.id, qty: 1, dur: e.dur, eau: e.eau, on: e.on, usure: e.usure });
       return true;
     }
     return addItem(e.id, 1);

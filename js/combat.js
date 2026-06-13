@@ -1,6 +1,8 @@
 // ============ Combat en temps réel ============
 // La jauge de menace du zombie se remplit en continu : quand elle est pleine, il attaque.
 // Chaque action coûte de l'endurance. En défense, on récupère mais on ne bouge plus.
+// L'attaque se CHARGE : maintenir le bouton arme le coup (ou la visée au pistolet),
+// relâcher le déclenche — plus c'est chargé, plus ça cogne, plus ça rate, plus ça use.
 // EN COMBAT, on n'a que ce qu'on a SUR soi : l'arme en main et l'accès rapide
 // (ceinture, holster, gilet). Le sac reste fermé — pas le temps.
 import { G, rng, chance, pick, skillLevel, gainSkill } from './state.js';
@@ -21,7 +23,19 @@ let C = null; // état du combat en cours
 
 export function enCombat() { return !!C; }
 
-const COUTS = { attaque: 15, tir: 8, puissance: 30, pousser: 10, jeter: 12, fuir: 22, changer: 5, bander: 16 };
+const COUTS = { tir: 8, pousser: 10, jeter: 12, fuir: 22, changer: 5, bander: 16 };
+
+// Attaque chargée : MAINTENIR le bouton charge le coup (ou la visée), RELÂCHER le déclenche.
+// La charge c va de 0 à 1, et TOUT continue pendant ce temps — la menace monte, le zombie frappe.
+const CHARGE = {
+  duree: 1300,       // ms pour charger un coup de mêlée de 0 à 1
+  coutMin: 8,        // endurance d'un coup relâché aussitôt
+  coutPlein: 24,     // endurance AJOUTÉE à pleine charge (8 + 24 = 32)
+  delaiMin: 120,     // ms entre relâcher et toucher, à charge nulle
+  delaiMax: 650,     // ... à pleine charge : un coup de fléau, ça s'annonce
+  viseeDuree: 1600,  // ms de visée pleine (armes à feu) — la compétence visee accélère
+};
+const ANNEAU_CIRC = 97.4; // circonférence du cercle SVG de la jauge de charge (2π × 15.5)
 
 export function demarrerCombat(zombieIds, opts = {}) {
   if (C) return;
@@ -41,8 +55,8 @@ export function demarrerCombat(zombieIds, opts = {}) {
     qteTimer: null,   // esquive réflexe en cours
     qteJusqua: 0,     // cooldown : la fenêtre d'esquive ne revient pas tout de suite
     contreJusqua: 0,  // après une esquive réussie : une seconde pour frapper
-    charge: false,    // coup de puissance en préparation
-    chargeTimer: null,
+    chg: null,        // charge en cours (bouton maintenu) : { type, c, prev, raf, ... }
+    frappe: null,     // coup de mêlée relâché mais pas encore arrivé : { c, timer }
   };
   startCombatMusic();
   sfx('zombie');
@@ -126,12 +140,11 @@ function majBarres() {
   const se = $('#combat-sta');
   if (se) se.innerHTML = `Ton souffle : <b>${etatEndurance()}</b>`;
   updateHUD();
-  // boutons selon endurance — tout est gelé pendant la préparation d'un coup de puissance
-  const feu = !!infoArme().feu;
+  // boutons selon endurance — pendant une charge ou une frappe en vol, rien d'autre ne se fait
   document.querySelectorAll('.combat-acts button[data-cout]').forEach(b => {
     const cout = parseFloat(b.dataset.cout);
-    if (C.charge) { b.disabled = true; return; }
-    if (b.dataset.act === 'puissance' && feu) { b.disabled = true; return; }
+    if (C.chg) { b.disabled = b.dataset.act !== 'attaquer'; return; } // le doigt reste sur le bouton tenu
+    if (C.frappe) { b.disabled = true; return; }
     b.disabled = C.defense ? b.dataset.act !== 'defense' : G.player.sta < cout;
   });
 }
@@ -230,11 +243,10 @@ function resoudreAttaque(factEsquive) {
   }
   clog(`${atk ? atk.desc : 'Il t\'atteint de plein fouet.'} <b class="degats">Tu encaisses.</b>`, 'degats');
 
-  // Un coup encaissé en pleine préparation peut briser l'élan du coup de puissance.
-  if (C.charge && chance(0.5)) {
-    C.charge = false;
-    clog('Le choc te coupe l\'élan — ton coup de puissance est perdu.', 'degats');
-  }
+  // Un coup encaissé en pleine charge (ou pendant que la frappe est en vol) peut briser
+  // l'élan : seuls les coups très armés (charge > 0.6) sont assez engagés pour se perdre.
+  const cElan = C.chg && C.chg.type === 'melee' ? C.chg.c : (C.frappe ? C.frappe.c : 0);
+  if (cElan > 0.6 && chance(0.5)) briserElan(cElan);
 
   // Blessure — localisée là où le coup a porté
   if (chance(0.45) && deg > 3) {
@@ -266,26 +278,170 @@ function depenser(cout) {
   return true;
 }
 
-function actionAttaquer() {
-  if (C.defense) return;
+// ---------- Attaque chargée : maintenir, c'est armer ; relâcher, c'est frapper ----------
+// Mêlée : la charge augmente dégâts, critique et coût, mais pénalise la précision et
+// retarde l'impact. Arme à feu : maintenir, c'est VISER — relâcher tire aussitôt.
+
+// Interpolation de couleur pour l'anneau (deux hexa → rgb)
+function lerpHex(h1, h2, t) {
+  const a = parseInt(h1.slice(1), 16), b = parseInt(h2.slice(1), 16);
+  const r = Math.round(((a >> 16) & 255) + (((b >> 16) & 255) - ((a >> 16) & 255)) * t);
+  const g = Math.round(((a >> 8) & 255) + (((b >> 8) & 255) - ((a >> 8) & 255)) * t);
+  const bl = Math.round((a & 255) + ((b & 255) - (a & 255)) * t);
+  return `rgb(${r},${g},${bl})`;
+}
+
+// Mêlée : blanc cassé → orange → rouge sang. Visée : gris clair → bleu acier.
+function couleurCharge(c, type) {
+  if (type === 'tir') return lerpHex('#b9c4cc', '#5d8fb5', c);
+  return c < 0.55 ? lerpHex('#cfc9b8', '#c97a27', c / 0.55) : lerpHex('#c97a27', '#d6303e', (c - 0.55) / 0.45);
+}
+
+function elemsAnneau() {
+  const btn = document.querySelector('.combat-acts [data-act="attaquer"]');
+  return { btn, prog: btn ? btn.querySelector('.chg-prog') : null };
+}
+
+function resetAnneau() {
+  const { btn, prog } = elemsAnneau();
+  if (btn) btn.classList.remove('chg-active', 'chg-pleine', 'chg-plafond', 'chg-tir');
+  if (prog) prog.style.strokeDashoffset = ANNEAU_CIRC;
+}
+
+function majAnneau(ch) {
+  const { btn, prog } = elemsAnneau();
+  if (!btn || !prog) return;
+  prog.style.strokeDashoffset = ANNEAU_CIRC * (1 - ch.c);
+  prog.style.stroke = couleurCharge(ch.c, ch.type);
+  btn.classList.add('chg-active');
+  btn.classList.toggle('chg-tir', ch.type === 'tir');
+  btn.classList.toggle('chg-pleine', ch.c >= 0.999);
+  btn.classList.toggle('chg-plafond', !!ch.plafond);
+}
+
+// Le doigt se pose : la charge commence. Rien n'est dépensé tant qu'on ne relâche pas.
+function debuterCharge(e, btn) {
+  if (!C || C.fini || C.defense || C.chg || C.frappe) return;
   const arme = infoArme();
-  if (arme.feu) return actionTirer();
-  if (!depenser(COUTS.attaque)) return;
+  if (arme.feu) {
+    if (munitionsPour(arme.ref.id) <= 0) { clog('<b>Clic.</b> Plus de munitions.', 'degats'); return; }
+    if (G.player.sta < COUTS.tir) { clog('Trop épuisé. Mets-toi en défense pour récupérer.', 'degats'); return; }
+  } else if (G.player.sta < CHARGE.coutMin) {
+    clog('Trop épuisé. Mets-toi en défense pour récupérer.', 'degats');
+    return;
+  }
+  try { btn.setPointerCapture(e.pointerId); } catch (err) { /* navigateur sans capture : pointerleave prendra le relais */ }
+  C.chg = {
+    type: arme.feu ? 'tir' : 'melee',
+    c: 0,
+    prev: performance.now(),
+    raf: null,
+    pointerId: e.pointerId,
+    vibre: false,    // une seule vibration à pleine charge
+    annonce: false,  // un seul message d'élan par charge
+    plafond: false,
+    duree: arme.feu ? Math.max(900, CHARGE.viseeDuree - skillLevel('visee') * 70) : CHARGE.duree,
+  };
+  majBarres();
+  bouclerCharge();
+}
+
+// La jauge monte image par image — le tick de combat, lui, continue de tourner à côté.
+function bouclerCharge() {
+  if (!C || C.fini || !C.chg) return;
+  const ch = C.chg;
+  const now = performance.now();
+  const dt = Math.min(120, now - ch.prev);
+  ch.prev = now;
+  if (ch.type === 'melee') {
+    // la jauge PLAFONNE au niveau que l'endurance peut payer — l'anneau bute
+    const cMax = Math.max(0, Math.min(1, (G.player.sta - CHARGE.coutMin) / CHARGE.coutPlein));
+    ch.c = Math.min(ch.c + dt / ch.duree, cMax);
+    ch.plafond = cMax < 1 && ch.c >= cMax - 0.002;
+    if (!ch.annonce && ch.c > 0.6) {
+      ch.annonce = true;
+      sfx('puissance_charge');
+      clog('Tu armes ton coup, tout le poids du corps derrière…');
+    }
+  } else {
+    ch.c = Math.min(1, ch.c + dt / ch.duree);
+  }
+  if (ch.c >= 0.999 && !ch.vibre) {
+    ch.vibre = true;
+    try { if (navigator.vibrate) navigator.vibrate(15); } catch (err) { /* pas de vibreur : tant pis */ }
+  }
+  majAnneau(ch);
+  ch.raf = requestAnimationFrame(bouclerCharge);
+}
+
+function annulerCharge() {
+  if (!C || !C.chg) return;
+  if (C.chg.raf) cancelAnimationFrame(C.chg.raf);
+  C.chg = null;
+}
+
+// Le doigt se lève (ou glisse : pointercancel passe ici aussi — la charge atteinte part quand même).
+function relacherCharge() {
+  if (!C || C.fini || !C.chg) return;
+  const ch = C.chg;
+  annulerCharge();
+  if (ch.type === 'tir') {
+    resetAnneau();
+    resoudreTir(ch.c);
+  } else {
+    const c = ch.c;
+    G.player.sta = Math.max(0, G.player.sta - Math.min(G.player.sta, CHARGE.coutMin + CHARGE.coutPlein * c));
+    // Délai de frappe : plus le coup est chargé, plus il met de temps à arriver —
+    // et pendant ce temps, le zombie ne t'attend pas. L'anneau reste figé : le coup est en vol.
+    const delai = CHARGE.delaiMin + (CHARGE.delaiMax - CHARGE.delaiMin) * c;
+    C.frappe = { c, timer: setTimeout(() => frappeMelee(c), delai) };
+  }
+  if (C && !C.fini) majBarres();
+}
+
+// L'élan se brise sous un coup encaissé : la frappe est perdue, l'endurance engagée aussi.
+function briserElan(c) {
+  if (C.frappe) {
+    clearTimeout(C.frappe.timer);
+    C.frappe = null; // l'endurance a déjà été dépensée au relâcher
+  } else if (C.chg) {
+    // on paie le coup qu'on n'a pas pu donner
+    G.player.sta = Math.max(0, G.player.sta - (CHARGE.coutMin + CHARGE.coutPlein * c));
+    annulerCharge();
+  }
+  resetAnneau();
+  clog('Le choc te coupe l\'élan — ton coup est perdu, l\'endurance avec.', 'degats');
+}
+
+// L'impact du coup de mêlée, après son délai de vol
+function frappeMelee(c) {
+  if (!C || C.fini) return;
+  C.frappe = null;
+  resetAnneau();
+  const arme = infoArme();
   const sk = skillLevel(arme.skill);
+  const agi = skillLevel('agilite') + bonusAgiliteVetements();
+  // Précision : la base habituelle, pénalisée par la charge — un coup de fléau se voit venir
   let pTouche = 0.62 + sk * 0.06 - C.z.def.esquive;
   if (performance.now() < (C.contreJusqua || 0)) pTouche += 0.22; // il est au sol de son élan : frappe !
   if (G.player.sta < 15) pTouche -= 0.15;
   if (arme.def && arme.def.allonge) pTouche += 0.05;
-  if (chance(Math.max(0.15, pTouche))) {
-    const crit = chance(0.08 + skillLevel('dexterite') * 0.02);
-    let deg = rng(arme.dmg[0], arme.dmg[1]);
-    if (!arme.feu && !arme.mains) deg += Math.round(skillLevel('force') * 1.3);
-    if (arme.mains) deg += Math.round(skillLevel('mainsNues') * 1.5);
-    if (crit) deg = Math.round(deg * 1.8);
+  pTouche *= Math.min(1, 1 - 0.28 * c + agi * 0.035);
+  if (chance(Math.max(0.12, pTouche))) {
+    if (c >= 0.7) sfx('puissance');
+    const crit = chance(0.08 + skillLevel('dexterite') * 0.02 + c * 0.18);
+    let deg = Math.round(rng(arme.dmg[0], arme.dmg[1]) * (0.55 + 1.45 * c));
+    if (!arme.mains) deg += Math.round(skillLevel('force') * (1 + c));
+    if (arme.mains) deg += Math.round(skillLevel('mainsNues') * (1.2 + 0.8 * c));
+    if (crit) deg = Math.round(deg * 1.6);
+    if (c >= 0.7) clog('<span class="gore">Le coup part comme un fléau, tout ton poids derrière. Ça craque.</span>', 'coup');
+    C.z.menace = Math.max(0, C.z.menace - 0.3 * c); // un coup lourd le fait reculer (en plus du recul de base)
     const fini = infligerDegats(deg, crit, arme);
-    // usure — même sur le coup fatal (clog est silencieux si le combat est fini)
+    // usure — frapper plus fort use plus (×(1+c) en moyenne), même sur le coup fatal
     if (arme.ref) {
-      if (!chance(skillLevel('entretien') * 0.1)) arme.ref.dur -= 1;
+      let usure = chance(skillLevel('entretien') * 0.1) ? 0 : 1;
+      if (chance(c)) usure += 1;
+      arme.ref.dur -= usure;
       if (arme.ref.dur <= 0) {
         clog('<b>Ton arme se brise entre tes mains !</b>', 'degats');
         log(`${arme.nom} : hors d'usage. Il faudra trouver autre chose.`, 'warn');
@@ -294,15 +450,30 @@ function actionAttaquer() {
     }
     const up = gainSkill(arme.skill, 2);
     if (up) clog(`<b>${up.skill === 'mainsNues' ? 'Mains nues' : 'Compétence'} niveau ${up.niveau} !</b>`, 'coup');
+    // XP : la force se forge sur les coups appuyés, l'agilité sur les coups vifs
+    if (c >= 0.25) {
+      const upF = gainSkill('force', Math.max(1, Math.round(c * 4)));
+      if (upF) clog(`<b>Force niveau ${upF.niveau} !</b>`, 'coup');
+    } else {
+      const upA = gainSkill('agilite', 1);
+      if (upA) clog(`<b>Agilité niveau ${upA.niveau} !</b>`, 'coup');
+    }
     if (fini) return; // le combat s'est terminé sur ce coup : ne plus toucher à C
   } else {
     sfx('rate');
-    clog(`Ton coup fend l'air. ${leZombie(C.z.def.nom, true)} avance toujours.`);
+    if (c > 0.5) {
+      clog('Trop téléphoné : il se déporte et ton coup laboure le vide. Tu titubes, déséquilibré.');
+      C.z.menace = Math.min(1, C.z.menace + 0.25 * c);
+    } else {
+      clog(`Ton coup fend l'air. ${leZombie(C.z.def.nom, true)} avance toujours.`);
+    }
     gainSkill(arme.skill, 1);
   }
+  majBarres();
 }
 
-function actionTirer() {
+// Le tir part au relâcher, sans délai : la visée a (0→1) fait toute la précision.
+function resoudreTir(a) {
   const arme = infoArme();
   if (!arme.feu) return;
   if (munitionsPour(arme.ref.id) <= 0) { clog('<b>Clic.</b> Plus de munitions.', 'degats'); return; }
@@ -310,7 +481,7 @@ function actionTirer() {
   removeItem(arme.ammo, 1);
   sfx('tir');
   const sk = skillLevel('visee');
-  let pTouche = 0.55 + sk * 0.08 - C.z.def.esquive;
+  let pTouche = Math.min(0.97, 0.45 + 0.5 * a + sk * 0.02 - C.z.def.esquive);
   if (chance(Math.max(0.2, pTouche))) {
     const crit = chance(0.12 + sk * 0.03);
     let deg = rng(arme.dmg[0], arme.dmg[1]);
@@ -320,7 +491,9 @@ function actionTirer() {
     if (up) clog(`<b>Visée niveau ${up.niveau} !</b>`, 'coup');
     if (fini) return; // dernier zombie abattu : le combat est clos, le bruit n'attire plus rien ici
   } else {
-    clog('La détonation claque — la balle s\'écrase dans un mur. Raté.');
+    clog(a < 0.3
+      ? 'Tir précipité — la balle part n\'importe où, avalée par la nuit.'
+      : 'La détonation claque — la balle s\'écrase dans un mur. Raté.');
     gainSkill('visee', 1);
   }
   // Le bruit attire
@@ -400,58 +573,6 @@ function zombieMort() {
   } else {
     finVictoire();
   }
-}
-
-// ---------- Coup de puissance : on arme, on encaisse le risque, on écrase ----------
-// Une préparation d'une seconde pendant laquelle TOUT continue : la menace
-// monte, et un coup reçu peut briser l'élan. Mais quand ça touche…
-function actionPuissance() {
-  if (C.defense || C.charge) return;
-  const arme = infoArme();
-  if (arme.feu) { clog('Pas avec une arme à feu — vise et tire.'); return; }
-  if (!depenser(COUTS.puissance)) return;
-  C.charge = true;
-  sfx('puissance_charge');
-  clog('Tu armes ton coup, tout le poids du corps derrière…');
-  majBarres();
-  C.chargeTimer = setTimeout(() => {
-    if (!C || C.fini) return;
-    C.chargeTimer = null;
-    const brise = !C.charge; // l'élan a été cassé par un coup encaissé
-    C.charge = false;
-    if (brise) { majBarres(); return; }
-    const sk = skillLevel(arme.skill);
-    let pTouche = 0.55 + sk * 0.06 - C.z.def.esquive;
-    if (performance.now() < (C.contreJusqua || 0)) pTouche += 0.22;
-    if (G.player.sta < 15) pTouche -= 0.15;
-    if (chance(Math.max(0.12, pTouche))) {
-      sfx('puissance');
-      const crit = chance(0.18 + skillLevel('dexterite') * 0.02);
-      let deg = Math.round(rng(arme.dmg[0], arme.dmg[1]) * 2.2) + Math.round(skillLevel('force') * 2);
-      if (arme.mains) deg += Math.round(skillLevel('mainsNues') * 2);
-      if (crit) deg = Math.round(deg * 1.6);
-      clog('<span class="gore">Le coup part comme un fléau, tout ton poids derrière. Ça craque.</span>', 'coup');
-      C.z.menace = Math.max(0, C.z.menace - 0.45); // il encaisse, il recule
-      const finiCombat = infligerDegats(deg, crit, arme);
-      if (arme.ref) {
-        arme.ref.dur -= 2; // frapper si fort use l'arme deux fois plus
-        if (arme.ref.dur <= 0) {
-          clog('<b>Ton arme se brise sur l\'impact !</b>', 'degats');
-          log(`${arme.nom} : hors d'usage. Il faudra trouver autre chose.`, 'warn');
-          G.player.equip.arme = null;
-        }
-      }
-      gainSkill('force', 4);
-      gainSkill(arme.skill, 2);
-      if (finiCombat) return;
-    } else {
-      sfx('rate');
-      clog('Trop téléphoné : il se déporte et ton coup laboure le vide. Tu titubes, déséquilibré.');
-      C.z.menace = Math.min(1, C.z.menace + 0.25);
-      gainSkill(arme.skill, 1);
-    }
-    majBarres();
-  }, 950);
 }
 
 function actionPousser() {
@@ -608,7 +729,8 @@ function actionFuir() {
 function nettoyer() {
   if (C && C.timer) clearInterval(C.timer);
   if (C && C.qteTimer) clearTimeout(C.qteTimer);
-  if (C && C.chargeTimer) clearTimeout(C.chargeTimer);
+  if (C && C.frappe) clearTimeout(C.frappe.timer);
+  if (C && C.chg && C.chg.raf) cancelAnimationFrame(C.chg.raf);
   const qte = document.querySelector('.qte');
   if (qte) qte.remove();
   stopCombatMusic();
@@ -656,12 +778,15 @@ function finMort() {
 
 // ---------- Rendu ----------
 // Ordre des actions, toujours le même : ce qui sauve la peau d'abord.
-//   ATTAQUER · SE DÉFENDRE   (réflexes)
-//   REPOUSSER · ACCÈS RAPIDE (gagner du temps, changer d'outil)
-//   JETER · FUIR             (dernières cartouches)
+//   FRAPPER/VISER · SE DÉFENDRE   (réflexes)
+//   REPOUSSER · ACCÈS RAPIDE      (gagner du temps, changer d'outil)
+//   JETER · FUIR                  (dernières cartouches)
 function renderCombat(remplaceSeulement = false) {
   const arme = infoArme();
-  const armeLbl = arme.feu ? `Tirer (${arme.nom})` : `Attaquer (${arme.nom.toLowerCase()})`;
+  const armeLbl = arme.feu ? `Viser (${arme.nom.toLowerCase()})` : `Frapper (${arme.nom.toLowerCase()})`;
+  const sousLbl = arme.feu
+    ? `maintenir pour viser · −${COUTS.tir} end. · ${arme.dmg[0]}–${arme.dmg[1]} dégâts · ${countItem(arme.ammo)} mun.`
+    : `maintenir pour charger · −${CHARGE.coutMin} à −${CHARGE.coutMin + CHARGE.coutPlein} end. · ${arme.dmg[0]}–${arme.dmg[1]} dégâts`;
   const html = `
   <div class="combat">
     <div class="combat-scene">
@@ -680,9 +805,8 @@ function renderCombat(remplaceSeulement = false) {
     <div class="combat-log" id="combat-log">${C.logs.join('')}</div>
     <div id="combat-armes"></div>
     <div class="combat-acts">
-      <button class="act primary" data-act="attaquer" data-cout="${arme.feu ? COUTS.tir : COUTS.attaque}">${ico(arme.feu ? 'pistolet' : 'attaque')} ${armeLbl}<small class="cout">−${arme.feu ? COUTS.tir : COUTS.attaque} end. · ${arme.dmg[0]}–${arme.dmg[1]} dégâts${arme.ammo ? ` · ${countItem(arme.ammo)} mun.` : ''}</small></button>
+      <button class="act primary chg-btn" data-act="attaquer" data-cout="${arme.feu ? COUTS.tir : CHARGE.coutMin}"><span class="chg-jauge" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="chg-fond" cx="18" cy="18" r="15.5"/><circle class="chg-prog" cx="18" cy="18" r="15.5" style="stroke-dasharray:${ANNEAU_CIRC};stroke-dashoffset:${ANNEAU_CIRC}"/></svg></span>${ico(arme.feu ? 'pistolet' : 'attaque')} ${armeLbl}<small class="cout">${sousLbl}</small></button>
       <button class="act ${C.defense ? 'defense-on' : ''}" data-act="defense" data-cout="0">${ico('defense')} Se défendre<small class="cout">récupère l'endurance, −45 % dégâts</small></button>
-      <button class="act puissance" data-act="puissance" data-cout="${COUTS.puissance}" ${arme.feu ? 'disabled' : ''}>${ico('attaque')} Coup de puissance<small class="cout">${arme.feu ? 'pas avec une arme à feu' : `−${COUTS.puissance} end. · préparation risquée · dégâts ×2`}</small></button>
       <button class="act" data-act="pousser" data-cout="${COUTS.pousser}">${ico('pousser')} Repousser<small class="cout">−${COUTS.pousser} end. · gagne du temps</small></button>
       <button class="act" data-act="acces" data-cout="${COUTS.changer}">${ico('ceinture')} Accès rapide<small class="cout">−${COUTS.changer} end. · ceinture / holster</small></button>
       <button class="act" data-act="jeter" data-cout="${COUTS.jeter}">${ico('jeter')} Jeter l'arme<small class="cout">−${COUTS.jeter} end. · dégâts ×1,5</small></button>
@@ -690,10 +814,27 @@ function renderCombat(remplaceSeulement = false) {
     </div>
   </div>`;
   render(html);
-  const acts = { attaquer: actionAttaquer, puissance: actionPuissance, pousser: actionPousser, defense: actionDefense, acces: actionAccesRapide, jeter: actionJeter, fuir: actionFuir };
+  const acts = { pousser: actionPousser, defense: actionDefense, acces: actionAccesRapide, jeter: actionJeter, fuir: actionFuir };
   document.querySelectorAll('[data-act]').forEach(b => {
+    if (b.dataset.act === 'attaquer') return; // géré en pointer events ci-dessous
     b.onclick = () => { if (C && !C.fini) { acts[b.dataset.act](); if (C && !C.fini) majBarres(); } };
   });
+  // Le bouton d'attaque se tient au doigt : pointerdown charge, relâcher frappe (ou tire).
+  // setPointerCapture garde le doigt même s'il glisse ; pointercancel relâche le coup
+  // à la charge atteinte — un doigt perdu ne mange pas l'endurance pour rien.
+  const btnAtk = document.querySelector('.combat-acts [data-act="attaquer"]');
+  if (btnAtk) {
+    btnAtk.onpointerdown = (e) => { e.preventDefault(); debuterCharge(e, btnAtk); };
+    const lacher = (e) => {
+      e.preventDefault();
+      if (C && C.chg && e.pointerId !== C.chg.pointerId) return; // un autre doigt ne lâche pas le coup
+      relacherCharge();
+    };
+    btnAtk.onpointerup = lacher;
+    btnAtk.onpointercancel = lacher;
+    btnAtk.onpointerleave = (e) => { if (C && C.chg) lacher(e); }; // sans capture (vieux navigateur), sortir du bouton relâche
+    btnAtk.oncontextmenu = (e) => e.preventDefault(); // pas de menu contextuel sur l'appui long mobile
+  }
   const cl = $('#combat-log');
   if (cl) cl.scrollTop = cl.scrollHeight;
 }
