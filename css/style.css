@@ -657,6 +657,34 @@ input[type=range] { width: 100%; accent-color: var(--blood2); }
   box-shadow: 0 0 10px rgba(232, 210, 122, .18);
 }
 
+/* ---------- Indicateur de lumière permanent + état des piles ---------- */
+.actions-rondes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.lampe-statut {                              /* le badge « Lumière allumée · piles 60% », toujours visible */
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .76rem; color: var(--fg-dim);
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 13px;
+  padding: 4px 10px; margin-right: auto;     /* pousse les boutons ronds à droite */
+}
+.lampe-statut .ico { width: 1em; height: 1em; opacity: .6; }
+.lampe-statut.on { color: #e8d27a; border-color: #8a6d28; }
+.lampe-statut.on .ico { opacity: 1; }
+.lampe-statut.vide { opacity: .6; }
+
+/* État d'une lampe DANS l'inventaire (allumée/éteinte + jauge de piles) */
+.lampe-info {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: .76rem; color: var(--fg-dim); margin: 4px 0 2px;
+}
+.lampe-info .ico { width: 1em; height: 1em; opacity: .8; }
+.lampe-on { color: #e8d27a; }
+.lampe-off { color: var(--fg-dim); }
+.pile-bar { width: 64px; height: 5px; background: #000; border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+.pile-bar i { display: block; height: 100%; background: var(--olive); }
+.pile-bar i.bon { background: #7d9469; }
+.pile-bar i.moyen { background: #c9a14a; }
+.pile-bar i.bas { background: #c4574a; }
+.pile-lib { color: var(--fg-dim); }
+
 /* ---------- Bouton plein écran en coin de l'écran titre ---------- */
 .fs-coin {
   position: fixed; top: 10px; right: 10px; z-index: 40;

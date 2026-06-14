@@ -12,7 +12,8 @@ import {
   accesRapide, nbSlotsAccesRapide, mettreEnAccesRapide, retirerAccesRapide, peutAccesRapide,
   countItem, defItem, removeItem, libelleJetes,
   estContenant, recipientOuvert, contenance, descEau, fmtL, verserEau, instancePourEau, consolider,
-  estLampe, basculerLampe, tenirLampe,
+  estLampe, lampeAPiles, basculerLampe, tenirLampe, lumiereActive,
+  etatPilesLampe, changerPilesLampe, retirerPilesLampe,
 } from './inventory.js';
 import {
   consommer, soigner, desinfecterAlcool, appliquerSoinCible, BLESSURES, nomBlessure, froidActuel,
@@ -442,6 +443,107 @@ function panneauTransvaser(srcSpec) {
   return box;
 }
 
+// ---------- Lampes : état (allumée + piles) et actions, communs aux onglets ----------
+// La lumière était « invisible » : impossible de savoir, depuis le sac, si une lampe
+// était allumée, combien de pile il restait, ni de l'allumer sans bidouille. Tout est
+// désormais explicite ici (état, jauge de piles, allumer/éteindre, changer/retirer piles).
+
+// Résout l'objet-lampe désigné par un descripteur : 'main', 'ar:<i>' ou 'sac:<i>'.
+function lampeRef(desc) {
+  if (desc === 'main') return G.player.equip.arme;
+  const [zone, i] = desc.split(':');
+  if (zone === 'ar') return accesRapide()[parseInt(i, 10)];
+  return G.player.inventaire[parseInt(i, 10)];
+}
+// Bloc visuel : pastille allumée/éteinte + jauge de piles (ou de flamme, torche).
+function lampeInfo(ref) {
+  const ep = etatPilesLampe(ref);
+  const eclaire = ref.on && (G.player.equip.arme === ref || accesRapide().includes(ref));
+  const etiq = ref.on
+    ? `<span class="lampe-on">allumée${eclaire ? ' — elle éclaire' : ' — mais dans le sac, n\'éclaire pas'}</span>`
+    : `<span class="lampe-off">éteinte</span>`;
+  let bat = '';
+  if (ep) {
+    const cls = ep.pct > 50 ? 'bon' : ep.pct > 20 ? 'moyen' : 'bas';
+    bat = `<div class="pile-bar"><i class="${cls}" style="width:${ep.pct}%"></i></div>
+      <small class="pile-lib">${ep.torche ? 'flamme' : 'piles'} ${ep.pct}% · ~${ep.minutes} min</small>`;
+  } else if (lampeAPiles(ref.id)) {
+    bat = `<small class="pile-lib">piles non entamées</small>`;
+  }
+  return `<div class="lampe-info">${ico('lumiere')} ${etiq}${bat}</div>`;
+}
+// Boutons d'action d'une lampe (zone : 'sac' | 'ar' | 'main').
+function boutonsLampe(desc, ref, zone) {
+  let b = '';
+  const ep = etatPilesLampe(ref);
+  if (ref.on) {
+    b += `<button data-lact="eteindre" data-lref="${desc}">Éteindre</button>`;
+    if (zone === 'sac') b += `<button data-lact="main" data-lref="${desc}" title="Pour éclairer, garde-la en main ou à la ceinture">Prendre en main</button>`;
+  } else if (zone === 'sac') {
+    b += `<button data-lact="allumer-main" data-lref="${desc}" title="Sortie du sac, prise en main et allumée">Allumer</button>`;
+    b += `<button data-lact="main" data-lref="${desc}">Prendre en main</button>`;
+  } else {
+    b += `<button data-lact="allumer" data-lref="${desc}">Allumer</button>`;
+  }
+  if (lampeAPiles(ref.id)) {
+    if (ep && ep.pct < 100 && hasItem('piles')) b += `<button data-lact="changer" data-lref="${desc}" title="Une paire neuve à la place de l'entamée (−1 en réserve)">Changer les piles</button>`;
+    if (ep) b += `<button data-lact="retirer" data-lref="${desc}" title="Sort la paire ; tu la récupères si elle est encore neuve">Retirer les piles</button>`;
+  }
+  return b;
+}
+// Câblage commun des boutons de lampe pour un panneau (Sac ou Porter).
+function lierLampes(box) {
+  box.querySelectorAll('[data-lact]').forEach(b => {
+    b.onclick = () => {
+      const ref = lampeRef(b.dataset.lref);
+      if (!ref) { panneauInventaire(); return; }
+      const nom = defItem(ref.id).nom;
+      switch (b.dataset.lact) {
+        case 'allumer': case 'eteindre': {
+          const r = basculerLampe(ref);
+          if (!r.ok) { toast(r.raison || 'Impossible.'); return; }
+          sfx('clic'); log(r.on ? `${nom} : allumée.` : `${nom} : éteinte.`, '');
+          break;
+        }
+        case 'allumer-main': {
+          const idx = G.player.inventaire.indexOf(ref);
+          const t = tenirLampe(idx);
+          if (t && t.renverse) log(`${t.renverse} : l'eau se renverse — tu avais les mains prises.`, 'warn');
+          const main = G.player.equip.arme;
+          const r = basculerLampe(main);
+          sfx('clic');
+          if (!r.ok) { toast(r.raison || 'Impossible.'); log(`${nom} en main, mais ${(r.raison || '').toLowerCase()}`, 'warn'); }
+          else log(`${nom} en main, allumée — elle éclaire.`, '');
+          break;
+        }
+        case 'main': {
+          const idx = G.player.inventaire.indexOf(ref);
+          const t = tenirLampe(idx);
+          if (t && t.renverse) log(`${t.renverse} : l'eau se renverse — tu avais les mains prises.`, 'warn');
+          sfx('clic'); log(`${nom} en main.`, '');
+          break;
+        }
+        case 'changer': {
+          const r = changerPilesLampe(ref);
+          if (!r.ok) { toast(r.raison || 'Impossible.'); return; }
+          sfx('clic'); log(`${nom} : piles neuves. Le faisceau redevient franc.`, 'good');
+          break;
+        }
+        case 'retirer': {
+          const r = retirerPilesLampe(ref);
+          if (!r.ok) { toast(r.raison || 'Impossible.'); return; }
+          sfx('clic');
+          log(r.rendue ? 'Tu récupères la paire (encore bonne) : elle retourne dans ta réserve.' : `Tu retires les piles usées de ${nom.toLowerCase()}.`, '');
+          break;
+        }
+      }
+      // renderLieu() : la lumière change le halo ET l'indicateur permanent sous la carte
+      // (derrière le panneau) — on les rafraîchit pour qu'ils soient justes à la fermeture.
+      updateHUD(); save(); renderLieu(); panneauInventaire();
+    };
+  });
+}
+
 // ---------- Onglet SAC : la liste des objets et la jauge poids/espace ----------
 function remplirInventaire(entete) {
   const inv = G.player.inventaire;
@@ -461,7 +563,9 @@ function remplirInventaire(entete) {
     const d = item(it.id) || cloth(it.id);
     if (!d) return;
     const meta = `${it.eau ? descEau(it) + ' · ' : ''}${((d.poids || 0) * it.qty + (it.eau ? it.eau.L : 0)).toFixed(1)} kg · ${(d.espace || 0) * it.qty} esp.`;
+    const estUneLampe = estLampe(it.id);
     let boutons = '';
+    if (estUneLampe) boutons += boutonsLampe('sac:' + i, it, 'sac');
     if (d.type === 'nourriture') boutons += `<button data-act="manger" data-i="${i}">Manger</button>`;
     if (d.type === 'boisson') boutons += `<button data-act="manger" data-i="${i}">Boire</button>`;
     if (d.type === 'soin') boutons += `<button data-act="soigner" data-i="${i}">Utiliser</button>`;
@@ -477,13 +581,14 @@ function remplirInventaire(entete) {
       ? `<div class="dur-bar"><div class="dur-fill" style="width:${(it.dur / d.dur) * 100}%"></div></div>` : '';
     html += `<div class="item-card">
       <div class="item-line"><span class="item-nom">${d.nom}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}</span><span class="item-meta">${meta}</span></div>
-      <div class="item-desc">${d.desc}</div>${durBar}
+      <div class="item-desc">${d.desc}</div>${estUneLampe ? lampeInfo(it) : ''}${durBar}
       <div class="item-btns">${boutons}</div>
     </div>`;
   });
   html += '</div>';
   const box = showPanel(html, { plein: true });
   lierContenants(box);
+  lierLampes(box);
   box.querySelectorAll('[data-act]').forEach(b => {
     b.onclick = () => {
       const i = parseInt(b.dataset.i, 10);
@@ -566,10 +671,13 @@ function remplirPorter(entete) {
     const meta = eq.arme.eau ? descEau(eq.arme)
       : d.dmg ? `${d.dmg[0]}–${d.dmg[1]} dégâts`
       : cont ? `vide — ${fmtL(contenance(eq.arme.id))} L` : '';
+    const lampeEnMain = estLampe(eq.arme.id);
     html += `<div class="item-card equipped">
       <div class="item-line"><span class="item-nom">${d.nom}</span><span class="item-meta">${meta}</span></div>
       ${d.dur && eq.arme.dur !== undefined ? `<div class="dur-bar"><div class="dur-fill" style="width:${(eq.arme.dur / d.dur) * 100}%"></div></div>` : ''}
+      ${lampeEnMain ? lampeInfo(eq.arme) : ''}
       <div class="item-btns">
+        ${lampeEnMain ? boutonsLampe('main', eq.arme, 'main') : ''}
         ${cont ? boutonsContenant('main', eq.arme) : ''}
         ${cont && eq.arme.eau && recipientOuvert(eq.arme.id) ? `<button data-poser-main="1">Poser au sol</button>` : ''}
         <button data-deq="arme">Ranger dans le sac</button>
@@ -603,14 +711,17 @@ function remplirPorter(entete) {
   ar.forEach((it, i) => {
     const d = defItem(it.id);
     if (!d) return;
+    const lampeAR = estLampe(it.id);
     html += `<div class="item-card acces-rapide">
       <div class="item-line"><span class="item-nom">${d.nom}</span><span class="item-meta">${it.eau ? descEau(it) : d.dmg ? `${d.dmg[0]}–${d.dmg[1]} dégâts` : (d.type || '')}</span></div>
-      <div class="item-btns"><button data-ar-retire="${i}">Remettre dans le sac</button></div></div>`;
+      ${lampeAR ? lampeInfo(it) : ''}
+      <div class="item-btns">${lampeAR ? boutonsLampe('ar:' + i, it, 'ar') : ''}<button data-ar-retire="${i}">Remettre dans le sac</button></div></div>`;
   });
   html += `</div>`;
 
   const box = showPanel(html, { plein: true });
   lierContenants(box);
+  lierLampes(box);
   box.querySelectorAll('[data-deq]').forEach(b => {
     b.onclick = () => {
       const slot = b.dataset.deq;

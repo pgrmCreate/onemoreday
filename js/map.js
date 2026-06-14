@@ -35,7 +35,7 @@ import {
   surcharge, enSurpoids, poidsPlafond, equiperDepuisSol, libelleJetes,
   estContenant, recipientOuvert, contenance, descEau, fmtL, instancePourEau,
   tenirRecipient, prendreEnMain,
-  lumiereActive, lampePortee, basculerLampe,
+  lumiereActive, basculerLumiere, etatLumiere,
 } from './inventory.js';
 import { cloth } from './data/clothing.js';
 import { advanceTime, dormir, attendre } from './survival.js';
@@ -604,14 +604,40 @@ function syncCaseMonde(k) {
 }
 export function syncCaseCourante() { syncCaseMonde(keyCourante()); }
 
+// Co-op : la case que le COÉQUIPIER est en train de fouiller (null s'il ne fouille pas).
+let fouillePairK = null;
+// Je signale au coéquipier que je commence / termine de fouiller une case, pour qu'il
+// n'y vienne pas en même temps (et ne voie pas sa fouille « annulée »). Inerte en solo.
+function signalerFouille(k, etat) {
+  if (!multi.estMulti()) return;
+  multi.diffuserEvenement({ e: 'fouille', k, etat });
+}
+// Le coéquipier est-il, là, physiquement sur cette case ? (filet de sécurité : si le
+// signal 'fin' se perd parce qu'il s'est déconnecté, on ne reste pas bloqué.)
+function pairSurCase(k) {
+  const pr = multi.pairEtat();
+  return !!pr && ckey(pr.carte, pr.x, pr.y) === k;
+}
+
 // Câblage co-op : posé une fois, dort tant qu'on n'est pas en multi.
 let pairCombatPrec = false;
 function brancherMulti() {
   // Monde partagé : on adopte l'état de case reçu (butin/fouille communs, dernier écrivain).
   multi.poser('onEvenement', (m) => {
+    // Présence de fouille : le coéquipier (dé)marre une fouille → on la mémorise pour
+    // ne pas fouiller la même case en même temps (cf. fouiller()).
+    if (m.e === 'fouille') { fouillePairK = m.etat === 'debut' ? m.k : null; return; }
     if (m.e !== 'case') return;
     if (Array.isArray(m.sol)) { if (m.sol.length) G.world.sol[m.k] = m.sol; else delete G.world.sol[m.k]; }
-    if (m.fouille) G.world.fouilles[m.k] = m.fouille;
+    if (m.fouille) {
+      // FUSION, pas écrasement : on garde le plus avancé des deux compteurs et l'UNION
+      // du butin déjà pris. Sans ça, l'état reçu écrasait une fouille locale en cours →
+      // la fouille du joueur paraissait « annulée » (compteur qui saute, butin escamoté).
+      const cur = G.world.fouilles[m.k];
+      G.world.fouilles[m.k] = cur
+        ? { n: Math.max(cur.n || 0, m.fouille.n || 0), pris: { ...(cur.pris || {}), ...(m.fouille.pris || {}) } }
+        : m.fouille;
+    }
     if (m.secur) G.world.securisees[m.k] = true; else delete G.world.securisees[m.k];
     if (m.k.split(':')[0] !== G.world.carte) return; // pas ma carte : appliqué en mémoire, rien à redessiner
     const surAuSol = panelOuvert() && (($('.panel-head h2') || {}).textContent === 'Au sol') && m.k === keyCourante();
@@ -619,6 +645,7 @@ function brancherMulti() {
     else if (document.querySelector('.carte-grille') && !modaleBloque() && !enMarche) rafraichirCarteSeule();
   });
   multi.poser('onPairMaj', (pr) => {
+    if (!pr) fouillePairK = null; // coéquipier parti : plus aucune fouille à attendre
     if (!document.querySelector('.carte-grille') || modaleBloque() || enMarche) return;
     const combatNow = !!(pr && pr.enCombat);
     const flip = combatNow !== pairCombatPrec;
@@ -1033,25 +1060,36 @@ export function renderLieu() {
   }
 }
 
-// ---------- Boutons ronds sous la carte : lampe (si à portée) et attendre ----------
+// ---------- Boutons ronds sous la carte : statut de lumière + lampe + attendre ----------
+// Le statut de lumière est TOUJOURS affiché (« Lumière allumée · piles 60% », « Lampe
+// éteinte », « Aucune lampe ») : le joueur voit en permanence s'il a de la lumière sur lui.
 function barreRonde() {
-  const lampe = lampePortee();
-  const allume = lumiereActive();
+  const L = etatLumiere();
+  const titre = !L.a ? 'Aucune lampe — trouve-en une (et des piles)'
+    : L.on ? 'Éteindre la lampe' : 'Allumer la lampe (sortie du sac et prise en main si besoin)';
+  const sousTexte = L.a ? `${L.reserve} paire${L.reserve > 1 ? 's' : ''} de piles en réserve` : 'Trouve une lampe et des piles';
   return `<div class="actions-rondes">
-    ${lampe ? `<button class="brond ${allume ? 'on' : ''}" data-lampe="1"
-      title="${allume ? 'Éteindre' : 'Allumer'} (${defItem(lampe.id).nom.toLowerCase()})">${ico('lumiere')}</button>` : ''}
+    <div class="lampe-statut ${L.on ? 'on' : L.a ? '' : 'vide'}" title="${sousTexte}">
+      ${ico('lumiere')}<span>${L.texte}</span>
+    </div>
+    ${L.a ? `<button class="brond ${L.on ? 'on' : ''}" data-lampe="1" title="${titre}">${ico('lumiere')}</button>` : ''}
     <button class="brond" data-attendre="1" title="Attendre">${ico('sablier')}</button>
   </div>`;
 }
 
 function basculerLampePortee() {
-  const lampe = lampePortee();
-  if (!lampe) return;
-  const r = basculerLampe(lampe);
+  const r = basculerLumiere();
   if (!r.ok) { toast(r.raison || 'Impossible.'); return; }
-  const d = defItem(lampe.id);
-  if (lampe.id === 'torche') log(r.on ? 'La torche s\'embrase. La flamme danse — et se voit de loin.' : 'Tu étouffes la torche.', '');
-  else log(r.on ? `Clic. ${d.nom} troue l'obscurité.` : `Tu éteins ${d.nom.toLowerCase() === 'torche' ? 'la torche' : 'la ' + d.nom.toLowerCase()}.`, '');
+  const d = defItem(r.ref.id);
+  const nom = d.nom.toLowerCase();
+  sfx('clic');
+  if (r.renverse) log(`${r.renverse} : l'eau se renverse — tu avais les mains prises.`, 'warn');
+  if (r.deja) log(`${d.nom} sort du sac — elle éclaire enfin.`, '');
+  else if (r.ref.id === 'torche') log(r.on ? 'La torche s\'embrase. La flamme danse — et se voit de loin.' : 'Tu étouffes la torche.', '');
+  else {
+    const intro = r.depuisSac ? `Tu sors ${nom} du sac. ` : '';
+    log(r.on ? `${intro}Clic — ${d.nom} troue l'obscurité.` : `Tu éteins ${nom === 'torche' ? 'la torche' : 'la ' + nom}.`, '');
+  }
   save();
   renderLieu();
 }
@@ -1346,6 +1384,14 @@ function fouiller(aTatons = false) {
   if (cd.verrou && !G.world.verrous[k]) { ecranVerrou(cd, k); return; }
   const f = fouilleEtat(k);
   if (f.n >= cd.fouille.max) { toast('Tu as déjà tout retourné ici.'); return; }
+  // Co-op : un seul fouilleur par case à la fois. Si le coéquipier est en train de
+  // fouiller CETTE case (et toujours dessus), on le laisse finir — sinon nos deux
+  // fouilles se télescopent et l'une paraît « annulée » (compteur qui saute, butin
+  // déjà pris). On se fie à sa présence réelle pour ne jamais rester bloqué s'il part.
+  if (multi.estMulti() && fouillePairK === k && pairSurCase(k)) {
+    toast('Ton coéquipier fouille déjà ici — laisse-le finir.');
+    return;
+  }
 
   if (niveauSombre(cd) === 2 && !lumiereActive() && !aTatons) {
     const box = showEvt(`<div class="narration">Il fait noir là-dedans. Sans lumière allumée, tu ne verras rien venir — ni les objets, ni le reste.</div>
@@ -1360,40 +1406,58 @@ function fouiller(aTatons = false) {
 
   // Le temps s'accélère quand on agit : chaque fouille mange de longues minutes.
   const minutes = tempsFouille(f.n);
+  signalerFouille(k, 'debut'); // co-op : je commence à fouiller cette case
   attente(aTatons ? 'Tu fouilles à tâtons…' : 'Tu fouilles…', minutes, () => {
+    signalerFouille(k, 'fin'); // la fouille se conclut (quelle qu'en soit l'issue)
     // Le temps file en temps réel pendant l'attente : pas de saut d'horloge ici.
     G.player.sta = Math.max(0, G.player.sta - (4 + 2 * f.n));
 
     // Danger : farfouiller fait du bruit, et plus longtemps on reste, plus on en fait.
-    // Sur les cartes vivantes, le bruit ATTIRE les zombies alentour — tu les
-    // verras arriver sur la carte. L'embuscade aveugle, elle, devient rare.
-    let danger = (cd.danger ?? 0.2) * (1 + 0.2 * f.n);
-    if (estSecurisee(k)) danger *= 0.15;
-    if (aTatons) danger *= 1.6;
-    if (niveauSombre(cd) === 1 && !lumiereActive()) danger *= 1.2; // en pénombre, on les voit venir tard
-    if (estNuit()) danger *= 1.3;
     if (carteVivante(G.world.carte)) {
-      attirerZombies(G.world.carte, G.world.x, G.world.y, 4 + f.n);
-      danger *= 0.4;
+      // Carte VIVANTE (intérieur / quartier) : le bruit ATTIRE les VRAIS morts de la
+      // carte — tu les vois arriver sur la grille, et ils RESTENT plafonnés par le
+      // `cap` de la carte (capZombies). On NE génère plus de mort « fantôme » hors
+      // plafond : c'est ce qui faisait exploser le décompte (l'hôtel pouvait t'opposer
+      // bien plus que ses 4 errants). Fouiller à tâtons / la nuit = plus de bruit donc
+      // on ameute plus large, pas un combat surgi de nulle part.
+      const portee = 4 + f.n + (aTatons ? 2 : 0) + (estNuit() ? 1 : 0);
+      attirerZombies(G.world.carte, G.world.x, G.world.y, portee);
+    } else {
+      // Carte ABSTRAITE (ville / région) : pas de grille de morts à ameuter →
+      // l'embuscade directe reste la seule façon de matérialiser le danger.
+      let danger = (cd.danger ?? 0.2) * (1 + 0.2 * f.n);
+      if (estSecurisee(k)) danger *= 0.15;
+      if (aTatons) danger *= 1.6;
+      if (estNuit()) danger *= 1.3;
+      if (chance(danger)) {
+        log(`En fouillant ${ (cd.nom || 'la zone').toLowerCase() }, tu n'étais pas seul. Tu lâches tout et tu te retournes — la fouille est interrompue.`, 'bad');
+        demarrerCombat([pick(zombiesPoolCourant())], {
+          surprise: aTatons,
+          // Une attaque ANNULE la fouille : on ne ramasse rien, même en sortant vainqueur.
+          // Il faudra recommencer à fouiller pour espérer trouver quelque chose.
+          onFin: () => renderLieu(),
+        });
+        return;
+      }
     }
-    if (chance(danger)) {
-      log(`En fouillant ${ (cd.nom || 'la zone').toLowerCase() }, tu n'étais pas seul. Tu lâches tout et tu te retournes — la fouille est interrompue.`, 'bad');
-      demarrerCombat([pick(zombiesPoolCourant())], {
-        surprise: aTatons,
-        // Une attaque ANNULE la fouille : on ne ramasse rien, même en sortant vainqueur.
-        // Il faudra recommencer à fouiller pour espérer trouver quelque chose.
-        onFin: () => renderLieu(),
-      });
-      return;
-    }
-    terminerFouille(aTatons);
-  });
+    terminerFouille(aTatons, k, cd);
+  }, { onAnnule: () => signalerFouille(k, 'fin') });
 }
 
-function terminerFouille(aTatons) {
-  const cd = caseCourante();
-  const k = keyCourante();
+function terminerFouille(aTatons, kArg, cdArg) {
+  // k et cd sont CAPTURÉS au lancement de la fouille : si le joueur a bougé pendant
+  // l'attente (ou en co-op), on applique bien le résultat à la case fouillée.
+  const cd = cdArg || caseCourante();
+  const k = kArg || keyCourante();
   const f = fouilleEtat(k);
+  // Co-op : le coéquipier a pu vider cette case pendant que je fouillais (état partagé).
+  // On ne « re-fouille » pas au-delà du plafond. Ma fouille n'est pas perdue pour autant :
+  // ce qu'il a sorti est au sol, commun aux deux.
+  if (f.n >= cd.fouille.max) {
+    log(`${cd.nom || 'La zone'} : ton coéquipier a déjà tout retourné ici.`, '');
+    renderLieu();
+    return;
+  }
   const niv = niveauSombre(cd);
   // (la lumière se consomme désormais EN CONTINU, tant que la lampe est allumée — cf. usureLampes)
   // Plus on creuse, plus on a de chances de mettre la main sur ce qui reste.

@@ -44,14 +44,19 @@ export const CARTES_SALON_CENTRE = {
     nom: 'Grand Hôtel de la Poste', sousTitre: 'place Crousillat — ton terrier depuis 23 jours',
     echelle: 'interieur', tempsParCase: 1, largeur: 6, hauteur: 5,
     exterieur: false, ambiance: 'calme', illu: 'immeuble',
-    // Le terrier du début : peu peuplé et peu dangereux. Trois morts au maximum,
-    // tous des errants (les plus faibles) — on apprend à jouer, on ne se fait pas submerger.
-    capZombies: 3,
+    // Le terrier du début : peu peuplé et peu dangereux. QUATRE morts au maximum sur
+    // tout l'hôtel (cave comprise), tous des errants (les plus faibles) — on apprend à
+    // jouer, on ne se fait pas submerger. Ce plafond est désormais RÉELLEMENT tenu : la
+    // fouille n'invoque plus de mort « fantôme » hors-plafond (cf. js/map.js → fouiller).
+    capZombies: 4,
     zombiesPool: ['errant'],
-    // Zombies SCÉNARISÉS, posés à la première visite (le reste est procédural) :
+    // Zombies SCÉNARISÉS, posés à la première visite (le reste est procédural).
+    // Trois posés d'office (couloir, 204, cave) ; le procédural ne peut en ajouter
+    // qu'UN, pour rester sous le plafond de 4.
     zombiesFixes: [
       { x: 1, y: 1, id: 'errant', dir: [1, 0] },                    // il traîne dans le couloir, tourné vers les chambres
       { x: 4, y: 0, id: 'errant', dir: [0, 1], faitLeMort: true },  // la 204 : « quelque chose de sucré » — il fait le mort
+      { x: 4, y: 3, id: 'errant', dir: [-1, 0] },                   // la cave : il monte vers la cuisine, à tâtons dans le noir
     ],
     passages: [
       ['1,0', '1,1'], // porte de la chambre 201 sur le couloir

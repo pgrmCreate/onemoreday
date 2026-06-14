@@ -370,22 +370,60 @@ const MIN_PAR_PILES = 180; // ~3 h de jeu par paire de piles
 const MIN_TORCHE = 45;     // une torche brûle ~45 min
 
 export function estLampe(id) { return id === 'lampe_torche' || id === 'lampe_frontale' || id === 'torche'; }
+// Lampe qui mange des PILES (la torche, elle, brûle au feu) — pour la gestion des piles.
+export function lampeAPiles(id) { return id === 'lampe_torche' || id === 'lampe_frontale'; }
 
 // true si une lampe ALLUMÉE est en main ou en accès rapide : c'est ÇA, avoir de la lumière.
+// (Une lampe allumée OUBLIÉE au fond du sac brûle ses piles mais N'ÉCLAIRE PAS.)
 export function lumiereActive() {
   const allumee = (e) => !!(e && estLampe(e.id) && e.on);
   if (allumee(G.player.equip.arme)) return true;
   return accesRapide().some(allumee);
 }
 
-// La lampe « à portée » (pour le bouton sous la carte) : une allumée d'abord,
-// sinon la première en main ou à la ceinture. null si aucune.
-export function lampePortee() {
-  const cands = [];
+// Toutes les lampes que possède le joueur, avec leur emplacement.
+function lampesPossedees() {
+  const out = [];
   const main = G.player.equip.arme;
-  if (main && estLampe(main.id)) cands.push(main);
-  for (const e of accesRapide()) if (estLampe(e.id)) cands.push(e);
-  return cands.find(e => e.on) || cands[0] || null;
+  if (main && estLampe(main.id)) out.push({ ref: main, ou: 'main' });
+  for (const e of accesRapide()) if (estLampe(e.id)) out.push({ ref: e, ou: 'ar' });
+  for (const e of G.player.inventaire) if (estLampe(e.id)) out.push({ ref: e, ou: 'sac' });
+  return out;
+}
+
+// La lampe que le bouton sous la carte doit actionner, avec son emplacement :
+//   { ref, ou:'main'|'ar'|'sac' } | null.
+// Priorité : une qui ÉCLAIRE déjà (main/ceinture) > une à portée de main (main/ceinture)
+// > n'importe laquelle (même au fond du sac : on la sortira en main pour l'allumer).
+export function lampePortee() {
+  const ls = lampesPossedees();
+  return ls.find(l => l.ref.on && l.ou !== 'sac')
+      || ls.find(l => l.ou !== 'sac')
+      || ls.find(l => l.ref.on)
+      || ls[0] || null;
+}
+
+// État synthétique de la lumière, pour l'indicateur permanent et l'inventaire :
+// { a (possède une lampe), on (éclaire vraiment), ref, ou, pct, reserve, texte }.
+export function etatLumiere() {
+  const lp = lampePortee();
+  const reserve = countItem('piles');
+  if (!lp) return { a: false, on: false, reserve, texte: 'Aucune lampe' };
+  const ep = etatPilesLampe(lp.ref);
+  const pct = ep ? ep.pct : 100;
+  if (lumiereActive()) return { a: true, on: true, ref: lp.ref, ou: lp.ou, pct, reserve, texte: `Lumière allumée · piles ${pct}%` };
+  if (lp.ref.on) return { a: true, on: false, ref: lp.ref, ou: lp.ou, pct, reserve, texte: 'Lampe allumée dans le sac — elle n\'éclaire pas' };
+  return { a: true, on: false, ref: lp.ref, ou: lp.ou, pct, reserve, texte: 'Lampe éteinte' };
+}
+
+// Charge de la paire installée + minutes restantes (lampe à piles), ou le reste de
+// combustion (torche). null si la lampe n'a jamais été allumée (aucune pile installée).
+export function etatPilesLampe(ref) {
+  if (!ref || !estLampe(ref.id)) return null;
+  if (ref.usure === undefined && !ref.on) return null;
+  const u = Math.min(1, Math.max(0, ref.usure || 0));
+  const total = ref.id === 'torche' ? MIN_TORCHE : MIN_PAR_PILES;
+  return { pct: Math.round((1 - u) * 100), minutes: Math.round((1 - u) * total), torche: ref.id === 'torche' };
 }
 
 // Allumer / éteindre une instance de lampe. Retourne { ok, on, raison? }.
@@ -407,6 +445,31 @@ export function basculerLampe(ref) {
   return { ok: true, on: true };
 }
 
+// Le bouton « lumière » sous la carte : éteint la lampe qui éclaire, sinon allume la
+// MEILLEURE — en la SORTANT DU SAC pour la prendre en main si besoin (sinon elle
+// brûlerait ses piles sans éclairer). { ok, on, ref, ou, depuisSac, renverse, raison? }.
+export function basculerLumiere() {
+  // 1) Une lampe éclaire (main/ceinture, allumée) → on l'éteint.
+  const main = G.player.equip.arme;
+  if (main && estLampe(main.id) && main.on) return { ...basculerLampe(main), ref: main, ou: 'main' };
+  for (const e of accesRapide()) if (estLampe(e.id) && e.on) return { ...basculerLampe(e), ref: e, ou: 'ar' };
+  // 2) Sinon on allume la meilleure lampe disponible.
+  const lp = lampePortee();
+  if (!lp) return { ok: false, raison: 'Tu n\'as aucune lampe.' };
+  let ref = lp.ref, depuisSac = false, renverse = null;
+  if (lp.ou === 'sac') {
+    // la sortir et la prendre en main pour qu'elle éclaire VRAIMENT
+    const idx = G.player.inventaire.indexOf(lp.ref);
+    const t = tenirLampe(idx);
+    renverse = t && t.renverse;
+    ref = G.player.equip.arme;
+    depuisSac = true;
+  }
+  if (ref.on) return { ok: true, on: true, ref, ou: 'main', depuisSac, renverse, deja: true };
+  const r = basculerLampe(ref);
+  return { ...r, ref, ou: depuisSac ? 'main' : lp.ou, depuisSac, renverse };
+}
+
 // Prendre une lampe du sac EN MAIN (elle n'a pas de dégâts : equiperArme la refuse).
 export function tenirLampe(index) {
   const it = G.player.inventaire[index];
@@ -416,9 +479,34 @@ export function tenirLampe(index) {
   return prendreEnMain(inst);
 }
 
+// Recharger : remplacer la paire entamée par une neuve prise dans la réserve.
+// Coûte 1 paire de piles (comme l'auto-remplacement à l'extinction). { ok, raison? }.
+export function changerPilesLampe(ref) {
+  if (!ref || !lampeAPiles(ref.id)) return { ok: false, raison: 'Pas une lampe à piles.' };
+  if (!hasItem('piles')) return { ok: false, raison: 'Pas de piles de rechange.' };
+  if ((ref.usure || 0) <= 0) return { ok: false, raison: 'Les piles sont déjà neuves.' };
+  removeItem('piles', 1);
+  ref.usure = 0;
+  return { ok: true };
+}
+
+// Retirer la paire de piles d'une lampe (pour la garder, ou la basculer vers la radio).
+// On ne rend une paire à la réserve QUE si elle est quasiment neuve : on ne crée jamais
+// de charge (une paire entamée part à la poubelle). Éteint la lampe. { ok, rendue, raison? }.
+export function retirerPilesLampe(ref) {
+  if (!ref || !lampeAPiles(ref.id)) return { ok: false, raison: 'Pas une lampe à piles.' };
+  if (ref.usure === undefined && !ref.on) return { ok: false, raison: 'Aucune pile à retirer.' };
+  const presqueNeuve = (ref.usure || 0) <= 0.05;
+  delete ref.on;
+  delete ref.usure;
+  let rendue = false;
+  if (presqueNeuve && placePour('piles', 1)) { addItem('piles', 1); rendue = true; }
+  return { ok: true, rendue };
+}
+
 // Drain continu, appelé par advanceTime (dt en minutes de jeu).
 // Toute lampe allumée consomme, où qu'elle soit — une lampe oubliée allumée
-// au fond du sac vide ses piles sans éclairer personne.
+// au fond du sac vide ses piles sans éclairer personne (message explicite à sa mort).
 export function usureLampes(dt) {
   const msgs = [];
   const allumees = [];
@@ -427,6 +515,8 @@ export function usureLampes(dt) {
   for (const e of accesRapide()) if (estLampe(e.id) && e.on) allumees.push({ ref: e, ou: 'ar' });
   for (const e of G.player.inventaire) if (estLampe(e.id) && e.on) allumees.push({ ref: e, ou: 'sac' });
   for (const { ref, ou } of allumees) {
+    const nom = (defItem(ref.id) || {}).nom || 'La lampe';
+    const lieu = ou === 'main' ? 'en main' : ou === 'ar' ? 'à la ceinture' : 'au fond du sac';
     if (ref.id === 'torche') {
       ref.usure = (ref.usure || 0) + dt / MIN_TORCHE;
       if (ref.usure >= 1) {
@@ -441,10 +531,11 @@ export function usureLampes(dt) {
         ref.usure = 0;
         removeItem('piles', 1); // la paire morte part à la poubelle
         if (hasItem('piles')) {
-          msgs.push({ t: 'Le faisceau jaunit, meurt — tu remplaces les piles à tâtons.', c: 'warn' });
+          msgs.push({ t: `${nom} (${lieu}) : le faisceau jaunit, meurt — tu remplaces les piles à tâtons.`, c: 'warn' });
         } else {
-          ref.on = false;
-          msgs.push({ t: 'La lampe s\'éteint. Plus de piles.', c: 'warn' });
+          delete ref.on;
+          if (!ref.usure) delete ref.usure;
+          msgs.push({ t: `${nom} (${lieu}) s'éteint : il ne te reste plus une seule pile.`, c: 'warn' });
         }
       }
     }

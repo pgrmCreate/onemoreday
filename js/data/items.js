@@ -302,15 +302,15 @@ export const ITEMS = {
   },
   lampe_torche: {
     nom: 'Lampe torche', type: 'outil', poids: 0.3, espace: 1, usage: ['lumiere'], besoinPiles: true,
-    desc: 'Un cône de lumière dans le noir. Et tout ce que la lumière attire. Sans piles, c\'est un tube de plastique.',
+    desc: 'Un cône de lumière dans le noir. Et tout ce que la lumière attire. N\'éclaire que tenue en main ou à la ceinture, allumée. Une paire de piles tient ~3 h ; charge et réserve visibles dans le sac.',
   },
   lampe_frontale: {
     nom: 'Lampe frontale', type: 'outil', poids: 0.15, espace: 0, usage: ['lumiere'], besoinPiles: true,
-    desc: 'L\'élastique est distendu mais la LED est vaillante. Les deux mains libres dans le noir — un luxe inestimable.',
+    desc: 'L\'élastique est distendu mais la LED est vaillante. Les deux mains libres dans le noir — un luxe inestimable. Une paire de piles tient ~3 h ; tu peux la changer ou la retirer depuis le sac.',
   },
   piles: {
     nom: 'Piles', type: 'outil', poids: 0.1, espace: 0,
-    desc: 'Encore un peu de jus dedans.',
+    desc: 'Une paire. Encore un peu de jus dedans. Lampes et radio en mangent : garde-en en réserve.',
   },
   casserole: {
     nom: 'Casserole', type: 'outil', poids: 0.7, espace: 2, usage: ['cuisson'],
