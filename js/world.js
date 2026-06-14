@@ -2,7 +2,7 @@
 // Quatre échelles de cartes, toutes en cases :
 //   'interieur' (pièces) → 'quartier' (rues) → 'ville' (Salon) → 'region' (pays salonais)
 // Une case absente de carte.cases est infranchissable (mur, bâtiment plein, champ).
-import { G } from './state.js';
+import { G, estNuit } from './state.js';
 import { CARTES } from './data/world.js';
 
 export function carte(id) { return CARTES[id]; }
@@ -84,9 +84,14 @@ export function passagePossible(carteId, x1, y1, x2, y2) {
 
 // Niveau d'obscurité d'une case : 0 (éclairée), 1 (pénombre), 2 (noir total).
 // Donnée : sombre: 1 | 2 — compat : sombre: true vaut 2.
+// LA NUIT, l'intérieur des bâtiments plonge dans le noir : une pièce normalement
+// éclairée passe en pénombre, une pièce déjà sombre en noir total — il faut une lampe.
+// (Dehors, c'est le voile d'ambiance de la carte qui assombrit, pas ceci.)
 export function niveauSombre(cd) {
-  if (!cd || !cd.sombre) return 0;
-  return cd.sombre === true ? 2 : cd.sombre;
+  let niv = !cd || !cd.sombre ? 0 : (cd.sombre === true ? 2 : cd.sombre);
+  const c = carteCourante();
+  if (c && c.echelle === 'interieur' && estNuit()) niv = niv === 0 ? 1 : 2;
+  return niv;
 }
 
 // Nature de la liaison entre deux cases voisines (pour dessiner le plan) :

@@ -40,10 +40,10 @@ export function chance(p) { return Math.random() < p; }
 export function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 // ---------- Nouvelle partie ----------
-export function newGame(nom, difficulte) {
+export function newGame(nom) {
   G = {
     version: VERSION,
-    difficulte, // 'normal' (mort = retour à la sauvegarde) | 'extreme' (permadeath)
+    difficulte: 'extreme', // mode UNIQUE : permadeath — la mort efface la partie, aucun retour en arrière
     player: {
       nom: nom || 'Sam',
       pv: 100, pvMax: 100,

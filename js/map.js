@@ -6,6 +6,7 @@ import {
   G, save, rng, chance, pick, skillLevel, gainSkill, setFlag, getFlag, estNuit, noteJournal,
 } from './state.js';
 import { CARTES, DEPART } from './data/world.js';
+import { REGLAGES } from './data/reglages.js';
 import {
   carte, carteCourante, caseDef, caseCourante, franchissable, passagePossible, ckey, keyCourante,
   decouvrir, decouvrirAutour, estDecouverte, casesVisibles, solDe, solVisible, deposerAuSol, revelerSol,
@@ -16,7 +17,7 @@ import { svgAmbiance, aAmbiance } from './ambiance.js';
 import { jouerCineUneFois, cineEnCours, jouerCine } from './cinema.js';
 import {
   carteVivante, peuplerCarte, zombiesSur, retirerZombie, meuteAuContact,
-  tickZombies, attirerZombies,
+  tickZombies, attirerZombies, champOuieJoueur,
   fauxMortEn, reveillerFauxMort, ajouterMort, mortsSur,
   TICK_MS, OUIE_JOUEUR,
 } from './zombies_map.js';
@@ -49,6 +50,8 @@ let vueDessin = false; // bascule plan ↔ dessin d'ambiance (bouton œil)
 let enMarche = false;  // déplacement animé en cours : on ne clique pas pendant
 let chemPrev = new Map(); // BFS : d'où on vient, pour reconstruire le chemin
 let pasDepuisCraque = 0; // pas écoulés depuis le dernier craquement (pas bruyant occasionnel)
+let dernierTickZ = 0;  // horodatage du dernier tick des morts (perf.now) — pour qu'ils gardent
+                       // LEUR horloge (TICK_MS) même pendant que tu marches (sinon ils accélèrent)
 
 // ---------- Position de départ ----------
 export function initPosition() {
@@ -532,6 +535,13 @@ function pointOuie(px, py, CS) {
   return `<circle class="zouie" cx="${cx}" cy="${cy}" r="4.5" fill="#a83226"/>`;
 }
 
+// Distance d'OUÏE entre toi et un nœud : en SAUTS si on est sur un plan à nœuds
+// (champ fourni — cohérent avec la vue et la poursuite), en cases sinon. Sans ça, sur
+// un plan de quartier, la distance de grille (sparse, arbitraire) fausserait le repère.
+function distOuie(champOuie, x, y) {
+  return champOuie ? (champOuie.get(`${x},${y}`) ?? 99) : Math.abs(x - G.world.x) + Math.abs(y - G.world.y);
+}
+
 // ---------- Co-op : le pion du coéquipier ----------
 // Bleu (jamais confondu avec ton or ni leur rouge). Sa couleur vire selon ses PV ;
 // un anneau d'alerte s'il est en plein combat.
@@ -661,6 +671,7 @@ function svgCarte(reach, vis) {
   const vivante = carteVivante(G.world.carte);
   const zombies = vivante ? zombiesSur(G.world.carte) : [];
   const morts = vivante ? mortsSur(G.world.carte) : [];
+  const champOuie = vivante ? champOuieJoueur(G.world.carte) : null; // sauts (plan) ou null (grille)
   const pair = multi.estMulti() ? multi.pairEtat() : null; // le coéquipier, s'il y en a un
   // Une lampe allumée en main ou à la ceinture troue le noir autour de toi.
   const lampe = lumiereActive();
@@ -719,7 +730,7 @@ function svgCarte(reach, vis) {
       if (zlist.length) inner += pionZombie(px, py, CS, zlist.length, zlist[0].dir, !!zlist[0].spin);
     } else if (!ici) {
       // Ouïe : un zombie vivant tout proche, hors de vue → point rouge estompé.
-      const dist = Math.abs(x - G.world.x) + Math.abs(y - G.world.y);
+      const dist = distOuie(champOuie, x, y);
       if (dist <= OUIE_JOUEUR && zombies.some(z => !z.faitLeMort && z.x === x && z.y === y)) {
         inner += pointOuie(px, py, CS);
       }
@@ -780,6 +791,7 @@ function svgCartePlan(reach, vis) {
   const vivante = carteVivante(G.world.carte);
   const zombies = vivante ? zombiesSur(G.world.carte) : [];
   const morts = vivante ? mortsSur(G.world.carte) : [];
+  const champOuie = vivante ? champOuieJoueur(G.world.carte) : null; // distance d'ouïe en SAUTS sur le plan
   const pair = multi.estMulti() ? multi.pairEtat() : null;
   const lampe = lumiereActive();
   // Dimensions du plan : carte.vue, sinon enveloppe des nœuds.
@@ -843,6 +855,10 @@ function svgCartePlan(reach, vis) {
       if (corps) inner += pictoCadavre(box[0], box[1], box[2]);
       const zlist = zombies.filter(z => !z.faitLeMort && z.x === x && z.y === y);
       if (zlist.length) inner += pionZombie(box[0], box[1], box[2], zlist.length, zlist[0].dir, !!zlist[0].spin);
+    } else if (!ici) {
+      // Ouïe sur le plan : un mort proche (en sauts) hors de vue → point estompé,
+      // comme sur la grille, pour que chaque mort compté par le badge ait son repère.
+      if (distOuie(champOuie, x, y) <= OUIE_JOUEUR && zombies.some(z => !z.faitLeMort && z.x === x && z.y === y)) inner += pointOuie(box[0], box[1], box[2]);
     }
     if (pair && aVue && pair.carte === G.world.carte && pair.x === x && pair.y === y) inner += pionAllie(box[0], box[1], box[2], pair, ici ? 4 : 0);
     if (ici) {
@@ -1184,12 +1200,19 @@ function marcher(chemin) {
     if (carteVivante(G.world.carte)) {
       const fm = fauxMortEn(G.world.carte, x, y); // marcher SUR un faux-mort le réveille
       if (fm) { reveillerFauxMort(fm); sfx('zombie'); }
-      const ev = tickZombies(G.world.carte, vis);
-      if (ev.portes.length) {
-        sfx(ev.portes.some(p => p.cassee) ? 'porte_casse' : 'porte_coup');
-        if (ev.portes.some(p => p.cassee)) log('Une porte cède sous les coups, tout près.', 'bad');
+      // Les morts gardent LEUR horloge (TICK_MS), que tu marches ou non : sinon un pas
+      // toutes les 190 ms ferait jouer leur tick ~5× trop souvent et la lenteur voulue
+      // en quartier s'effondrerait dès qu'on bouge. On ne les fait jouer qu'un tick par TICK_MS.
+      const now = performance.now();
+      if (now - dernierTickZ >= TICK_MS) {
+        dernierTickZ = now;
+        const ev = tickZombies(G.world.carte, vis);
+        if (ev.portes.length) {
+          sfx(ev.portes.some(p => p.cassee) ? 'porte_casse' : 'porte_coup');
+          if (ev.portes.some(p => p.cassee)) log('Une porte cède sous les coups, tout près.', 'bad');
+        }
+        contact = ev.contact;
       }
-      contact = ev.contact;
       majTension(vis);
     }
     if (contact) {
@@ -1354,10 +1377,12 @@ function fouiller(aTatons = false) {
       danger *= 0.4;
     }
     if (chance(danger)) {
-      log(`En fouillant ${ (cd.nom || 'la zone').toLowerCase() }, tu n'étais pas seul.`, 'bad');
+      log(`En fouillant ${ (cd.nom || 'la zone').toLowerCase() }, tu n'étais pas seul. Tu lâches tout et tu te retournes — la fouille est interrompue.`, 'bad');
       demarrerCombat([pick(zombiesPoolCourant())], {
         surprise: aTatons,
-        onFin: (res) => { if (res === 'victoire') terminerFouille(aTatons); else renderLieu(); },
+        // Une attaque ANNULE la fouille : on ne ramasse rien, même en sortant vainqueur.
+        // Il faudra recommencer à fouiller pour espérer trouver quelque chose.
+        onFin: () => renderLieu(),
       });
       return;
     }
@@ -2123,6 +2148,7 @@ function tickTempsReel() {
     return;
   }
   const vis = casesVisibles(G.world.carte, G.world.x, G.world.y);
+  dernierTickZ = performance.now(); // les morts tiennent leur horloge, marche ou pas
   const ev = tickZombies(G.world.carte, vis);
   majTension(vis);
   if (ev.contact) { lancerCombatContact(ev.contact); return; }
@@ -2152,7 +2178,7 @@ if (typeof window !== 'undefined') {
 // et chez l'HÔTE, ce battement fait avancer l'horloge ; l'INVITÉ n'avance pas sa
 // propre horloge (il adopte celle de l'hôte via onHeure) mais applique sa survie.
 // Plus aucun saut de temps « par action » : le temps passe parce qu'il passe.
-const BATTEMENT_MS = 1000;
+const BATTEMENT_MS = REGLAGES.temps.BATTEMENT_MS;
 let prevNuit = null;
 let battementsDepuisSave = 0;
 function enJeu() {
@@ -2193,14 +2219,24 @@ function executerSommeil(h) {
   closePanel();
   const sur = lieuSur();
   const piege = hasItem('piege_sonore');
+  // Un mort ne surgit en plein sommeil QUE s'il en rôdait déjà un dans le bâtiment :
+  // pas de pop magique. Lieu sécurisé / désert = nuit tranquille.
+  const carteId = G.world.carte;
+  const rodeurs = carteVivante(carteId) ? zombiesSur(carteId).filter(z => !z.faitLeMort) : [];
   attente('Vous dormez…', 0, () => {
-    const r = dormir(h, sur, piege, multi.estInvite());
+    const r = dormir(h, sur, piege, multi.estInvite(), rodeurs.length > 0);
     r.messages.forEach(m => log(m.t, m.c));
     if (G.player.pv <= 0) return;
     save();
-    if (r.attaque) {
+    if (r.attaque && rodeurs.length) {
+      // c'est l'un des morts qui traînaient ici qui a fini par pousser ta porte — on le
+      // RETIRE de la carte (il ne se dédouble pas) plutôt que d'en inventer un de toutes pièces.
+      const encore = zombiesSur(carteId).filter(z => !z.faitLeMort);
+      const z = (encore.length ? encore : rodeurs)[Math.floor(Math.random() * (encore.length || rodeurs.length))];
+      const pos = { x: z.x, y: z.y }; // pour y laisser le cadavre, comme un combat de contact
+      retirerZombie(carteId, z);
       if (piege) log('Le piège sonore a claqué dans le noir : tu es debout, arme en main, avant que la chose ne t\'atteigne.', 'good');
-      demarrerCombat([pick(zombiesPoolCourant())], { surprise: !piege, onFin: () => renderLieu() });
+      demarrerCombat([z.id], { surprise: !piege, onFin: (res) => { if (res === 'victoire') ajouterMort(carteId, pos.x, pos.y); renderLieu(); } });
     } else {
       renderLieu();
     }

@@ -33,7 +33,7 @@ export const CINEMATIQUES = {
 
   // Grande introduction, 2e volet : les mêmes toits en feu, et la rue de l'exode.
   intro_chaos: {
-    musique: 'sombre',
+    musique: 'sombre', ambiance: 'feu',
     plans: [
       {
         pano: 'salon_chaos', de: { x: 0.02, zoom: 1.35 }, vers: { x: 0.42, zoom: 1.1 }, duree: 8000,
@@ -46,6 +46,27 @@ export const CINEMATIQUES = {
       {
         pano: 'salon_chaos', de: { x: 0.78, zoom: 1.14 }, vers: { x: 0.97, zoom: 1.45 }, duree: 7000,
         texte: 'Le cours, ce mercredi-là : ceux qui couraient — et ce qui ne courait plus comme un vivant.',
+        attendre: true,
+      },
+    ],
+  },
+
+  // Grande introduction, 3e volet : la fuite à pied, puis le terrier qu'on barricade.
+  // (Joué par jouerIntro entre intro_chaos et le réveil — peu de texte, la caméra raconte.)
+  intro_fuite: {
+    musique: 'sombre', ambiance: 'feu',
+    plans: [
+      {
+        pano: 'salon_chaos', de: { x: 0.96, zoom: 1.5 }, vers: { x: 0.48, zoom: 1.18 }, duree: 7000,
+        texte: 'Tu es parti à pied, à contre-courant des klaxons. Puis il n\'y a plus eu de klaxons.',
+      },
+      {
+        pano: 'sortie_hotel', de: { x: 0.22, zoom: 1.5 }, vers: { x: 0.0, zoom: 1.34 }, duree: 6500,
+        texte: 'Le Grand Hôtel de la Poste. Porte entrouverte, hall vide. Il te fallait un dedans.',
+      },
+      {
+        pano: 'sortie_hotel', de: { x: 0.02, zoom: 1.7 }, vers: { x: 0.07, zoom: 1.95 }, duree: 5500,
+        texte: 'Tu as tout poussé contre la porte. Chambre 203. Le petit verrou doré a claqué — et le noir t\'a pris.',
         attendre: true,
       },
     ],

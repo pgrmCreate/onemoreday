@@ -37,7 +37,7 @@ function checkBesoin(b, ctx) {
 }
 
 // ---------- Scènes ----------
-const cibles = new Set([...Object.keys(SCENES), '#retour', '#mort', '#arrivee', '#chapitre2', '#intro_chaos']);
+const cibles = new Set([...Object.keys(SCENES), '#retour', '#mort', '#arrivee', '#chapitre2']);
 for (const [id, sc] of Object.entries(SCENES)) {
   const cc = (c, ctx) => { if (c !== undefined && c !== null && !cibles.has(c)) err.push(`scène ${id} : cible inconnue '${c}' (${ctx})`); };
   if (sc.auto) cc(sc.auto.suivant, 'auto');
@@ -56,7 +56,7 @@ for (const [id, sc] of Object.entries(SCENES)) {
   }
   if (!sc.auto && !(sc.choix && sc.choix.length)) err.push(`scène ${id} : ni auto ni choix (cul-de-sac)`);
 }
-for (const requis of ['intro_1', 'loco_demarrage', 'train_depart', 'fin_arrivee', 'ch2_intro_1']) {
+for (const requis of ['intro_reveil', 'loco_demarrage', 'train_depart', 'fin_arrivee', 'ch2_intro_1']) {
   if (!SCENES[requis]) err.push(`scène requise manquante : ${requis}`);
 }
 

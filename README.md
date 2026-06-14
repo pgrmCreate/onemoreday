@@ -95,11 +95,16 @@ js/audio.js                sons et musiques générés en Web Audio (remplaçabl
 js/net.js                  couche transport co-op (WebSocket, LAN ou en ligne)
 js/multi.js                session co-op hôte-autoritaire (présence, monde partagé, rejoindre un combat)
 js/illustrations.js        illustrations SVG d'ambiance et de combat
+js/data/reglages.js        TOUS les nombres qui se règlent (temps, vitesse des morts, combat...)
 js/data/*.js               contenu : objets, vêtements, recettes, zombies, lieux, événements, histoire
 audio/MUSIQUE_LIBRE.md     sources de musique/ambiances libres de droit + manifeste d'exemple
 server.js                  mini serveur statique Node + relais WebSocket co-op (aucune dépendance)
 sw.js + manifest.webmanifest   PWA (hors-ligne + installation Android)
 ```
+
+Pour **comprendre les rouages** (les trois horloges du temps réel, l'effet de l'échelle sur
+la vitesse des morts, le modèle de combat, le pipeline de dessin) et surtout **où régler quoi**,
+voir **`ARCHITECTURE.md`** — et le tableau de bord commenté **`js/data/reglages.js`**.
 
 ### Ajouter du contenu
 - **Cartes et lieux** : schéma documenté en tête de `js/data/cartes_salon_centre.js`

@@ -252,7 +252,11 @@ export const ITEMS = {
   },
   desinfectant: {
     nom: 'Désinfectant', type: 'soin', poids: 0.25, espace: 1, soin: 'desinfectant',
-    desc: 'Ça pique à hurler. C\'est bon signe.',
+    desc: 'Ça pique à hurler. C\'est bon signe. Lance une désinfection qui tient l\'infection à distance des heures durant.',
+  },
+  lingette: {
+    nom: 'Lingettes désinfectantes', type: 'soin', poids: 0.1, espace: 0, soin: 'desinfectant',
+    desc: 'Un paquet à moitié plein. Ça nettoie vite et sans eau — une désinfection de terrain, le temps de souffler.',
   },
   antibiotiques: {
     nom: 'Antibiotiques', type: 'soin', poids: 0.05, espace: 0, soin: 'antibio',
@@ -267,8 +271,8 @@ export const ITEMS = {
     desc: 'Aiguille courbe et fil. Recoudre sa propre chair demande du cran.',
   },
   savon: {
-    nom: 'Savon de Marseille', type: 'soin', poids: 0.3, espace: 0, soin: 'desinfectant',
-    desc: 'Un cube vert estampillé « Salon-de-Provence ». Laver une plaie à l\'eau et au savon : la base, depuis toujours.',
+    nom: 'Savon de Marseille', type: 'soin', poids: 0.3, espace: 0, soin: 'nettoyer',
+    desc: 'Un cube vert estampillé « Salon-de-Provence ». Laver une plaie à l\'eau et au savon : la base, depuis toujours. L\'infection prend moins, et recule un peu.',
   },
   vitamines: {
     nom: 'Vitamines', type: 'soin', poids: 0.05, espace: 0, soin: 'vitamines',

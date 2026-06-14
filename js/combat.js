@@ -20,23 +20,17 @@ import { ico } from './icons.js';
 import { svgCombat } from './illustrations.js';
 import { startCombatMusic, stopCombatMusic, sfx, setHeartbeat } from './audio.js';
 import * as multi from './multi.js';
+import { REGLAGES } from './data/reglages.js';
 
 let C = null; // état du combat en cours
 
 export function enCombat() { return !!C; }
 
-const COUTS = { tir: 8, pousser: 10, jeter: 12, fuir: 22, changer: 5, bander: 16 };
-
-// Attaque chargée : MAINTENIR le bouton charge le coup (ou la visée), RELÂCHER le déclenche.
-// La charge c va de 0 à 1, et TOUT continue pendant ce temps — la menace monte, le zombie frappe.
-const CHARGE = {
-  duree: 1300,       // ms pour charger un coup de mêlée de 0 à 1
-  coutMin: 8,        // endurance d'un coup relâché aussitôt
-  coutPlein: 24,     // endurance AJOUTÉE à pleine charge (8 + 24 = 32)
-  delaiMin: 120,     // ms entre relâcher et toucher, à charge nulle
-  delaiMax: 650,     // ... à pleine charge : un coup de fléau, ça s'annonce
-  viseeDuree: 1600,  // ms de visée pleine (armes à feu) — la compétence visee accélère
-};
+// Coût des actions et profil de l'attaque chargée : centralisés dans js/data/reglages.js.
+// MAINTENIR le bouton charge le coup (ou la visée), RELÂCHER le déclenche ; pendant la
+// charge TOUT continue — la menace monte, le mort frappe.
+const COUTS = REGLAGES.combat.COUTS;
+const CHARGE = REGLAGES.combat.CHARGE;
 const ANNEAU_CIRC = 97.4; // circonférence du cercle SVG de la jauge de charge (2π × 15.5)
 
 export function demarrerCombat(zombieIds, opts = {}) {
@@ -877,7 +871,7 @@ function renderCombat(remplaceSeulement = false) {
       <div class="flash"></div>
     </div>
     <div>
-      <p class="ennemi-nom">${C.z.def.nom}${C.queue.length ? ` <small style="color:var(--fg-dim)">(+${C.queue.length} derrière)</small>` : ''}</p>
+      <p class="ennemi-nom">${C.z.def.nom}${C.queue.length ? ` <small style="color:var(--fg-dim)">— horde de ${C.queue.length + 1} · ils viennent l'un après l'autre</small>` : ''}</p>
       <div class="ennemi-etat" id="ennemi-etat">Il est <b>${etatZombie()}</b></div>
       <div class="menace-wrap">
         <div class="menace-label"><span>Menace</span><span>il attaque quand la jauge est pleine</span></div>

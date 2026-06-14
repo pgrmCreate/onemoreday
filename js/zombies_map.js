@@ -23,16 +23,28 @@ import {
   estGraphe, voisinsCandidats, sontLies,
 } from './world.js';
 import { zombie } from './data/zombies.js';
+import { REGLAGES, reglageEchelle } from './data/reglages.js';
 
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-// ---------- Réglages du temps réel ----------
-export const TICK_MS = 900;     // horloge des zombies (~0,9 s par tick)
-export const SPIN_TICKS = 2;    // anneau de contact : 2 ticks (~1,8 s) avant la morsure
-export const OUIE_JOUEUR = 5;   // distance à laquelle TU entends un zombie bouger (point estompé)
-const MEMOIRE_TICKS = 8;        // ticks sans te revoir avant d'abandonner la poursuite
-const CONE_PORTEE = 7;          // distance max du cône de vue d'un zombie
-const P_ERRANCE = 0.4;          // en errance : un pas un tick sur deux-trois
+// ---------- Réglages du temps réel (TOUS centralisés dans js/data/reglages.js) ----------
+// Ici on ne fait que LIRE la config : pour changer le ressenti (vitesse des morts,
+// durée de l'anneau de contact, etc.), c'est dans reglages.js que ça se passe.
+const RZ = REGLAGES.zombies;
+export const TICK_MS = RZ.TICK_MS;        // horloge des zombies (~0,9 s par tick)
+export const SPIN_TICKS = RZ.SPIN_TICKS;  // anneau de contact de base, AVANT le facteur d'échelle
+export const OUIE_JOUEUR = RZ.OUIE_JOUEUR;
+const MEMOIRE_TICKS = RZ.MEMOIRE_TICKS;
+const CONE_PORTEE = RZ.CONE_PORTEE;
+const P_ERRANCE = RZ.P_ERRANCE;
+
+// Anneau de contact EFFECTIF sur une carte donnée : la base, étirée par l'échelle.
+// En quartier (un nœud = un pâté de maisons), l'instant suspendu avant la morsure
+// dure bien plus longtemps — c'est ce qui te laisse le temps de t'écarter ou de fuir.
+function spinTicks(carteId) {
+  const c = CARTES[carteId];
+  return SPIN_TICKS * reglageEchelle(c && c.echelle).anneauZombie;
+}
 
 // Les échelles où les zombies vivent sur la grille (ville/région : trop abstrait).
 export function carteVivante(carteId) {
@@ -83,6 +95,12 @@ function champHops(carteId, px, py) {
   }
   return df;
 }
+// Distance PERÇUE par le joueur jusqu'à un nœud : en SAUTS sur un plan à nœuds (cohérent
+// avec la vue et la poursuite), à calculer une fois par rendu. Renvoie null hors plan —
+// le compteur de meute et les points d'ouïe retombent alors sur la distance en cases.
+export function champOuieJoueur(carteId) {
+  return estGraphe(carteId) ? champHops(carteId, G.world.x, G.world.y) : null;
+}
 // Au contact : même case, OU adjacent AVEC un passage réellement ouvert entre les
 // deux. Le passage compte : un mort dans le couloir, derrière TA porte fermée, n'est
 // PAS au contact — il doit d'abord enfoncer la porte (sinon il mordrait au travers).
@@ -124,7 +142,12 @@ export function peuplerCarte(carteId) {
       });
     }
   }
-  const cap = Math.max(2, Math.round(Object.keys(c.cases).length / 7)) + (estNuit() ? 1 : 0);
+  // Densité de la horde : nb de cases ÷ capDiv (réglages.js) — le quartier en porte plus.
+  // Une carte peut imposer son propre plafond via `capZombies` (ex. l'hôtel du début : 3 max).
+  const capDiv = reglageEchelle(c.echelle).capDiv;
+  const cap = c.capZombies != null
+    ? c.capZombies
+    : Math.max(2, Math.round(Object.keys(c.cases).length / capDiv)) + (estNuit() ? 1 : 0);
   for (const [pos, cd] of Object.entries(c.cases)) {
     if (z.length >= cap) break;
     const danger = cd.danger || 0;
@@ -177,7 +200,7 @@ export function reveillerFauxMort(z) {
   delete z.faitLeMort;
   z.ag = 1; z.mx = G.world.x; z.my = G.world.y; z.sans = 0;
   z.dir = regard(CARTES[G.world.carte], z.x, z.y, G.world.x, G.world.y);
-  if (auContact(G.world.carte, z.x, z.y, G.world.x, G.world.y)) z.spin = SPIN_TICKS;
+  if (auContact(G.world.carte, z.x, z.y, G.world.x, G.world.y)) z.spin = spinTicks(G.world.carte);
 }
 
 // Le zombie au contact et ses congénères adjacents : ils arrivent ENSEMBLE.
@@ -191,7 +214,7 @@ export function declencherSpins(carteId) {
   let n = 0;
   for (const z of meuteAuContact(carteId, G.world.x, G.world.y)) {
     if (z.spin) continue;
-    z.spin = SPIN_TICKS;
+    z.spin = spinTicks(carteId);
     z.ag = 1; z.mx = G.world.x; z.my = G.world.y; z.sans = 0;
     z.dir = regard(CARTES[carteId], z.x, z.y, G.world.x, G.world.y);
     n++;
@@ -246,7 +269,6 @@ export function tickZombies(carteId, vis) {
   const e = entree(carteId);
   if (!e || !e.z.length) return ev;
   const px = G.world.x, py = G.world.y;
-  const occupe = new Set(e.z.filter(v => !v.faitLeMort).map(v => `${v.x},${v.y}`));
   // Sur un plan à nœuds, la distance au joueur est un nombre de SAUTS (champ BFS
   // recalculé à chaque tick) ; la poursuite descend ce gradient vers toi.
   const c = CARTES[carteId];
@@ -282,18 +304,22 @@ export function tickZombies(carteId, vis) {
 
     // --- au contact (passage ouvert) et en chasse : il s'immobilise, l'anneau démarre ---
     if (z.ag && auContact(carteId, z.x, z.y, px, py)) {
-      z.spin = SPIN_TICKS;
+      z.spin = spinTicks(carteId);
       z.dir = regard(c, z.x, z.y, px, py);
       ev.spins.push(z);
       continue;
     }
 
-    // --- cadence : la poursuite presse le pas, l'errance traîne ---
+    // --- cadence : la poursuite presse le pas, l'errance traîne ; l'ÉCHELLE étire tout ---
+    // En quartier, un nœud est un pâté de maisons entier : `cadenceZombie` (≥ 1)
+    // multiplie la période du pas → le mort met bien plus de temps à changer de case.
     z.pas = (z.pas || 0) + 1;
-    const lent = (def.vitesse || 6000) >= 6000;
+    const cad = reglageEchelle(c && c.echelle).cadenceZombie;
+    const lent = (def.vitesse || RZ.SEUIL_LENT) >= RZ.SEUIL_LENT;
     if (z.ag) {
-      if (lent && z.pas % 2 === 0) continue; // les traînards chargent un tick sur deux
-    } else if (!chance(P_ERRANCE)) continue;
+      const periode = (lent ? RZ.PERIODE_LENT : RZ.PERIODE_VIF) * cad;
+      if (periode > 1 && z.pas % periode !== 0) continue; // il n'avance qu'un tick sur `periode`
+    } else if (!chance(P_ERRANCE / cad)) continue;          // en errance : encore plus paresseux au loin
 
     // --- mouvement ---
     let pasV = null;
@@ -331,12 +357,11 @@ export function tickZombies(carteId, vis) {
     }
     if (!pasV) continue;
     if (pasV[0] === px && pasV[1] === py) continue; // il ne marche pas SUR toi : l'anneau s'en charge au contact
-    const k = `${pasV[0]},${pasV[1]}`;
-    if (occupe.has(k)) continue;
-    occupe.delete(`${z.x},${z.y}`);
+    // Les morts peuvent désormais s'EMPILER sur un même nœud : à l'écran un seul pion
+    // porte le compte (2, 3…), plutôt que trois silhouettes superposées. On ne bloque
+    // donc plus le pas sur une case déjà occupée — la horde se lit d'un chiffre.
     z.dir = regard(c, z.x, z.y, pasV[0], pasV[1]);
     z.x = pasV[0]; z.y = pasV[1];
-    occupe.add(k);
     ev.bouges.add(z.uid);
   }
   return ev;

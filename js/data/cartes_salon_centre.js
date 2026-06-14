@@ -44,7 +44,10 @@ export const CARTES_SALON_CENTRE = {
     nom: 'Grand Hôtel de la Poste', sousTitre: 'place Crousillat — ton terrier depuis 23 jours',
     echelle: 'interieur', tempsParCase: 1, largeur: 6, hauteur: 5,
     exterieur: false, ambiance: 'calme', illu: 'immeuble',
-    zombiesPool: ['errant', 'rampant'],
+    // Le terrier du début : peu peuplé et peu dangereux. Trois morts au maximum,
+    // tous des errants (les plus faibles) — on apprend à jouer, on ne se fait pas submerger.
+    capZombies: 3,
+    zombiesPool: ['errant'],
     // Zombies SCÉNARISÉS, posés à la première visite (le reste est procédural) :
     zombiesFixes: [
       { x: 1, y: 1, id: 'errant', dir: [1, 0] },                    // il traîne dans le couloir, tourné vers les chambres

@@ -34,7 +34,8 @@ export function jouerCine(id, onFin = () => {}, distant = false) {
   if (!distant) multi.diffuserCine(id);
 
   const el = document.createElement('div');
-  el.className = 'cine';
+  // Une ambiance optionnelle (def.ambiance: 'feu'…) ajoute une classe → effets CSS animés.
+  el.className = 'cine' + (def.ambiance ? ' cine-' + def.ambiance : '');
   el.innerHTML = `
     <button class="cine-passer">Passer ▸</button>
     <div class="cine-cadre"><div class="cine-pellicule">${svg}</div></div>

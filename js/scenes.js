@@ -52,11 +52,6 @@ function goTo(cible) {
     window.dispatchEvent(new CustomEvent('omd-mort', { detail: { cause: 'combat' } }));
     return;
   }
-  if (cible === '#intro_chaos') {
-    // Grande intro : l'effondrement (cinématique) puis la fuite (texte) jusqu'au réveil.
-    jouerCine('intro_chaos', () => jouerScene('intro_fu1'));
-    return;
-  }
   jouerScene(cible);
 }
 

@@ -148,11 +148,10 @@ function ecranAide() {
 function ecranNouvelle() {
   render(`
     <h2 class="lieu-nom">Nouvelle partie</h2>
-    <div class="narration">Jour 23. Le Grand Hôtel de la Poste, place Crousillat, Salon-de-Provence. La réserve de la cuisine est morte hier soir : une boîte de flageolets, partagée avec personne.\n\nDehors, la Fontaine Moussue coule toujours. Eux aussi sont toujours là.</div>
+    <div class="narration">Jour 23. Le Grand Hôtel de la Poste, place Crousillat, Salon-de-Provence. La réserve de la cuisine est morte hier soir : une boîte de flageolets, partagée avec personne.\n\nDehors, la Fontaine Moussue coule toujours. Eux aussi sont toujours là.\n\n<em>Une seule vie. Quand c'est fini, c'est fini — pas de seconde chance.</em></div>
     <div class="menu">
       <input type="text" id="inp-nom" maxlength="16" placeholder="Ton prénom (Sam)" autocomplete="off">
-      ${btnAct('data-d="normal"', 'Commencer — Survivant', 'la mort te ramène à ta dernière sauvegarde', { classe: 'primary' })}
-      ${btnAct('data-d="extreme"', 'Commencer — Un seul jour', 'mort permanente : la mort efface ta partie')}
+      ${btnAct('data-d="jouer"', 'Commencer', 'une seule vie — la mort efface tout, sans retour', { classe: 'primary' })}
       ${btnAct('data-d="coop"', 'Jouer à deux →', 'co-op sur le même Wi-Fi (héberger ou rejoindre)')}
       ${btnAct('data-d="retour"', 'Retour')}
     </div>`);
@@ -162,7 +161,7 @@ function ecranNouvelle() {
     const nom = ($('#inp-nom').value || 'Sam').trim().slice(0, 16);
     if (b.dataset.d === 'coop') return ecranCoop(nom);
     clearSave();
-    newGame(nom, b.dataset.d);
+    newGame(nom);
     initPosition();
     partieTerminee = false;
     save();
@@ -218,8 +217,7 @@ function ecranCoopHote(nom) {
       <h2 class="lieu-nom">Héberger la partie</h2>
       <div class="narration">Donne à l'autre joueur ${adr ? `l'adresse <b class="code">${adr}</b> à ouvrir dans son navigateur (même Wi-Fi)` : 'ton adresse réseau (visible dans la fenêtre du serveur)'}.\n\nIl n'a plus qu'à choisir « Rejoindre une partie » : il te rejoint directement, sans code. Tu peux commencer tout de suite — il atterrira là où tu en seras.</div>
       <div class="menu">
-        ${btnAct('data-d="normal"', 'Créer et jouer — Survivant', 'la mort te ramène à ta dernière sauvegarde', { classe: 'primary' })}
-        ${btnAct('data-d="extreme"', 'Créer et jouer — Un seul jour', 'mort permanente')}
+        ${btnAct('data-d="jouer"', 'Créer et jouer', 'une seule vie — la mort efface tout, sans retour', { classe: 'primary' })}
         ${btnAct('data-d="retour"', 'Retour')}
       </div>`);
     document.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => {
@@ -228,7 +226,7 @@ function ecranCoopHote(nom) {
       const r = await multi.demarrer({ code, role: 'host', nom });
       if (!r.ok) { toast('Hébergement impossible : ' + (r.raison || 'serveur injoignable.')); return; }
       clearSave();
-      newGame(nom, b.dataset.d);
+      newGame(nom);
       initPosition();
       partieTerminee = false;
       save();
@@ -265,7 +263,7 @@ function ecranCoopRejoindre(nom) {
 function rejoindrePartie(code, nom, statut) {
   let entre = false;
   clearSave();
-  newGame(nom, 'normal'); // un joueur neuf ; le MONDE viendra de l'hôte
+  newGame(nom); // un joueur neuf ; le MONDE viendra de l'hôte
   multi.poser('onMonde', (world, nomHote) => {
     if (entre) return; // une seule adoption
     entre = true;
@@ -287,10 +285,14 @@ function rejoindrePartie(code, nom, statut) {
 }
 
 // La grande introduction : Salon paisible (cinématique) → la vie d'avant (texte)
-// → l'effondrement (cinématique) → la fuite (texte) → le réveil à l'hôtel.
-// Le « Passer l'introduction » de intro_av1 court-circuite jusqu'au réveil.
+// Intro CINÉMATIQUE, peu de texte : la caméra raconte. Trois volets enchaînés —
+// Salon paisible → la ville en feu → la fuite et le terrier barricadé — puis un seul
+// court panneau de réveil (l'objectif). Chaque volet se saute avec « Passer ▸ ».
 function jouerIntro() {
-  jouerCine('intro_avant', () => jouerScene('intro_av1'));
+  jouerCine('intro_avant', () =>
+    jouerCine('intro_chaos', () =>
+      jouerCine('intro_fuite', () =>
+        jouerScene('intro_reveil'))));
 }
 
 // ---------- Boutons fixes ----------
@@ -707,7 +709,10 @@ function optionsSoin(b, i) {
   };
   if (b.infecte) { opt('antibio', 'antibiotiques', 'Antibiotiques'); }
   if (!b.bandee) { opt('bander', 'bandage', 'Bander'); opt('bander', 'bandage_fortune', 'Bander (fortune)'); }
-  if (!b.desinfectee && !b.infecte) { opt('desinfecter', 'desinfectant', 'Désinfecter'); opt('desinfecter', 'alcool_fort', 'À l\'alcool'); }
+  if (!b.nettoyee) { opt('nettoyer', 'savon', 'Nettoyer (savon)'); }
+  // Désinfecter reste utile MÊME sur une plaie infectée : ça lance une « désinfection en
+  // cours » qui la fait reculer (les antibiotiques, eux, la foudroient d'un coup).
+  if (!b.desinfectee || b.infecte) { opt('desinfecter', 'desinfectant', 'Désinfecter'); opt('desinfecter', 'lingette', 'Lingette'); opt('desinfecter', 'alcool_fort', 'À l\'alcool'); }
   if (def.suture && !b.suturee) { opt('suturer', 'kit_suture', 'Suturer'); }
   if (!opts.length) return '<div class="item-desc">Rien à faire de plus : elle guérira avec le temps.</div>';
   return `<div class="item-btns soin-opts">${opts.join('')}</div>`;
@@ -716,7 +721,7 @@ function optionsSoin(b, i) {
 function panneauCorps(selBlessure = null) {
   const p = G.player;
   let html = `<div class="panel-head"><h2>${p.nom}</h2><button class="panel-close">×</button></div>
-    <p class="cap-line">${heureTxt()} — ${p.morts} zombie${p.morts > 1 ? 's' : ''} abattu${p.morts > 1 ? 's' : ''} — ${G.difficulte === 'extreme' ? 'Un seul jour (mort permanente)' : 'Survivant'}</p>
+    <p class="cap-line">${heureTxt()} — ${p.morts} zombie${p.morts > 1 ? 's' : ''} abattu${p.morts > 1 ? 's' : ''} — une seule vie</p>
     <div class="corps-silhouette">${silhouette(p.blessures)}</div>
     <h3>État</h3>`;
   const etats = [];
@@ -740,7 +745,9 @@ function panneauCorps(selBlessure = null) {
     html += `<div class="blessure-card clickable ${sel ? 'sel' : ''}" data-blessure="${i}">${def.nom} ${b.zone}
       ${b.saigne && !b.bandee ? '<span class="tag saigne">saigne</span>' : ''}
       ${b.bandee ? '<span class="tag soigne">bandée</span>' : ''}
+      ${b.nettoyee ? '<span class="tag propre">nettoyée</span>' : ''}
       ${b.desinfectee ? '<span class="tag soigne">désinfectée</span>' : ''}
+      ${b.desinfectionMin > 0 ? '<span class="tag desinfection">désinfection en cours</span>' : ''}
       ${b.suturee ? '<span class="tag soigne">suturée</span>' : ''}
       ${b.infecte ? '<span class="tag infecte">INFECTÉE</span>' : ''}
       ${def.suture && !b.suturee ? '<span class="tag infecte">à suturer</span>' : ''}
@@ -768,7 +775,7 @@ function panneauCorps(selBlessure = null) {
       const [action, itemId] = btn.dataset.soin.split(':');
       const i = parseInt(btn.dataset.bidx, 10);
       const labels = {
-        bander: 'Tu bandes la plaie…', desinfecter: 'Tu désinfectes…',
+        bander: 'Tu bandes la plaie…', desinfecter: 'Tu désinfectes…', nettoyer: 'Tu laves la plaie au savon…',
         suturer: 'Tu recouds, point par point…', antibio: 'Tu avales les antibiotiques…',
       };
       attente(labels[action] || 'Tu te soignes…', action === 'suturer' ? 20 : 8, () => {
@@ -875,15 +882,14 @@ function panneauOptions() {
 // ---------- Mort ----------
 window.addEventListener('omd-mort', (e) => {
   const cause = e.detail?.cause || 'combat';
-  partieTerminee = true; // coupe l'autosauvegarde : la dernière bonne sauvegarde est préservée
+  partieTerminee = true; // plus aucune autosauvegarde : la partie est finie
   closeEvt();
   closePanel();
   stopCombatMusic();
   setHeartbeat(false);
   sfx('mort');
   playAmbiance('sombre');
-  const extreme = G.difficulte === 'extreme';
-  if (extreme) clearSave();
+  clearSave(); // permadeath : la mort efface la partie — il ne reste rien à reprendre
   render(`
     <div class="illu">${svgScene('mort')}</div>
     <h2 class="mort-titre">Tu es mort</h2>
@@ -894,23 +900,13 @@ window.addEventListener('omd-mort', (e) => {
       <div><span>Heures dehors</span><span>${Math.round(G.world.statsTemps / 60)}</span></div>
     </div>
     <div class="menu">
-      ${extreme
-        ? btnAct('data-fin="nouvelle"', 'Recommencer', 'la mort est permanente — tout est perdu', { classe: 'primary' })
-        : btnAct('data-fin="charger"', 'Reprendre à la dernière sauvegarde', '', { classe: 'primary' })}
+      ${btnAct('data-fin="nouvelle"', 'Recommencer', 'la mort est définitive — tout est perdu', { classe: 'primary' })}
       ${btnAct('data-fin="titre"', 'Retour au titre')}
     </div>`);
   showHUD(false);
   document.querySelectorAll('[data-fin]').forEach(b => b.onclick = () => {
     sfx('clic');
     switch (b.dataset.fin) {
-      case 'charger':
-        if (load()) {
-          partieTerminee = false;
-          showHUD(true); updateHUD();
-          if (G.world.sceneCourante) jouerScene(G.world.sceneCourante);
-          else renderLieu();
-        } else ecranTitre();
-        break;
       case 'nouvelle': ecranNouvelle(); break;
       case 'titre': ecranTitre(); break;
     }

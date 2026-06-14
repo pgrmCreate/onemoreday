@@ -21,6 +21,11 @@ export const BLESSURES = {
 // 'à la cheville', 'au pied'.
 const ZONES_CORPS = ['au bras', 'à l\'avant-bras', 'à la main', 'à l\'épaule', 'à la cuisse', 'au mollet', 'au flanc', 'dans le dos', 'au cou'];
 
+// Durée (minutes de jeu) de la « désinfection en cours » selon le produit appliqué.
+// Plus c'est long et puissant, plus l'infection est tenue à distance / repoussée.
+const DESINFECTION_MIN = { antibiotiques: 360, desinfectant: 220, lingette: 170, alcool_fort: 130 };
+export function dureeDesinfection(itemId) { return DESINFECTION_MIN[itemId] || 150; }
+
 // « l'égratignure », « l'entaille », « la blessure profonde », « la plaie ouverte »
 export function nomBlessure(def, majuscule = false) {
   const n = def.nom.toLowerCase();
@@ -38,6 +43,8 @@ export function ajouterBlessure(type, zones = null) {
     type, zone,
     saigne: chance(def.pSaigne),
     infecte: false, bandee: false, desinfectee: false, suturee: false, age: 0,
+    nettoyee: false,      // lavée au savon : l'infection prend moins, et recule un peu
+    desinfectionMin: 0,   // minutes de « désinfection en cours » restantes (alcool, lingette, antibios…)
   };
   G.player.blessures.push(b);
   const msgs = [{ t: `${def.nom} ${b.zone}.` + (b.saigne ? ' Ça saigne.' : ''), c: 'bad' }];
@@ -130,12 +137,16 @@ export function advanceTime(minutes, opts = {}) {
         p.pv = Math.max(0, p.pv - def.saignement * dt);
         if (alerteRare('saigne', 20)) msgs.push({ t: 'Tu perds du sang. Il te faut un bandage, vite.', c: 'bad' });
       }
+      // La « désinfection en cours » s'épuise avec le temps.
+      if (b.desinfectionMin > 0) b.desinfectionMin = Math.max(0, b.desinfectionMin - dt);
       // Infection (par tranche de 10 min)
       if (!b.infecte && !b.desinfectee) {
         let pInf = def.pInfectHeure * (dt / 60);
         if (b.souillee) pInf *= 2.5; // blessure infligée par un putréfié
         if (b.bandee && b.bandeSale) pInf *= 1.5;
         else if (b.bandee) pInf *= 0.5;
+        if (b.nettoyee) pInf *= 0.4;              // lavée au savon : le risque baisse
+        if (b.desinfectionMin > 0) pInf *= 0.05;  // désinfection active : risque quasi nul
         if (chance(pInf)) {
           b.infecte = true;
           msgs.push({ t: `${nomBlessure(def, true)} ${b.zone} a une vilaine couleur. Elle est infectée.`, c: 'bad' });
@@ -148,6 +159,14 @@ export function advanceTime(minutes, opts = {}) {
         if (p.maladie !== 'fievre' && chance(0.04 * (dt / 10))) {
           p.maladie = 'fievre'; p.maladieDuree = 0;
           msgs.push({ t: 'Des frissons. Une chaleur moite. La fièvre s\'installe.', c: 'bad' });
+        }
+        // ... mais un traitement actif la fait RECULER : la désinfection en cours
+        // l'assèche vite, un simple lavage au savon plus lentement.
+        const reculer = b.desinfectionMin > 0 ? 0.05 : (b.nettoyee ? 0.012 : 0);
+        if (reculer && chance(reculer * (dt / 10))) {
+          b.infecte = false;
+          b.desinfectee = true; // assainie : elle ne repart pas aussitôt
+          msgs.push({ t: `${nomBlessure(def, true)} ${b.zone} reprend une couleur saine — l'infection recule enfin.`, c: 'good' });
         }
       }
       // Guérison naturelle
@@ -361,20 +380,37 @@ export function soigner(index) {
       utilise = true;
       break;
     }
+    case 'nettoyer': {
+      const b = pire(x => !x.nettoyee);
+      if (!b) return { ok: false, messages: [{ t: 'Rien à laver — tes plaies sont déjà propres.', c: 'warn' }] };
+      b.nettoyee = true;
+      msgs.push({ t: `Tu laves ${nomBlessure(BLESSURES[b.type])} ${b.zone} à l'eau et au savon. L'infection aura plus de mal à prendre — et si elle est là, elle reculera doucement.`, c: 'good' });
+      utilise = true;
+      break;
+    }
     case 'desinfectant': {
-      const b = pire(x => !x.desinfectee && !x.infecte);
-      if (!b) return { ok: false, messages: [{ t: 'Rien à désinfecter (ou c\'est déjà infecté : il faut des antibiotiques).', c: 'warn' }] };
-      b.desinfectee = true; b.bandeSale = false;
-      msgs.push({ t: `Le désinfectant mord la chair à vif. Tu serres les dents. ${nomBlessure(BLESSURES[b.type], true)} ${b.zone} est propre.`, c: 'good' });
+      // On peut désormais traiter une plaie DÉJÀ infectée : ça ne la guérit pas d'un
+      // coup (seuls les antibios font ça), mais ça lance une « désinfection en cours »
+      // qui la fait reculer sur le temps.
+      const b = pire(x => x.infecte || !x.desinfectee);
+      if (!b) return { ok: false, messages: [{ t: 'Rien à désinfecter pour l\'instant.', c: 'warn' }] };
+      if (!b.infecte) { b.desinfectee = true; b.bandeSale = false; }
+      b.nettoyee = true;
+      b.desinfectionMin = Math.max(b.desinfectionMin || 0, dureeDesinfection(it.id));
+      msgs.push({ t: b.infecte
+        ? `Tu nettoies ${nomBlessure(BLESSURES[b.type])} ${b.zone} à fond, à vif. La désinfection est lancée — l'infection devrait reculer.`
+        : `Le désinfectant mord la chair à vif. ${nomBlessure(BLESSURES[b.type], true)} ${b.zone} est propre, et le restera un moment.`, c: 'good' });
       utilise = true;
       break;
     }
     case 'antibio': {
       const infectees = p.blessures.filter(x => x.infecte);
       if (!infectees.length && p.maladie !== 'fievre') return { ok: false, messages: [{ t: 'Pas d\'infection à traiter. Garde-les pour quand ça comptera.', c: 'warn' }] };
+      // Foudroyants : l'infection installée cède, et une désinfection forte protège tout le corps.
       infectees.forEach(b => { b.infecte = false; b.desinfectee = true; });
+      p.blessures.forEach(b => { b.desinfectionMin = Math.max(b.desinfectionMin || 0, dureeDesinfection('antibiotiques')); });
       if (p.maladie === 'fievre') { p.maladie = null; p.maladieDuree = 0; }
-      msgs.push({ t: 'Tu avales les antibiotiques. Dans quelques heures, l\'infection devrait reculer.', c: 'good' });
+      msgs.push({ t: 'Tu avales les antibiotiques. Dans quelques heures, l\'infection devrait reculer — partout.', c: 'good' });
       utilise = true;
       break;
     }
@@ -428,20 +464,34 @@ export function appliquerSoinCible(idx, action, itemId) {
       msgs.push({ t: `Tu bandes ${nomBlessure(def)} ${b.zone}${itemId === 'bandage_fortune' ? ' avec des chiffons noués' : ''}. Le saignement s'arrête.`, c: 'good' });
       break;
     }
-    case 'desinfecter': {
-      if (b.infecte) return ko('Trop tard pour désinfecter : il faut des antibiotiques.');
-      if (b.desinfectee) return ko('Déjà désinfectée.');
+    case 'nettoyer': {
+      if (b.nettoyee) return ko('Déjà nettoyée.');
       removeItem(itemId, 1);
-      if (itemId === 'alcool_fort') {
+      b.nettoyee = true;
+      msgs.push({ t: `Tu laves ${nomBlessure(def)} ${b.zone} à l'eau et au savon. L'infection aura plus de mal à prendre — et si elle est là, elle reculera doucement.`, c: 'good' });
+      break;
+    }
+    case 'desinfecter': {
+      if (b.desinfectee && !b.infecte) return ko('Déjà désinfectée.');
+      removeItem(itemId, 1);
+      b.nettoyee = true; // le simple fait de laver la plaie compte toujours
+      if (b.infecte) {
+        // ne guérit pas d'un coup (les antibios, eux, foudroient) : la désinfection la fait reculer
+        b.desinfectionMin = Math.max(b.desinfectionMin || 0, dureeDesinfection(itemId));
+        msgs.push({ t: `Tu nettoies à vif ${nomBlessure(def)} ${b.zone}. Ça ne tuera pas l'infection sur l'instant, mais elle va reculer.`, c: 'good' });
+      } else if (itemId === 'alcool_fort') {
+        // l'alcool peut « rater » : sans prise, pas de désinfection active (la plaie reste exposée)
         b.desinfectee = chance(0.75);
         b.bandeSale = false;
+        if (b.desinfectee) b.desinfectionMin = Math.max(b.desinfectionMin || 0, dureeDesinfection(itemId));
         msgs.push({ t: b.desinfectee
-          ? `Tu verses l'alcool sur ${nomBlessure(def)} ${b.zone} en hurlant dans ta manche. C'est propre.`
-          : `Tu verses l'alcool en hurlant dans ta manche... mais ${nomBlessure(def)} ${b.zone} reste douteuse.`, c: b.desinfectee ? 'good' : 'warn' });
+          ? `Tu verses l'alcool sur ${nomBlessure(def)} ${b.zone} en hurlant dans ta manche. C'est propre, et le restera un moment.`
+          : `Tu verses l'alcool en hurlant dans ta manche... ${nomBlessure(def)} ${b.zone} reste douteuse. À recommencer.`, c: b.desinfectee ? 'good' : 'warn' });
       } else {
         b.desinfectee = true;
         b.bandeSale = false;
-        msgs.push({ t: `Le désinfectant mord la chair à vif. ${nomBlessure(def, true)} ${b.zone} est propre.`, c: 'good' });
+        b.desinfectionMin = Math.max(b.desinfectionMin || 0, dureeDesinfection(itemId));
+        msgs.push({ t: `Le désinfectant mord la chair à vif. ${nomBlessure(def, true)} ${b.zone} est propre, et le restera un moment.`, c: 'good' });
       }
       break;
     }
@@ -458,8 +508,12 @@ export function appliquerSoinCible(idx, action, itemId) {
     case 'antibio': {
       if (!b.infecte) return ko('Cette blessure n\'est pas infectée.');
       removeItem(itemId, 1);
-      // les antibiotiques agissent sur tout le corps
-      p.blessures.forEach(x => { if (x.infecte) { x.infecte = false; x.desinfectee = true; } });
+      // les antibiotiques agissent sur tout le corps : l'infection cède et une forte
+      // désinfection protège chaque plaie pour un bon moment.
+      p.blessures.forEach(x => {
+        if (x.infecte) { x.infecte = false; x.desinfectee = true; }
+        x.desinfectionMin = Math.max(x.desinfectionMin || 0, dureeDesinfection('antibiotiques'));
+      });
       if (p.maladie === 'fievre') { p.maladie = null; p.maladieDuree = 0; }
       msgs.push({ t: 'Tu avales les antibiotiques. Dans quelques heures, l\'infection devrait reculer — partout.', c: 'good' });
       break;
@@ -469,21 +523,17 @@ export function appliquerSoinCible(idx, action, itemId) {
   return { ok: true, messages: msgs };
 }
 
-// Désinfecter avec de l'alcool fort (qualité moindre)
+// Désinfecter avec de l'alcool fort depuis l'inventaire : on passe par la MÊME logique
+// que le panneau Corps (appliquerSoinCible), pour que l'alcool agisse pareil partout —
+// désinfection en cours, plaies infectées traitées, etc. (sinon les deux voies divergent).
 export function desinfecterAlcool() {
   const p = G.player;
   if (!hasItem('alcool_fort')) return { ok: false, messages: [] };
-  const b = p.blessures.find(x => !x.desinfectee && !x.infecte);
-  if (!b) return { ok: false, messages: [{ t: 'Rien à désinfecter.', c: 'warn' }] };
-  removeItem('alcool_fort', 1);
-  b.desinfectee = chance(0.75);
-  b.bandeSale = false;
-  return {
-    ok: true,
-    messages: [{ t: b.desinfectee
-      ? `Tu verses l\'alcool sur la plaie en hurlant dans ta manche. C\'est propre.`
-      : `Tu verses l\'alcool en hurlant dans ta manche... mais la plaie reste douteuse.`, c: b.desinfectee ? 'good' : 'warn' }],
-  };
+  // la plaie la plus pertinente : d'abord une infectée (à faire reculer), sinon une non désinfectée.
+  let idx = p.blessures.findIndex(x => x.infecte);
+  if (idx < 0) idx = p.blessures.findIndex(x => !x.desinfectee);
+  if (idx < 0) return { ok: false, messages: [{ t: 'Rien à désinfecter.', c: 'warn' }] };
+  return appliquerSoinCible(idx, 'desinfecter', 'alcool_fort');
 }
 
 // ---------- Sommeil ----------
@@ -491,7 +541,11 @@ export function desinfecterAlcool() {
 // piege : un piège sonore divise le risque d'attaque et supprime l'effet de surprise.
 // sansHorloge : en co-op, l'INVITÉ applique la survie du sommeil mais n'avance pas
 // l'horloge (l'hôte fait foi et la diffuse) — sinon les deux dormiraient « deux fois ».
-export function dormir(heures, securise, piege = false, sansHorloge = false) {
+// rodeurs : un mort rôde-t-il DÉJÀ dans le bâtiment ? Un mort ne te tombe dessus en
+// dormant QUE si oui — jamais de génération magique. Et un endroit SÛR (chambre refuge,
+// intérieur sécurisé ou barricadé) reste un sommeil tranquille : AUCUNE attaque. Le risque
+// ne concerne donc qu'un lieu NON sécurisé où un mort traîne encore tout près.
+export function dormir(heures, securise, piege = false, sansHorloge = false, rodeurs = false) {
   const msgs = [{ t: securise ? 'Tu fermes les yeux dans un endroit sûr.' : 'Tu t\'endors d\'un œil, l\'oreille tendue vers chaque bruit.', c: '' }];
   let attaque = false;
   const p = G.player;
@@ -501,7 +555,7 @@ export function dormir(heures, securise, piege = false, sansHorloge = false) {
     msgs.push(...r.messages);
     if (r.mort) return { messages: msgs, attaque: false };
     dormies++;
-    if (!securise && chance(piege ? 0.04 : 0.09)) { attaque = true; break; }
+    if (rodeurs && !securise && chance(piege ? 0.05 : 0.13)) { attaque = true; break; }
   }
   p.sta = Math.min(p.staMax, p.sta + dormies * 4);
   if (attaque) {

@@ -20,8 +20,12 @@ export default function (a) {
   s += astre(a, 320, 58);
   s += etoiles(a, 41, 70) + `<g transform="translate(800,0)">${etoiles(a, 87, 70)}</g>`;
 
-  // ---- Ligne de toits continue (opacité 1 : pas de couture à x = 800) ----
-  s += toits(9, 190, 44, '#0c0d13', 1) + `<g transform="translate(800,0)">${toits(57, 190, 44, '#0c0d13', 1)}</g>`;
+  // ---- Skyline en DEUX couches (opacité 1 : pas de couture à x = 800) ----
+  // Une ligne lointaine, sombre et presque plate, FERME l'horizon et comble les creux ;
+  // une ligne plus proche, aux pignons plus marqués, passe par-dessus. Les pointes ne
+  // découpent ainsi plus de coins de ciel piégés : derrière un toit, il y a un autre toit.
+  s += toits(23, 174, 15, '#080910', 1) + `<g transform="translate(800,0)">${toits(71, 174, 15, '#080910', 1)}</g>`;
+  s += toits(9, 192, 24, '#0c0d13', 1) + `<g transform="translate(800,0)">${toits(57, 192, 24, '#0c0d13', 1)}</g>`;
 
   // ---- La Tour de l'Horloge — campanile en fer forgé, cadran arrêté ----
   s += `<g fill="#0a0b10">
@@ -65,10 +69,19 @@ export default function (a) {
   s += `<path d="M686 142l32 -10 17 13 -4 23 -27 11 -19 -15z" fill="#07080d"/>
     <path d="M688 138q18 -20 46 -10" stroke="#060608" stroke-width="5" fill="none" opacity="0.7"/>`;
 
-  // ---- La rue du fond (point d'orgue) : deux façades qui encadrent la gueule noire ----
-  s += batisse(a, 1300, 246, 56, 172, '#0e0f15', 35);
-  s += batisse(a, 1548, 246, 52, 178, '#0e0f15', 36);
-  s += `<rect x="1356" y="178" width="192" height="68" fill="#0a0b10"/>`;
+  // ---- La rue du fond (point d'orgue) : une percée qui s'enfonce entre les façades ----
+  // Un mur d'immeubles CONTINU ferme l'horizon d'une tour à l'autre (plus aucune
+  // trouée de ciel piégée entre les blocs) ; au centre, la bouche sombre d'une rue
+  // fuit vers le fond, avec ses lignes de fuite et des façades lointaines à peine vues.
+  // Crête HAUTE entre les deux tours (y ≈ 56–68, au niveau de leur sommet) : le mur
+  // ferme vraiment l'horizon, plus aucune bande de ciel coincée entre les façades.
+  s += `<path d="M1300 246L1300 96L1356 60L1392 54L1432 58L1470 52L1508 58L1548 60L1600 96L1600 246Z" fill="#0a0b10"/>`;
+  s += `<path d="M1378 246L1432 118h36L1522 246Z" fill="#06070e"/>`;
+  s += `<path d="M1402 246L1440 122M1498 246L1460 122M1450 246V120" stroke="#10121b" stroke-width="2" fill="none" opacity="0.7"/>`;
+  s += `<path d="M1436 132h28v92h-28z" fill="#0a0c15"/><path d="M1443 140v80M1453 136v86" stroke="#15171f" stroke-width="1.3" opacity="0.55"/>`;
+  // Les deux tours qui encadrent la percée (un cran plus claires : elles sont devant).
+  s += batisse(a, 1300, 246, 56, 178, '#0f1016', 35);
+  s += batisse(a, 1548, 246, 52, 184, '#0f1016', 36);
 
   // ---- Le sol : pavés, papiers, traînées ----
   s += `<rect x="0" y="246" width="${PW}" height="${PH - 246}" fill="#121318"/>`;
@@ -165,12 +178,19 @@ export default function (a) {
   s += zfig(988, 306, 0.72, '#0a0b10', a.nuit, -12);
   s += zfig(1108, 312, 0.78, '#0a0b10', a.nuit, 10);
 
-  // ---- Les corbeaux : posés sur le bus et la barricade, en vol au-dessus ----
-  const corbeau = (x, y, sc = 1, k = 1) => `<g transform="translate(${x},${y}) scale(${R(k * sc)},${sc})" fill="#060608">
-    <ellipse cx="0" cy="-3" rx="7" ry="4.4"/><circle cx="6.5" cy="-7" r="2.8"/>
-    <path d="M9 -7l5.5 1.6 -5.5 1.2zM-5 -4l-8 -4 3 6z"/></g>`;
-  s += corbeau(1184, 256, 1) + corbeau(1264, 256, 0.9, -1) + corbeau(1024, 302, 0.85) + corbeau(1093, 290, 0.8, -1);
-  s += `<path d="M1208 84q7 -8 14 0q7 -8 14 0M1292 62q6 -7 12 0q6 -7 12 0M1384 96q6 -7 12 0M1344 120q5 -6 10 0q5 -6 10 0M1452 76q6 -7 12 0" stroke="#060608" stroke-width="2.2" fill="none" opacity="0.8"/>`;
+  // ---- Les corbeaux : quelques-uns posés sur l'épave, une volée qui tourne au-dessus ----
+  // Un corbeau posé (corps ramassé, tête, bec) ; un corbeau en vol (corps + deux ailes
+  // déployées). On les ESPACE — plus d'oiseaux empilés — et on varie la taille, si bien
+  // que la profondeur se lit et que la volée converge vers la rue qui grouille.
+  const corbeauPose = (x, y, sc = 1, k = 1) => `<g transform="translate(${x},${y}) scale(${R(k * sc)},${sc})" fill="#070709">
+    <path d="M-6 0q0 -6 6 -6q3 0 4 2l4 -1.4 -3 3q1 4 -3 5q-5 1 -8 -2z"/><path d="M10 -6l5 0.8 -5 1.6z"/></g>`;
+  const corbeauVol = (x, y, sc = 1, k = 1) => `<g transform="translate(${x},${y}) scale(${R(k * sc)},${sc})" fill="#070709">
+    <ellipse cx="0" cy="0" rx="2.4" ry="1.3"/>
+    <path d="M-1.6 -0.4Q-8 -4 -12.5 1Q-6.5 -1.8 -1.6 1z"/><path d="M1.6 -0.4Q8 -4 12.5 1Q6.5 -1.8 1.6 1z"/></g>`;
+  s += corbeauPose(1186, 256, 1.05) + corbeauPose(1262, 256, 0.9, -1) + corbeauPose(1028, 302, 0.85);
+  s += corbeauVol(1176, 70, 1.25) + corbeauVol(1244, 52, 0.85, -1) + corbeauVol(1306, 84, 1.0)
+     + corbeauVol(1362, 62, 0.7, -1) + corbeauVol(1414, 100, 1.1) + corbeauVol(1458, 76, 0.8)
+     + corbeauVol(1502, 112, 0.95, -1);
 
   // ---- Brume au sol et neige fine, en deux moitiés ----
   s += brume(a, 248, '#3a4150', 0.14, 'p1') + `<g transform="translate(800,0)">${brume(a, 248, '#3a4150', 0.14, 'p2')}</g>`;

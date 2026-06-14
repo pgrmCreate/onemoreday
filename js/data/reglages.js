@@ -1,0 +1,104 @@
+// ============================================================================
+//  RÉGLAGES — tous les nombres « qui se règlent » réunis ici, au même endroit
+// ============================================================================
+// But : pouvoir AJUSTER le ressenti du jeu (vitesse des morts, durée des gestes,
+// dureté du combat, densité des hordes…) sans aller fouiller dans la logique.
+// Chaque champ est commenté avec SON EFFET concret. Pour comprendre comment ces
+// réglages s'enchaînent, lire `ARCHITECTURE.md` (section « Réglages »).
+//
+// Règle d'or : la LOGIQUE vit dans js/*.js, les NOMBRES vivent ici. Si tu te
+// surprends à changer un chiffre en dur ailleurs, remonte-le dans ce fichier.
+// ----------------------------------------------------------------------------
+
+export const REGLAGES = {
+
+  // ===========================================================================
+  //  LE TEMPS DU MONDE
+  // ===========================================================================
+  // Le temps ne « saute » plus par action : il COULE en temps réel. Une horloge
+  // de fond (js/map.js → battementMonde) avance le jeu d'une minute toutes les
+  // BATTEMENT_MS. Tout le reste (faim, soif, fatigue) en découle.
+  temps: {
+    BATTEMENT_MS: 1000,   // 1 000 ms réelles = 1 minute de jeu (12 min réelles = une demi-journée).
+  },                      // ↑ pour ralentir l'écoulement du temps, ↓ pour l'accélérer.
+
+  // ===========================================================================
+  //  LES MORTS EN TEMPS RÉEL SUR LA CARTE  (js/zombies_map.js)
+  // ===========================================================================
+  // Les morts errent, te repèrent (cône de vue / ouïe), te poursuivent et, au
+  // contact, déclenchent un ANNEAU qui se vide avant la morsure → combat.
+  zombies: {
+    TICK_MS: 900,         // horloge des morts : un « tick » de réflexion/mouvement toutes les 900 ms.
+                          //   ↑ = monde au ralenti général ; ↓ = monde nerveux. (Affecte TOUTES les échelles.)
+
+    // L'ANNEAU DE CONTACT — le compte à rebours, une fois le mort collé à toi,
+    // avant la morsure. C'est TON temps de réaction : t'écarter, frapper, fuir.
+    SPIN_TICKS: 3,        // 3 ticks ≈ 2,7 s en intérieur. (Multiplié par échelle, voir `echelles`.)
+                          //   ↑ pour avoir plus de temps de gérer ; ↓ pour des morts plus brutaux.
+
+    // L'ERRANCE — quand le mort ne t'a pas (encore) repéré, il flâne.
+    P_ERRANCE: 0.4,       // probabilité de faire un pas à un tick d'errance. (Divisée par échelle.)
+
+    MEMOIRE_TICKS: 8,     // ticks de poursuite sans te revoir avant qu'il renonce et reparte errer.
+    CONE_PORTEE: 7,       // portée max (en cases/sauts) du cône de vue d'un mort.
+    OUIE_JOUEUR: 5,       // distance à laquelle TOI tu ENTENDS un mort bouger hors de vue (point estompé).
+
+    // La CADENCE DU PAS selon la lourdeur du mort (champ `vitesse` du bestiaire,
+    // js/data/zombies.js : plus le nombre est grand, plus le mort est « lent »).
+    //   - un mort « lent »  avance un tick sur PERIODE_LENT,
+    //   - un mort « vif »   avance un tick sur PERIODE_VIF.
+    // (Ces périodes sont elles aussi étirées par l'échelle, voir `echelles`.)
+    SEUIL_LENT: 6000,     // vitesse ≥ 6000 → le mort est « lent » (la majorité du bestiaire l'est).
+    PERIODE_VIF: 1,       // un mort vif (coureur, enragé, chien) avance presque à chaque tick utile.
+    PERIODE_LENT: 2,      // un mort lent traîne : un pas sur deux. De base, un mort se déplace LENTEMENT.
+  },
+
+  // ===========================================================================
+  //  L'ÉCHELLE DE LA CARTE CHANGE TOUT LE RAPPORT AU TEMPS
+  // ===========================================================================
+  // Une case n'a pas la même TAILLE selon l'échelle :
+  //   • intérieur = des PIÈCES (quelques mètres) → un mort traverse une case vite :
+  //     c'est la vitesse « normale », de référence.
+  //   • quartier  = un PLAN DE RUES où un nœud est tout un pâté de maisons :
+  //     traverser une case, c'est marcher des dizaines de mètres. Le mort doit donc
+  //     mettre BEAUCOUP plus de temps à passer d'un nœud à l'autre — il rampe — et
+  //     l'anneau de contact dure d'autant plus longtemps (tu as le temps de t'écarter).
+  // (ville / région : pas de morts en chair → ces échelles n'ont pas d'entrée.)
+  //
+  // cadenceZombie : multiplie la PÉRIODE du pas (4 = quatre fois plus lent à se déplacer).
+  // anneauZombie  : multiplie SPIN_TICKS (3 = anneau de contact trois fois plus long).
+  // capDiv        : densité de peuplement = nb de cases ÷ capDiv (plus petit = plus de morts).
+  echelles: {
+    interieur: { cadenceZombie: 1, anneauZombie: 1, capDiv: 7 },
+    quartier:  { cadenceZombie: 4, anneauZombie: 3, capDiv: 5 },
+    // valeurs par défaut si une échelle n'est pas listée : { cadenceZombie:1, anneauZombie:1, capDiv:7 }
+  },
+
+  // ===========================================================================
+  //  LE COMBAT EN TEMPS RÉEL  (js/combat.js)
+  // ===========================================================================
+  // La jauge de MENACE du mort se remplit ; pleine, il attaque. Chaque geste coûte
+  // de l'ENDURANCE. L'attaque se CHARGE (maintenir = armer, relâcher = frapper).
+  combat: {
+    // Coût en endurance de chaque action.
+    COUTS: { tir: 8, pousser: 10, jeter: 12, fuir: 22, changer: 5, bander: 16 },
+
+    // L'attaque chargée : maintenir arme le coup (ou la visée), relâcher le déclenche.
+    CHARGE: {
+      duree: 1300,        // ms pour charger un coup de mêlée de 0 à 1.
+      coutMin: 8,         // endurance d'un coup relâché aussitôt.
+      coutPlein: 24,      // endurance AJOUTÉE à pleine charge (8 + 24 = 32 au total).
+      delaiMin: 120,      // ms entre relâcher et toucher, à charge nulle.
+      delaiMax: 650,      // ... à pleine charge : un coup de fléau, ça s'annonce.
+      viseeDuree: 1600,   // ms de visée pleine (armes à feu) — la compétence « visée » l'accélère.
+    },
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Accès pratique à la config d'une échelle, avec valeurs par défaut sûres
+// (toute échelle non listée se comporte « comme l'intérieur » : vitesse normale).
+export const ECHELLE_DEFAUT = { cadenceZombie: 1, anneauZombie: 1, capDiv: 7 };
+export function reglageEchelle(echelle) {
+  return REGLAGES.echelles[echelle] || ECHELLE_DEFAUT;
+}
