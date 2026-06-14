@@ -28,9 +28,15 @@ let seq = null;              // état du mini-séquenceur (thème composé en co
 let seqNotes = [];           // notes déjà planifiées par le séquenceur (arrêt propre)
 let tension = null;          // nappe de tension temps réel (zombie proche)
 let tensionTimer = null;     // démontage différé de la nappe quand elle retombe à 0
-let fichiers = { themes: {}, ambiances: {} }; // {buffer,gain} décodés (banque + audio/manifest.json)
-let bufferTheme = null;      // fichier de thème en boucle (remplace la synthèse)
-let combatBuf = null;        // fichier de combat en boucle
+let tensionMus = null;       // playlist d'action lancée quand un zombie approche (carte)
+let tensionMusTimer = null;  // coupure différée de cette playlist quand la menace s'éloigne
+let fichiers = { themes: {}, ambiances: {} }; // themes:[{buffer,gain}] (playlists) — ambiances:{buffer,gain}
+let bufferTheme = null;      // playlist de thème en cours (remplace la synthèse) — voir creerPlaylist
+let combatBuf = null;        // playlist d'action de combat en cours
+
+// La musique (fichiers) est abaissée d'un cran pour laisser l'ambiance passer
+// devant : −40 %. Un seul réglage pour toute la musique de fond.
+const MUSIQUE_GAIN = 0.6;
 
 // ---------- Banque de sons fichier (dossier audio/) ----------
 // Ces fichiers REMPLACENT la synthèse pour les noms concernés. Tout échec (404,
@@ -54,11 +60,36 @@ const BANQUE_SFX = {
   hurlement:        { f: ['monster/zombie-agonie.mp3', 'monster/zombie-alone-agony-2.mp3'], vol: 0.8 },
   alerte_infection: { f: ['effect/little-horror-suspence.mp3'], vol: 0.55 },
 };
+// Chaque thème est une PLAYLIST (liste de fichiers). Le lecteur enchaîne les
+// morceaux en variant l'ordre — jamais deux fois le même de suite : fini la
+// boucle d'un seul fichier à l'infini. Le 'vol' est relatif (1.0 = niveau de
+// référence) ; la sonie absolue est égalisée à l'écoute (RMS) puis abaissée par
+// MUSIQUE_GAIN. Déposez d'autres fichiers : la rotation les prend tout seuls.
 const BANQUE_THEMES = {
-  titre:       { f: 'musique/intro-horror.mp3', vol: 0.6 },
-  exploration: { f: 'musique/empty-city.mp3', vol: 0.55 },
-  train:       { f: 'musique/on-the-road.mp3', vol: 0.6 },
-  refuge:      { f: 'musique/suspence-calm.mp3', vol: 0.6 },
+  titre:       { f: ['musique/intro-horror.mp3'], vol: 1.0 },
+  exploration: { f: ['musique/empty-city.mp3'], vol: 0.9 },
+  train:       { f: ['musique/on-the-road.mp3'], vol: 1.0 },
+  refuge:      { f: ['musique/suspence-calm.mp3'], vol: 1.0 },
+  // Combat : une vraie playlist d'action qui tourne en continu (crossfade),
+  // sans jamais rejouer le même morceau deux fois de suite.
+  combat: { f: [
+    'musique/action-suspence-music.mp3',
+    'musique/action-suspence-music-2.mp3',
+    'musique/action-suspence-music-3.mp3',
+    'musique/action-suspence-music-4.mp3',
+    'musique/bandit-tribut-action-music.mp3',
+    'musique/epic-musique-action.mp3',
+  ], vol: 1.0 },
+  // Tension : quand un zombie approche sur la carte, un sous-ensemble plus
+  // sombre et en retrait monte sous la nappe dissonante.
+  tension: { f: [
+    'musique/dark-action-deep.mp3',
+    'musique/action-suspence-music-3.mp3',
+    'musique/action-suspence-music-2.mp3',
+  ], vol: 0.85 },
+  // Réservée : une fin épique. Déclarée (chargée, équilibrée) mais pas encore
+  // branchée dans le jeu — prête pour une future scène de fin.
+  fin: { f: ['musique/epic-end-music.mp3'], vol: 1.0 },
 };
 const FICHIER_CHRONO = 'effect/chrono.mp3';
 const FICHIERS_PLUIE = { legere: 'environnement/light-rain-background.mp3', forte: 'environnement/rain-hard-background.mp3' };
@@ -81,7 +112,30 @@ function crete(buffer) {
 }
 // Crête ramenée à ~0,9, puis volume cible : un fichier deux fois trop fort est
 // automatiquement divisé par deux. On borne pour ne pas trop pousser un son faible.
+// (Bon pour les SFX, brefs : la crête suffit.)
 function gainNormalise(buffer, vol) { return Math.min(vol * (0.9 / crete(buffer)), vol * 4); }
+// Sonie perçue (RMS) : deux morceaux masterisés différemment (l'un compressé/fort,
+// l'autre dynamique/faible) ont la même crête mais des volumes ressentis très
+// différents. Pour la MUSIQUE on égalise donc le RMS, pas la crête — c'est ce qui
+// rééquilibre vraiment des pistes d'origines différentes.
+function rms(buffer) {
+  let s = 0, n = 0;
+  const ch = Math.min(buffer.numberOfChannels, 2);
+  for (let c = 0; c < ch; c++) {
+    const d = buffer.getChannelData(c);
+    for (let i = 0; i < d.length; i += 32) { s += d[i] * d[i]; n++; }
+  }
+  return Math.sqrt(s / Math.max(1, n)) || 0.05;
+}
+// Ramène chaque morceau à une même sonie cible (RMS), applique son 'vol' relatif
+// et l'abaissement global MUSIQUE_GAIN, avec un garde-fou de crête anti-saturation.
+const RMS_CIBLE = 0.18;
+function gainMusique(buffer, vol) {
+  let g = vol * MUSIQUE_GAIN * (RMS_CIBLE / rms(buffer));
+  const cretePost = crete(buffer) * g;
+  if (cretePost > 0.97) g *= 0.97 / cretePost; // jamais d'écrêtage, même sur un morceau dense
+  return Math.min(g, vol * 4); // garde-fou : un fichier quasi-muet n'est pas amplifié à l'absurde
+}
 async function decoder(chemin) {
   const r = await fetch('audio/' + chemin);
   if (!r.ok) throw new Error('404');
@@ -94,7 +148,9 @@ async function chargerBanque() {
     if (liste.length) sons[nom] = liste;
   }
   for (const [nom, def] of Object.entries(BANQUE_THEMES)) {
-    try { const b = await decoder(def.f); fichiers.themes[nom] = { buffer: b, gain: gainNormalise(b, def.vol) }; } catch (e) {}
+    const liste = [];
+    for (const f of def.f) { try { const b = await decoder(f); liste.push({ buffer: b, gain: gainMusique(b, def.vol) }); } catch (e) {} }
+    if (liste.length) fichiers.themes[nom] = liste; // playlist (1 fichier ou plus)
   }
   // Chrono + pluie : on garde un facteur de normalisation (certains de ces fichiers
   // sont enregistrés très bas — la pluie a une crête à ~0,08 : il faut la remonter).
@@ -167,7 +223,8 @@ function stopAmbiance() {
   if (stingerTimer) { clearTimeout(stingerTimer); stingerTimer = null; }
   if (musiqueTimer) { clearTimeout(musiqueTimer); musiqueTimer = null; }
   arreterSequenceur();
-  arreterBoucleFichier(bufferTheme); bufferTheme = null;
+  arreterPlaylist(bufferTheme); bufferTheme = null;
+  arreterTensionMusique(); // change de scène / mort : la tension ne déborde pas sur le lieu suivant
   arreterPluie();
 }
 
@@ -192,7 +249,7 @@ export function playAmbiance(id) {
 
   const g = ctx.createGain(); g.gain.value = 0;
   g.connect(master);
-  g.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 2.5);
+  g.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 2.5); // lit d'ambiance un cran devant (musique baissée)
   ambNodes.push(g);
 
   if (fichiers.ambiances[sid]) {
@@ -380,10 +437,14 @@ function demarrerTheme(nom, nuit, cle) {
   if (!part) return;
   let nomEffectif = nom;
   if (nuit && part.nuit && THEMES[part.nuit]) { nomEffectif = part.nuit; part = THEMES[part.nuit]; }
-  // Fichier (banque ou manifest) ? Il remplace la synthèse de ce thème
-  // (la variante de nuit peut avoir son propre fichier, sinon celui du jour).
-  const ent = fichiers.themes[nomEffectif] || fichiers.themes[nom];
-  if (ent) { bufferTheme = jouerBoucleFichier(ent.buffer, ent.gain); return; }
+  // Fichiers (banque ou manifest) ? Ils remplacent la synthèse de ce thème
+  // (la variante de nuit peut avoir sa propre playlist, sinon celle du jour).
+  const liste = fichiers.themes[nomEffectif] || fichiers.themes[nom];
+  if (liste && liste.length) {
+    // Thème d'ambiance : on respire entre les morceaux (le survival doit se taire).
+    bufferTheme = creerPlaylist(liste, { fondu: 1.6, repos: [7, 16] });
+    return;
+  }
   seq = {
     cle, part,
     voix: part.voix.map(v => ({ def: v, idx: 0, t: 0 })),
@@ -493,39 +554,128 @@ async function chargerManifest() {
     const rep = await fetch('audio/manifest.json');
     if (!rep.ok) return;
     const man = await rep.json();
-    for (const cat of ['themes', 'ambiances']) {
-      for (const [nom, fichier] of Object.entries(man[cat] || {})) {
+    // Le manifest a la priorité sur la banque. Un thème peut désormais déclarer
+    // PLUSIEURS fichiers (tableau) → ils tournent en playlist. Une chaîne seule
+    // reste acceptée (rétrocompatible). Les ambiances restent un seul fichier.
+    for (const [nom, val] of Object.entries(man.themes || {})) {
+      const fs = Array.isArray(val) ? val : [val];
+      const liste = [];
+      for (const ff of fs) {
         try {
-          const r = await fetch('audio/' + fichier);
+          const r = await fetch('audio/' + ff);
           if (!r.ok) continue;
           const b = await ctx.decodeAudioData(await r.arrayBuffer());
-          // Le manifest a la priorité sur la banque ; même normalisation des volumes.
-          fichiers[cat][nom] = { buffer: b, gain: gainNormalise(b, cat === 'themes' ? 0.65 : 0.5) };
-        } catch (e) { /* fichier illisible : on garde la synthèse */ }
+          liste.push({ buffer: b, gain: gainMusique(b, 1.0) }); // sonie égalisée comme la banque
+        } catch (e) { /* fichier illisible : ignoré */ }
       }
+      if (liste.length) fichiers.themes[nom] = liste;
+    }
+    for (const [nom, val] of Object.entries(man.ambiances || {})) {
+      const ff = Array.isArray(val) ? val[0] : val;
+      try {
+        const r = await fetch('audio/' + ff);
+        if (!r.ok) continue;
+        const b = await ctx.decodeAudioData(await r.arrayBuffer());
+        fichiers.ambiances[nom] = { buffer: b, gain: gainNormalise(b, 0.5) };
+      } catch (e) { /* fichier illisible : on garde la synthèse */ }
     }
   } catch (e) { /* pas de manifest : cas normal, silence total */ }
 }
 
-// Joue un tampon en boucle derrière le gain maître (volume/mute respectés).
-function jouerBoucleFichier(buffer, gainCible) {
-  const src = ctx.createBufferSource();
-  src.buffer = buffer; src.loop = true;
-  const g = ctx.createGain(); g.gain.value = 0.0001;
-  g.gain.linearRampToValueAtTime(gainCible, ctx.currentTime + 2);
+// ---------- Lecteur de playlist musicale ----------
+// Enchaîne des morceaux (fichiers) en variant l'ordre : JAMAIS le même deux
+// fois de suite. Fondu d'entrée/sortie sur chaque piste ; entre deux morceaux,
+// soit un silence de respiration (repos > 0, façon survival), soit un
+// chevauchement (repos = 0 → vrai crossfade, pour le combat continu).
+// Remplace l'ancienne boucle d'un unique fichier qui tournait à l'infini.
+function creerPlaylist(entrees, opts = {}) {
+  if (!ctx || !entrees || !entrees.length) return null;
+  const etat = { entrees, opts, idx: -1, src: null, g: null, timer: null, vivant: true };
+  enchainerPiste(etat, true);
+  return etat;
+}
+function prochaineIdx(etat) {
+  const n = etat.entrees.length;
+  if (n <= 1) return 0;
+  let i; do { i = Math.floor(Math.random() * n); } while (i === etat.idx); // pas de répétition immédiate
+  return i;
+}
+function enchainerPiste(etat, premier) {
+  if (!etat.vivant || !ctx) return;
+  etat.idx = prochaineIdx(etat);
+  const ent = etat.entrees[etat.idx];
+  const dur = ent.buffer.duration;
+  const fondu = Math.min(etat.opts.fondu || 1.4, dur / 3);
+  const t0 = ctx.currentTime + 0.02;
+  const src = ctx.createBufferSource(); src.buffer = ent.buffer;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(ent.gain, t0 + (premier ? Math.min(2, fondu * 1.5) : fondu));
+  g.gain.setValueAtTime(ent.gain, t0 + Math.max(0.1, dur - fondu));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); // fondu de sortie : pas de coupure sèche
   src.connect(g); g.connect(master);
-  src.start();
-  return { src, g };
+  src.start(t0); src.stop(t0 + dur + 0.1);
+  etat.src = src; etat.g = g;
+  // Planifie la piste suivante. repos = silence entre morceaux ; repos = 0 →
+  // on avance du temps d'un fondu pour chevaucher la fin (crossfade).
+  const [rMin, rMax] = etat.opts.repos || [0, 0];
+  const repos = rMin + Math.random() * (rMax - rMin);
+  const avance = (rMin === 0 && rMax === 0) ? fondu : 0;
+  const attente = Math.max(0.2, dur - avance + repos);
+  etat.timer = setTimeout(() => enchainerPiste(etat, false), attente * 1000);
 }
 
-function arreterBoucleFichier(b) {
-  if (!b || !ctx) return;
-  try {
-    const t = ctx.currentTime;
-    b.g.gain.cancelScheduledValues(t);
-    b.g.gain.setTargetAtTime(0.0001, t, 0.1);
-    b.src.stop(t + 0.5);
-  } catch (e) {}
+function arreterPlaylist(etat, douxMs = 700) {
+  if (!etat) return;
+  etat.vivant = false;
+  if (etat.timer) { clearTimeout(etat.timer); etat.timer = null; }
+  if (etat.g && etat.src && ctx) {
+    try {
+      const t = ctx.currentTime;
+      etat.g.gain.cancelScheduledValues(t);
+      etat.g.gain.setValueAtTime(Math.max(0.0001, etat.g.gain.value), t);
+      etat.g.gain.setTargetAtTime(0.0001, t, douxMs / 3000);
+      etat.src.stop(t + douxMs / 1000 + 0.2);
+    } catch (e) {}
+  }
+}
+
+// ---------- Musique d'action sur l'approche (carte) ----------
+// Au-delà d'un seuil de tension, une playlist d'action sombre monte SOUS la
+// nappe dissonante ; elle se coupe quand la menace s'éloigne pour de bon.
+// Hystérésis (deux seuils + répit) pour ne pas la rallumer/éteindre sans cesse.
+// L'entrée en combat la coupe net (arreterTensionMusique dans startCombatMusic) :
+// la simple retombée à 0 est différée de 5 s et laisserait un doublon transitoire.
+const TENS_MUS_ON = 0.55, TENS_MUS_OFF = 0.2;
+function majTensionMusique(niveau) {
+  const liste = fichiers.themes.tension;
+  if (!liste || !liste.length) return;
+  if (niveau >= TENS_MUS_ON) {
+    if (tensionMusTimer) { clearTimeout(tensionMusTimer); tensionMusTimer = null; } // menace de retour
+    if (!tensionMus) tensionMus = creerPlaylist(liste, { fondu: 2.5, repos: [5, 12] });
+    return;
+  }
+  if (!tensionMus) return;
+  if (niveau <= TENS_MUS_OFF) {
+    // Sous le seuil bas : on programme une coupure, mais on laisse un répit
+    // (la menace peut juste s'être éloignée d'une case).
+    if (!tensionMusTimer) tensionMusTimer = setTimeout(() => {
+      tensionMusTimer = null;
+      arreterPlaylist(tensionMus, 1400); tensionMus = null;
+    }, 5000);
+  } else if (tensionMusTimer) {
+    // Entre les deux seuils alors qu'une coupure était prévue : on l'annule.
+    clearTimeout(tensionMusTimer); tensionMusTimer = null;
+  }
+}
+// Coupe IMMÉDIATEMENT la musique de tension (et annule la coupure différée).
+// Indispensable aux transitions dures, où la simple retombée à 0 ne suffit pas :
+// la coupure normale est différée de 5 s, donc sans ça la playlist déborderait
+// sur la scène suivante (changement de lieu, mort) ou doublerait la musique de
+// combat (entrée en combat). Idempotente.
+function arreterTensionMusique(douxMs = 700) {
+  if (tensionMusTimer) { clearTimeout(tensionMusTimer); tensionMusTimer = null; }
+  if (tensionMus) { arreterPlaylist(tensionMus, douxMs); tensionMus = null; }
 }
 
 // ---------- Tension temps réel : un zombie approche sur la carte ----------
@@ -534,6 +684,7 @@ function arreterBoucleFichier(b) {
 export function setTension(niveau) {
   if (!ctx) return;
   niveau = Math.max(0, Math.min(1, niveau || 0));
+  majTensionMusique(niveau); // un zombie approche → une vraie musique d'action monte
   const t = ctx.currentTime;
   if (niveau > 0 && !tension) {
     // Deux dents de scie à la seconde mineure (ça frotte), un sinus sous-jacent,
@@ -698,6 +849,63 @@ const STINGERS = {
   rideau_fer(t) {
     for (let i = 0; i < 8; i++) burstAt(t + i * 0.045, 0.035, 'bandpass', 1400 - i * 60, 0.04, 6, i % 2 === 0);
   },
+
+  // --- Nouveaux sons d'environnement : le monde mort a mille petits bruits ---
+  rat(t) { // des griffes pressées qui filent le long d'une plinthe
+    const n = 6 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < n; i++) burstAt(t + i * (0.032 + Math.random() * 0.03), 0.022, 'highpass', 3200 + Math.random() * 1300, 0.03);
+  },
+  gouttiere(t) { // gouttes pesantes dans une gouttière de zinc, l'écho les étire
+    const n = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) tonAt(t + i * (0.25 + Math.random() * 0.22), 740 + Math.random() * 300, 360, 0.12, 'sine', 0.04, { a: 0.002, echo: true });
+  },
+  bourrasque_sifflante(t) { // le vent qui siffle par un interstice, montée puis chute
+    const dur = 1.6 + Math.random() * 1.4;
+    tonAt(t, 720, 1180, dur * 0.6, 'sine', 0.022, { a: 0.4, vib: 5, vibAmp: 40, echo: true });
+    burstAt(t, dur, 'bandpass', 1400, 0.05, 2, true);
+  },
+  metal_dilate(t) { // une structure métallique qui se contracte : « ping… ping »
+    [0, 0.45 + Math.random() * 0.6].forEach((dt, i) => tonAt(t + dt, 1700 - i * 320 + Math.random() * 200, 1450 - i * 320, 0.5, 'sine', 0.03, { a: 0.002, echo: true }));
+  },
+  insectes_nuit(t) { // grillons épars, plus graves et plus lents que les cigales
+    const dur = 1.6 + Math.random() * 1.6;
+    const s = ctx.createBufferSource(); s.buffer = noiseBuffer(dur + 0.2); s.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2500 + Math.random() * 600; bp.Q.value = 8;
+    const trem = ctx.createGain(); trem.gain.value = 0.5;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.014, t + 0.6);
+    g.gain.setValueAtTime(0.014, t + dur - 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 5.5 + Math.random() * 3;
+    const lg = ctx.createGain(); lg.gain.value = 0.5;
+    lfo.connect(lg); lg.connect(trem.gain);
+    s.connect(bp); bp.connect(trem); trem.connect(g); g.connect(master);
+    s.start(t); s.stop(t + dur + 0.2); lfo.start(t); lfo.stop(t + dur + 0.2);
+  },
+  porte_lointaine(t) { // une porte claque, loin ; l'écho la déforme
+    burstAt(t, 0.2, 'lowpass', 240, 0.16, 1, true);
+    tonAt(t, 90, 48, 0.18, 'sine', 0.11, { a: 0.003, echo: true });
+  },
+  chute_gravats(t) { // des gravats qui dégringolent et roulent
+    burstAt(t, 0.18, 'lowpass', 500, 0.1);
+    const n = 4 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) burstAt(t + 0.1 + i * (0.05 + Math.random() * 0.06), 0.04, 'bandpass', 600 + Math.random() * 420, 0.05, 3, true);
+  },
+  oiseau_isole(t) { // un oiseau seul, deux notes, très loin (le jour)
+    [0, 0.22].forEach((dt, i) => tonAt(t + dt, 2100 + i * 320 + Math.random() * 200, 1700, 0.1, 'sine', 0.028, { a: 0.004, echo: true }));
+  },
+  bois_travaille(t) { // une charpente qui travaille : longue plainte basse
+    tonAt(t, 120, 80, 1.4, 'sawtooth', 0.04, { filtre: 280, q: 5, a: 0.4, vib: 4, vibAmp: 8, echo: true });
+  },
+  souffle_couloir(t) { // un souffle d'air creux au bout d'un couloir
+    burstAt(t, 1.8, 'bandpass', 480, 0.06, 1.5, true);
+    tonAt(t + 0.2, 180, 140, 1.4, 'sine', 0.02, { a: 0.5, echo: true });
+  },
+  eau_egout(t) { // l'eau qui glougloute dans une bouche d'égout
+    burstAt(t, 0.6, 'lowpass', 700, 0.04, 1, true);
+    for (let i = 0; i < 4; i++) tonAt(t + Math.random() * 0.8, 300 + Math.random() * 220, 200, 0.1, 'sine', 0.03, { a: 0.01, echo: true });
+  },
 };
 
 function jouerStinger(nom) {
@@ -708,9 +916,11 @@ function jouerStinger(nom) {
 // ---------- Musique de combat : pulsation, riff dissonant, montée quand PV bas ----------
 export function startCombatMusic() {
   if (!ctx || combatTimer || combatBuf) return;
-  // Fichier fourni par l'utilisateur ? Il remplace la boucle procédurale.
-  if (fichiers.themes.combat) {
-    combatBuf = jouerBoucleFichier(fichiers.themes.combat.buffer, fichiers.themes.combat.gain);
+  arreterTensionMusique(400); // l'éventuelle musique de tension cède la place au combat (pas de doublon)
+  // Fichiers fournis ? Une playlist d'action en continu remplace la boucle
+  // procédurale : crossfade entre morceaux, jamais le même deux fois de suite.
+  if (fichiers.themes.combat && fichiers.themes.combat.length) {
+    combatBuf = creerPlaylist(fichiers.themes.combat, { fondu: 1.8, repos: [0, 0] });
     return;
   }
   let beat = 0;
@@ -757,7 +967,7 @@ export function startCombatMusic() {
 }
 export function stopCombatMusic() {
   if (combatTimer) { clearTimeout(combatTimer); combatTimer = null; }
-  arreterBoucleFichier(combatBuf); combatBuf = null;
+  arreterPlaylist(combatBuf, 900); combatBuf = null;
 }
 
 // ---------- Battement de cœur (PV bas) ----------

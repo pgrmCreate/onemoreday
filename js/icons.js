@@ -29,8 +29,10 @@ export const ICONS = {
   feu: P('M12 21c-3.9 0-6.5-2.4-6.5-6 0-3 2.5-5 3.5-7.5 1 1.5 1.5 2.5 1.5 4C12 9 13 5 16 3c0 3 2.5 5.5 2.5 9 0 5-2.6 9-6.5 9z'),
   // ---------- combat ----------
   attaque: P('M4 20l9-9M13 11l6.5-6.5L21 6l-1 3-3 1-2 2M6 16l2 2m-4 0 2 2'),
-  defense: P('M12 3l8 3v6c0 5-3.5 7.7-8 9-4.5-1.3-8-4-8-9V6l8-3zm0 0v18'),
-  pousser: P('M8 3v8m0 10v-4m0 0c-2.5 0-4-1.5-4-4m4 4h8l4-7-5-2-7 1m8 8 1 4'),
+  // Bouclier net avec coche centrale : la garde, le blocage
+  defense: P('M12 3l7 2.5v5c0 4.6-3 7.4-7 8.7-4-1.3-7-4.1-7-8.7v-5L12 3zM8.7 11.5l2.2 2.2 4.4-4.6'),
+  // Petit bonhomme arc-bouté qui pousse un mur (les traits = le mur qui recule)
+  pousser: P('M5 7 7.5 13 4.5 19M7.5 13 11 18.5M6 8.5 14.5 9.5M7 10 14.5 12M16.5 4.5v15M18.5 8.5h2.5M18.5 12.5h2.5', '<circle cx="5" cy="5" r="2"/>'),
   jeter: P('M4 14c5-1 8-4 9-9l2 2c-.5 4-3 8-7 9l8 3-1 2-11-3-1-2 1-2zM18 5l2-2'),
   fuir: P('M5 20l4-5m4-8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM7 9l4-2 3 3 4 1m-6-4-1 6 4 3-1 5'),
   changer: P('M4 8h13m0 0-3-3m3 3-3 3M20 16H7m0 0 3-3m-3 3 3 3'),

@@ -1,6 +1,5 @@
 {
   "permissions": {
-    "defaultMode": "bypassPermissions",
     "allow": [
       "mcp__Claude_Preview__preview_start",
       "Skill(update-config)",
@@ -15,7 +14,9 @@
       "WebFetch",
       "WebSearch",
       "NotebookEdit",
-      "Skill"
-    ]
+      "Skill",
+      "mcp__visualize__show_widget"
+    ],
+    "defaultMode": "bypassPermissions"
   }
 }

@@ -1,6 +1,6 @@
 // ============ Démarrage, menus, panneaux, mort & fin ============
 import { G, newGame, save, load, hasSave, clearSave, skillLevel, SKILLS, heureTxt, getFlag, setFlag, noteJournal, chance } from './state.js';
-import { render, updateHUD, showHUD, log, btnAct, $, toast, showPanel, closePanel, panelOuvert, evtOuvert, closeEvt, attente } from './ui.js';
+import { render, updateHUD, showHUD, log, logHtml, btnAct, $, toast, showPanel, closePanel, panelOuvert, evtOuvert, closeEvt, attente } from './ui.js';
 import { ico, ICONS } from './icons.js';
 import { svgScene } from './illustrations.js';
 import { item } from './data/items.js';
@@ -999,6 +999,10 @@ function panneauJournal() {
   notes.forEach(n => {
     html += `<div class="item-card"><div class="item-line"><span class="item-nom">${n.texte}</span><span class="item-meta">Jour ${n.jour}, ${String(n.heure).padStart(2, '0')} h</span></div></div>`;
   });
+  // Le journal de bord (flux d'événements) : plus affiché en permanence sous la carte,
+  // il se consulte ici, sur appui, pour laisser toute la place à la carte.
+  const flux = logHtml(30);
+  if (flux) html += `<h3>Journal de bord</h3><div class="gamelog gamelog-panel">${flux}</div>`;
   showPanel(html);
 }
 

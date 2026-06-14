@@ -83,6 +83,22 @@ export const REGLAGES = {
     // Coût en endurance de chaque action.
     COUTS: { tir: 8, pousser: 10, jeter: 12, fuir: 22, changer: 5, bander: 16 },
 
+    // RÉCUPÉRATION D'ENDURANCE (par seconde). On récupère LE PLUS VITE quand on ne
+    // fait RIEN : ni charge d'attaque, ni garde, ni bouton maintenu. Dès qu'on agit
+    // (on charge un coup, on lève la garde, on s'arc-boute), la récupération chute.
+    REGEN: { repos: 9, actif: 2.2 },
+
+    // SE DÉFENDRE — la garde se CHARGE comme une arme : plus on maintient, meilleure
+    // est la protection (réduction des dégâts, esquive, blocage). Mais une garde poussée
+    // à fond ne tient pas : arrivée au max, elle ne dure que `tenueMax`, puis les bras
+    // lâchent et TOUTE la protection tombe d'un coup (comme si l'on ne se défendait pas).
+    DEFENSE: {
+      duree: 5000,        // ms pour charger la garde de 0 (nulle) à 1 (maximale) — ~2× l'attaque.
+      tenueMax: 2000,     // ms de maintien au maximum avant que la garde ne s'effondre à zéro.
+      reducMax: 0.6,      // réduction des dégâts à garde pleine (proportionnelle à la charge).
+      esquiveMax: 0.32,   // bonus d'esquive à garde pleine (proportionnel à la charge).
+    },
+
     // CHAQUE bouton rond se MAINTIENT : une jauge se remplit, l'action n'a lieu
     // qu'une fois la jauge pleine (relâcher avant = rien). Durée de remplissage (ms).
     MAINTIEN: { pousser: 850, fuir: 1150, acces: 600 },
