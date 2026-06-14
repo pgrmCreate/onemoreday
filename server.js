@@ -44,6 +44,22 @@ const serveur = http.createServer((req, res) => {
     res.end(JSON.stringify({ port: PORT, ips: adressesLan() }));
     return;
   }
+  // Liste des salons OUVERTS (un hôte présent, place pour un invité), avec leur fiche :
+  // nom de l'hôte + jour/heure de jeu. C'est ce que l'écran « Rejoindre » affiche.
+  // CORS large : en ligne, la page (github.io) interroge un serveur d'un autre domaine.
+  if (url === '/api/salons') {
+    const liste = [];
+    for (const [code, s] of salons) {
+      const hote = s.find(x => x.wsState && x.wsState.role === 'host');
+      if (hote && s.length < 2) {
+        const w = hote.wsState;
+        liste.push({ code, nom: w.nom || 'Hôte', jour: w.jour || 1, heure: w.heure || 8, minute: w.minute || 0 });
+      }
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ salons: liste }));
+    return;
+  }
   const fichier = path.normalize(path.join(RACINE, url));
   if (!fichier.startsWith(RACINE)) { res.writeHead(403); res.end('Interdit'); return; }
   fs.readFile(fichier, (err, data) => {
@@ -132,6 +148,10 @@ function traiterWs(socket, txt) {
       if (salon && salon.some(s => s.wsState.role === 'host')) { envoyerWs(socket, { t: 'erreur', raison: 'Ce code est déjà hébergé.' }); return; }
       if (!salon) { salon = []; salons.set(code, salon); }
       st.role = 'host';
+      // Fiche du salon (affichée dans la liste « Rejoindre ») : nom + jour/heure de jeu.
+      st.jour = Number(msg.jour) || 1;
+      st.heure = Number.isFinite(Number(msg.heure)) ? Number(msg.heure) : 8;
+      st.minute = Number(msg.minute) || 0;
     } else {
       // Invité : sans code, on rejoint DIRECTEMENT la (seule) partie ouverte sur ce
       // serveur — plus besoin de code en LAN. Avec un code, on vise ce salon précis
@@ -153,6 +173,13 @@ function traiterWs(socket, txt) {
     envoyerWs(socket, { t: 'bienvenue', role: st.role, code, pair: autres.length > 0, nomPair: autres[0] ? autres[0].wsState.nom : null });
     autres.forEach(s => envoyerWs(s, { t: 'pair-arrive', role: st.role, nom: st.nom }));
     return;
+  }
+  // L'hôte rafraîchit la fiche de son salon au fil du jeu : ses diffusions de temps
+  // (heure / monde vivant) mettent à jour le jour/heure listés, sans message dédié.
+  if (st.role === 'host' && (msg.t === 'heure' || msg.t === 'vivant')) {
+    if (Number.isFinite(Number(msg.jour))) st.jour = Number(msg.jour);
+    if (Number.isFinite(Number(msg.heure))) st.heure = Number(msg.heure);
+    if (Number.isFinite(Number(msg.minute))) st.minute = Number(msg.minute);
   }
   relayer(socket, txt); // tout le reste : transmis tel quel au pair
 }

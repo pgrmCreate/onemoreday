@@ -15,8 +15,26 @@ export function urlDefaut() {
   return `${proto}//${location.host}/ws`;
 }
 
+// Base HTTP(S) correspondant à une URL WebSocket (pour les requêtes REST : /api/salons).
+// LAN : pas d'URL → même origine que la page. En ligne : wss://h/ws → https://h.
+function baseHttp(wsUrl) {
+  if (!wsUrl) return '';
+  try { const u = new URL(wsUrl); return `${u.protocol === 'wss:' ? 'https:' : 'http:'}//${u.host}`; }
+  catch (e) { return ''; }
+}
+
+// Liste des salons ouverts sur le serveur visé (LAN : même origine ; en ligne : son domaine).
+export async function listerSalons(wsUrl) {
+  try {
+    const r = await fetch(baseHttp(wsUrl) + '/api/salons', { cache: 'no-store' });
+    if (r.ok) { const j = await r.json(); return Array.isArray(j.salons) ? j.salons : []; }
+  } catch (e) { /* serveur injoignable : liste vide */ }
+  return [];
+}
+
 // Se connecte et s'annonce. Résout { ok, infos } ou { ok:false, raison }.
-export function connecter({ url, code, role, nom }) {
+// meta (hôte) : { jour, heure, minute } — sert à nommer le salon dans la liste.
+export function connecter({ url, code, role, nom, meta }) {
   deconnecter();
   url = url || urlDefaut();
   return new Promise((resolve) => {
@@ -24,7 +42,7 @@ export function connecter({ url, code, role, nom }) {
     const finir = (v) => { if (!regle) { regle = true; resolve(v); } };
     try { ws = new WebSocket(url); } catch (e) { finir({ ok: false, raison: 'Adresse de serveur invalide.' }); return; }
     etat = 'connexion';
-    ws.onopen = () => { try { ws.send(JSON.stringify({ t: 'hello', salon: code, role, nom })); } catch (e) {} };
+    ws.onopen = () => { try { ws.send(JSON.stringify({ t: 'hello', salon: code, role, nom, ...(meta || {}) })); } catch (e) {} };
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.t === 'bienvenue') {

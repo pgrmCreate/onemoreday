@@ -23,6 +23,7 @@ let heartbeatTimer = null;
 let muted = localStorage.getItem('omd_muted') === '1';
 let volume = parseFloat(localStorage.getItem('omd_volume') || '0.6');
 let ambianceCourante = null; // 'scene:j' | 'scene:n'
+let lieuCourantId = null;    // dernier id de lieu passé à playAmbiance (pour relancer après un combat)
 let echo = null;             // delay partagé (musique, sons lointains)
 let seq = null;              // état du mini-séquenceur (thème composé en cours)
 let seqNotes = [];           // notes déjà planifiées par le séquenceur (arrêt propre)
@@ -238,6 +239,7 @@ function resoudreScene(id) {
 
 export function playAmbiance(id) {
   if (!ctx) return;
+  lieuCourantId = id; // mémorisé pour relancer le lit du lieu à la fin d'un combat
   const sid = resoudreScene(id);
   const nuit = !!(G && estNuit());
   const cle = sid + (nuit ? ':n' : ':j');
@@ -917,6 +919,12 @@ function jouerStinger(nom) {
 export function startCombatMusic() {
   if (!ctx || combatTimer || combatBuf) return;
   arreterTensionMusique(400); // l'éventuelle musique de tension cède la place au combat (pas de doublon)
+  // Le combat PREND LA MAIN sur le lit sonore du lieu : sans ça, l'ambiance (drones,
+  // musique de lieu, stingers) continuait SOUS la musique de combat et on n'entendait
+  // pas le changement. On coupe l'ambiance et on remet `ambianceCourante` à zéro pour
+  // qu'elle puisse repartir à la fin du combat.
+  stopAmbiance();
+  ambianceCourante = null;
   // Fichiers fournis ? Une playlist d'action en continu remplace la boucle
   // procédurale : crossfade entre morceaux, jamais le même deux fois de suite.
   if (fichiers.themes.combat && fichiers.themes.combat.length) {
@@ -968,6 +976,10 @@ export function startCombatMusic() {
 export function stopCombatMusic() {
   if (combatTimer) { clearTimeout(combatTimer); combatTimer = null; }
   arreterPlaylist(combatBuf, 900); combatBuf = null;
+  // Le combat est fini : on relance le lit sonore du lieu (le rendu de la carte le
+  // referait, mais on l'assure ici pour ne pas laisser de silence si un chemin de code
+  // ne repasse pas par renderLieu). playAmbiance se garde lui-même contre le doublon.
+  if (lieuCourantId != null) playAmbiance(lieuCourantId);
 }
 
 // ---------- Battement de cœur (PV bas) ----------

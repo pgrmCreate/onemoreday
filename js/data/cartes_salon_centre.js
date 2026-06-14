@@ -395,7 +395,7 @@ export const CARTES_SALON_CENTRE = {
     nom: 'Petit Casino', sousTitre: 'rue des Frères Kennedy',
     echelle: 'interieur', tempsParCase: 1, largeur: 6, hauteur: 4,
     exterieur: false, ambiance: 'sombre', illu: 'magasin',
-    zombiesPool: ['errant', 'putrefie', 'gonfle', 'nuee_rats'],
+    zombiesPool: ['errant', 'putrefie', 'gonfle', 'nuee_rats', 'rat_geant'],
     passages: [
       ['0,2', '1,2', 'ouvert'], // même plateau de vente : la caisse ouvre sur les rayons
       ['1,2', '2,2', 'ouvert'], // les rayons se prolongent dans l'épicerie du fond

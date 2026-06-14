@@ -176,6 +176,38 @@ const ARENES = {
       + [298, 318, 338, 354].map((x, i) => `<rect x="${x}" y="${314 + (i % 2) * 4}" width="5" height="2" fill="#c9a227" opacity="0.4" transform="rotate(${i * 44} ${x} 315)"/>`).join('')
       + `<path d="M 178,312 l 60,-18 M 194,318 l 60,-18" stroke="#0c0d12" stroke-width="4"/>` + sang(420, 322, 80),
   },
+  // Cour d'école au crépuscule : préau, portique de balançoires, cartable abandonné
+  ecolier: {
+    haut: '#272c38', bas: '#12141b', lune: [150, 70], sol: '#0a0a0d', ligneSol: 292, seed: 23,
+    fond: fond([[0, 150, 150, 9], [560, 230, 150, 12]])
+      + `<g transform="translate(360,200)"><rect x="-60" y="0" width="120" height="92" fill="#0c0d12"/><rect x="-60" y="-6" width="120" height="8" fill="#0a0b10"/><path d="M -56,0 L -56,92 M -28,0 L -28,92 M 0,0 L 0,92 M 28,0 L 28,92 M 56,0 L 56,92" stroke="#0a0b10" stroke-width="3"/></g>`
+      + `<g transform="translate(120,292)"><rect x="-2" y="-78" width="4" height="78" fill="#0b0c11"/><rect x="64" y="-78" width="4" height="78" fill="#0b0c11"/><rect x="-6" y="-80" width="78" height="5" fill="#0b0c11"/><path d="M 14,-75 l 0,40 M 30,-75 l 0,40 M 46,-75 l 0,40" stroke="#11141c" stroke-width="2"/><rect x="10" y="-36" width="10" height="5" fill="#11141c"/><rect x="40" y="-36" width="10" height="5" fill="#11141c"/></g>`
+      + corbeau(300, 80) + corbeau(352, 64, 0.8),
+    props: `<rect x="232" y="306" width="22" height="16" rx="2" fill="#3a2f1a" transform="rotate(-8 243 314)"/><path d="M 236,306 q 6,-7 12,-1" stroke="#3a2f1a" stroke-width="3" fill="none"/>`
+      + sang(330, 318, 70, 0.32),
+  },
+  // Barrage de police : fourgon, gyrophare éteint, barrière, douilles au sol
+  policier: {
+    haut: '#23252e', bas: '#101117', lune: [120, 58], sol: '#0a0a0d', ligneSol: 294, seed: 25,
+    fond: fond([[0, 120, 170, 9], [150, 96, 130, 6], [640, 120, 160, 9]])
+      + `<g transform="translate(470,294)"><rect x="-70" y="-46" width="140" height="42" rx="8" fill="#0d0f16"/><rect x="-60" y="-38" width="30" height="16" fill="#070809"/><rect x="30" y="-38" width="30" height="16" fill="#070809"/><circle cx="-44" cy="-2" r="9" fill="#060608"/><circle cx="44" cy="-2" r="9" fill="#060608"/><rect x="-12" y="-53" width="24" height="8" rx="2" fill="#11141d"/><rect x="-8" y="-52" width="7" height="6" fill="#3a1a1d"/><rect x="2" y="-52" width="7" height="6" fill="#1a2d3a"/></g>`
+      + lampadaire(180, 294, -6),
+    props: `<g transform="translate(250,300)"><rect x="-40" y="-30" width="8" height="30" fill="#11141c"/><rect x="32" y="-30" width="8" height="30" fill="#11141c"/><rect x="-46" y="-34" width="92" height="8" rx="2" fill="#7a1018" opacity="0.5"/><path d="M -40,-22 l 80,0 M -40,-12 l 80,0" stroke="#0c0d12" stroke-width="2"/></g>`
+      + [300, 318, 338].map((x, i) => `<rect x="${x}" y="${314 + (i % 2) * 4}" width="5" height="2" fill="#c9a227" opacity="0.4" transform="rotate(${i * 40} ${x} 315)"/>`).join('')
+      + sang(420, 320, 80),
+  },
+  // Tunnel/égout : voûte sombre, tuyaux, flaque verdâtre — pas de neige sous terre
+  rat_geant: {
+    haut: '#15171b', bas: '#0b0d0c', lune: null, lueur: '#3d4a36', lueurPos: [400, 170, 240, 120], sol: '#0a0b0a', ligneSol: 286, seed: 27, brumeY: 250, neige: false,
+    fond: `<rect x="0" y="0" width="800" height="92" fill="#0d0f0e"/>`
+      + `<path d="M 400,92 a 360,150 0 0 0 -360,150 L 40,286 L 760,286 L 760,242 a 360,150 0 0 0 -360,-150 Z" fill="#0c0e0c"/>`
+      + [120, 680].map(x => `<path d="M ${x},92 L ${x},286" stroke="#080a08" stroke-width="6"/>`).join('')
+      + `<rect x="150" y="120" width="500" height="10" rx="4" fill="#0a0c0a"/><path d="M 150,160 L 650,160" stroke="#0a0c0a" stroke-width="8"/>`
+      + `<path d="M 360,130 q -4,30 0,60" stroke="#3d4a36" stroke-width="2" fill="none" opacity="0.4"/>`,
+    props: `<ellipse cx="400" cy="300" rx="150" ry="12" fill="#141a10" opacity="0.7"/>`
+      + `<ellipse cx="260" cy="312" rx="40" ry="6" fill="#0c0e0a"/>`
+      + sang(470, 316, 70, 0.35),
+  },
   // Arène générique (zid inconnu)
   inconnu: {
     haut: '#22252f', bas: '#101218', lune: [660, 64], sol: '#0a0a0c', ligneSol: 292, seed: 21,

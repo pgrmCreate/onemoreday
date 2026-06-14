@@ -55,13 +55,25 @@ function pleinEcranDispo() {
 function estPleinEcran() {
   return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
+// Verrou paysage : Android Chrome ne l'accepte QU'EN plein écran et après un geste.
+// (iOS Safari n'a pas l'API : l'appel échoue en silence — l'app installée suit alors
+// la directive `orientation` du manifest.)
+function verrouillerPaysage() {
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      const p = screen.orientation.lock('landscape');
+      if (p && p.catch) p.catch(() => {});
+    }
+  } catch (e) { /* non supporté : tant pis, le manifest fait le reste */ }
+}
 function entrerPleinEcran() {
   const el = document.documentElement;
   try {
     if (el.requestFullscreen) {
       const p = el.requestFullscreen({ navigationUI: 'hide' });
-      if (p && p.catch) p.catch(() => {});
-    } else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      if (p && p.then) p.then(verrouillerPaysage).catch(() => {});
+      else verrouillerPaysage();
+    } else if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); verrouillerPaysage(); }
   } catch (e) { /* silencieux : certains contextes refusent */ }
 }
 function sortirPleinEcran() {
@@ -89,10 +101,13 @@ function majBoutonsPleinEcran() {
 }
 document.addEventListener('fullscreenchange', majBoutonsPleinEcran);
 document.addEventListener('webkitfullscreenchange', majBoutonsPleinEcran);
-// Préférence active : on replonge en plein écran au PREMIER geste de la session.
-if (pleinEcranDispo() && localStorage.getItem(FS_KEY) === '1') {
+// Plein écran + paysage IMPOSÉS au premier geste : par défaut sur tactile (mobile),
+// et toujours si la préférence a été activée. On peut y renoncer explicitement (FS_KEY='0').
+const estTactile = (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
+if (pleinEcranDispo() && (localStorage.getItem(FS_KEY) === '1' || (estTactile && localStorage.getItem(FS_KEY) !== '0'))) {
   document.addEventListener('pointerdown', function fsOnce() {
     if (!estPleinEcran()) entrerPleinEcran();
+    else verrouillerPaysage();
   }, { once: true });
 }
 
@@ -154,8 +169,8 @@ function ecranNouvelle() {
     <div class="narration">Jour 23. Le Grand Hôtel de la Poste, place Crousillat, Salon-de-Provence. La réserve de la cuisine est morte hier soir : une boîte de flageolets, partagée avec personne.\n\nDehors, la Fontaine Moussue coule toujours. Eux aussi sont toujours là.\n\n<em>Une seule vie. Quand c'est fini, c'est fini — pas de seconde chance.</em></div>
     <div class="menu">
       <input type="text" id="inp-nom" maxlength="16" placeholder="Ton prénom (Sam)" autocomplete="off">
-      ${btnAct('data-d="jouer"', 'Commencer', 'une seule vie — la mort efface tout, sans retour', { classe: 'primary' })}
-      ${btnAct('data-d="coop"', 'Jouer à deux →', 'co-op sur le même Wi-Fi (héberger ou rejoindre)')}
+      ${btnAct('data-d="jouer"', 'Solo', 'une seule vie — la mort efface tout, sans retour', { classe: 'primary' })}
+      ${btnAct('data-d="coop"', 'Multijoueur →', 'à deux : en ligne ou sur le même Wi-Fi')}
       ${btnAct('data-d="retour"', 'Retour')}
     </div>`);
   document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => {
@@ -218,26 +233,78 @@ function ecranMajRequise(nom) {
   });
 }
 
+// Petite échappe HTML pour afficher sans risque un nom de joueur venu du réseau.
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+}
+
+// ÉTAPE 1 du multi : EN LIGNE ou LOCAL (même Wi-Fi). Fixe coopUrl puis va à la liste des salons.
 function ecranCoop(nom) {
   const enLigne = !!SERVEUR_EN_LIGNE; // un serveur permanent est-il configuré ?
   render(`
-    <h2 class="lieu-nom">Jouer à deux</h2>
-    <div class="narration">Deux survivants, le même Salon. L'un <em>héberge</em> la partie, l'autre la <em>rejoint</em>${enLigne ? ' — sur le même Wi-Fi, ou <em>en ligne</em> via le serveur permanent' : ' (même Wi-Fi)'}.\n\nVous vous voyez sur la carte quand vous êtes dans le champ de vision l'un de l'autre, et vous pouvez vous prêter main-forte dans un combat.</div>
+    <h2 class="lieu-nom">Multijoueur</h2>
+    <div class="narration">Où voulez-vous jouer à deux ?\n\n<em>En ligne</em> : via le serveur permanent, chacun chez soi.\n<em>Local</em> : sur le même Wi-Fi, l'un héberge depuis son appareil.\n\nVous vous voyez sur la carte quand vous êtes dans le champ de vision l'un de l'autre, et vous pouvez vous épauler en combat.</div>
     <div class="menu">
       <input type="text" id="inp-nom" maxlength="16" placeholder="Ton prénom (Sam)" autocomplete="off" value="${(nom || '').replace(/"/g, '')}">
-      ${btnAct('data-c="hote" data-u="lan"', enLigne ? 'Héberger — même Wi-Fi' : 'Héberger une partie', 'tu crées le monde, l\'autre te rejoint', { classe: 'primary' })}
-      ${btnAct('data-c="rejoindre" data-u="lan"', enLigne ? 'Rejoindre — même Wi-Fi' : 'Rejoindre une partie', 'entre dans le monde de l\'hôte')}
-      ${enLigne ? btnAct('data-c="hote" data-u="net"', 'Héberger — en ligne', 'sur le serveur permanent', { classe: 'primary' }) : ''}
-      ${enLigne ? btnAct('data-c="rejoindre" data-u="net"', 'Rejoindre — en ligne', 'rejoindre une partie sur le serveur') : ''}
+      ${enLigne ? btnAct('data-c="net"', 'En ligne', 'serveur permanent — où que vous soyez', { classe: 'primary' }) : ''}
+      ${btnAct('data-c="lan"', 'Local — même Wi-Fi', enLigne ? 'sans Internet, sur votre réseau' : 'sur votre réseau, sans Internet', { classe: enLigne ? '' : 'primary' })}
+      ${enLigne ? '' : '<p class="cap-line">Aucun serveur en ligne configuré : seul le jeu local (même Wi-Fi) est disponible.</p>'}
       ${btnAct('data-c="retour"', 'Retour')}
     </div>`);
   document.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
     sfx('clic');
     const n = ($('#inp-nom').value || 'Sam').trim().slice(0, 16);
     if (b.dataset.c === 'retour') return ecranNouvelle();
-    coopUrl = b.dataset.u === 'net' ? SERVEUR_EN_LIGNE : null; // cible : serveur en ligne ou LAN
-    if (b.dataset.c === 'hote') return ecranCoopHote(n);
-    return ecranCoopRejoindre(n);
+    coopUrl = b.dataset.c === 'net' ? SERVEUR_EN_LIGNE : null; // cible : serveur en ligne ou LAN
+    ecranSalons(n);
+  });
+}
+
+// ÉTAPE 2 du multi : HÉBERGER une nouvelle partie, ou REJOINDRE l'un des salons ouverts.
+// Le nom d'un salon = prénom de l'hôte + son jour/heure de jeu (rafraîchi en continu).
+function ecranSalons(nom) {
+  const enLigne = !!coopUrl;
+  render(`
+    <h2 class="lieu-nom">Parties — ${enLigne ? 'en ligne' : 'même Wi-Fi'}</h2>
+    <div class="narration">Héberge ta propre partie, ou rejoins l'une des parties ouvertes ci-dessous.</div>
+    <div class="menu">
+      ${btnAct('data-s="hote"', 'Héberger une nouvelle partie', 'tu crées le monde, l\'autre te rejoint', { classe: 'primary' })}
+    </div>
+    <p class="cap-line" style="margin-top:14px"><b>Salons ouverts</b></p>
+    <div id="salons-liste" class="item-list"><p class="cap-line">Recherche des parties…</p></div>
+    <div id="salons-statut" class="cap-line"></div>
+    <div class="menu">
+      ${btnAct('data-s="refresh"', 'Rafraîchir la liste')}
+      ${btnAct('data-s="retour"', 'Retour')}
+    </div>`);
+  const charger = async () => {
+    const liste = $('#salons-liste');
+    if (liste) liste.innerHTML = '<p class="cap-line">Recherche des parties…</p>';
+    const salons = await multi.listerSalons(coopUrl);
+    if (!$('#salons-liste')) return; // l'écran a changé entre-temps
+    if (!salons.length) {
+      $('#salons-liste').innerHTML = '<p class="cap-line">Aucune partie ouverte pour l\'instant. Héberge la tienne, ou demande à l\'autre joueur de le faire.</p>';
+      return;
+    }
+    $('#salons-liste').innerHTML = salons.map(s => {
+      const h = String(s.heure).padStart(2, '0'), m = String(s.minute).padStart(2, '0');
+      return `<div class="item-card"><div class="item-line"><span class="item-nom">${escapeHtml(s.nom)} <span class="qty">Jour ${s.jour} — ${h}:${m}</span></span></div>
+        <div class="item-btns"><button data-rejoindre="${escapeHtml(s.code)}">Rejoindre</button></div></div>`;
+    }).join('');
+    $('#salons-liste').querySelectorAll('[data-rejoindre]').forEach(b => b.onclick = async () => {
+      sfx('clic');
+      if (enLigne && !(await porteDeVersion(nom))) return; // en ligne : on impose la dernière version
+      const statut = $('#salons-statut');
+      if (statut) statut.textContent = 'Connexion à la partie…';
+      rejoindrePartie(b.dataset.rejoindre, nom, statut);
+    });
+  };
+  charger();
+  document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+    sfx('clic');
+    if (b.dataset.s === 'retour') return ecranCoop(nom);
+    if (b.dataset.s === 'refresh') return charger();
+    if (b.dataset.s === 'hote') return ecranCoopHote(nom);
   });
 }
 
@@ -248,17 +315,18 @@ function ecranCoopHote(nom) {
     render(`
       <h2 class="lieu-nom">Héberger la partie${enLigne ? ' — en ligne' : ''}</h2>
       <div class="narration">${enLigne
-        ? 'Tu héberges sur le serveur permanent. Ton coéquipier n\'a qu\'à choisir « Rejoindre — en ligne » : il te rejoint directement. Tu peux commencer tout de suite — il atterrira là où tu en seras.'
-        : `Donne à l'autre joueur ${adr ? `l'adresse <b class="code">${adr}</b> à ouvrir dans son navigateur (même Wi-Fi)` : 'ton adresse réseau (visible dans la fenêtre du serveur)'}.\n\nIl n'a plus qu'à choisir « Rejoindre une partie » : il te rejoint directement, sans code. Tu peux commencer tout de suite — il atterrira là où tu en seras.`}</div>
+        ? 'Tu héberges sur le serveur permanent. Ton coéquipier n\'a qu\'à ouvrir « Multijoueur → En ligne » et choisir <b>ta partie</b> dans la liste. Tu peux commencer tout de suite — il atterrira là où tu en seras.'
+        : `Donne à l'autre joueur ${adr ? `l'adresse <b class="code">${adr}</b> à ouvrir dans son navigateur (même Wi-Fi)` : 'ton adresse réseau (visible dans la fenêtre du serveur)'}.\n\nIl ouvre « Multijoueur → Local » et choisit <b>ta partie</b> dans la liste — sans code. Tu peux commencer tout de suite — il atterrira là où tu en seras.`}
+      \n\n<em>Ta partie apparaîtra sous : ${escapeHtml(nom)} — Jour 1, 08:00.</em></div>
       <div class="menu">
         ${btnAct('data-d="jouer"', 'Créer et jouer', 'une seule vie — la mort efface tout, sans retour', { classe: 'primary' })}
         ${btnAct('data-d="retour"', 'Retour')}
       </div>`);
     document.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => {
       sfx('clic');
-      if (b.dataset.d === 'retour') return ecranCoop(nom);
+      if (b.dataset.d === 'retour') return ecranSalons(nom);
       if (enLigne && !(await porteDeVersion(nom))) return; // en ligne : on impose la dernière version
-      const r = await multi.demarrer({ code, role: 'host', nom, url: coopUrl });
+      const r = await multi.demarrer({ code, role: 'host', nom, url: coopUrl, meta: { jour: 1, heure: 8, minute: 0 } });
       if (!r.ok) { toast('Hébergement impossible : ' + (r.raison || 'serveur injoignable.')); return; }
       clearSave();
       newGame(nom);
@@ -277,28 +345,6 @@ function ecranCoopHote(nom) {
   };
   if (enLigne) afficher(null);
   else chargerLan().then(() => afficher(adresseLan()));
-}
-
-function ecranCoopRejoindre(nom) {
-  const enLigne = !!coopUrl;
-  render(`
-    <h2 class="lieu-nom">Rejoindre une partie${enLigne ? ' — en ligne' : ''}</h2>
-    <div class="narration">${enLigne
-      ? 'Ton coéquipier a lancé sa partie sur le serveur permanent ? Rejoins-le directement — aucun code à saisir.'
-      : 'Tu as ouvert cette page depuis l\'appareil de l\'hôte (même Wi-Fi), et il a déjà lancé la partie ? Rejoins-le directement — plus aucun code à saisir.'}</div>
-    <div class="menu">
-      ${btnAct('data-j="go"', 'Rejoindre la partie', 'entrer dans le monde de l\'hôte', { classe: 'primary' })}
-      ${btnAct('data-j="retour"', 'Retour')}
-    </div>
-    <div id="coop-statut" class="cap-line"></div>`);
-  document.querySelectorAll('[data-j]').forEach(b => b.onclick = async () => {
-    sfx('clic');
-    if (b.dataset.j === 'retour') return ecranCoop(nom);
-    if (enLigne && !(await porteDeVersion(nom))) return; // en ligne : on impose la dernière version
-    const statut = $('#coop-statut');
-    if (statut) statut.textContent = 'Connexion à la partie ouverte…';
-    rejoindrePartie('', nom, statut); // code vide = rejoindre la seule partie ouverte
-  });
 }
 
 // Le flux invité : on prépare un joueur neuf, on se connecte, et on ADOPTE le monde

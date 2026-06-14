@@ -33,6 +33,8 @@ const COUTS = REGLAGES.combat.COUTS;
 const CHARGE = REGLAGES.combat.CHARGE;
 const MAINTIEN = REGLAGES.combat.MAINTIEN; // ms de remplissage des jauges (pousser/fuir/accès)
 const ATERRE = REGLAGES.combat.ATERRE;     // mort à terre : durée, amplis de dégâts/critique, risque
+const REGEN = REGLAGES.combat.REGEN;       // récupération d'endurance : repos (rien) vs actif
+const DEFENSE = REGLAGES.combat.DEFENSE;   // garde chargée : durée, tenue au max, réductions
 const ANNEAU_CIRC = 97.4; // circonférence du cercle SVG d'une jauge ronde (2π × 15.5)
 
 export function demarrerCombat(zombieIds, opts = {}) {
@@ -44,7 +46,7 @@ export function demarrerCombat(zombieIds, opts = {}) {
     queue: ids,
     decorZid: premier, // le décor de la rencontre, fixé au premier mort (ne change pas en cours de combat)
     opts,
-    defense: false,
+    def: null,        // garde en charge : { c, prev, raf, max, maxTimer, collapsed } ou null
     fini: false,
     logs: [],
     logOuvert: false, // le journal de combat ne s'affiche que si on appuie dessus
@@ -93,6 +95,7 @@ export function pauseCombatPourCine() {
   if (C.frappe) { clearTimeout(C.frappe.timer); C.frappe = null; }
   if (C.chg && C.chg.raf) { cancelAnimationFrame(C.chg.raf); C.chg = null; }
   if (C.hold && C.hold.raf) { cancelAnimationFrame(C.hold.raf); C.hold = null; }
+  if (C.def && C.def.raf) { cancelAnimationFrame(C.def.raf); C.def = null; }
   const qte = document.querySelector('.qte'); if (qte) qte.remove();
   resetAnneau();
   setHeartbeat(false);
@@ -213,8 +216,10 @@ function tick() {
   C.dernierTick = now;
   const p = G.player;
 
-  // Récupération d'endurance
-  p.sta = Math.min(p.staMax, p.sta + (C.defense ? 9 : 2.2) * (dt / 1000));
+  // Récupération d'endurance : LA PLUS RAPIDE quand on ne fait RIEN. Dès qu'on agit
+  // (charge d'attaque, frappe en vol, garde levée, bouton maintenu), elle ralentit.
+  const enAction = !!(C.chg || C.hold || C.frappe || C.def);
+  p.sta = Math.min(p.staMax, p.sta + (enAction ? REGEN.actif : REGEN.repos) * (dt / 1000));
 
   // À TERRE : il ne peut pas attaquer, sa menace reste gelée — puis il se relève.
   if (C.aTerre) {
@@ -263,10 +268,11 @@ function majBarres() {
     const cout = parseFloat(b.dataset.cout);
     const act = b.dataset.act;
     if (act === 'defense' || act === 'journal') { b.disabled = false; return; }
+    if (C.def) { b.disabled = true; return; }   // garde levée : rien d'autre
     if (C.chg) { b.disabled = act !== 'attaquer'; return; }
     if (C.hold) { b.disabled = b !== C.hold.btn; return; }
     if (C.frappe) { b.disabled = true; return; }
-    b.disabled = C.defense || G.player.sta < cout;
+    b.disabled = G.player.sta < cout;
   });
 }
 
@@ -296,7 +302,7 @@ function attaqueZombie() {
 
   // Esquive réflexe : parfois il SE JETTE sur toi — un bouton surgit au milieu,
   // à toi d'appuyer à temps. Pas à chaque coup, et jamais deux fois de suite.
-  if (!C.defense && performance.now() > (C.qteJusqua || 0) && chance(0.5)) {
+  if (!estEnGarde() && performance.now() > (C.qteJusqua || 0) && chance(0.5)) {
     lancerEsquiveQTE();
     return;
   }
@@ -345,15 +351,16 @@ function resoudreAttaque(factEsquive) {
   const p = G.player;
   const z = C.z;
 
-  // Esquive du joueur (réflexe passif)
+  // Esquive du joueur (réflexe passif). La garde ajoute un bonus PROPORTIONNEL à sa charge.
+  const defN = defNiveau();
   const agi = skillLevel('agilite') + bonusAgiliteVetements();
-  let pEsquive = (0.1 + agi * 0.05 + (C.defense ? 0.3 : 0)) * factEsquive;
+  let pEsquive = (0.1 + agi * 0.05 + DEFENSE.esquiveMax * defN) * factEsquive;
   if (p.sta < 15) pEsquive *= 0.5;
   if (enSurpoids()) pEsquive *= (1 - 0.55 * surpoidsFacteur()); // chargé comme une mule : on esquive mal
   if (chance(pEsquive)) {
     sfx('rate');
-    flashCombat(C.defense ? 'Bloqué' : 'Esquive', '');
-    clog(C.defense ? 'Tu bloques son assaut, arc-bouté derrière ta garde.' : 'Tu te jettes sur le côté — ses ongles fendent l\'air à un cheveu de ton visage.');
+    flashCombat(defN > 0.05 ? 'Bloqué' : 'Esquive', '');
+    clog(defN > 0.05 ? 'Tu bloques son assaut, arc-bouté derrière ta garde.' : 'Tu te jettes sur le côté — ses ongles fendent l\'air à un cheveu de ton visage.');
     const up = gainSkill('agilite', 2);
     if (up) clog(`<b>Agilité niveau ${up.niveau} !</b>`, 'coup');
     return;
@@ -363,7 +370,7 @@ function resoudreAttaque(factEsquive) {
   const atk = z.def.attaques ? pick(z.def.attaques) : null;
   let deg = rng(z.def.dmg[0], z.def.dmg[1]);
   const prot = protectionTotale();
-  deg = Math.max(1, Math.round(deg - prot * 1.1 - (C.defense ? deg * 0.45 : 0)));
+  deg = Math.max(1, Math.round(deg - prot * 1.1 - deg * DEFENSE.reducMax * defN));
   p.pv = Math.max(0, p.pv - deg);
   sfx('degats');
   secouerScene();
@@ -448,7 +455,7 @@ function majAnneau(ch) {
 
 // Le doigt se pose : la charge commence. Rien n'est dépensé tant qu'on ne relâche pas.
 function debuterCharge(e, btn) {
-  if (!C || C.fini || C.defense || C.chg || C.frappe) return;
+  if (!C || C.fini || C.def || C.chg || C.frappe) return;
   const arme = infoArme();
   if (arme.feu) {
     if (munitionsPour(arme.ref.id) <= 0) { clog('<b>Clic.</b> Plus de munitions.', 'degats'); return; }
@@ -717,7 +724,7 @@ function zombieMort() {
 // La poussée n'a lieu qu'à la fin de la jauge ; pendant qu'on s'arc-boute, le mort, lui,
 // continue d'avancer (la menace monte) — d'où le risque.
 function resoudrePousser() {
-  if (!C || C.fini || C.defense) return;
+  if (!C || C.fini || C.def) return;
   if (!depenser(COUTS.pousser)) return;
   const f = skillLevel('force');
   let p = 0.5 + f * 0.1;
@@ -740,17 +747,84 @@ function resoudrePousser() {
   }
 }
 
-// ---------- SE DÉFENDRE (maintenu) : garde levée tant que le doigt reste posé ----------
-function setDefense(on) {
-  if (!C || C.fini) return;
-  if (on && (C.chg || C.hold || C.frappe)) return; // pas en pleine action
-  if (C.defense === on) return;
-  C.defense = on;
+// ---------- SE DÉFENDRE : la garde se CHARGE (maintenir) ----------
+// Plus on maintient, meilleure est la garde (réduction de dégâts + esquive, PROPORTIONNELLES
+// à la charge). Mais une garde poussée à fond ne tient pas : arrivée au max, elle ne dure que
+// DEFENSE.tenueMax, puis les bras lâchent et TOUTE la protection tombe d'un coup — comme si l'on
+// ne se défendait pas — jusqu'à ce qu'on relâche et reprenne.
+function defNiveau() { return C && C.def && !C.def.collapsed ? C.def.c : 0; }
+function estEnGarde() { return defNiveau() > 0.08; }
+
+// Anneau de la garde : acier terne → garde solide ; rouge pulsé au bord de la rupture.
+function couleurDefense(c, danger) {
+  if (danger) return '#d6303e';
+  return lerpHex('#7c8aa0', '#cfd6cf', c);
+}
+
+function majAnneauDefense() {
   const btn = $('[data-act="defense"]');
-  if (btn) btn.classList.toggle('actif', on);
-  if (on) { sfx('clic'); clog('Tu te replies derrière ta garde, à reprendre ton souffle.'); }
-  else clog('Tu relèves la garde, prêt à frapper.');
+  if (!btn) return;
+  const prog = btn.querySelector('.cb-ring-prog');
+  const d = C && C.def;
+  if (!d) {
+    if (prog) prog.style.strokeDashoffset = ANNEAU_CIRC;
+    btn.classList.remove('chg-active', 'chg-pleine', 'chg-plafond', 'actif');
+    return;
+  }
+  if (prog) {
+    prog.style.strokeDashoffset = ANNEAU_CIRC * (1 - d.c);
+    prog.style.stroke = couleurDefense(d.c, d.max && !d.collapsed);
+  }
+  btn.classList.add('chg-active');
+  btn.classList.toggle('chg-pleine', d.max && !d.collapsed);
+  btn.classList.toggle('chg-plafond', d.collapsed); // garde rompue : anneau « buté »
+}
+
+function debuterDefense(e, btn) {
+  if (!C || C.fini || C.chg || C.hold || C.frappe || C.def) return;
+  try { btn.setPointerCapture(e.pointerId); } catch (err) { /* sans capture : pointerleave prend le relais */ }
+  C.def = { c: 0, prev: performance.now(), raf: null, pointerId: e.pointerId, max: false, maxTimer: 0, collapsed: false, vibre: false };
+  btn.classList.add('actif');
+  sfx('clic');
+  clog('Tu lèves ta garde et t\'arc-boutes — elle se renforce tant que tu tiens.');
   majBarres();
+  boucleDefense();
+}
+
+function boucleDefense() {
+  if (!C || C.fini || !C.def) return;
+  const d = C.def;
+  const now = performance.now();
+  const dt = Math.min(120, now - d.prev);
+  d.prev = now;
+  if (!d.collapsed) {
+    if (!d.max) {
+      d.c = Math.min(1, d.c + dt / DEFENSE.duree);
+      if (d.c >= 0.999) {
+        d.max = true;
+        d.maxTimer = now + DEFENSE.tenueMax;
+        if (!d.vibre) { d.vibre = true; try { if (navigator.vibrate) navigator.vibrate(15); } catch (err) { /* pas de vibreur */ } }
+        clog('Garde au maximum — elle ne tiendra qu\'un instant.', 'coup');
+      }
+    } else if (now >= d.maxTimer) {
+      d.collapsed = true;
+      d.c = 0;
+      sfx('rate');
+      flashCombat('Garde rompue', 'degats');
+      clog('Tes bras lâchent — ta garde s\'effondre, tu es à découvert.', 'degats');
+    }
+  }
+  majAnneauDefense();
+  d.raf = requestAnimationFrame(boucleDefense);
+}
+
+function finDefense() {
+  if (!C || !C.def) return;
+  const d = C.def;
+  if (d.raf) cancelAnimationFrame(d.raf);
+  C.def = null;
+  majAnneauDefense();
+  if (C && !C.fini) { clog('Tu relèves la garde, prêt à frapper.'); majBarres(); }
 }
 
 // ---------- Résolution d'un jet (objet de jet lancé depuis l'accès rapide) ----------
@@ -789,7 +863,7 @@ function resoudreJet(id, dur) {
 // ---------- ACCÈS RAPIDE (un bouton maintenu par objet, en haut de l'écran) ----------
 // Dégaine une arme, lance un objet de jet, ou se bande — selon la nature de l'objet.
 function resoudreAcces(idx) {
-  if (!C || C.fini || C.defense) return;
+  if (!C || C.fini || C.def) return;
   const it = accesRapide()[idx];
   if (!it) return;
   const d = item(it.id);
@@ -831,7 +905,7 @@ function resoudreAcces(idx) {
 
 // ---------- FUIR (jauge maintenue) ----------
 function resoudreFuir() {
-  if (!C || C.fini || C.defense) return;
+  if (!C || C.fini || C.def) return;
   if (!depenser(COUTS.fuir)) return;
   const agi = skillLevel('agilite') + bonusAgiliteVetements();
   let p = 0.4 + agi * 0.1;
@@ -857,6 +931,7 @@ function nettoyer() {
   if (C && C.frappe) clearTimeout(C.frappe.timer);
   if (C && C.chg && C.chg.raf) cancelAnimationFrame(C.chg.raf);
   if (C && C.hold && C.hold.raf) cancelAnimationFrame(C.hold.raf);
+  if (C && C.def && C.def.raf) cancelAnimationFrame(C.def.raf);
   const qte = document.querySelector('.qte');
   if (qte) qte.remove();
   stopCombatMusic();
@@ -961,11 +1036,13 @@ function renderCombat() {
     </div>
     <div class="cb-sta-wrap"><div class="cb-sta-fill" id="cb-sta"></div></div>
 
-    ${fuitePossible ? `<button class="cbtn cb-fuir" data-act="fuir" data-cout="${COUTS.fuir}" title="Fuir">${ringMarkup()}<span class="cb-ic">${ico('fuir')}</span></button>` : ''}
     <div class="cb-acces" id="cb-acces">${accesHTML()}</div>
     <button class="cbtn small cb-journal" data-act="journal" title="Journal de combat">${ico('journal')}</button>
 
-    <button class="cbtn cb-defense" data-act="defense" data-cout="0" title="Se défendre (maintenir)">${ico('defense')}</button>
+    <div class="cb-defense-col">
+      ${fuitePossible ? `<button class="cbtn small cb-fuir" data-act="fuir" data-cout="${COUTS.fuir}" title="Fuir (maintenir)">${ringMarkup()}<span class="cb-ic">${ico('fuir')}</span></button>` : ''}
+      <button class="cbtn big cb-defense chg-btn" data-act="defense" data-cout="0" title="Se défendre — maintenir pour charger la garde">${ringMarkup()}<span class="cb-ic">${ico('defense')}</span></button>
+    </div>
 
     <div class="cb-attaque-col">
       <button class="cbtn cb-pousser" data-act="pousser" data-cout="${COUTS.pousser}" title="Repousser (maintenir)">${ringMarkup()}<span class="cb-ic">${ico('pousser')}</span></button>
@@ -999,14 +1076,14 @@ function wireCombat() {
     btnAtk.onpointerleave = (e) => { if (C && C.chg) lacher(e); };
     btnAtk.oncontextmenu = (e) => e.preventDefault();
   }
-  // DÉFENSE : garde levée tant que le doigt reste posé.
+  // DÉFENSE : maintenir CHARGE la garde (plus c'est long, mieux ça vaut) ; relâcher la baisse.
   const btnDef = document.querySelector('.cb [data-act="defense"]');
   if (btnDef) {
-    btnDef.onpointerdown = (e) => { e.preventDefault(); try { btnDef.setPointerCapture(e.pointerId); } catch (err) {} setDefense(true); };
-    const off = (e) => { e.preventDefault(); setDefense(false); };
+    btnDef.onpointerdown = (e) => { e.preventDefault(); debuterDefense(e, btnDef); };
+    const off = (e) => { e.preventDefault(); finDefense(); };
     btnDef.onpointerup = off;
     btnDef.onpointercancel = off;
-    btnDef.onpointerleave = (e) => { if (C && C.defense) setDefense(false); };
+    btnDef.onpointerleave = (e) => { if (C && C.def) finDefense(); };
     btnDef.oncontextmenu = (e) => e.preventDefault();
   }
   // REPOUSSER / FUIR / ACCÈS RAPIDE : jauge maintenue → l'action n'a lieu qu'à la jauge pleine.
@@ -1036,7 +1113,7 @@ function armerBoutonMaintenu(btn) {
   };
   btn.onpointerdown = (e) => {
     e.preventDefault();
-    if (!C || C.fini || C.defense || C.chg || C.hold || C.frappe) return;
+    if (!C || C.fini || C.def || C.chg || C.hold || C.frappe) return;
     if (G.player.sta < cout) { flashCombat('Trop épuisé', 'degats'); return; }
     try { btn.setPointerCapture(e.pointerId); } catch (err) {}
     C.hold = { btn, act, c: 0, prev: performance.now(), raf: null, duree, pointerId: e.pointerId, plein: declencher };

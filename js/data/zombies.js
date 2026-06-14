@@ -115,6 +115,36 @@ export const ZOMBIES = {
       { desc: 'Un rat remonte le long de ta jambe — tu le chasses, il emporte un bout de ta main.', zones: ['à la main'] },
     ],
   },
+  ecolier: {
+    nom: 'Écolier', hp: 18, dmg: [4, 9], vitesse: 4200, esquive: 0.2, blessureMax: 2, infection: 0.09,
+    desc: 'Un gamin, dix ans peut-être, encore dans son uniforme d\'école déchiré — cravate de travers, genoux écorchés. Il te regarde de ses yeux blancs, la bouche barbouillée de rouge, et trottine vers toi sans un bruit. C\'est ça le pire : le silence.',
+    gore: 'Tu détournes les yeux à la dernière seconde. Le petit corps s\'affaisse sans bruit. Tu mettras du temps à oublier.',
+    attaques: [
+      { desc: 'Il s\'accroche à ta jambe comme à un parent et mord ta cuisse à pleines dents de lait.', zones: ['à la cuisse', 'au genou'] },
+      { desc: 'Petit et vif, il file sous ta garde et plante ses dents dans ta main.', zones: ['à la main', 'à l\'avant-bras'] },
+      { desc: 'Il grimpe sur toi avec une force qu\'un enfant ne devrait pas avoir et mord ton ventre.', zones: ['au ventre', 'au flanc'] },
+    ],
+  },
+  policier: {
+    nom: 'Policier', hp: 42, dmg: [9, 17], vitesse: 4600, esquive: 0.05, blessureMax: 3, infection: 0.1,
+    desc: 'Un flic, ou ce qu\'il en reste. Chemise d\'uniforme noire de sang séché, l\'étoile ternie pend encore à sa poche. Il avance d\'un pas lourd et carré, gardant on ne sait quel réflexe de service — celui de fondre droit sur la menace. Toi.',
+    gore: 'L\'étoile tinte sur le bitume quand il tombe. Personne ne viendra relever le numéro de matricule.',
+    attaques: [
+      { desc: 'Il te ceinture comme pour une interpellation et ses dents cherchent ton épaule à travers le col.', zones: ['à l\'épaule', 'au cou'] },
+      { desc: 'Son avant-bras te percute la poitrine et t\'envoie reculer ; il en profite pour mordre.', zones: ['au torse', 'au bras'] },
+      { desc: 'Sa poigne se referme sur ton poignet, ferme, entraînée, et il l\'attire vers sa mâchoire.', zones: ['à l\'avant-bras', 'à la main'] },
+    ],
+  },
+  rat_geant: {
+    nom: 'Rat géant', hp: 28, dmg: [7, 14], vitesse: 3000, esquive: 0.3, blessureMax: 3, infection: 0.25,
+    desc: 'Gros comme un chien, le dos pelé jusqu\'aux côtes, la chair à vif luisante. Il a grandi dans les égouts, nourri à ce qu\'il y trouvait, et la maladie l\'a rendu énorme. Sa gueule s\'ouvre sur deux incisives jaunies, longues comme des doigts.',
+    gore: 'La chose couine une dernière fois, un cri presque humain, puis se fige, pattes en l\'air, ventre béant.',
+    attaques: [
+      { desc: 'Il bondit plus haut qu\'un rat ne devrait et referme sa gueule sur ton avant-bras.', zones: ['à l\'avant-bras', 'à la main'] },
+      { desc: 'Ses incisives s\'enfoncent dans ton mollet et il s\'arc-boute pour arracher.', zones: ['au mollet', 'à la cheville'] },
+      { desc: 'Il te fauche les jambes de tout son poids et te taille la cuisse de ses griffes en remontant.', zones: ['à la cuisse', 'au flanc'] },
+    ],
+  },
   traqueur: {
     nom: 'Traqueur', hp: 36, dmg: [10, 18], vitesse: 3300, esquive: 0.2, blessureMax: 3, infection: 0.1,
     desc: 'Celui-là ne fonce pas. Il glisse de couverture en couverture, tête basse, et il te regarde — pas à travers toi, TOI. Il reste assez de chasseur dans ce cadavre pour attendre ton premier faux pas.',

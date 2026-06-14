@@ -26,6 +26,14 @@ il reste les étapes **manuelles** ci-dessous, dans l'ordre.
 > Chaque déploiement grave le hash du commit dans `version.json` et `js/version_build.js` :
 > c'est ce qui permet au jeu de **détecter** qu'une mise à jour est dispo.
 
+> ⚠️ **Important — bien choisir « GitHub Actions », PAS « Deploy from a branch ».**
+> Si la source reste sur « Deploy from a branch », GitHub lance EN PLUS son propre build
+> Jekyll (« pages build and deployment ») qui publie le dépôt **brut** et entre en course
+> avec notre workflow. Symptôme : en ligne, `version.json` et `js/version_build.js` affichent
+> `"dev"` au lieu du hash → la **porte de version est neutralisée** (`BUILD_SHA="dev"` ne force
+> jamais la mise à jour). Correctif : Source = **GitHub Actions** (désactive le build Jekyll),
+> puis Actions → « Déployer le jeu sur GitHub Pages » → **Re-run** pour republier l'artefact gravé.
+
 ---
 
 ## 2. Le serveur permanent (sur le PC de ton frère)

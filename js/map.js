@@ -2129,12 +2129,12 @@ function jouerEvent(ev) {
       let branche;
       if (c.test) branche = jetReussi(c.test) ? c.reussite : c.echec;
       else branche = { texte: c.texte, effets: c.effets };
-      resultatEvent(branche);
+      resultatEvent(branche, c.label);
     };
   });
 }
 
-function resultatEvent(branche) {
+function resultatEvent(branche, action) {
   const appliquer = () => {
     const combatLance = appliquerEffets(branche.effets, () => renderLieu());
     if (G.player.pv <= 0) return; // mort pendant l'effet : ne pas écraser la sauvegarde
@@ -2144,8 +2144,11 @@ function resultatEvent(branche) {
   const continuer = () => {
     closeEvt();
     // Un choix qui coûte du temps se paie aussi en temps réel : petit spinner.
-    if (branche.effets && branche.effets.tempsMin) attente('Le temps passe…', branche.effets.tempsMin, appliquer);
-    else appliquer();
+    // On affiche le NOM de l'action en cours (le libellé du choix), pas un « le temps passe » muet.
+    if (branche.effets && branche.effets.tempsMin) {
+      const lbl = action ? action.replace(/[.…]+$/, '') + '…' : 'Le temps passe…';
+      attente(lbl, branche.effets.tempsMin, appliquer);
+    } else appliquer();
   };
   if (!branche.texte) { continuer(); return; }
   const box = showEvt(`<div class="narration">${branche.texte}</div>

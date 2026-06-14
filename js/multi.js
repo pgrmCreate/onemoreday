@@ -23,9 +23,14 @@ export function pairEtat() { return pair; }
 export function pairPresent() { return net.pairPresent(); }
 export function poser(nom, fn) { cbs[nom] = fn; } // enregistre un hook de jeu
 
-// Démarre une session. opts : { url?, code, role:'host'|'guest', nom }.
+// Liste des parties ouvertes sur le serveur visé (url = serveur en ligne, ou null = LAN).
+export function listerSalons(url) { return net.listerSalons(url); }
+
+// Démarre une session. opts : { url?, code, role:'host'|'guest', nom, meta? }.
+// meta (hôte) nomme le salon dans la liste ; à défaut, on le déduit du monde courant.
 export async function demarrer(opts) {
-  const r = await net.connecter(opts);
+  const meta = opts.meta || (G && G.world ? { jour: G.world.jour, heure: G.world.heure, minute: G.world.minute } : undefined);
+  const r = await net.connecter({ ...opts, meta });
   if (!r.ok) return r;
   actif = true; monRole = r.infos.role; pair = null;
   net.on('message', recevoir);

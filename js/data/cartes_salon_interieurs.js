@@ -743,7 +743,7 @@ export const CARTES_SALON_INTERIEURS = {
     nom: 'Commissariat', sousTitre: 'avenue du Pays Catalan — ouvert 24h/24, jusqu\'au bout',
     echelle: 'interieur', tempsParCase: 1, largeur: 6, hauteur: 6,
     exterieur: false, ambiance: 'sombre', illu: 'commissariat',
-    zombiesPool: ['errant', 'coureur', 'enrage', 'colosse'],
+    zombiesPool: ['errant', 'coureur', 'enrage', 'colosse', 'policier'],
     passages: [
       ['1,4', '2,4'], // les bureaux de la brigade ouvrent directement sur le hall d'accueil
     ],
@@ -895,7 +895,7 @@ export const CARTES_SALON_INTERIEURS = {
     nom: 'Hyper E.Leclerc — Les Viougues', sousTitre: 'route de Pélissanne — le garde-manger de 44 000 personnes',
     echelle: 'interieur', tempsParCase: 2, largeur: 8, hauteur: 6,
     exterieur: false, ambiance: 'sombre', illu: 'magasin',
-    zombiesPool: ['gonfle', 'putrefie', 'hurleur', 'errant', 'errant', 'rampant', 'nuee_rats'],
+    zombiesPool: ['gonfle', 'putrefie', 'hurleur', 'errant', 'errant', 'rampant', 'nuee_rats', 'rat_geant'],
     passages: [
       ['0,5', '1,5', 'ouvert'], // le parking couvert file sous la dalle, d'une travée à l'autre
       ['3,2', '3,3', 'ouvert'], // passé les caisses, on débouche sur le plateau de vente

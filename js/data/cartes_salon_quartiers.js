@@ -12,7 +12,7 @@ export const CARTES_SALON_QUARTIERS = {
     echelle: 'quartier', tempsParCase: 3, largeur: 10, hauteur: 8,
     graphe: true, liensAuto: true, // plan à nœuds : rues dessinées, déplacement de nœud en nœud
     exterieur: true, ambiance: 'rue', illu: 'avenue',
-    zombiesPool: ['errant', 'errant', 'coureur', 'hurleur', 'gonfle', 'chien_infecte', 'traqueur'],
+    zombiesPool: ['errant', 'errant', 'coureur', 'hurleur', 'gonfle', 'chien_infecte', 'traqueur', 'ecolier'],
     cases: {
       // --- bord nord : cours Carnot, square, collégiale ---
       '4,0': {
