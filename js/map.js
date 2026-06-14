@@ -24,7 +24,7 @@ import {
 import { EVENTS } from './data/events.js';
 import { item } from './data/items.js';
 import {
-  render, updateHUD, setLieuLabel, log, logHtml, btnAct, $, toast,
+  render, updateHUD, setLieuLabel, log, btnAct, $, toast,
   showPanel, closePanel, showEvt, closeEvt, attente, panelOuvert, evtOuvert,
 } from './ui.js';
 import { ico } from './icons.js';
@@ -988,8 +988,8 @@ export function renderLieu() {
   <div class="carte-wrap${vueDessin && fond ? ' vue-dessin' : ''}">
     ${fond ? `<div class="carte-fond">${fond}</div><div class="carte-voile"></div>` : ''}
     ${svgCarte(reach, vis)}
-    <div class="carte-legende"><span>marche : ${portee} case${portee > 1 ? 's' : ''}</span><span>${C.tempsParCase} min/case</span>${C.sousTitre ? `<span>${C.sousTitre}</span>` : ''}
-      <button class="legende-btn" data-legende="1" title="Légende">?</button>
+    <div class="carte-legende">
+      <button class="legende-btn" data-legende="1" title="Légende et déplacement">?</button>
       ${fond ? `<button class="legende-btn icone" data-vue="1" title="${vueDessin ? 'Revenir au plan' : 'Voir les lieux'}">${ico(vueDessin ? 'carte' : 'oeil')}</button>` : ''}
     </div>
   </div>
@@ -1031,8 +1031,9 @@ export function renderLieu() {
     html += tuile('data-dormir="1"', 'dormir', 'Dormir', sommeilInfo());
   }
   html += tuilePairCombat(); // co-op : rejoindre le combat du coéquipier tout proche
-  html += `</div></div>
-  <div class="gamelog" id="gamelog">${logHtml()}</div>`;
+  // Le journal de bord n'est plus affiché en permanence : il s'ouvre via le bouton Journal
+  // (coin bas gauche), pour laisser la plus grande place possible à la carte.
+  html += `</div></div>`;
 
   render(html);
   updateHUD();
@@ -1152,8 +1153,12 @@ function panneauLegende() {
   const mur = `<svg width="20" height="20" viewBox="0 0 20 20"><rect x="1" y="1" width="18" height="18" fill="#211e19"/><line x1="10" y1="1" x2="10" y2="19" stroke="${MUR_TRAIT}" stroke-width="2.6"/></svg>`;
   const murPorte = `<svg width="20" height="20" viewBox="0 0 20 20"><rect x="1" y="1" width="18" height="18" fill="#211e19"/><g stroke="${MUR_TRAIT}" stroke-width="2.6"><line x1="10" y1="1" x2="10" y2="4.5"/><line x1="10" y1="15.5" x2="10" y2="19"/></g><rect x="8" y="4.5" width="4" height="11" rx="1" fill="#16130e" stroke="#6d5d42" stroke-width="1.1"/></svg>`;
   const murOuvert = `<svg width="20" height="20" viewBox="0 0 20 20"><rect x="1" y="1" width="18" height="18" fill="#211e19"/><g stroke="${MUR_TRAIT}" stroke-width="2.6"><line x1="10" y1="1" x2="10" y2="5"/><line x1="10" y1="15" x2="10" y2="19"/></g></svg>`;
+  const Cl = carteCourante() || {};
+  const portee = porteeActuelle();
   const box = showEvt(`<h2 class="lieu-nom">Légende de la carte</h2>
     <div class="leg-grid">
+      <div class="leg-row"><span style="grid-column:1/-1"><b>Déplacement</b> — tu marches jusqu'à ${portee} case${portee > 1 ? 's' : ''} d'un coup${Cl.tempsParCase ? ` (${Cl.tempsParCase} min/case)` : ''}${Cl.sousTitre ? ` · ${Cl.sousTitre}` : ''}.</span></div>
+      <div class="leg-sep"></div>
       ${ligne(carre(CODES.danger), '<b>Encadré rouge</b> — très dangereux : attends-toi à de la compagnie.')}
       ${ligne(carre(CODES.sombre, true), '<b>Violet pointillé</b> — pénombre : on y voit mal, fouiller sans lampe est moins sûr.')}
       ${ligne(carre(CODES.sombre, false, '#0c0c12'), '<b>Violet plein, case assombrie</b> — noir total : sans lumière, fouiller devient un pari.')}

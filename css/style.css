@@ -183,7 +183,9 @@ button.act .req { color: var(--danger); }
 }
 .carte-grille {
   display: block; width: auto; max-width: 100%; height: auto;
-  max-height: clamp(220px, calc(100dvh - 455px), 56dvh);
+  /* La carte prend l'essentiel de l'écran (~80 %) : journal masqué, aide réduite.
+     On ne réserve qu'une fine bande pour la barre de lieu, l'info de case et les boutons. */
+  max-height: clamp(260px, calc(100dvh - 190px), 84dvh);
   margin: 0 auto; touch-action: manipulation;
 }
 /* En-tête de lieu compact (une seule ligne au-dessus de la carte) */
@@ -249,10 +251,13 @@ b.code, .code {
 .leg-sep { border-top: 1px solid var(--border); margin: 6px 0; }
 .case-info {
   background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 8px 11px; margin-bottom: 8px; min-height: 58px;
+  padding: 6px 11px; margin-bottom: 8px;
 }
 .case-info .ci-nom { color: #c9b98a; font-size: .95rem; letter-spacing: .5px; }
-.case-info .ci-desc { color: var(--fg-dim); font-size: .82rem; margin-top: 2px; line-height: 1.45; }
+.case-info .ci-desc {
+  color: var(--fg-dim); font-size: .8rem; margin-top: 2px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 .case-info .ci-tags { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
 .ci-tag {
   font-size: .68rem; text-transform: uppercase; letter-spacing: 1px;
@@ -300,6 +305,7 @@ b.code, .code {
 
 /* ---------- Journal de bord (log) ---------- */
 .gamelog { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 6px; max-height: 11svh; overflow-y: auto; }
+.gamelog-panel { max-height: 42svh; }   /* dans le panneau Journal : plus de place pour relire */
 .gamelog p { margin: 3px 0; font-size: .84rem; color: var(--fg-dim); line-height: 1.4; }
 .gamelog p.bad { color: #b4584f; }
 .gamelog p.good { color: #7d9469; }
@@ -392,42 +398,152 @@ b.code, .code {
 .corps-silhouette { display: flex; justify-content: center; margin: 6px 0; }
 .corps-silhouette svg { height: 130px; }
 
-/* ---------- Combat ---------- */
-.combat { display: flex; flex-direction: column; gap: 10px; }
-.combat > * { order: 0; }
-#combat-armes { order: 1; }
-.combat-log { order: 2; }
-.combat-scene { position: relative; }
-.combat-scene .illu { margin-bottom: 0; }
-.combat-scene .illu svg { width: 100%; height: clamp(90px, 18svh, 170px); }
-.combat-scene .flash { position: absolute; inset: 0; background: var(--blood2); opacity: 0; pointer-events: none; border-radius: var(--radius); }
+/* ============ Combat : écran à part entière ============
+   Plus rien de l'interface de déplacement : le décor remplit l'écran, les morts sont
+   incrustés par-dessus, et on pilote par des BOUTONS RONDS transparents (icône seule)
+   qu'on MAINTIENT (anneau qui se remplit). */
+.cb {
+  position: fixed; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 860px; z-index: 36; overflow: hidden;
+  background: #050506; color: var(--fg);
+  -webkit-user-select: none; user-select: none; touch-action: none;
+}
+/* --- Décor + créatures incrustées --- */
+.combat-scene { position: absolute; inset: 0; overflow: hidden; }
+.cb-decor { position: absolute; inset: 0; }
+.cb-decor svg { width: 100%; height: 100%; display: block; }
+.cb-horde { position: absolute; inset: 0; }
+.z-layer { position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); }
+.z-layer .z-svg { display: block; width: 100%; height: auto; }
+.z-actif {
+  width: 60%; max-width: 340px; z-index: 3;
+  filter: drop-shadow(0 14px 16px rgba(0,0,0,.55));
+  transition: transform .35s ease-out, filter .35s;
+}
+.z-fond {
+  width: 32%; max-width: 180px; z-index: 1; opacity: .4;
+  filter: brightness(.5) blur(1.3px);
+  transform: translateX(calc(-50% + var(--cote) * (128px + (var(--prof) - 1) * 58px))) scale(.82);
+}
+/* À TERRE : il bascule au sol, plus terne. */
+.z-actif.z-terre { transform: translate(calc(-50% - 6px), 30px) rotate(74deg) scale(.9); filter: brightness(.65) drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
+/* Impacts ponctuels sur le mort actif */
+.z-actif.z-impact { animation: z-impact .32s ease-out; }
+@keyframes z-impact {
+  0% { transform: translateX(-50%); }
+  22% { transform: translate(calc(-50% + 8px), -3px); filter: brightness(2.4) drop-shadow(0 14px 16px rgba(0,0,0,.55)); }
+  100% { transform: translateX(-50%); }
+}
+.z-actif.z-crit { animation: z-crit .45s ease-out; }
+@keyframes z-crit {
+  0% { transform: translateX(-50%); }
+  16% { transform: translate(calc(-50% + 11px), -5px) rotate(-3deg); filter: brightness(3.2) sepia(1) saturate(6) hue-rotate(-28deg); }
+  100% { transform: translateX(-50%); }
+}
+/* Voile rouge + secousse de l'écran quand TU encaisses */
+.combat-scene .flash { position: absolute; inset: 0; background: var(--blood2); opacity: 0; pointer-events: none; }
 .combat-scene .flash.hit { animation: hitflash .35s ease-out; }
-@keyframes hitflash { 0% { opacity: .55; } 100% { opacity: 0; } }
+@keyframes hitflash { 0% { opacity: .5; } 100% { opacity: 0; } }
 .combat-scene.shake { animation: shake .3s; }
 @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
-.ennemi-nom {
-  font-size: 1.05rem; color: var(--blood2); margin: 0;
-  font-family: 'Arial Narrow', Impact, sans-serif; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold;
+
+/* --- Message central bref (synthèse de chaque échange) --- */
+.cb-msg {
+  position: absolute; top: 36%; left: 50%; z-index: 7; pointer-events: none; opacity: 0;
+  transform: translate(-50%, -50%);
+  font-family: 'Arial Narrow', Impact, sans-serif; font-weight: bold;
+  text-transform: uppercase; letter-spacing: 2px; font-size: clamp(1.6rem, 7vw, 2.4rem);
+  color: #f0e6d8; text-shadow: 0 2px 14px #000, 0 0 26px rgba(0,0,0,.85); white-space: nowrap;
 }
-.ennemi-etat { font-size: .78rem; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 1px; }
-.ennemi-etat b { color: #b4584f; }
-.menace-wrap { margin: 4px 0; }
-.menace-label { font-size: .72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--fg-dim); display: flex; justify-content: space-between; }
-.menace { height: 13px; background: #000; border: 1px solid var(--blood); border-radius: 2px; overflow: hidden; }
-.menace-fill { height: 100%; background: linear-gradient(90deg, #4a0d10, var(--blood2)); width: 0%; }
-.menace-fill.imminent { background: linear-gradient(90deg, var(--blood2), #e0584a); }
-.combat-log { min-height: 56px; max-height: 20svh; overflow-y: auto; font-size: .85rem; line-height: 1.45; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; }
-.combat-log p { margin: 2px 0; }
-.combat-log .coup { color: #c9b98a; }
-.combat-log .degats { color: #b4584f; }
-.combat-log .gore { color: var(--blood2); }
-/* Ordre des actions : attaquer / défendre d'abord — toujours aux mêmes places */
-.combat-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.combat-acts button.act { padding: 8px 10px; }
-.combat-acts button.act .cout { color: #b9a96c; font-size: .73rem; }
-.defense-on { border-color: var(--steel) !important; background: #10161a !important; }
-.combat-sta { font-size: .74rem; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 1px; }
-.combat-sta b { color: #b9a96c; }
+.cb-msg.degats { color: #e0584a; }
+.cb-msg.coup { color: #d6c79a; }
+.cb-msg.gore { color: var(--blood2); }
+.cb-msg.show { animation: cb-flash 1.4s ease-out forwards; }
+@keyframes cb-flash {
+  0% { opacity: 0; transform: translate(-50%,-50%) scale(.7); }
+  12% { opacity: 1; transform: translate(-50%,-50%) scale(1.06); }
+  24% { transform: translate(-50%,-50%) scale(1); }
+  76% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%,-62%) scale(1); }
+}
+
+/* --- Jauges fines : menace en haut, endurance en bas --- */
+.cb-menace-wrap { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: rgba(0,0,0,.55); z-index: 5; }
+.cb-menace-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4a0d10, var(--blood2)); transition: width .12s linear; }
+.cb-menace-fill.imminent { background: linear-gradient(90deg, var(--blood2), #e0584a); animation: pulse .8s infinite; }
+.cb-menace-fill.gele { background: var(--steel); opacity: .55; }
+.cb-sta-wrap { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: rgba(0,0,0,.55); z-index: 5; }
+.cb-sta-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #4f6b41, #8aa86a); transition: width .25s; }
+.cb-sta-fill.bas { background: #c4574a; }
+
+/* --- Boutons ronds transparents, icône seule --- */
+.cbtn {
+  position: absolute; z-index: 6; width: 62px; height: 62px; border-radius: 50%;
+  background: rgba(10,10,12,.32); border: 1.5px solid rgba(200,194,180,.45); color: var(--fg);
+  display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  box-shadow: 0 2px 12px rgba(0,0,0,.5);
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none;
+  transition: transform .1s, border-color .15s, background .15s;
+}
+.cbtn .ico { width: 28px; height: 28px; }
+.cbtn:active:not(:disabled) { transform: scale(.93); }
+.cbtn:disabled { opacity: .28; }
+.cbtn.big { width: 92px; height: 92px; border-color: rgba(214,48,62,.65); background: rgba(38,10,12,.4); }
+.cbtn.big .ico { width: 42px; height: 42px; }
+.cbtn.small { width: 44px; height: 44px; }
+.cbtn.small .ico { width: 22px; height: 22px; }
+/* Positions fixes aux coins */
+.cb-fuir { top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; }
+.cb-journal { top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; opacity: .7; }
+.cb-defense { left: 16px; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); }
+.cb-defense.actif { border-color: var(--steel); background: rgba(20,30,38,.5); box-shadow: 0 0 16px rgba(68,80,90,.5); }
+.cb-acces {
+  position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+  display: flex; gap: 10px; z-index: 6; max-width: 70%; flex-wrap: wrap; justify-content: center;
+}
+.cb-attaque-col {
+  position: absolute; right: 16px; bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; align-items: center; gap: 16px; z-index: 6;
+}
+/* Dans une rangée/colonne, les boutons reprennent le flux (pas d'absolu) */
+.cb-acces .cbtn, .cb-attaque-col .cbtn { position: relative; }
+.cb-acc { width: 52px; height: 52px; }
+.cb-acc .ico { width: 24px; height: 24px; }
+.cb-acc-n {
+  position: absolute; bottom: -3px; right: -3px; min-width: 17px; height: 17px; line-height: 15px;
+  background: var(--bg3); border: 1px solid var(--border); color: #c9b98a;
+  font-family: Arial, sans-serif; font-size: .6rem; border-radius: 9px; padding: 0 3px; text-align: center;
+}
+/* Anneau de maintien (commun à tous les boutons tenus, attaque comprise) */
+.cb-ring { position: absolute; inset: -1.5px; pointer-events: none; opacity: 0; transition: opacity .12s; }
+.cb-ring svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+.cb-ring-fond { fill: none; stroke: rgba(0,0,0,.4); stroke-width: 2.4; }
+.cb-ring-prog { fill: none; stroke: #cfc9b8; stroke-width: 3; stroke-linecap: round; }
+.cbtn.cb-arme .cb-ring, .cbtn.chg-active .cb-ring { opacity: 1; }
+.cbtn.cb-pleine, .cbtn.chg-pleine { border-color: var(--blood2); box-shadow: 0 0 18px rgba(214,48,62,.5); }
+.cbtn.chg-tir.chg-pleine { border-color: var(--steel); box-shadow: 0 0 18px rgba(68,80,90,.6); }
+.cbtn.chg-plafond .cb-ring { animation: chg-bute .35s steps(2) infinite; }
+@keyframes chg-bute { 50% { transform: translateX(1.5px); } }
+
+/* --- Journal de combat masqué (s'ouvre sur appui) --- */
+.cb-log {
+  position: absolute; inset: 9% 12px; z-index: 9; display: flex; flex-direction: column;
+  background: rgba(8,8,10,.93); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+}
+.cb-log-tete {
+  display: flex; justify-content: space-between; align-items: center; color: #c9b98a;
+  text-transform: uppercase; letter-spacing: 2px; font-size: .78rem;
+  font-family: 'Arial Narrow', Impact, sans-serif; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 6px;
+}
+.cb-log-x { background: none; border: none; color: var(--fg); cursor: pointer; width: 36px; height: 36px; padding: 0; }
+.cb-log-x .ico { width: 20px; height: 20px; }
+.cb-log-corps { overflow-y: auto; flex: 1; font-size: .85rem; line-height: 1.45; }
+.cb-log-corps p { margin: 3px 0; }
+.cb-log-corps .coup { color: #c9b98a; }
+.cb-log-corps .degats { color: #b4584f; }
+.cb-log-corps .gore { color: var(--blood2); }
 
 /* ---------- Fenêtre d'événement (par-dessus la carte) ---------- */
 .evt-fenetre {
@@ -512,7 +628,6 @@ input[type=range] { width: 100%; accent-color: var(--blood2); }
 .warn-adulte { background: #170d0d; border: 1px solid var(--blood); border-radius: var(--radius); padding: 10px 14px; font-size: .8rem; color: #b4847f; margin: 14px auto; max-width: 440px; text-align: center; }
 
 @media (min-width: 640px) {
-  .combat-acts { grid-template-columns: 1fr 1fr 1fr; }
   .panel { align-items: center; }
   .panel-box { border-radius: 4px; border-bottom: 1px solid #303036; max-height: 80dvh; }
 }
@@ -553,7 +668,7 @@ input[type=range] { width: 100%; accent-color: var(--blood2); }
 
 /* ---------- Esquive réflexe (QTE) : le bouton surgit au centre ---------- */
 .qte {
-  position: absolute; inset: 0; z-index: 5;
+  position: absolute; inset: 0; z-index: 8;
   display: flex; align-items: center; justify-content: center;
   background: radial-gradient(ellipse at center, rgba(110,18,18,.25), rgba(0,0,0,.45));
   animation: evt-in .1s ease-out;
@@ -574,7 +689,6 @@ input[type=range] { width: 100%; accent-color: var(--blood2); }
   animation-name: qte-anneau; animation-timing-function: linear; animation-fill-mode: forwards;
 }
 @keyframes qte-anneau { from { transform: rotate(0); opacity: 1; } to { transform: rotate(360deg); opacity: .15; } }
-.combat-acts button.puissance:not(:disabled) { border-left: 3px solid #6e3a12; }
 
 /* ---------- Cinématiques : la caméra bouge, le monde se montre ---------- */
 .cine {
@@ -693,32 +807,5 @@ input[type=range] { width: 100%; accent-color: var(--blood2); }
   cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0;
 }
 .fs-coin:hover { color: var(--fg); border-color: var(--rust); }
-
-/* ---------- Attaque chargée (.chg-*) : maintenir = charger/viser, relâcher = frapper/tirer ---------- */
-.combat-acts button.chg-btn {
-  position: relative;
-  padding-right: 46px;                /* place pour la jauge */
-  touch-action: none;                 /* le doigt charge, il ne scrolle pas */
-  -webkit-user-select: none; user-select: none;
-  -webkit-touch-callout: none;        /* pas de loupe/menu sur appui long iOS */
-}
-.chg-jauge {
-  position: absolute; right: 6px; top: 50%;
-  width: 36px; height: 36px; margin-top: -18px;
-  pointer-events: none; opacity: .5; transition: opacity .15s;
-}
-.chg-btn.chg-active .chg-jauge { opacity: 1; }
-.chg-jauge svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
-.chg-jauge .chg-fond { fill: rgba(0,0,0,.5); stroke: #2b2b30; stroke-width: 3; }
-.chg-jauge .chg-prog {
-  fill: none; stroke: #cfc9b8; stroke-width: 3.5;
-  stroke-dasharray: 97.4; stroke-dashoffset: 97.4;
-}
-/* Pleine charge : le bouton s'embrase (la couleur de l'anneau est pilotée en JS) */
-.chg-btn.chg-pleine { border-color: var(--blood2); box-shadow: inset 0 0 18px rgba(163,32,32,.3); }
-.chg-btn.chg-pleine.chg-tir { border-color: var(--steel); box-shadow: inset 0 0 18px rgba(68,80,90,.5); }
-.chg-btn.chg-pleine .chg-jauge { animation: chg-pouls .45s ease-in-out infinite; }
-@keyframes chg-pouls { 50% { transform: scale(1.12); } }
-/* L'endurance ne suit plus : l'anneau bute */
-.chg-btn.chg-plafond .chg-jauge { animation: chg-bute .35s steps(2) infinite; }
-@keyframes chg-bute { 50% { transform: translateX(1.5px); } }
+/* (L'attaque chargée et toutes les jauges rondes sont stylées dans la section Combat,
+   via .cbtn / .cb-ring — voir « Combat : écran à part entière ».) */

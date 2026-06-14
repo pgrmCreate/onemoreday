@@ -83,6 +83,20 @@ export const REGLAGES = {
     // Coût en endurance de chaque action.
     COUTS: { tir: 8, pousser: 10, jeter: 12, fuir: 22, changer: 5, bander: 16 },
 
+    // CHAQUE bouton rond se MAINTIENT : une jauge se remplit, l'action n'a lieu
+    // qu'une fois la jauge pleine (relâcher avant = rien). Durée de remplissage (ms).
+    MAINTIEN: { pousser: 850, fuir: 1150, acces: 600 },
+
+    // ÊTRE À TERRE — un mort repoussé avec succès tombe et ne peut plus attaquer
+    // un court instant ; pendant ce temps tes coups portent plus fort et critiquent
+    // davantage. Mais rater la poussée, c'est s'exposer à une morsure.
+    ATERRE: {
+      duree: 4200,        // ms pendant lesquelles le mort reste au sol (menace gelée).
+      multiDeg: 1.6,      // tes dégâts sont multipliés tant qu'il est à terre.
+      bonusCrit: 0.25,    // chance de critique ajoutée tant qu'il est à terre.
+      risqueMorsure: 0.55,// proba de se faire mordre si la poussée échoue.
+    },
+
     // L'attaque chargée : maintenir arme le coup (ou la visée), relâcher le déclenche.
     CHARGE: {
       duree: 1300,        // ms pour charger un coup de mêlée de 0 à 1.

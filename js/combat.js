@@ -10,14 +10,14 @@ import { ZOMBIES, zombie } from './data/zombies.js';
 import { item } from './data/items.js';
 import { zombiesPoolCourant, deposerAuSol, keyCourante } from './world.js';
 import {
-  armeEquipee, armesDisponibles, soinsAccesRapide, degainerAccesRapide, rengainerArme,
-  nbSlotsAccesRapide, removeItem, protectionTotale, bonusAgiliteVetements, countItem, munitionsPour,
+  armeEquipee, armesDisponibles, soinsAccesRapide, degainerAccesRapide,
+  accesRapide, removeItem, protectionTotale, bonusAgiliteVetements, countItem, munitionsPour,
   enSurpoids, surpoidsFacteur,
 } from './inventory.js';
 import { ajouterBlessure, mortJoueur } from './survival.js';
-import { render, updateHUD, log, $ } from './ui.js';
+import { render, updateHUD, showHUD, log, $ } from './ui.js';
 import { ico } from './icons.js';
-import { svgCombat } from './illustrations.js';
+import { svgCombatDecor, svgCombatZombie } from './illustrations.js';
 import { startCombatMusic, stopCombatMusic, sfx, setHeartbeat } from './audio.js';
 import * as multi from './multi.js';
 import { REGLAGES } from './data/reglages.js';
@@ -31,7 +31,9 @@ export function enCombat() { return !!C; }
 // charge TOUT continue — la menace monte, le mort frappe.
 const COUTS = REGLAGES.combat.COUTS;
 const CHARGE = REGLAGES.combat.CHARGE;
-const ANNEAU_CIRC = 97.4; // circonférence du cercle SVG de la jauge de charge (2π × 15.5)
+const MAINTIEN = REGLAGES.combat.MAINTIEN; // ms de remplissage des jauges (pousser/fuir/accès)
+const ATERRE = REGLAGES.combat.ATERRE;     // mort à terre : durée, amplis de dégâts/critique, risque
+const ANNEAU_CIRC = 97.4; // circonférence du cercle SVG d'une jauge ronde (2π × 15.5)
 
 export function demarrerCombat(zombieIds, opts = {}) {
   if (C) return;
@@ -40,10 +42,12 @@ export function demarrerCombat(zombieIds, opts = {}) {
   C = {
     z: creerZombie(premier),
     queue: ids,
+    decorZid: premier, // le décor de la rencontre, fixé au premier mort (ne change pas en cours de combat)
     opts,
     defense: false,
     fini: false,
     logs: [],
+    logOuvert: false, // le journal de combat ne s'affiche que si on appuie dessus
     timer: null,
     armesJetees: [], // {id, dur, touche} — récupérables en fouillant après le combat
     hurleurACrie: false,
@@ -51,7 +55,9 @@ export function demarrerCombat(zombieIds, opts = {}) {
     qteTimer: null,   // esquive réflexe en cours
     qteJusqua: 0,     // cooldown : la fenêtre d'esquive ne revient pas tout de suite
     contreJusqua: 0,  // après une esquive réussie : une seconde pour frapper
+    aTerre: 0,        // timestamp (perf.now) jusqu'auquel le mort actif est à terre (0 = debout)
     chg: null,        // charge en cours (bouton maintenu) : { type, c, prev, raf, ... }
+    hold: null,       // autre bouton maintenu (pousser/fuir/accès) : { act, c, prev, raf, btn, duree, plein }
     frappe: null,     // coup de mêlée relâché mais pas encore arrivé : { c, timer }
     enc: opts.enc || null,    // co-op : identifiant de rencontre PARTAGÉE (combat à deux)
     appliquantDistant: false, // garde anti-boucle pendant l'application d'un coup distant
@@ -81,10 +87,12 @@ export function noteCombat(html) { if (C) clog(html, 'coup'); }
 export function pauseCombatPourCine() {
   if (!C || C.fini || C.pause) return false;
   C.pause = true;
+  C.aTerre = 0; // on ne fige pas un compte à terre par-dessus une cinématique : il se relève
   if (C.timer) { clearInterval(C.timer); C.timer = null; }
   if (C.qteTimer) { clearTimeout(C.qteTimer); C.qteTimer = null; }
   if (C.frappe) { clearTimeout(C.frappe.timer); C.frappe = null; }
   if (C.chg && C.chg.raf) { cancelAnimationFrame(C.chg.raf); C.chg = null; }
+  if (C.hold && C.hold.raf) { cancelAnimationFrame(C.hold.raf); C.hold = null; }
   const qte = document.querySelector('.qte'); if (qte) qte.remove();
   resetAnneau();
   setHeartbeat(false);
@@ -161,8 +169,40 @@ function clog(html, cls = '') {
   if (!C) return; // le combat vient de se terminer : message silencieux
   C.logs.push(`<p class="${cls}">${html}</p>`);
   if (C.logs.length > 40) C.logs.shift();
-  const el = $('#combat-log');
+  const el = $('#cb-log-corps');
   if (el) { el.innerHTML = C.logs.join(''); el.scrollTop = el.scrollHeight; }
+}
+
+// ---------- Effets d'écran : un message central bref + des animations par action ----------
+// Le journal complet est masqué (bouton) ; ici, on SYNTHÉTISE chaque échange d'un mot
+// ou deux, projeté au centre, le temps d'une animation. C'est le retour immédiat du combat.
+let flashTimer = null;
+function flashCombat(txt, cls = '') {
+  const el = $('#cb-msg');
+  if (!el) return;
+  el.className = 'cb-msg ' + cls;
+  el.innerHTML = `<span>${txt}</span>`;
+  void el.offsetWidth;        // reflow : relance l'animation même sur message identique
+  el.classList.add('show');
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => { if (el) { el.classList.remove('show'); } }, 1400);
+}
+
+// Le décor tremble et un voile rouge passe : un coup encaissé.
+function secouerScene() {
+  const scene = $('.combat-scene');
+  if (!scene) return;
+  scene.classList.remove('shake'); void scene.offsetWidth; scene.classList.add('shake');
+  const fl = $('.combat-scene .flash');
+  if (fl) { fl.classList.remove('hit'); void fl.offsetWidth; fl.classList.add('hit'); }
+}
+
+// Une animation ponctuelle sur le mort actif (impact, entaille, recul, bond, chute).
+function effetZombie(cls) {
+  const z = $('#z-actif');
+  if (!z) return;
+  z.classList.remove(cls); void z.offsetWidth; z.classList.add(cls);
+  if (cls !== 'z-terre') setTimeout(() => { if (z) z.classList.remove(cls); }, 520);
 }
 
 // ---------- Boucle temps réel ----------
@@ -176,51 +216,70 @@ function tick() {
   // Récupération d'endurance
   p.sta = Math.min(p.staMax, p.sta + (C.defense ? 9 : 2.2) * (dt / 1000));
 
-  // Jauge de menace — en surpoids, tes parades molles le laissent presser le pas.
-  const sevSP = enSurpoids() ? surpoidsFacteur() : 0;
-  C.z.menace += (dt / (C.z.def.vitesse * C.z.facteur)) * (1 + 0.35 * sevSP);
-  if (C.z.menace >= 1) {
-    C.z.menace = 0;
-    C.z.facteur = 0.85 + Math.random() * 0.3;
-    attaqueZombie();
+  // À TERRE : il ne peut pas attaquer, sa menace reste gelée — puis il se relève.
+  if (C.aTerre) {
+    if (now >= C.aTerre) {
+      C.aTerre = 0;
+      C.z.menace = 0.15;
+      clog(`${leZombie(C.z.def.nom, true)} se redresse en titubant.`, 'degats');
+      flashCombat('Il se relève', 'degats');
+      majSceneEtat();
+    }
+  } else {
+    // Jauge de menace — en surpoids, tes parades molles le laissent presser le pas.
+    const sevSP = enSurpoids() ? surpoidsFacteur() : 0;
+    C.z.menace += (dt / (C.z.def.vitesse * C.z.facteur)) * (1 + 0.35 * sevSP);
+    if (C.z.menace >= 1) {
+      C.z.menace = 0;
+      C.z.facteur = 0.85 + Math.random() * 0.3;
+      attaqueZombie();
+    }
   }
   if (!C) return; // le combat a pu se terminer (mort)
   setHeartbeat(p.pv <= 25);
   majBarres();
 }
 
-function etatEndurance() {
-  const s = G.player.sta;
-  if (s > 55) return 'souffle bon';
-  if (s > 35) return 'souffle court';
-  if (s > 20) return 'épuisé';
-  if (s > 8) return 'exténué';
-  return 'à bout de forces';
-}
-
 function majBarres() {
-  const m = $('#menace-fill');
+  if (!C) return;
+  // Jauge de menace : un mince liseré rouge en haut de l'écran (gelé si le mort est à terre).
+  const m = $('#cb-menace');
   if (m) {
     m.style.width = (C.z.menace * 100) + '%';
-    m.classList.toggle('imminent', C.z.menace > 0.7);
+    m.classList.toggle('imminent', !C.aTerre && C.z.menace > 0.7);
+    m.classList.toggle('gele', !!C.aTerre);
   }
-  const ze = $('#ennemi-etat');
-  if (ze) ze.innerHTML = `Il est <b>${etatZombie()}</b>`;
-  const se = $('#combat-sta');
-  if (se) se.innerHTML = `Ton souffle : <b>${etatEndurance()}</b>`;
+  // Jauge d'endurance : un mince liseré en bas.
+  const s = $('#cb-sta');
+  if (s) {
+    const r = G.player.sta / G.player.staMax;
+    s.style.width = (r * 100) + '%';
+    s.classList.toggle('bas', r < 0.25);
+  }
   updateHUD();
-  // boutons selon endurance — pendant une charge ou une frappe en vol, rien d'autre ne se fait
-  document.querySelectorAll('.combat-acts button[data-cout]').forEach(b => {
+  // État des boutons ronds selon l'endurance — pendant une charge, une frappe en vol
+  // ou un autre bouton maintenu, on n'arme rien d'autre.
+  document.querySelectorAll('.cb [data-cout]').forEach(b => {
     const cout = parseFloat(b.dataset.cout);
-    if (C.chg) { b.disabled = b.dataset.act !== 'attaquer'; return; } // le doigt reste sur le bouton tenu
+    const act = b.dataset.act;
+    if (act === 'defense' || act === 'journal') { b.disabled = false; return; }
+    if (C.chg) { b.disabled = act !== 'attaquer'; return; }
+    if (C.hold) { b.disabled = b !== C.hold.btn; return; }
     if (C.frappe) { b.disabled = true; return; }
-    b.disabled = C.defense ? b.dataset.act !== 'defense' : G.player.sta < cout;
+    b.disabled = C.defense || G.player.sta < cout;
   });
+}
+
+// Reflet visuel de l'état du mort actif : penché « à terre », classe sur le calque.
+function majSceneEtat() {
+  const z = $('#z-actif');
+  if (z) z.classList.toggle('z-terre', !!C.aTerre);
 }
 
 // ---------- Attaque du zombie ----------
 function attaqueZombie() {
   const z = C.z;
+  if (C.aTerre) return; // au sol, il ne peut pas frapper
 
   // Hurleur : appelle du renfort la première fois
   if (z.def.hurle && !C.hurleurACrie) {
@@ -267,6 +326,7 @@ function lancerEsquiveQTE() {
     if (C.qteTimer) { clearTimeout(C.qteTimer); C.qteTimer = null; }
     if (reussi) {
       sfx('esquive');
+      flashCombat('Esquive !', 'coup');
       clog('Tu plonges sur le côté — il traverse le vide et s\'écrase là où tu étais. <em>Une seconde pour frapper.</em>', 'coup');
       C.contreJusqua = performance.now() + 2500;
       C.z.menace = 0;
@@ -292,6 +352,7 @@ function resoudreAttaque(factEsquive) {
   if (enSurpoids()) pEsquive *= (1 - 0.55 * surpoidsFacteur()); // chargé comme une mule : on esquive mal
   if (chance(pEsquive)) {
     sfx('rate');
+    flashCombat(C.defense ? 'Bloqué' : 'Esquive', '');
     clog(C.defense ? 'Tu bloques son assaut, arc-bouté derrière ta garde.' : 'Tu te jettes sur le côté — ses ongles fendent l\'air à un cheveu de ton visage.');
     const up = gainSkill('agilite', 2);
     if (up) clog(`<b>Agilité niveau ${up.niveau} !</b>`, 'coup');
@@ -305,12 +366,8 @@ function resoudreAttaque(factEsquive) {
   deg = Math.max(1, Math.round(deg - prot * 1.1 - (C.defense ? deg * 0.45 : 0)));
   p.pv = Math.max(0, p.pv - deg);
   sfx('degats');
-  const scene = $('.combat-scene');
-  if (scene) {
-    scene.classList.remove('shake'); void scene.offsetWidth; scene.classList.add('shake');
-    const fl = $('.combat-scene .flash');
-    if (fl) { fl.classList.remove('hit'); void fl.offsetWidth; fl.classList.add('hit'); }
-  }
+  secouerScene();
+  flashCombat(deg >= 12 ? 'Mordu !' : 'Touché', 'degats');
   clog(`${atk ? atk.desc : 'Il t\'atteint de plein fouet.'} <b class="degats">Tu encaisses.</b>`, 'degats');
 
   // Un coup encaissé en pleine charge (ou pendant que la frappe est en vol) peut briser
@@ -368,8 +425,8 @@ function couleurCharge(c, type) {
 }
 
 function elemsAnneau() {
-  const btn = document.querySelector('.combat-acts [data-act="attaquer"]');
-  return { btn, prog: btn ? btn.querySelector('.chg-prog') : null };
+  const btn = document.querySelector('.cb [data-act="attaquer"]');
+  return { btn, prog: btn ? btn.querySelector('.cb-ring-prog') : null };
 }
 
 function resetAnneau() {
@@ -500,11 +557,14 @@ function frappeMelee(c) {
   if (enSurpoids()) pTouche *= (1 - 0.25 * surpoidsFacteur()); // le barda gêne aussi tes coups
   if (chance(Math.max(0.12, pTouche))) {
     if (c >= 0.7) sfx('puissance');
-    const crit = chance(0.08 + skillLevel('dexterite') * 0.02 + c * 0.18);
+    const crit = chance(0.08 + skillLevel('dexterite') * 0.02 + c * 0.18 + (C.aTerre ? ATERRE.bonusCrit : 0));
     let deg = Math.round(rng(arme.dmg[0], arme.dmg[1]) * (0.55 + 1.45 * c));
     if (!arme.mains) deg += Math.round(skillLevel('force') * (1 + c));
     if (arme.mains) deg += Math.round(skillLevel('mainsNues') * (1.2 + 0.8 * c));
     if (crit) deg = Math.round(deg * 1.6);
+    if (C.aTerre) deg = Math.round(deg * ATERRE.multiDeg); // il est au sol : tu l'achèves
+    effetZombie(crit ? 'z-crit' : 'z-impact');
+    flashCombat(crit ? 'Critique !' : (C.aTerre ? 'Achevé' : 'Touché'), 'coup');
     if (c >= 0.7) clog('<span class="gore">Le coup part comme un fléau, tout ton poids derrière. Ça craque.</span>', 'coup');
     C.z.menace = Math.max(0, C.z.menace - 0.3 * c); // un coup lourd le fait reculer (en plus du recul de base)
     const fini = infligerDegats(deg, crit, arme);
@@ -532,6 +592,7 @@ function frappeMelee(c) {
     if (fini) return; // le combat s'est terminé sur ce coup : ne plus toucher à C
   } else {
     sfx('rate');
+    flashCombat('Manqué', '');
     if (c > 0.5) {
       clog('Trop téléphoné : il se déporte et ton coup laboure le vide. Tu titubes, déséquilibré.');
       C.z.menace = Math.min(1, C.z.menace + 0.25 * c);
@@ -554,14 +615,18 @@ function resoudreTir(a) {
   const sk = skillLevel('visee');
   let pTouche = Math.min(0.97, 0.45 + 0.5 * a + sk * 0.02 - C.z.def.esquive);
   if (chance(Math.max(0.2, pTouche))) {
-    const crit = chance(0.12 + sk * 0.03);
+    const crit = chance(0.12 + sk * 0.03 + (C.aTerre ? ATERRE.bonusCrit : 0));
     let deg = rng(arme.dmg[0], arme.dmg[1]);
     if (crit) deg = Math.round(deg * 1.7);
+    if (C.aTerre) deg = Math.round(deg * ATERRE.multiDeg);
+    effetZombie(crit ? 'z-crit' : 'z-impact');
+    flashCombat(crit ? 'En pleine tête !' : 'Touché', 'coup');
     const fini = infligerDegats(deg, crit, arme);
     const up = gainSkill('visee', 3);
     if (up) clog(`<b>Visée niveau ${up.niveau} !</b>`, 'coup');
     if (fini) return; // dernier zombie abattu : le combat est clos, le bruit n'attire plus rien ici
   } else {
+    flashCombat('Manqué', '');
     clog(a < 0.3
       ? 'Tir précipité — la balle part n\'importe où, avalée par la nuit.'
       : 'La détonation claque — la balle s\'écrase dans un mur. Raté.');
@@ -648,150 +713,137 @@ function zombieMort() {
   }
 }
 
-function actionPousser() {
-  if (C.defense) return;
+// ---------- REPOUSSER (jauge maintenue) : succès = mort À TERRE ; échec = morsure ----------
+// La poussée n'a lieu qu'à la fin de la jauge ; pendant qu'on s'arc-boute, le mort, lui,
+// continue d'avancer (la menace monte) — d'où le risque.
+function resoudrePousser() {
+  if (!C || C.fini || C.defense) return;
   if (!depenser(COUTS.pousser)) return;
   const f = skillLevel('force');
-  if (chance(0.55 + f * 0.1)) {
-    C.z.menace = Math.max(0, C.z.menace - 0.55);
+  let p = 0.5 + f * 0.1;
+  if (enSurpoids()) p -= 0.12 * surpoidsFacteur();
+  if (C.z.id === 'colosse') p -= 0.25; // une montagne ne tombe pas si facilement
+  if (chance(Math.max(0.1, p))) {
+    C.aTerre = performance.now() + ATERRE.duree;
+    C.z.menace = 0;
     sfx('coup');
-    clog('Tu le repousses violemment. Il titube en arrière, te laissant une seconde de répit.');
-    gainSkill('force', 2);
+    effetZombie('z-chute');
+    majSceneEtat();
+    flashCombat('À terre !', 'coup');
+    clog('Tu charges de l\'épaule — il bascule en arrière et s\'effondre lourdement. <b>Il est à terre : achève-le tant qu\'il est au sol.</b>', 'coup');
+    gainSkill('force', 3);
   } else {
-    clog('Tu pousses — il est plus lourd que prévu et encaisse à peine.');
+    flashCombat('Poussée ratée', 'degats');
+    clog('Tu pousses — il tient bon, plus lourd que prévu, et se rabat aussitôt sur toi.', 'degats');
     gainSkill('force', 1);
+    if (chance(ATERRE.risqueMorsure)) resoudreAttaque(1); // tu t'es découvert : il mord
   }
 }
 
-function actionDefense() {
-  C.defense = !C.defense;
+// ---------- SE DÉFENDRE (maintenu) : garde levée tant que le doigt reste posé ----------
+function setDefense(on) {
+  if (!C || C.fini) return;
+  if (on && (C.chg || C.hold || C.frappe)) return; // pas en pleine action
+  if (C.defense === on) return;
+  C.defense = on;
   const btn = $('[data-act="defense"]');
-  if (btn) btn.classList.toggle('defense-on', C.defense);
-  clog(C.defense
-    ? 'Tu te replies derrière ta garde, à reprendre ton souffle. <em>(récupération rapide, dégâts réduits, mais tu ne peux pas agir)</em>'
-    : 'Tu relèves la garde, prêt à frapper.');
-  document.querySelectorAll('.combat-acts button[data-cout]').forEach(b => {
-    if (b.dataset.act !== 'defense') b.disabled = C.defense;
-  });
+  if (btn) btn.classList.toggle('actif', on);
+  if (on) { sfx('clic'); clog('Tu te replies derrière ta garde, à reprendre ton souffle.'); }
+  else clog('Tu relèves la garde, prêt à frapper.');
+  majBarres();
 }
 
-function actionJeter() {
-  if (C.defense) return;
-  const a = armeEquipee();
-  if (!a) { clog('Rien à jeter — tu es à mains nues.'); return; }
-  if (!depenser(COUTS.jeter)) return;
-  const d = item(a.id);
+// ---------- Résolution d'un jet (objet de jet lancé depuis l'accès rapide) ----------
+function resoudreJet(id, dur) {
+  const d = item(id);
   const sk = skillLevel('dexterite');
-  G.player.equip.arme = null;
+  sfx('coup');
   if (chance(0.5 + sk * 0.08)) {
     let deg = Math.round(rng(d.dmg[0], d.dmg[1]) * 1.5);
-    clog('Tu jettes ton arme de toutes tes forces !');
     if (d.feuFlamme) {
       sfx('explosion');
       deg = rng(d.dmg[0], d.dmg[1]);
+      effetZombie('z-crit');
+      flashCombat('Embrasé !', 'gore');
       clog(`<span class="gore">La bouteille explose en gerbe de flammes. ${leZombie(C.z.def.nom, true)} s'embrase en silence — ils ne crient jamais.</span>`, 'gore');
-      // brûle aussi la file
       if (C.queue.length && chance(0.5)) {
         clog(`<b>Les flammes rattrapent ${leZombie(zombie(C.queue[0]).nom)} derrière !</b>`, 'coup');
         C.queue.shift();
         G.player.morts++;
       }
-    } else if (!d.jetSeul) {
-      C.armesJetees.push({ id: a.id, dur: a.dur, touche: true });
+    } else {
+      effetZombie('z-impact');
+      flashCombat('Touché', 'coup');
+      clog('Tu le lances de toutes tes forces — ça porte.');
+      if (!d.jetSeul) C.armesJetees.push({ id, dur, touche: true });
     }
     infligerDegats(deg, false, { nom: d.nom + ' (jeté)', feu: true }); // un jet se fait à distance
     gainSkill('dexterite', 3);
   } else {
-    clog('Ton arme rebondit sur son épaule et glisse au sol, quelque part dans le noir.');
-    if (!d.jetSeul) C.armesJetees.push({ id: a.id, dur: a.dur, touche: false });
+    flashCombat('Manqué', '');
+    clog('Ton projectile rebondit sur lui et glisse au sol, quelque part dans le noir.');
+    if (!d.jetSeul) C.armesJetees.push({ id, dur, touche: false });
   }
 }
 
-// ---------- Accès rapide en combat : la ceinture, rien d'autre ----------
-function actionAccesRapide() {
-  if (C.defense) return;
-  const armes = armesDisponibles();
-  const soins = soinsAccesRapide();
-  const cur = armeEquipee();
-  const slots = nbSlotsAccesRapide();
-  let html = `<h3>Accès rapide (−${COUTS.changer} end.)</h3><div class="actions">`;
-  if (!slots) {
-    html += `<div class="item-desc">Aucun emplacement d'accès rapide : il te faut une <b>ceinture</b>, un holster ou un gilet. En attendant, tu te bats avec ce que tu as en main.</div>`;
-  } else if (!armes.length && !soins.length && !cur) {
-    html += `<div class="item-desc">Ta ceinture est vide. Glisses-y des objets depuis l'inventaire, hors combat.</div>`;
+// ---------- ACCÈS RAPIDE (un bouton maintenu par objet, en haut de l'écran) ----------
+// Dégaine une arme, lance un objet de jet, ou se bande — selon la nature de l'objet.
+function resoudreAcces(idx) {
+  if (!C || C.fini || C.defense) return;
+  const it = accesRapide()[idx];
+  if (!it) return;
+  const d = item(it.id);
+  if (!d) return;
+  // Soin (bandage) : stoppe un saignement.
+  if (d.type === 'soin' && d.soin === 'bandage') {
+    const bl = G.player.blessures.find(x => x.saigne && !x.bandee);
+    if (!bl) { flashCombat('Rien à bander', ''); clog('Aucun saignement à bander.'); return; }
+    if (!depenser(COUTS.bander)) return;
+    removeItem(it.id, 1);
+    bl.bandee = true;
+    if (it.id === 'bandage_fortune' && !bl.desinfectee) bl.bandeSale = true;
+    if (!C.aTerre) C.z.menace = Math.min(1, C.z.menace + 0.3); // il avance pendant que tu te bandes
+    flashCombat('Bandé', 'coup');
+    clog('Tu serres le bandage en gardant un œil sur lui. Le saignement s\'arrête.', 'coup');
+    sfx('soin');
+    renderCombat(true);
+    return;
   }
-  armes.forEach(a => {
-    const dmg = `${a.def.dmg[0]}–${a.def.dmg[1]} dégâts`;
-    const mun = a.def.ammo ? ` — ${countItem(a.def.ammo)} munitions` : '';
-    html += `<button class="act" data-ar="${a.idx}">Dégainer : ${a.def.nom}<small>${dmg}${mun}${a.jet ? ' — se jette' : ''}</small></button>`;
-  });
-  soins.forEach(s => {
-    const utile = G.player.blessures.some(b => b.saigne && !b.bandee);
-    html += `<button class="act" data-soin="${s.idx}" ${utile ? '' : 'disabled'}>Se bander à la hâte<small>−${COUTS.bander} end. — stoppe un saignement${utile ? '' : ' (aucun saignement)'}</small></button>`;
-  });
-  if (cur && slots > 0) {
-    html += `<button class="act" data-ar="rengainer">Rengainer : ${item(cur.id).nom}<small>passer à mains nues, l'arme reste à la ceinture</small></button>`;
+  // Objet de jet : on le lance.
+  if (d.dmg && d.jetSeul) {
+    if (!depenser(COUTS.jeter)) return;
+    accesRapide().splice(idx, 1); // l'objet quitte la ceinture
+    resoudreJet(it.id, it.dur);
+    if (C && !C.fini) renderCombat(true);
+    return;
   }
-  if (cur) {
-    html += `<button class="act" data-ar="lacher">Lâcher l'arme au sol<small>mains nues — tu la retrouveras en fouillant ici</small></button>`;
+  // Arme : on la dégaine (l'arme en main, s'il y en a une, retourne à la ceinture).
+  if (d.dmg) {
+    if (!depenser(COUTS.changer)) return;
+    if (degainerAccesRapide(idx)) {
+      flashCombat('Arme en main', 'coup');
+      clog(`Tu dégaines : ${item(armeEquipee().id).nom}.`);
+      sfx('clic');
+    }
+    renderCombat(true);
   }
-  html += `<button class="act" data-ar="annuler">Annuler</button></div>`;
-  const zone = $('#combat-armes');
-  zone.innerHTML = html;
-  zone.querySelectorAll('[data-ar]').forEach(b => {
-    b.onclick = () => {
-      const v = b.dataset.ar;
-      zone.innerHTML = '';
-      if (v === 'annuler') return;
-      if (!depenser(COUTS.changer)) return;
-      if (v === 'rengainer') {
-        if (rengainerArme()) clog('Tu rengaines. Mains nues.');
-        else clog('Plus de place à la ceinture.');
-      } else if (v === 'lacher') {
-        const arme = armeEquipee();
-        if (arme) {
-          deposerAuSol(keyCourante(), { id: arme.id, qty: 1, dur: arme.dur, cache: true });
-          G.player.equip.arme = null;
-          clog('Tu lâches ton arme. Elle sonne sur le sol, quelque part à tes pieds.');
-        }
-      } else {
-        if (degainerAccesRapide(parseInt(v, 10))) {
-          clog(`Tu dégaines : ${item(armeEquipee().id).nom}.`);
-        }
-      }
-      renderCombat(true);
-    };
-  });
-  zone.querySelectorAll('[data-soin]').forEach(b => {
-    b.onclick = () => {
-      zone.innerHTML = '';
-      if (!depenser(COUTS.bander)) return;
-      const s = soinsAccesRapide()[0];
-      if (!s) return;
-      const bl = G.player.blessures.find(x => x.saigne && !x.bandee);
-      if (!bl) { clog('Rien à bander.'); return; }
-      removeItem(s.id, 1);
-      bl.bandee = true;
-      if (s.id === 'bandage_fortune' && !bl.desinfectee) bl.bandeSale = true;
-      C.z.menace = Math.min(1, C.z.menace + 0.3); // il avance pendant que tu te bandes
-      clog('Tu serres le bandage en gardant un œil sur lui. Le saignement s\'arrête — il s\'approche.', 'coup');
-      sfx('soin');
-      renderCombat(true);
-    };
-  });
 }
 
-function actionFuir() {
-  if (C.defense) return;
+// ---------- FUIR (jauge maintenue) ----------
+function resoudreFuir() {
+  if (!C || C.fini || C.defense) return;
   if (!depenser(COUTS.fuir)) return;
   const agi = skillLevel('agilite') + bonusAgiliteVetements();
   let p = 0.4 + agi * 0.1;
   if (['coureur', 'chien_infecte', 'enrage'].includes(C.z.id)) p -= 0.18;
+  if (C.aTerre) p += 0.35; // il est au sol : c'est le moment de détaler
   if (chance(Math.max(0.1, p))) {
+    flashCombat('Tu fuis', 'coup');
     clog('Tu tournes les talons et cours sans te retourner, le souffle en feu.');
     gainSkill('agilite', 5);
     finCombat('fuite');
   } else {
+    flashCombat('Rattrapé !', 'degats');
     clog('<b>Tu trébuches dans ta fuite — il te rattrape !</b>', 'degats');
     gainSkill('agilite', 2);
     attaqueZombie();
@@ -804,10 +856,12 @@ function nettoyer() {
   if (C && C.qteTimer) clearTimeout(C.qteTimer);
   if (C && C.frappe) clearTimeout(C.frappe.timer);
   if (C && C.chg && C.chg.raf) cancelAnimationFrame(C.chg.raf);
+  if (C && C.hold && C.hold.raf) cancelAnimationFrame(C.hold.raf);
   const qte = document.querySelector('.qte');
   if (qte) qte.remove();
   stopCombatMusic();
   setHeartbeat(false);
+  showHUD(true); // le combat se termine : on retrouve l'interface de déplacement
   if (multi.estMulti()) multi.diffuserPosition({ enCombat: false }); // co-op : je ne suis plus en combat
 }
 
@@ -853,65 +907,181 @@ function finMort() {
   mortJoueur('combat');
 }
 
-// ---------- Rendu ----------
-// Ordre des actions, toujours le même : ce qui sauve la peau d'abord.
-//   FRAPPER/VISER · SE DÉFENDRE   (réflexes)
-//   REPOUSSER · ACCÈS RAPIDE      (gagner du temps, changer d'outil)
-//   JETER · FUIR                  (dernières cartouches)
-function renderCombat(remplaceSeulement = false) {
+// ---------- Rendu : un écran de combat à part entière ----------
+// Plus aucune trace de l'interface de déplacement : le décor remplit l'écran, les morts
+// sont INCRUSTÉS par-dessus (une image chacun), et tout se pilote par des BOUTONS RONDS
+// transparents (icône seule) qu'on MAINTIENT. Disposition :
+//   FUIR en haut gauche · ACCÈS RAPIDE en haut au milieu · journal en haut droite
+//   SE DÉFENDRE en bas gauche · ATTAQUER en bas droite · REPOUSSER juste au-dessus.
+
+// Une jauge ronde (anneau) réutilisable pour tous les boutons maintenus.
+function ringMarkup() {
+  return `<span class="cb-ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="cb-ring-fond" cx="18" cy="18" r="15.5"/><circle class="cb-ring-prog" cx="18" cy="18" r="15.5" style="stroke-dasharray:${ANNEAU_CIRC};stroke-dashoffset:${ANNEAU_CIRC}"/></svg></span>`;
+}
+
+// Les morts présents : l'actif grand au centre, la file derrière, plus petite et estompée.
+function hordeHTML() {
+  let h = `<div class="z-layer z-actif${C.aTerre ? ' z-terre' : ''}" id="z-actif">${svgCombatZombie(C.z.id)}</div>`;
+  C.queue.slice(0, 4).forEach((id, i) => {
+    const cote = i % 2 === 0 ? -1 : 1;
+    const prof = Math.floor(i / 2) + 1;
+    h += `<div class="z-layer z-fond" style="--cote:${cote};--prof:${prof}">${svgCombatZombie(id)}</div>`;
+  });
+  return h;
+}
+
+// Boutons d'accès rapide : un par objet de la ceinture utilisable au combat.
+function accesHTML() {
+  let h = '';
+  armesDisponibles().forEach(a => {
+    const cout = a.jet ? COUTS.jeter : COUTS.changer;
+    const ic = a.jet ? 'jeter' : (a.def.feu ? 'pistolet' : 'attaque');
+    const mun = a.def.ammo ? `<span class="cb-acc-n">${countItem(a.def.ammo)}</span>` : '';
+    h += `<button class="cbtn cb-acc" data-act="acces" data-idx="${a.idx}" data-cout="${cout}" title="${a.jet ? 'Lancer' : 'Dégainer'} : ${a.def.nom}">${ringMarkup()}<span class="cb-ic">${ico(ic)}</span>${mun}</button>`;
+  });
+  soinsAccesRapide().forEach(s => {
+    h += `<button class="cbtn cb-acc" data-act="acces" data-idx="${s.idx}" data-cout="${COUTS.bander}" title="Se bander">${ringMarkup()}<span class="cb-ic">${ico('soin')}</span></button>`;
+  });
+  return h;
+}
+
+function renderCombat() {
+  showHUD(false); // le combat est une page à part : aucun bouton du mode déplacement
   const arme = infoArme();
-  const armeLbl = arme.feu ? `Viser (${arme.nom.toLowerCase()})` : `Frapper (${arme.nom.toLowerCase()})`;
-  const sousLbl = arme.feu
-    ? `maintenir pour viser · −${COUTS.tir} end. · ${arme.dmg[0]}–${arme.dmg[1]} dégâts · ${countItem(arme.ammo)} mun.`
-    : `maintenir pour charger · −${CHARGE.coutMin} à −${CHARGE.coutMin + CHARGE.coutPlein} end. · ${arme.dmg[0]}–${arme.dmg[1]} dégâts`;
+  const armeIco = arme.feu ? 'pistolet' : 'attaque';
+  const fuitePossible = C.opts.fuitePossible !== false;
   const html = `
-  <div class="combat">
-    <div class="combat-scene">
-      <div class="illu">${svgCombat(C.z.id)}</div>
+  <div class="cb">
+    <div class="cb-menace-wrap"><div class="cb-menace-fill" id="cb-menace"></div></div>
+    <div class="combat-scene" id="cb-scene">
+      <div class="cb-decor">${svgCombatDecor(C.decorZid)}</div>
+      <div class="cb-horde" id="cb-horde">${hordeHTML()}</div>
       <div class="flash"></div>
+      <div class="cb-msg" id="cb-msg" aria-live="polite"></div>
     </div>
-    <div>
-      <p class="ennemi-nom">${C.z.def.nom}${C.queue.length ? ` <small style="color:var(--fg-dim)">— horde de ${C.queue.length + 1} · ils viennent l'un après l'autre</small>` : ''}</p>
-      <div class="ennemi-etat" id="ennemi-etat">Il est <b>${etatZombie()}</b></div>
-      <div class="menace-wrap">
-        <div class="menace-label"><span>Menace</span><span>il attaque quand la jauge est pleine</span></div>
-        <div class="menace"><div class="menace-fill" id="menace-fill"></div></div>
-      </div>
-      <div class="combat-sta" id="combat-sta">Ton souffle : <b>${etatEndurance()}</b></div>
+    <div class="cb-sta-wrap"><div class="cb-sta-fill" id="cb-sta"></div></div>
+
+    ${fuitePossible ? `<button class="cbtn cb-fuir" data-act="fuir" data-cout="${COUTS.fuir}" title="Fuir">${ringMarkup()}<span class="cb-ic">${ico('fuir')}</span></button>` : ''}
+    <div class="cb-acces" id="cb-acces">${accesHTML()}</div>
+    <button class="cbtn small cb-journal" data-act="journal" title="Journal de combat">${ico('journal')}</button>
+
+    <button class="cbtn cb-defense" data-act="defense" data-cout="0" title="Se défendre (maintenir)">${ico('defense')}</button>
+
+    <div class="cb-attaque-col">
+      <button class="cbtn cb-pousser" data-act="pousser" data-cout="${COUTS.pousser}" title="Repousser (maintenir)">${ringMarkup()}<span class="cb-ic">${ico('pousser')}</span></button>
+      <button class="cbtn big cb-attaque chg-btn" data-act="attaquer" data-cout="${arme.feu ? COUTS.tir : CHARGE.coutMin}" title="${arme.feu ? 'Viser puis tirer' : 'Charger puis frapper'} (maintenir)">${ringMarkup()}<span class="cb-ic">${ico(armeIco)}</span></button>
     </div>
-    <div class="combat-log" id="combat-log">${C.logs.join('')}</div>
-    <div id="combat-armes"></div>
-    <div class="combat-acts">
-      <button class="act primary chg-btn" data-act="attaquer" data-cout="${arme.feu ? COUTS.tir : CHARGE.coutMin}"><span class="chg-jauge" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="chg-fond" cx="18" cy="18" r="15.5"/><circle class="chg-prog" cx="18" cy="18" r="15.5" style="stroke-dasharray:${ANNEAU_CIRC};stroke-dashoffset:${ANNEAU_CIRC}"/></svg></span>${ico(arme.feu ? 'pistolet' : 'attaque')} ${armeLbl}<small class="cout">${sousLbl}</small></button>
-      <button class="act ${C.defense ? 'defense-on' : ''}" data-act="defense" data-cout="0">${ico('defense')} Se défendre<small class="cout">récupère l'endurance, −45 % dégâts</small></button>
-      <button class="act" data-act="pousser" data-cout="${COUTS.pousser}">${ico('pousser')} Repousser<small class="cout">−${COUTS.pousser} end. · gagne du temps</small></button>
-      <button class="act" data-act="acces" data-cout="${COUTS.changer}">${ico('ceinture')} Accès rapide<small class="cout">−${COUTS.changer} end. · ceinture / holster</small></button>
-      <button class="act" data-act="jeter" data-cout="${COUTS.jeter}">${ico('jeter')} Jeter l'arme<small class="cout">−${COUTS.jeter} end. · dégâts ×1,5</small></button>
-      ${C.opts.fuitePossible !== false ? `<button class="act" data-act="fuir" data-cout="${COUTS.fuir}">${ico('fuir')} Fuir<small class="cout">−${COUTS.fuir} end.</small></button>` : ''}
+
+    <div class="cb-log ${C.logOuvert ? '' : 'hidden'}" id="cb-log">
+      <div class="cb-log-tete">Journal de combat<button class="cb-log-x" data-act="journal-x" title="Fermer">${ico('croix')}</button></div>
+      <div class="cb-log-corps" id="cb-log-corps">${C.logs.join('')}</div>
     </div>
   </div>`;
   render(html);
-  const acts = { pousser: actionPousser, defense: actionDefense, acces: actionAccesRapide, jeter: actionJeter, fuir: actionFuir };
-  document.querySelectorAll('[data-act]').forEach(b => {
-    if (b.dataset.act === 'attaquer') return; // géré en pointer events ci-dessous
-    b.onclick = () => { if (C && !C.fini) { acts[b.dataset.act](); if (C && !C.fini) majBarres(); } };
-  });
-  // Le bouton d'attaque se tient au doigt : pointerdown charge, relâcher frappe (ou tire).
-  // setPointerCapture garde le doigt même s'il glisse ; pointercancel relâche le coup
-  // à la charge atteinte — un doigt perdu ne mange pas l'endurance pour rien.
-  const btnAtk = document.querySelector('.combat-acts [data-act="attaquer"]');
+  wireCombat();
+  majBarres();
+  const cl = $('#cb-log-corps'); if (cl) cl.scrollTop = cl.scrollHeight;
+}
+
+// ---------- Câblage des boutons (tous maintenus) ----------
+function wireCombat() {
+  // ATTAQUE : charge maintenue, relâcher déclenche (logique dédiée debuterCharge/relacherCharge).
+  const btnAtk = document.querySelector('.cb [data-act="attaquer"]');
   if (btnAtk) {
     btnAtk.onpointerdown = (e) => { e.preventDefault(); debuterCharge(e, btnAtk); };
     const lacher = (e) => {
       e.preventDefault();
-      if (C && C.chg && e.pointerId !== C.chg.pointerId) return; // un autre doigt ne lâche pas le coup
+      if (C && C.chg && e.pointerId !== C.chg.pointerId) return;
       relacherCharge();
     };
     btnAtk.onpointerup = lacher;
     btnAtk.onpointercancel = lacher;
-    btnAtk.onpointerleave = (e) => { if (C && C.chg) lacher(e); }; // sans capture (vieux navigateur), sortir du bouton relâche
-    btnAtk.oncontextmenu = (e) => e.preventDefault(); // pas de menu contextuel sur l'appui long mobile
+    btnAtk.onpointerleave = (e) => { if (C && C.chg) lacher(e); };
+    btnAtk.oncontextmenu = (e) => e.preventDefault();
   }
-  const cl = $('#combat-log');
-  if (cl) cl.scrollTop = cl.scrollHeight;
+  // DÉFENSE : garde levée tant que le doigt reste posé.
+  const btnDef = document.querySelector('.cb [data-act="defense"]');
+  if (btnDef) {
+    btnDef.onpointerdown = (e) => { e.preventDefault(); try { btnDef.setPointerCapture(e.pointerId); } catch (err) {} setDefense(true); };
+    const off = (e) => { e.preventDefault(); setDefense(false); };
+    btnDef.onpointerup = off;
+    btnDef.onpointercancel = off;
+    btnDef.onpointerleave = (e) => { if (C && C.defense) setDefense(false); };
+    btnDef.oncontextmenu = (e) => e.preventDefault();
+  }
+  // REPOUSSER / FUIR / ACCÈS RAPIDE : jauge maintenue → l'action n'a lieu qu'à la jauge pleine.
+  document.querySelectorAll('.cb [data-act="pousser"], .cb [data-act="fuir"], .cb [data-act="acces"]').forEach(armerBoutonMaintenu);
+  // JOURNAL : simple appui ouvre/ferme l'historique complet.
+  document.querySelectorAll('.cb [data-act="journal"], .cb [data-act="journal-x"]').forEach(b => {
+    b.onclick = () => {
+      if (!C) return;
+      C.logOuvert = !C.logOuvert;
+      const lg = $('#cb-log'); if (lg) lg.classList.toggle('hidden', !C.logOuvert);
+      sfx('clic');
+      const cl = $('#cb-log-corps'); if (cl) cl.scrollTop = cl.scrollHeight;
+    };
+  });
+}
+
+// Un bouton « maintenu » générique : l'anneau se remplit ; à plein, l'action se déclenche.
+function armerBoutonMaintenu(btn) {
+  const act = btn.dataset.act;
+  const duree = act === 'fuir' ? MAINTIEN.fuir : act === 'pousser' ? MAINTIEN.pousser : MAINTIEN.acces;
+  const cout = parseFloat(btn.dataset.cout) || 0;
+  const declencher = () => {
+    if (act === 'pousser') resoudrePousser();
+    else if (act === 'fuir') resoudreFuir();
+    else if (act === 'acces') resoudreAcces(parseInt(btn.dataset.idx, 10));
+    if (C && !C.fini) majBarres();
+  };
+  btn.onpointerdown = (e) => {
+    e.preventDefault();
+    if (!C || C.fini || C.defense || C.chg || C.hold || C.frappe) return;
+    if (G.player.sta < cout) { flashCombat('Trop épuisé', 'degats'); return; }
+    try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+    C.hold = { btn, act, c: 0, prev: performance.now(), raf: null, duree, pointerId: e.pointerId, plein: declencher };
+    btn.classList.add('cb-arme');
+    majBarres();
+    boucleMaintien();
+  };
+  const relache = (e) => {
+    e.preventDefault();
+    if (!C || !C.hold || C.hold.btn !== btn) return;
+    if (e.pointerId != null && C.hold.pointerId != null && e.pointerId !== C.hold.pointerId) return;
+    finMaintien();
+  };
+  btn.onpointerup = relache;
+  btn.onpointercancel = relache;
+  btn.onpointerleave = () => { if (C && C.hold && C.hold.btn === btn) finMaintien(); };
+  btn.oncontextmenu = (e) => e.preventDefault();
+}
+
+function boucleMaintien() {
+  if (!C || C.fini || !C.hold) return;
+  const h = C.hold;
+  const now = performance.now();
+  const dt = Math.min(120, now - h.prev);
+  h.prev = now;
+  h.c = Math.min(1, h.c + dt / h.duree);
+  const prog = h.btn.querySelector('.cb-ring-prog');
+  if (prog) { prog.style.strokeDashoffset = ANNEAU_CIRC * (1 - h.c); prog.style.stroke = h.act === 'fuir' ? '#b9c4cc' : '#c97a27'; }
+  h.btn.classList.toggle('cb-pleine', h.c >= 0.999);
+  if (h.c >= 1) {
+    const plein = h.plein;
+    finMaintien();
+    if (C && !C.fini) plein();
+    return;
+  }
+  h.raf = requestAnimationFrame(boucleMaintien);
+}
+
+function finMaintien() {
+  if (!C || !C.hold) return;
+  const h = C.hold;
+  if (h.raf) cancelAnimationFrame(h.raf);
+  const prog = h.btn.querySelector('.cb-ring-prog');
+  if (prog) prog.style.strokeDashoffset = ANNEAU_CIRC;
+  h.btn.classList.remove('cb-arme', 'cb-pleine');
+  C.hold = null;
+  if (C && !C.fini) majBarres();
 }
