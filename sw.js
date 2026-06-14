@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v10';
+const CACHE = 'onemoreday-v11';
 const FICHIERS = [
   './',
   './index.html',
@@ -8,6 +8,9 @@ const FICHIERS = [
   './icons/icon.svg',
   './icons/icon-maskable.svg',
   './js/main.js',
+  './js/version.js',
+  './js/version_build.js',
+  './js/data/serveur.js',
   './js/state.js',
   './js/ui.js',
   './js/net.js',

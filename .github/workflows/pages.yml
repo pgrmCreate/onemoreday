@@ -1,0 +1,46 @@
+name: Déployer le jeu sur GitHub Pages
+
+# À chaque push sur master : on publie le jeu et on y inscrit la version (hash du
+# commit). Les joueurs en ligne détectent alors qu'une mise à jour est requise.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un seul déploiement à la fois ; on annule celui en cours si un nouveau push arrive.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # On assemble un dossier _site avec UNIQUEMENT le jeu (pas server.js, .git, etc.)
+      # et on y grave la version dans version.json + js/version_build.js.
+      - name: Préparer le site + graver la version
+        run: |
+          SHA="$(git rev-parse --short HEAD)"
+          STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          mkdir _site
+          cp -r index.html android.html manifest.webmanifest sw.js css js icons audio _site/
+          printf '{ "sha": "%s", "builtAt": "%s" }\n' "$SHA" "$STAMP" > _site/version.json
+          printf "// Réécrit au déploiement — ne pas éditer à la main.\nexport const BUILD_SHA = '%s';\n" "$SHA" > _site/js/version_build.js
+          echo "Version déployée : $SHA"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

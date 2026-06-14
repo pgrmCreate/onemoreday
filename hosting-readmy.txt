@@ -1,0 +1,179 @@
+==========================================================================
+  ONE MORE DAY — héberger le serveur co-op (à lire par celui qui héberge)
+==========================================================================
+
+Salut ! Tu vas faire tourner le "serveur" du jeu pour qu'on puisse jouer à
+deux à distance (pas seulement sur le même Wi-Fi). Ce fichier t'explique
+À QUOI sert ce serveur, la SEULE chose qu'on te demande techniquement, et
+les DIFFÉRENTES FAÇONS de le faire — à toi de choisir celle qui t'arrange.
+
+
+--------------------------------------------------------------------------
+1. CE QUE TON SERVEUR FAIT (et ne fait pas)
+--------------------------------------------------------------------------
+
+Le JEU lui-même n'est PAS hébergé chez toi : il est publié sur GitHub Pages
+(une page web statique, en https). Les joueurs ouvrent simplement l'app /
+la page web, et le jeu se charge de là.
+
+   URL du jeu :  https://pgrmcreate.github.io/onemoreday/
+
+TON serveur sert UNIQUEMENT de RELAIS co-op : c'est un point de rendez-vous
+qui transmet les messages entre les deux joueurs (positions, combats, etc.).
+Toute la logique de jeu reste dans le navigateur de "l'hôte" (le serveur ne
+fait que relayer). Conséquences pratiques :
+
+  - C'est ultra léger : un seul fichier Node, SANS aucune dépendance.
+  - Ça consomme quasi rien (CPU/RAM). N'importe quelle petite machine suffit.
+  - Si le serveur redémarre, une partie en cours se coupe (il faut relancer la
+    partie) — d'où l'intérêt qu'il tourne en continu.
+  - Le serveur ne stocke aucune sauvegarde : tout est chez les joueurs.
+
+
+--------------------------------------------------------------------------
+2. LE SCHÉMA
+--------------------------------------------------------------------------
+
+     [ Joueur A ]                                   [ Joueur B ]
+   téléphone / PC                                  téléphone / PC
+        |                                               |
+        |  (1) charge le JEU en https                   |
+        v                                               v
+   +---------------------------------------------------------------+
+   |   GitHub Pages : https://pgrmcreate.github.io/onemoreday/     |
+   |   (le jeu, statique — rien à héberger ici)                    |
+   +---------------------------------------------------------------+
+        |                                               |
+        |  (2) co-op : WebSocket SÉCURISÉE  wss://....../ws         |
+        v                                               v
+   +---------------------------------------------------------------+
+   |   >>> TON SERVEUR <<<   :   node server.js  (le relais)       |
+   |   écoute en local sur le port 8420, chemin WebSocket = /ws    |
+   +---------------------------------------------------------------+
+
+
+--------------------------------------------------------------------------
+3. LA SEULE EXIGENCE TECHNIQUE  (le point important)
+--------------------------------------------------------------------------
+
+Le jeu est servi en HTTPS (page sécurisée). Un navigateur INTERDIT à une
+page https d'ouvrir une connexion WebSocket NON chiffrée (ws://). Donc :
+
+  >>> Ton serveur doit être joignable depuis Internet en  wss://  <<<
+      (WebSocket + TLS/chiffrement), sur le chemin  /ws
+
+C'est le SEUL impératif. La FAÇON d'y arriver est libre (section 5).
+
+Détail utile : "server.js" NE GÈRE PAS le TLS lui-même. Il parle en clair sur
+le port 8420. C'est la couche que tu mets DEVANT lui (tunnel, reverse-proxy,
+ou plateforme d'hébergement) qui ajoute le https/wss. Cette couche doit aussi
+laisser passer la "montée en WebSocket" (l'en-tête Upgrade) — la plupart le
+font tout seuls.
+
+
+--------------------------------------------------------------------------
+4. LANCER LE SERVEUR
+--------------------------------------------------------------------------
+
+Pré-requis : Node.js installé (n'importe quelle version récente, 14+).
+Depuis le dossier du jeu :
+
+      node server.js
+
+Il affiche son adresse locale et écoute sur le port 8420. En local, le
+WebSocket est donc à  ws://localhost:8420/ws . Il reste à exposer ce port
+en wss:// vers l'extérieur — voir ci-dessous.
+
+
+--------------------------------------------------------------------------
+5. LES FAÇONS DE L'EXPOSER EN wss://  (choisis la tienne)
+--------------------------------------------------------------------------
+
+Toutes ces options sont valables. Compare selon ce que tu préfères.
+
+ A) TUNNEL (ex. Cloudflare Tunnel, ngrok…)
+    - Le tunnel crée une adresse https/wss publique et la relie à ton
+      localhost:8420. Pas besoin d'ouvrir de port sur la box, n'expose pas
+      ton IP perso, TLS fourni.
+    - Cloudflare Tunnel avec une adresse STABLE demande un nom de domaine
+      (~10 €/an). Les tunnels "rapides" gratuits donnent une adresse qui
+      CHANGE à chaque redémarrage (à éviter pour du permanent).
+    - ngrok : simple, mais l'URL gratuite est éphémère.
+
+ B) BOX + REDIRECTION DE PORT + REVERSE-PROXY TLS  (ex. Caddy)
+    - Tu rediriges un port de ta box vers la machine, et tu mets un
+      reverse-proxy (Caddy obtient un certificat Let's Encrypt tout seul)
+      qui transforme https/wss -> http/ws local:8420.
+    - Demande un domaine ou un DDNS, l'accès à la config de la box, et
+      ça expose ton IP. Robuste une fois en place.
+    - Exemple de Caddyfile (3 lignes) :
+          onemoreday.ton-domaine.net {
+              reverse_proxy localhost:8420
+          }
+      (Caddy gère le WebSocket et le TLS automatiquement.)
+
+ C) HÉBERGEUR / CLOUD  (ex. Fly.io gratuit, Render, un petit VPS…)
+    - Tu déposes "server.js" chez l'hébergeur ; il fournit une adresse
+      stable en wss:// et le TLS. AVANTAGE : pas besoin de laisser ton PC
+      allumé, et pas d'IP maison exposée.
+    - Fly.io a une offre gratuite (adresse en *.fly.dev). Un VPS coûte
+      ~3–5 €/mois mais c'est le plus "carré".
+
+ ====> Choisis la solution la plus adaptée à TON setup (machine toujours
+       allumée ou pas, domaine dispo ou pas, envie de toucher à la box ou pas).
+
+
+--------------------------------------------------------------------------
+6. PERMANENCE (pour que ça tourne H24)
+--------------------------------------------------------------------------
+
+  - Fais en sorte que "node server.js" (et ton tunnel/proxy, si option A/B)
+    se relancent au démarrage de la machine — service Windows, tâche
+    planifiée, pm2, ou un simple script au boot. Sinon, laisse les fenêtres
+    ouvertes.
+  - Si tu choisis l'option C (cloud), la plateforme gère le "toujours en
+    ligne" à ta place.
+
+
+--------------------------------------------------------------------------
+7. SÉCURITÉ (à savoir)
+--------------------------------------------------------------------------
+
+Le relais est OUVERT : il n'y a pas de mot de passe. Quiconque connaît
+l'adresse wss:// peut s'y connecter. Pour nous deux c'est sans souci ; si un
+jour on veut le verrouiller, on pourra ajouter un secret partagé côté
+serveur + client. (À demander si besoin.)
+
+
+--------------------------------------------------------------------------
+8. TESTER QUE ÇA MARCHE
+--------------------------------------------------------------------------
+
+  a) Test rapide de la connexion wss (depuis n'importe quel navigateur,
+     console F12) — remplace l'adresse par la tienne :
+
+         const s = new WebSocket('wss://TON-ADRESSE/ws');
+         s.onopen  = () => console.log('OK : connecté');
+         s.onerror = (e) => console.log('ÉCHEC', e);
+
+     "OK : connecté" = ton serveur est bien joignable en wss.
+
+  b) Test réel à deux : une fois l'adresse renseignée dans le jeu (section 9),
+     l'un fait "Jouer à deux -> Héberger - en ligne", l'autre
+     "Jouer à deux -> Rejoindre - en ligne".
+
+
+--------------------------------------------------------------------------
+9. CE QU'ON ATTEND DE TOI (le livrable)
+--------------------------------------------------------------------------
+
+Une fois ton serveur joignable, donne-nous l'adresse finale, sous la forme :
+
+         wss://TON-ADRESSE/ws            (le suffixe /ws est obligatoire)
+
+Cette adresse sera collée dans le fichier du jeu :
+
+         js/data/serveur.js   ->   export const SERVEUR_EN_LIGNE = 'wss://.../ws';
+
+À partir de là, les boutons "en ligne" apparaissent dans le menu "Jouer à
+deux", et tout le monde joue à distance. Merci !  🧟
