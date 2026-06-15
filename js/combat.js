@@ -165,6 +165,9 @@ export function reprendreCombatAvecDecompte() {
 export function appliquerCombatDistant(m) {
   if (!C || !C.enc || m.enc !== C.enc) return false;
   if (m.sub === 'degats') {
+    // Si l'autre frappe un AUTRE type de mort que celui que j'ai en face (files divergées),
+    // on n'applique rien : mieux vaut rater l'usure partagée que ronger le mauvais zombie.
+    if (m.zid && C.z.id !== m.zid) return false;
     C.appliquantDistant = true;
     C.z.hp = Math.max(1, C.z.hp - (m.deg || 0)); // l'achèvement reste l'affaire de celui qui frappe le coup mortel
     C.appliquantDistant = false;
@@ -725,7 +728,9 @@ function infligerDegats(deg, crit, arme) {
   C.derniereDistance = !!arme.feu; // tir ou projectile : on n'est pas au contact
   C.z.hp -= deg;
   // Co-op : mon coup use aussi le zombie commun chez mon coéquipier (rencontre partagée).
-  if (multi.estMulti() && C.enc && !C.appliquantDistant) multi.diffuserCombat({ sub: 'degats', enc: C.enc, deg });
+  // On joint le TYPE du mort visé : si la file de l'autre a divergé (morts tués dans un
+  // ordre différent), il n'applique pas mon coup au mauvais adversaire.
+  if (multi.estMulti() && C.enc && !C.appliquantDistant) multi.diffuserCombat({ sub: 'degats', enc: C.enc, deg, zid: C.z.id });
   sfx(crit ? 'coup_critique' : 'coup');
   const fl = $('.combat-scene .flash');
   if (fl) { fl.classList.remove('hit'); void fl.offsetWidth; fl.classList.add('hit'); }

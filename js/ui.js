@@ -69,9 +69,22 @@ export function updateHUD() {
   $('#hud-time').textContent = heureTxt() + (estNuit() ? ' — nuit' : '');
   const lieuEl = $('#hud-lieu');
   if (lieuEl) lieuEl.textContent = G.world.lieuLabel || '';
+  majJaugePoids();
   $('#moodles').innerHTML = calculerEtats()
     .map(e => `<span class="moodle n${e.n}" title="${e.desc}">${ico(e.ico)}<span class="mlabel">${e.label}</span></span>`)
     .join('');
+}
+
+// Jauge de charge sous l'heure : poids porté / capacité, d'un coup d'œil.
+function majJaugePoids() {
+  const el = $('#hud-poids');
+  if (!el) return;
+  const pt = poidsTotal(), pm = poidsMax();
+  const fill = el.querySelector('i');
+  if (fill) fill.style.width = Math.max(0, Math.min(1, pm ? pt / pm : 0)) * 100 + '%';
+  el.classList.toggle('over', surcharge());
+  el.classList.toggle('warn', !surcharge() && enSurpoids());
+  el.title = `Charge : ${pt.toFixed(1)} / ${pm} kg${enSurpoids() ? ' (en surpoids)' : ''}`;
 }
 
 export function setLieuLabel(txt) {

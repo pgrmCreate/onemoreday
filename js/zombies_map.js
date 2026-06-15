@@ -16,7 +16,7 @@
 //   sans      — ticks consécutifs sans te revoir (au-delà de MEMOIRE_TICKS : il abandonne)
 //   spin      — anneau de contact en cours : ticks restants avant le combat
 //   faitLeMort — affiché comme cadavre tant qu'on ne l'a pas réveillé (pré-placés seulement)
-import { G, chance, pick, estNuit } from './state.js';
+import { G, chance, pick, estNuit, seedRng } from './state.js';
 import { CARTES } from './data/world.js';
 import {
   passagePossible, ckey, estSecurisee, liaison, porteCassee, frapperPorte,
@@ -123,6 +123,12 @@ function normaliser(e) {
 // revient après plus de douze heures (le vide attire toujours quelque chose).
 // À la PREMIÈRE visite, les zombies SCÉNARISÉS (carte.zombiesFixes) sont posés
 // d'abord ; le peuplement procédural complète sans dépasser le cap.
+// Rayon « réveil sûr » : à la PREMIÈRE pose d'une carte, on ne sème aucun mort
+// à portée immédiate de l'endroit où l'on débarque (la chambre du début, l'entrée
+// d'un lieu). Sans ça, on pouvait « ouvrir les yeux » collé à un mort et devoir se
+// battre dès la première seconde — et, en co-op, l'un tombait dessus, pas l'autre.
+const SPAWN_SAFE = 2;
+
 export function peuplerCarte(carteId) {
   if (!carteVivante(carteId)) return;
   if (!G.world.zmap) G.world.zmap = {};
@@ -131,13 +137,23 @@ export function peuplerCarte(carteId) {
   const ex = G.world.zmap[carteId];
   if (ex) normaliser(ex);
   if (ex && maintenant - (ex.t || 0) < 12 * 60) return;
+  const premiere = !ex; // 1re pose de cette carte : on sème de façon DÉTERMINISTE (co-op)
   const z = ex ? [...ex.z] : [];
+  // À la 1re visite, le tirage suit une graine PARTAGÉE (seed + carte) : hôte et invité
+  // sèment EXACTEMENT la même horde, sans avoir à se synchroniser. Au repeuplement
+  // (retour après 12 h), on retombe sur l'aléa ordinaire — rare, et déjà en jeu.
+  const rnd = premiere ? seedRng((G.world.seed || 0) + ':z:' + carteId) : null;
+  const sChance = (p) => (premiere ? rnd() : Math.random()) < p;
+  const sPick = (arr) => arr[Math.floor((premiere ? rnd() : Math.random()) * arr.length)];
+  // Case d'arrivée (réveil / entrée) à protéger sur cette carte, le cas échéant.
+  const surCarte = carteId === G.world.carte;
+  const prochePoint = (x, y) => surCarte && (Math.abs(x - G.world.x) + Math.abs(y - G.world.y)) <= SPAWN_SAFE;
   if (!ex) {
     for (const f of c.zombiesFixes || []) {
-      if (carteId === G.world.carte && f.x === G.world.x && f.y === G.world.y) continue;
+      if (prochePoint(f.x, f.y)) continue; // jamais collé au point d'arrivée
       z.push({
         x: f.x, y: f.y, id: f.id, pas: 0, uid: uidSuivant(),
-        dir: f.dir ? [...f.dir] : pick(DIRS).slice(),
+        dir: f.dir ? [...f.dir] : sPick(DIRS).slice(),
         ...(f.faitLeMort ? { faitLeMort: true } : {}),
       });
     }
@@ -155,10 +171,10 @@ export function peuplerCarte(carteId) {
     const [x, y] = pos.split(',').map(Number);
     if (estSecurisee(ckey(carteId, x, y))) continue;
     if (z.some(e => e.x === x && e.y === y)) continue;
-    if (carteId === G.world.carte && x === G.world.x && y === G.world.y) continue;
-    if (chance(danger * (ex ? 0.3 : 0.55))) {
+    if (prochePoint(x, y)) continue; // zone de réveil/entrée sûre : pas de combat immédiat
+    if (sChance(danger * (ex ? 0.3 : 0.55))) {
       const pool = cd.zombies || c.zombiesPool || ['errant'];
-      z.push({ x, y, id: pick(pool), pas: 0, uid: uidSuivant(), dir: pick(DIRS).slice() });
+      z.push({ x, y, id: sPick(pool), pas: 0, uid: uidSuivant(), dir: sPick(DIRS).slice() });
     }
   }
   G.world.zmap[carteId] = { t: maintenant, z, morts: (ex && ex.morts) || [] };

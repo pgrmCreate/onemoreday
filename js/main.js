@@ -1001,8 +1001,18 @@ const CRAFT_CATS = [
 ];
 let craftCat = 'tous';
 
+// Ordre d'utilité (à la louche) quand plusieurs recettes sont à égalité : ce qui te
+// garde en vie d'abord. Peu importe si l'ordre n'est pas parfait — le tri principal,
+// c'est : ce que tu PEUX fabriquer maintenant remonte tout en haut.
+const CRAFT_UTILITE = { soins: 0, nourriture: 1, survie: 2, armes: 3, equipement: 4 };
+
 function remplirCraft(entete) {
-  const recettes = listeRecettes().filter(({ r }) => craftCat === 'tous' || r.cat === craftCat);
+  const recettes = listeRecettes()
+    .filter(({ r }) => craftCat === 'tous' || r.cat === craftCat)
+    .sort((a, b) =>
+      (b.possible - a.possible) ||                                       // réalisables EN PREMIER
+      ((CRAFT_UTILITE[a.r.cat] ?? 9) - (CRAFT_UTILITE[b.r.cat] ?? 9)) ||  // puis par utilité
+      (a.manque.length - b.manque.length));                              // puis « presque faisable » d'abord
   let html = `${entete}
     <p class="cap-line">Fabriquer prend du temps — et le temps, dehors, se paie.</p>
     <div class="chips">${CRAFT_CATS.map(([id, nom]) => `<button class="chip ${craftCat === id ? 'on' : ''}" data-cat="${id}">${nom}</button>`).join('')}</div>

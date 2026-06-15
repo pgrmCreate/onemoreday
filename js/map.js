@@ -3,7 +3,7 @@
 // selon ta vitesse et l'environnement), le temps file, et ce qui devait arriver arrive.
 // Les événements s'affichent dans une fenêtre par-dessus la carte.
 import {
-  G, save, rng, chance, pick, skillLevel, gainSkill, setFlag, getFlag, estNuit, noteJournal,
+  G, save, rng, chance, pick, skillLevel, gainSkill, setFlag, getFlag, estNuit, noteJournal, seedRng,
 } from './state.js';
 import { CARTES, DEPART } from './data/world.js';
 import { REGLAGES } from './data/reglages.js';
@@ -632,6 +632,23 @@ function pairSurCase(k) {
   return !!pr && ckey(pr.carte, pr.x, pr.y) === k;
 }
 
+// Redessin de carte FIABLE après un événement réseau (case ramassée, fouille du pair…).
+// Le coéquipier pouvait rater la mise à jour s'il marchait ou avait un panneau ouvert à
+// l'instant du message : sa carte gardait l'objet « au sol » qui n'existe plus. On réessaie
+// jusqu'à ce qu'il soit dispo — la case se resynchronise alors visiblement.
+let rafraichirEnAttente = false;
+function planifierRafraichirCarte() {
+  if (rafraichirEnAttente) return;
+  rafraichirEnAttente = true;
+  const essayer = () => {
+    if (!document.querySelector('.carte-grille')) { rafraichirEnAttente = false; return; }
+    if (modaleBloque() || enMarche) { setTimeout(essayer, 250); return; }
+    rafraichirEnAttente = false;
+    rafraichirCarteSeule();
+  };
+  setTimeout(essayer, 0);
+}
+
 // Câblage co-op : posé une fois, dort tant qu'on n'est pas en multi.
 let pairCombatPrec = false;
 function brancherMulti() {
@@ -663,7 +680,7 @@ function brancherMulti() {
     if (m.k.split(':')[0] !== G.world.carte) return; // pas ma carte : appliqué en mémoire, rien à redessiner
     const surAuSol = panelOuvert() && (($('.panel-head h2') || {}).textContent === 'Au sol') && m.k === keyCourante();
     if (surAuSol) panneauTrouves(); // le panneau « Au sol » ouvert sur cette case : on le rafraîchit
-    else if (document.querySelector('.carte-grille') && !modaleBloque() && !enMarche) rafraichirCarteSeule();
+    else planifierRafraichirCarte(); // sinon : on redessine la carte DÈS QU'ON est dispo (même si on marche / un panneau est ouvert)
   });
   multi.poser('onPairMaj', (pr) => {
     if (!pr) fouillePairK = null; // coéquipier parti : plus aucune fouille à attendre
@@ -1222,6 +1239,7 @@ export function renderLieu() {
   const k = keyCourante();
   peuplerCarte(G.world.carte);
   assignerGaranties(G.world.carte); // pose le butin garanti (lampe, clé…) à la 1re visite
+  assignerEvenements(G.world.carte); // pré-place les événements (mêmes lieux pour les deux en co-op)
   decouvrirAutour(G.world.carte, G.world.x, G.world.y);
   playAmbiance(G.world.carte);
   reevaluerTension(); // playAmbiance a pu rebâtir la scène (carte / jour↔nuit) : ré-arme la musique d'action au prochain tick
@@ -1594,6 +1612,8 @@ function entrerCase() {
     G.world.carte = cd.vers.carte;
     G.world.x = cd.vers.x; G.world.y = cd.vers.y;
     peuplerCarte(G.world.carte);
+    assignerGaranties(G.world.carte);
+    assignerEvenements(G.world.carte); // placés AVANT l'arrivée (sinon le 1er pas sur la carte n'aurait rien)
     decouvrirAutour(G.world.carte, G.world.x, G.world.y);
     if (!getFlag('visite_' + cd.vers.carte)) {
       setFlag('visite_' + cd.vers.carte);
@@ -1640,22 +1660,44 @@ function arrivee() {
       return;
     }
   }
-  // Événement ? — dans une fenêtre par-dessus la carte
-  const type = typeEvenement();
-  const pEv = { rue: 0.26, interieur: 0.14, parc: 0.26 }[type] || 0.2;
-  if ((cd.danger || 0) > 0 && chance(pEv)) {
-    const ev = tirerEvent(type);
-    if (ev) { jouerEvent(ev); return; }
+  // Événement ? — désormais PRÉ-PLACÉ (mêmes lieux pour les deux joueurs en co-op).
+  // On ne tire PLUS un événement au hasard à chaque pas : ça divergeait d'une machine
+  // à l'autre (l'un « tombait sur le fil de fer », pas l'autre). Chaque case piégée a
+  // reçu SON événement à la 1re visite de la carte (assignerEvenements, graine partagée).
+  // On le déclenche une fois de mon côté quand j'y mets le pied ; mon coéquipier le
+  // déclenchera lui aussi au même endroit (la consigne « événements communs »).
+  const evId = evenementPlaceCourant(k);
+  if (evId) {
+    const ev = EVENTS.find(e => e.id === evId);
+    if (ev && evenementJouable(ev)) {
+      G.world.eventsFaits[k] = true; // consommé de MON côté QUAND il se déclenche (non diffusé : chacun le vit une fois)
+      jouerEvent(ev);
+      return;
+    }
+    // pas jouable ici/maintenant (déjà vu, mauvaise heure, condition non remplie) :
+    // on le LAISSE en place — il pourra se déclencher plus tard, au bon moment.
   }
   renderLieu();
 }
 
-function typeEvenement() {
-  const C = carteCourante();
-  const cd = caseCourante() || {};
-  if (C.echelle === 'interieur') return 'interieur';
-  if (cd.t === 'parc' || cd.t === 'nature') return 'parc';
-  return 'rue';
+// Événement pré-placé sur la case courante, non encore déclenché de mon côté (ou null).
+function evenementPlaceCourant(k) {
+  if (G.world.eventsFaits && G.world.eventsFaits[k]) return null;
+  const a = G.world.eventsPlaces && G.world.eventsPlaces[G.world.carte];
+  return (a && a[`${G.world.x},${G.world.y}`]) || null;
+}
+// Un événement pré-placé est-il jouable ICI, MAINTENANT ? (filtres dynamiques revérifiés
+// au déclenchement, comme l'ancien tirage : once déjà vu, nuit/jour, condition de flag/item.)
+function evenementJouable(ev) {
+  if (ev.once && G.world.eventsVus.includes(ev.id)) return false;
+  if (ev.nuit === true && !estNuit()) return false;
+  if (ev.nuit === false && estNuit()) return false;
+  if (ev.condition) {
+    if (ev.condition.flag && !getFlag(ev.condition.flag)) return false;
+    if (ev.condition.flagAbsent && getFlag(ev.condition.flagAbsent)) return false;
+    if (ev.condition.item && !hasItem(ev.condition.item)) return false;
+  }
+  return true;
 }
 
 // ---------- Fouille : UNE action continue, le butin sort au fil de la barre ----------
@@ -2454,25 +2496,40 @@ function ecranLocomotive() {
 }
 
 // ---------- Événements (fenêtre par-dessus la carte) ----------
-function tirerEvent(typeLieu) {
-  const candidats = EVENTS.filter(ev => {
-    const typeOk = (ev.types && ev.types.includes(typeLieu)) || (ev.lieux && ev.lieux.includes(G.world.carte));
-    if (!typeOk) return false;
-    if (ev.once && G.world.eventsVus.includes(ev.id)) return false;
-    if (ev.nuit === true && !estNuit()) return false;
-    if (ev.nuit === false && estNuit()) return false;
-    if (ev.condition) {
-      if (ev.condition.flag && !getFlag(ev.condition.flag)) return false;
-      if (ev.condition.flagAbsent && getFlag(ev.condition.flagAbsent)) return false;
-      if (ev.condition.item && !hasItem(ev.condition.item)) return false;
-    }
-    return true;
-  });
-  if (!candidats.length) return null;
-  const total = candidats.reduce((s, e) => s + (e.p || 1), 0);
-  let t = Math.random() * total;
-  for (const e of candidats) { t -= (e.p || 1); if (t <= 0) return e; }
-  return candidats[candidats.length - 1];
+// ---------- Événements PRÉ-PLACÉS (déterministes, partagés en co-op) ----------
+// À la 1re visite d'une carte, on décide UNE fois pour toutes quelles cases « piégées »
+// portent un événement et lequel — exactement comme le butin garanti (assignerGaranties).
+// Tout suit la graine PARTAGÉE (G.world.seed + carte) : hôte et invité placent les MÊMES
+// événements aux MÊMES endroits, sans se synchroniser. Chacun les déclenche ensuite une
+// fois en passant dessus (eventsFaits, local). Les filtres dynamiques (nuit, once, flags)
+// sont revérifiés au moment de jouer, pas au placement.
+function assignerEvenements(carteId) {
+  const c = CARTES[carteId];
+  if (!c) return;
+  if (!G.world.eventsPlaces) G.world.eventsPlaces = {};
+  if (G.world.eventsPlaces[carteId]) return; // déjà dispatché
+  const typeDe = (cd) => {
+    if (c.echelle === 'interieur') return 'interieur';
+    if (cd.t === 'parc' || cd.t === 'nature') return 'parc';
+    return 'rue';
+  };
+  const rnd = seedRng((G.world.seed || 0) + ':ev:' + carteId);
+  const assign = {};
+  for (const [pos, cd] of Object.entries(c.cases)) {
+    const danger = cd.danger || 0;
+    if (danger <= 0) continue;
+    const type = typeDe(cd);
+    const candidats = EVENTS.filter(ev =>
+      (ev.types && ev.types.includes(type)) || (ev.lieux && ev.lieux.includes(carteId)));
+    if (!candidats.length) continue;
+    // Densité comparable à l'ancien tirage par pas, mais FIXÉE (un seul événement par case).
+    if (rnd() >= Math.min(0.5, danger * 0.7)) continue;
+    const total = candidats.reduce((s, e) => s + (e.p || 1), 0);
+    let t = rnd() * total, choisi = candidats[candidats.length - 1];
+    for (const e of candidats) { t -= (e.p || 1); if (t <= 0) { choisi = e; break; } }
+    assign[pos] = choisi.id;
+  }
+  G.world.eventsPlaces[carteId] = assign;
 }
 
 function jouerEvent(ev) {

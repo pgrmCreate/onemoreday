@@ -39,6 +39,27 @@ export function rng(min, max) { return Math.floor(Math.random() * (max - min + 1
 export function chance(p) { return Math.random() < p; }
 export function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+// ---------- RNG DÉTERMINISTE (co-op : même résultat chez l'hôte et l'invité) ----------
+// Pour tout ce qui doit être IDENTIQUE des deux côtés sans se parler en continu :
+// seeding des zombies à la 1re visite, pré-placement des événements… On dérive une
+// graine d'une chaîne (la graine de partie + l'id de carte), et on en tire un flux
+// reproductible. Hôte et invité partagent G.world.seed (l'invité adopte le monde),
+// donc seedRng(seed+':z:'+carteId) donne la MÊME suite des deux côtés.
+export function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+export function seedRng(s) {
+  let a = hashStr(String(s));
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 // ---------- Nouvelle partie ----------
 export function newGame(nom) {
   G = {
@@ -61,6 +82,9 @@ export function newGame(nom) {
       morts: 0,       // zombies tués
     },
     world: {
+      // Graine de partie : socle de tout le déterminisme partagé en co-op (l'invité
+      // l'adopte avec le monde). Tirée une fois, ici, chez celui qui crée la partie.
+      seed: Math.floor(Math.random() * 1e9),
       jour: 1, heure: 8, minute: 0,
       // Position : une carte (échelle quelconque) + des coordonnées de case
       carte: null, x: 0, y: 0, // définis par map.js au lancement (DEPART du monde)
@@ -76,6 +100,8 @@ export function newGame(nom) {
       flags: {},      // drapeaux d'histoire
       eventsVus: [],  // ids d'événements "once" déjà joués
       garanties: {},  // carteId -> { 'x,y': [{id, qty}] } : butin GARANTI dispatché à la 1re visite
+      eventsPlaces: {}, // carteId -> { 'x,y': eventId } : événements PRÉ-PLACÉS (mêmes lieux pour les deux en co-op)
+      eventsFaits: {},  // 'carte:x,y' -> true : événement pré-placé déjà déclenché (de MON côté ; non diffusé)
       statsTemps: 0,  // minutes écoulées au total
     },
     journal: [],
@@ -101,6 +127,9 @@ export function load() {
     G = JSON.parse(raw);
     if (!G.world.zmap) G.world.zmap = {};   // sauvegardes d'avant les zombies sur carte
     if (!G.world.portes) G.world.portes = {}; // sauvegardes d'avant les portes à PV
+    if (G.world.seed === undefined) G.world.seed = Math.floor(Math.random() * 1e9); // graine partagée
+    if (!G.world.eventsPlaces) G.world.eventsPlaces = {}; // événements pré-placés
+    if (!G.world.eventsFaits) G.world.eventsFaits = {};   // événements pré-placés déjà joués
     return G;
   } catch (e) { console.error('Chargement impossible', e); return null; }
 }

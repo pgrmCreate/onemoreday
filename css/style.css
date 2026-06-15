@@ -50,6 +50,21 @@ html, body {
 }
 .topbar .lieu { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar .heure { white-space: nowrap; color: var(--fg); }
+.tb-gauche { display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* Jauge de charge : fine barre horizontale, discrète, à côté de l'heure.
+   Verte tant qu'on est sous la capacité, ambre en surpoids, rouge en surcharge. */
+.poids-jauge {
+  position: relative; width: 58px; height: 6px; flex: none;
+  border-radius: 4px; overflow: hidden;
+  background: rgba(255,255,255,.08); border: 1px solid var(--border);
+}
+.poids-jauge > i {
+  display: block; height: 100%; width: 0;
+  background: linear-gradient(90deg, #5c7a4a, #8aa15a);
+  transition: width .25s ease, background-color .25s;
+}
+.poids-jauge.warn > i { background: linear-gradient(90deg, #b78a30, #d8b24a); }
+.poids-jauge.over > i { background: linear-gradient(90deg, #a32020, #e0392f); }
 
 /* ---------- États (façon Project Zomboid) : coin HAUT GAUCHE de l'écran ---------- */
 .moodles {
