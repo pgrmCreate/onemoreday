@@ -180,7 +180,9 @@ export function casesVisibles(carteId, px, py, opts = {}) {
   // (propagation bornée dans le graphe), buildings non liés = hors de vue.
   if (c.graphe) {
     const adj = adjacence(c);
-    const hops = opts.hops ?? 4;
+    // Portée alignée sur CONE_PORTEE (zombies.js) : la vue du joueur atteint les mêmes
+    // nœuds qu'un mort peut percevoir, sinon un mort à 5-7 sauts ne « te voyait » jamais.
+    const hops = opts.hops ?? 7;
     let front = [`${px},${py}`];
     for (let d = 0; d < hops; d++) {
       const next = [];

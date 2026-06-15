@@ -245,11 +245,15 @@ function teVoit(carteId, z, px, py, vis, dist) {
   if (estNuit() && dist <= 2) return true;
   if (dist > CONE_PORTEE) return false;
   if (!vis.has(`${z.x},${z.y}`)) return false;
-  // Cône : en plan, on mesure l'angle dans l'espace (cx,cy) ; en grille, en cases.
   const c = CARTES[carteId];
-  let dx, dy;
-  if (c && c.graphe) { const a = posPlan(c, z.x, z.y), b = posPlan(c, px, py); dx = b.cx - a.cx; dy = b.cy - a.cy; }
-  else { dx = px - z.x; dy = py - z.y; }
+  // Sur un PLAN à nœuds, un nœud est un pâté de maisons entier : le « regard » d'un mort
+  // y est une abstraction trop fine. Dès qu'il a une ligne de vue dégagée sur toi (la vue
+  // est réciproque : on réutilise TA visibilité) et que tu es à portée, il te repère —
+  // sans cône serré. C'est ce qui lui permet de venir de l'autre bout de la ville ; sinon,
+  // tourné « au hasard », il ne te voyait jamais au-delà d'une case.
+  if (c && c.graphe) return true;
+  // Grille (intérieur, rue dense) : cône ~90° devant son regard.
+  const dx = px - z.x, dy = py - z.y;
   const [fx, fy] = z.dir || [0, 1];
   const devant = dx * fx + dy * fy;          // composante devant lui
   return devant > 0 && Math.abs(dx * fy - dy * fx) <= devant; // cône à ~45° de part et d'autre

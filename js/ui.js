@@ -87,6 +87,9 @@ export function log(texte, cls = '') {
   if (G.log.length > 80) G.log.splice(0, G.log.length - 80);
   const div = $('#gamelog');
   if (div) { div.innerHTML = logHtml(); }
+  // Journal en ligne sous la carte (visible sur grand écran) : tenu à jour en direct.
+  const inline = $('#gamelog-inline');
+  if (inline) { inline.innerHTML = logHtml(); }
 }
 export function logHtml(n = 14) {
   if (!G) return '';

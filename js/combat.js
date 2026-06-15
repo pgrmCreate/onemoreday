@@ -18,6 +18,7 @@ import { ajouterBlessure, mortJoueur } from './survival.js';
 import { render, updateHUD, showHUD, log, $ } from './ui.js';
 import { ico } from './icons.js';
 import { svgCombatDecor, svgCombatZombie, pngZombie } from './illustrations.js';
+import { svgAmbiance, aAmbiance } from './ambiance.js';
 import { startCombatMusic, stopCombatMusic, sfx, setHeartbeat } from './audio.js';
 import * as multi from './multi.js';
 import { REGLAGES } from './data/reglages.js';
@@ -25,6 +26,14 @@ import { REGLAGES } from './data/reglages.js';
 let C = null; // état du combat en cours
 
 export function enCombat() { return !!C; }
+
+// Le fond de la scène de combat = le LIEU où il se déroule. Si la carte a un dessin
+// d'ambiance (chambre, rue, magasin…), on l'affiche tel quel — même cadre 800×340 que les
+// arènes. Sinon (lieu sans dessin), on retombe sur l'arène générique liée au type de mort.
+function decorCombat() {
+  if (C && aAmbiance(C.decorCarte)) return svgAmbiance(C.decorCarte, C.decorHeure);
+  return svgCombatDecor(C ? C.decorZid : 'inconnu');
+}
 
 // Coût des actions et profil de l'attaque chargée : centralisés dans js/data/reglages.js.
 // MAINTENIR le bouton charge le coup (ou la visée), RELÂCHER le déclenche ; pendant la
@@ -44,7 +53,12 @@ export function demarrerCombat(zombieIds, opts = {}) {
   C = {
     z: creerZombie(premier),
     queue: ids,
-    decorZid: premier, // le décor de la rencontre, fixé au premier mort (ne change pas en cours de combat)
+    decorZid: premier, // arène de SECOURS (par type de mort) si le lieu n'a pas d'ambiance
+    // Le décor du combat, c'est le LIEU où il se joue : on réutilise le dessin d'ambiance
+    // de la carte courante (la chambre, la rue, le magasin…) plutôt qu'une arène générique.
+    // Heure GELÉE au début du combat pour que le ciel de la fenêtre ne bouge pas en plein duel.
+    decorCarte: G.world.carte,
+    decorHeure: G.world.heure + G.world.minute / 60,
     opts,
     def: null,        // garde en charge : { c, prev, raf, max, maxTimer, collapsed } ou null
     fini: false,
@@ -1096,7 +1110,7 @@ function renderCombat() {
   <div class="cb">
     <div class="cb-menace-wrap"><div class="cb-menace-fill" id="cb-menace"></div></div>
     <div class="combat-scene" id="cb-scene">
-      <div class="cb-decor">${svgCombatDecor(C.decorZid)}</div>
+      <div class="cb-decor">${decorCombat()}</div>
       <div class="cb-horde" id="cb-horde">${hordeHTML()}</div>
       <div class="flash"></div>
       <div class="cb-msg" id="cb-msg" aria-live="polite"></div>

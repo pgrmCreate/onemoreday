@@ -306,6 +306,16 @@ b.code, .code {
 /* ---------- Journal de bord (log) ---------- */
 .gamelog { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 6px; max-height: 11svh; overflow-y: auto; }
 .gamelog-panel { max-height: 42svh; }   /* dans le panneau Journal : plus de place pour relire */
+/* Journal EN LIGNE sous la carte : masqué par défaut (mobile : on l'ouvre via le FAB pour
+   laisser la place à la carte). Sur grand écran (PC), il est TOUJOURS affiché — l'espace
+   le permet — et le FAB journal devient inutile. */
+.gamelog-inline { display: none; }
+@media (min-width: 1000px) and (min-height: 640px) {
+  .gamelog-inline { display: block; max-height: 22svh; }
+  /* On rend un peu de hauteur à la carte pour caser le journal sans scroller. */
+  .carte-grille { max-height: clamp(240px, calc(100dvh - 320px), 70dvh); }
+  #btn-journal { display: none; } /* le journal est déjà sous la carte : FAB superflu */
+}
 .gamelog p { margin: 3px 0; font-size: .84rem; color: var(--fg-dim); line-height: 1.4; }
 .gamelog p.bad { color: #b4584f; }
 .gamelog p.good { color: #7d9469; }
@@ -352,7 +362,10 @@ b.code, .code {
 .cap-line b.warn { color: #c9a14a; }
 .cap-line small { color: var(--fg-dim); font-weight: normal; }
 
-.item-list { display: flex; flex-direction: column; gap: 6px; }
+/* Grille responsive : 2-3 objets par ligne quand la largeur le permet (inventaire
+   plein écran ~840px → 3 colonnes), une seule colonne sur mobile étroit. S'adapte
+   au CONTENEUR (auto-fill), pas au viewport — juste pour les panneaux larges. */
+.item-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 6px; align-items: start; }
 .item-card {
   background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 6px 9px; display: flex; flex-direction: column; gap: 3px;
@@ -869,3 +882,33 @@ input[type=range] { width: 100%; accent-color: var(--blood2); }
 .fs-coin:hover { color: var(--fg); border-color: var(--rust); }
 /* (L'attaque chargée et toutes les jauges rondes sont stylées dans la section Combat,
    via .cbtn / .cb-ring — voir « Combat : écran à part entière ».) */
+
+/* ---------- Menu radial : actions d'une case sous le doigt (appui long / clic droit) ---------- */
+.radial-ov { position: fixed; inset: 0; z-index: 70; background: rgba(6,6,8,.5); animation: radial-fade .12s ease-out; }
+@keyframes radial-fade { from { opacity: 0; } }
+.radial { position: absolute; width: 0; height: 0; }
+.radial-hub {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  width: 48px; height: 48px; border-radius: 50%; padding: 0; cursor: pointer; z-index: 2;
+  background: var(--bg2); border: 1px solid var(--rust); color: var(--fg);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.radial-hub .ico { width: 1.2em; height: 1.2em; }
+.radial-item {
+  position: absolute; left: 50%; top: 50%; width: 66px; height: 66px; border-radius: 50%;
+  padding: 3px; cursor: pointer; animation: radial-fade .14s ease-out;
+  background: rgba(19,19,21,.97); border: 1px solid var(--border); color: var(--fg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.6);
+}
+.radial-item .ico { width: 1.55em; height: 1.55em; }
+.radial-item .ri-nom { font-size: .58rem; line-height: 1.05; text-align: center; letter-spacing: .3px; max-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.radial-item .ri-sub { font-size: .5rem; color: var(--fg-dim); line-height: 1; }
+.radial-item:hover { border-color: var(--rust); background: #191307; color: #c9b98a; }
+.radial-item.off { opacity: .4; cursor: not-allowed; }
+.radial-item.off:hover { border-color: var(--border); background: rgba(19,19,21,.97); color: var(--fg); }
+.radial-titre {
+  position: absolute; left: 50%; top: calc(50% + 116px); transform: translateX(-50%); white-space: nowrap;
+  font-size: .66rem; text-transform: uppercase; letter-spacing: 1px; color: #c9b98a;
+  background: rgba(10,10,12,.85); border: 1px solid var(--border); border-radius: 999px; padding: 2px 11px;
+}

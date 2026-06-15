@@ -446,7 +446,8 @@ export const ITEMS = {
   },
   bouteille_vide: {
     nom: 'Bouteille vide', type: 'materiau', poids: 0.1, espace: 1,
-    desc: 'À remplir — d\'eau ou de quelque chose qui brûle.',
+    contenance: 1.5, recipient: 'ferme',
+    desc: 'À remplir — d\'eau ou de quelque chose qui brûle. Bouchon à vis : elle voyage dans le sac, même pleine.',
   },
   bidon_vide: {
     nom: 'Bidon', type: 'materiau', poids: 0.6, espace: 2,

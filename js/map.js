@@ -24,7 +24,7 @@ import {
 import { EVENTS } from './data/events.js';
 import { item } from './data/items.js';
 import {
-  render, updateHUD, setLieuLabel, log, btnAct, $, toast, showHUD,
+  render, updateHUD, setLieuLabel, log, logHtml, btnAct, $, toast, showHUD,
   showPanel, closePanel, showEvt, closeEvt, attente, panelOuvert, evtOuvert,
 } from './ui.js';
 import { ico } from './icons.js';
@@ -756,11 +756,13 @@ function ecranAttenteCoop() {
   if (b) b.onclick = () => { sfx('clic'); multi.forcerDepart(); };
 }
 
-// Taille DESSINÉE par type de case (intérieur), en fraction du slot. Variation MODESTE :
-// jamais minuscule ni géante — juste de quoi rompre la grille régulière (un escalier, un
-// couloir, un sas un peu plus petits). Le SLOT logique (origine + pas) ne change JAMAIS,
-// donc déplacement / adjacence / clic restent intacts. Type absent = 1 (pleine taille).
-const TAILLE_CASE = { escalier: 0.8, porte: 0.88, couloir: 0.92, sas: 0.86 };
+// Taille DESSINÉE par type de case (intérieur), en fraction du slot — pour rompre la
+// grille régulière et gagner en immersion. L'escalier est nettement plus petit (une cage
+// d'escalier, pas une pièce), le couloir et le sas un peu resserrés. Le SLOT logique
+// (origine + pas) ne change JAMAIS, donc déplacement / adjacence / clic restent intacts
+// (une base pleine estompée garde la cible de clic à la taille du slot). Type absent = 1.
+// Une case peut imposer sa propre taille via `taille:` (prioritaire) pour varier librement.
+const TAILLE_CASE = { escalier: 0.6, porte: 0.82, couloir: 0.9, sas: 0.78 };
 
 function svgCarte(reach, vis) {
   if (estGraphe(G.world.carte)) return svgCartePlan(reach, vis); // plan à nœuds libres
@@ -797,7 +799,7 @@ function svgCarte(reach, vis) {
     const px = PAD + x * (CS + GAP), py = PAD + y * (CS + GAP); // SLOT logique (inchangé)
     // Taille DESSINÉE : certains types d'intérieur sont un peu plus petits, centrés
     // dans leur slot. dx/dy/cs servent au DESSIN ; px/py/CS restent le slot (murs + clic).
-    const fT = interieur ? (TAILLE_CASE[cd.t] ?? 1) : 1;
+    const fT = interieur ? (cd.taille ?? TAILLE_CASE[cd.t] ?? 1) : 1;
     const cs = CS * fT, dx = px + (CS - cs) / 2, dy = py + (CS - cs) / 2;
     const ici = x === G.world.x && y === G.world.y;
     const aVue = vis.has(pos);
@@ -1040,21 +1042,148 @@ function tuile(attrs, icone, nom, sub = '', opts = {}) {
 
 // (Re)lie les clics sur les cases de la carte. Extrait pour pouvoir rafraîchir
 // la grille seule (boucle temps réel) sans reconstruire tout l'écran.
+// ---------- Menu radial : toutes les actions d'une case, sous le doigt ----------
+// Plutôt que de scroller jusqu'au panneau du bas, on appuie (long) / clic droit / tape sa
+// propre case → un anneau d'actions s'ouvre à l'endroit touché. Les actions sont les MÊMES
+// que le panneau (fouiller, dormir, puiser, ramasser, entrer, aller…), via les mêmes fns.
+const SPECIAL_ICO = {
+  fontaine: 'soif', peche: 'soif', chasse: 'fouille', siphon: 'soif', cloches: 'options',
+  cellules: 'verrou', conducteur: 'corps', batterie: 'surcharge', locomotive: 'monter',
+};
+const SPECIAL_NOM = {
+  fontaine: 'Puiser', peche: 'Pêcher', chasse: 'Collet', siphon: 'Siphonner', cloches: 'Cloches',
+  cellules: 'Cellules', conducteur: 'Le cheminot', batterie: 'La batterie', locomotive: 'Locomotive',
+};
+// Liste des actions disponibles sur une case → [{icon, nom, sub, disabled, fn}].
+function actionsPourCase(pos, reach) {
+  const C = carteCourante();
+  const [x, y] = pos.split(',').map(Number);
+  const cd = caseDef(G.world.carte, x, y) || {};
+  const k = ckey(G.world.carte, x, y);
+  const ici = (x === G.world.x && y === G.world.y);
+  const acts = [];
+  if (!ici) { // une autre case : on peut s'y rendre si elle est atteignable
+    if (reach && reach.has(pos)) acts.push({ icon: 'aller', nom: 'Aller ici', sub: cd.nom || '', disabled: false, fn: () => allerEnCase(pos) });
+    return acts;
+  }
+  // La case où tu te tiens : ses actions (mêmes conditions que le panneau du bas).
+  if (cd.vers) {
+    const cible = carte(cd.vers.carte);
+    const bloque = cd.verrou && !G.world.verrous[k];
+    acts.push({ icon: bloque ? 'verrou' : (cible && cible.echelle === 'interieur' ? 'entrer' : 'sortir'),
+      nom: cd.versNom || (cible ? cible.nom : '?'), sub: bloque ? 'bloqué' : `${cd.vers.temps ?? C.tempsParCase} min`,
+      disabled: bloque, fn: entrerCase });
+  }
+  if (cd.fouille) {
+    const f = fouilleEtat(k);
+    const epuisee = fouilleFinie(f, cd);
+    const entamee = (f.frac || 0) > 0 && !epuisee;
+    acts.push({ icon: 'fouille', nom: entamee ? 'Continuer' : 'Fouiller',
+      sub: epuisee ? 'rien' : (entamee ? `${Math.round((f.frac || 0) * 100)} %` : ''), disabled: epuisee, fn: () => fouiller() });
+  }
+  const nbSol = solVisible(k).reduce((s, e) => s + (e.qty || 1), 0);
+  if (nbSol) acts.push({ icon: 'ramasser', nom: `Ramasser`, sub: `${nbSol}`, disabled: false, fn: panneauTrouves });
+  if (cd.special && tuileSpeciale(cd, k) !== '') {
+    acts.push({ icon: SPECIAL_ICO[cd.special] || 'fouille', nom: SPECIAL_NOM[cd.special] || 'Action', sub: '', disabled: false, fn: () => actionSpeciale(cd.special) });
+  }
+  if (accesEau(cd) && cd.special !== 'fontaine') {
+    acts.push({ icon: 'soif', nom: 'Puiser', sub: aDeQuoiPuiser() ? '' : 'aucun contenant', disabled: !aDeQuoiPuiser(), fn: panneauPuiser });
+  }
+  if (C.echelle === 'interieur') acts.push({ icon: 'dormir', nom: 'Dormir', sub: '', disabled: false, fn: panneauSommeil });
+  // Co-op : rejoindre le combat du coéquipier tout proche (même condition que la tuile).
+  if (multi.estMulti() && !enCombat()) {
+    const pr = multi.pairEtat();
+    if (pr && pr.enCombat && pr.combat && pr.carte === G.world.carte && manhattanPair(pr) <= 4)
+      acts.push({ icon: 'attaque', nom: 'Rejoindre', sub: 'le combat', disabled: false, fn: rejoindreCombatPair });
+  }
+  return acts;
+}
+
+let radialOuvert = false;
+function fermerRadial() {
+  const ov = document.getElementById('radial-ov');
+  if (ov) ov.remove();
+  radialOuvert = false;
+}
+function ouvrirRadial(pos, cx, cy, reach) {
+  if (enMarche || panelOuvert() || evtOuvert() || enCombat()) return;
+  fermerRadial();
+  const [x, y] = pos.split(',').map(Number);
+  const acts = actionsPourCase(pos, reach);
+  if (!acts.length) { selection = pos; majInfoCase(pos, reach); return; } // rien à faire ici : on sélectionne
+  sfx('clic');
+  radialOuvert = true;
+  const RAY = 84;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  cx = Math.max(RAY + 46, Math.min(cx, vw - RAY - 46));
+  cy = Math.max(RAY + 60, Math.min(cy, vh - RAY - 70));
+  const n = acts.length;
+  const items = acts.map((a, i) => {
+    const ang = (i / n) * 2 * Math.PI - Math.PI / 2; // premier élément en haut
+    const ix = (Math.cos(ang) * RAY).toFixed(1), iy = (Math.sin(ang) * RAY).toFixed(1);
+    return `<button class="radial-item${a.disabled ? ' off' : ''}" data-ri="${i}"
+      style="transform:translate(-50%,-50%) translate(${ix}px,${iy}px)" title="${a.nom}${a.sub ? ' — ' + a.sub : ''}">
+      ${ico(a.icon)}<span class="ri-nom">${a.nom}</span>${a.sub ? `<span class="ri-sub">${a.sub}</span>` : ''}</button>`;
+  }).join('');
+  const cd = caseDef(G.world.carte, x, y) || {};
+  const titre = (x === G.world.x && y === G.world.y) ? 'Ici' : (cd.nom || 'Cette case');
+  const ov = document.createElement('div');
+  ov.id = 'radial-ov';
+  ov.className = 'radial-ov';
+  ov.innerHTML = `<div class="radial" style="left:${cx}px;top:${cy}px">
+    <button class="radial-hub" data-rclose="1" title="Fermer">${ico('croix')}</button>
+    ${items}<span class="radial-titre">${titre}</span></div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('pointerdown', (e) => { if (e.target === ov) fermerRadial(); });
+  ov.querySelector('[data-rclose]').onclick = fermerRadial;
+  ov.querySelectorAll('[data-ri]').forEach(b => {
+    b.onclick = () => { const a = acts[+b.dataset.ri]; if (!a || a.disabled) return; fermerRadial(); a.fn(); };
+  });
+  const esc = (e) => { if (e.key === 'Escape') { fermerRadial(); document.removeEventListener('keydown', esc); } };
+  document.addEventListener('keydown', esc);
+}
+
+// (Re)lie les clics sur les cases de la carte. Extrait pour pouvoir rafraîchir
+// la grille seule (boucle temps réel) sans reconstruire tout l'écran.
+let lpTimer = null, lpX = 0, lpY = 0, lpFired = false;
 function lierCasesCarte(reach) {
+  if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+  const annuleLP = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
   document.querySelectorAll('[data-case]').forEach(g => {
+    const pos = g.dataset.case;
     g.onclick = () => {
       if (enMarche) return; // on ne change pas de cap en pleine marche
-      const pos = g.dataset.case;
-      if (pos === `${G.world.x},${G.world.y}`) { selection = null; renderLieu(); return; }
-      if (selection === pos && reach.has(pos)) {
-        selection = null;
-        sfx('clic');
-        allerEnCase(pos);
+      if (lpFired) { lpFired = false; return; } // un appui long vient d'agir : on ignore le clic
+      if (pos === `${G.world.x},${G.world.y}`) {
+        // Sur ta propre case : un tap ouvre le menu d'actions (plus besoin de scroller).
+        const acts = actionsPourCase(pos, reach);
+        if (acts.length) { const r = g.getBoundingClientRect(); ouvrirRadial(pos, r.left + r.width / 2, r.top + r.height / 2, reach); }
+        else { selection = null; renderLieu(); }
         return;
       }
+      if (selection === pos && reach.has(pos)) { selection = null; sfx('clic'); allerEnCase(pos); return; }
       selection = pos;
       majInfoCase(pos, reach);
     };
+    // Appui long (mobile + souris) → menu radial à l'endroit pressé.
+    g.addEventListener('pointerdown', (e) => {
+      if (enMarche || e.button === 2) return;
+      lpX = e.clientX; lpY = e.clientY; lpFired = false;
+      annuleLP();
+      lpTimer = setTimeout(() => { lpTimer = null; lpFired = true; ouvrirRadial(pos, e.clientX, e.clientY, reach); }, 420);
+    });
+    g.addEventListener('pointerup', annuleLP);
+    g.addEventListener('pointercancel', annuleLP);
+    g.addEventListener('pointermove', (e) => {
+      if (lpTimer && (Math.abs(e.clientX - lpX) > 12 || Math.abs(e.clientY - lpY) > 12)) annuleLP();
+    });
+    // Clic droit (desktop) → menu radial.
+    g.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (enMarche) return;
+      const r = g.getBoundingClientRect();
+      ouvrirRadial(pos, e.clientX || r.left + r.width / 2, e.clientY || r.top + r.height / 2, reach);
+    });
   });
 }
 
@@ -1147,9 +1276,12 @@ export function renderLieu() {
     html += tuile('data-dormir="1"', 'dormir', 'Dormir', sommeilInfo());
   }
   html += tuilePairCombat(); // co-op : rejoindre le combat du coéquipier tout proche
-  // Le journal de bord n'est plus affiché en permanence : il s'ouvre via le bouton Journal
-  // (coin bas gauche), pour laisser la plus grande place possible à la carte.
   html += `</div></div>`;
+  // Journal de bord : MASQUÉ sur mobile (s'ouvre via le bouton Journal, pour laisser la
+  // place à la carte) mais TOUJOURS visible sur PC sous les actions — l'écran est assez
+  // grand (cf. CSS .gamelog-inline, affiché seulement en grand écran). Sur mobile la règle
+  // CSS le cache : on peut donc toujours l'écrire, c'est l'affichage qui s'adapte.
+  html += `<div class="gamelog gamelog-inline" id="gamelog-inline">${logHtml()}</div>`;
 
   render(html);
   updateHUD();
@@ -1189,7 +1321,7 @@ function barreRonde() {
   const sousTexte = L.a ? `${L.reserve} paire${L.reserve > 1 ? 's' : ''} de piles en réserve` : 'Trouve une lampe et des piles';
   return `<div class="actions-rondes">
     <div class="lampe-statut ${L.on ? 'on' : L.a ? '' : 'vide'}" title="${sousTexte}">
-      ${ico('lumiere')}<span>${L.texte}</span>
+      ${ico('lumiere')}<span class="lampe-texte">${L.texte}</span>
     </div>
     ${L.a ? `<button class="brond ${L.on ? 'on' : ''}" data-lampe="1" title="${titre}">${ico('lumiere')}</button>` : ''}
     <button class="brond" data-attendre="1" title="Attendre">${ico('sablier')}</button>
@@ -1203,7 +1335,10 @@ function majIndicateurLumiere() {
   const st = document.querySelector('.lampe-statut');
   if (!st) return;
   const L = etatLumiere();
-  const span = st.querySelector('span');
+  // Cibler le span de TEXTE explicitement : st.querySelector('span') attrapait le span
+  // de l'icône (ico() enveloppe le SVG dans <span class="ico">) et y collait le texte,
+  // d'où le statut affiché en double.
+  const span = st.querySelector('.lampe-texte');
   if (span) span.textContent = L.texte;
   st.classList.toggle('on', !!L.on);
   st.classList.toggle('vide', !L.a && !L.on);
@@ -1767,6 +1902,10 @@ function panneauPuiser() {
   // (canette, casserole) se remplissent EN MAIN — pleins, ils ne vont pas au sac.
   G.player.inventaire.forEach((it, i) => {
     if (!estContenant(it.id)) return;
+    // La bouteille vide est désormais un contenant fermable (pour pouvoir transvaser
+    // dedans), mais à la source elle garde sa carte dédiée ci-dessus (→ eau croupie) :
+    // on évite ainsi de la lister deux fois.
+    if (it.id === 'bouteille_vide' && !it.eau) return;
     const d = defItem(it.id);
     const plein = (it.eau ? it.eau.L : 0) >= contenance(it.id);
     let btns;
