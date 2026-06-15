@@ -1078,6 +1078,7 @@ export function renderLieu() {
   peuplerCarte(G.world.carte);
   decouvrirAutour(G.world.carte, G.world.x, G.world.y);
   playAmbiance(G.world.carte);
+  reevaluerTension(); // playAmbiance a pu rebâtir la scène (carte / jour↔nuit) : ré-arme la musique d'action au prochain tick
   setLieuLabel(`${cd.nom || C.nom}`);
 
   const portee = porteeActuelle();
@@ -2388,6 +2389,11 @@ function poserTension(t) {
   tensionCourante = t;
   setTension(t);
 }
+// La scène vient d'être rebâtie (changement de carte ou bascule jour↔nuit) : playAmbiance
+// a coupé net la musique d'action et relancé la musique du lieu. On oublie la dernière tension
+// posée pour forcer la prochaine évaluation à re-pousser setTension — sinon un zombie resté à la
+// même distance garderait le même palier et la musique d'action ne se ré-armerait jamais.
+function reevaluerTension() { tensionCourante = -1; }
 
 function modaleBloque() {
   if (enCombat() || cineEnCours() || panelOuvert() || evtOuvert()) return true;

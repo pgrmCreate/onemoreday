@@ -27,10 +27,14 @@ let lieuCourantId = null;    // dernier id de lieu passé à playAmbiance (pour 
 let echo = null;             // delay partagé (musique, sons lointains)
 let seq = null;              // état du mini-séquenceur (thème composé en cours)
 let seqNotes = [];           // notes déjà planifiées par le séquenceur (arrêt propre)
+let motifNodes = [];         // gains des motifs génératifs déjà posés (pour les faire taire net)
 let tension = null;          // nappe de tension temps réel (zombie proche)
 let tensionTimer = null;     // démontage différé de la nappe quand elle retombe à 0
 let tensionMus = null;       // playlist d'action lancée quand un zombie approche (carte)
 let tensionMusTimer = null;  // coupure différée de cette playlist quand la menace s'éloigne
+let musiqueLieuSuspendue = false; // la musique du lieu est mise en retrait pendant qu'une musique d'action joue
+let sceneCourante = null;    // dernière scène sonore résolue (pour relancer SA musique après l'action)
+let nuitCourante = false;    // nuit au moment du dernier playAmbiance (relance fidèle de la musique)
 let fichiers = { themes: {}, ambiances: {} }; // themes:[{buffer,gain}] (playlists) — ambiances:{buffer,gain}
 let bufferTheme = null;      // playlist de thème en cours (remplace la synthèse) — voir creerPlaylist
 let combatBuf = null;        // playlist d'action de combat en cours
@@ -223,10 +227,12 @@ function stopAmbiance() {
   ambNodes = [];
   if (stingerTimer) { clearTimeout(stingerTimer); stingerTimer = null; }
   if (musiqueTimer) { clearTimeout(musiqueTimer); musiqueTimer = null; }
+  arreterMotifs(); // un motif génératif en cours ne déborde pas sur la scène (ou le combat) suivant
   arreterSequenceur();
   arreterPlaylist(bufferTheme); bufferTheme = null;
   arreterTensionMusique(); // change de scène / mort : la tension ne déborde pas sur le lieu suivant
   arreterPluie();
+  musiqueLieuSuspendue = false; // tout le lit est démonté : plus rien à « reprendre »
 }
 
 // ---------- Scène sonore d'un lieu ----------
@@ -247,7 +253,8 @@ export function playAmbiance(id) {
   ambianceCourante = cle;
   stopAmbiance();
   const sc = SCENES_SONORES[sid];
-  if (!sc) return;
+  if (!sc) { sceneCourante = null; return; }
+  sceneCourante = sc; nuitCourante = nuit; // mémorisés pour relancer la musique du lieu après une musique d'action
 
   const g = ctx.createGain(); g.gain.value = 0;
   g.connect(master);
@@ -411,6 +418,7 @@ function jouerMotif(m, nuit) {
     og.connect(master); og.connect(echo);
     o.start(t); o.stop(t + dur + 0.05);
     o2.start(t); o2.stop(t + dur + 0.05);
+    motifNodes.push({ g: og, fin: t + dur + 0.05 }); // suivi pour pouvoir couper le motif en cours
     t += dur * (0.55 + Math.random() * 0.4);
   }
   // Une fois sur deux, un bourdon grave tient la tonique sous toute la phrase.
@@ -423,7 +431,22 @@ function jouerMotif(m, nuit) {
     bg.gain.exponentialRampToValueAtTime(0.0001, t0 + fin);
     b.connect(bg); bg.connect(master);
     b.start(t0); b.stop(t0 + fin + 0.1);
+    motifNodes.push({ g: bg, fin: t0 + fin + 0.1 });
   }
+  // On ne garde que les notes encore vivantes (la liste sert à l'arrêt propre).
+  if (motifNodes.length > 64) motifNodes = motifNodes.filter(n => n.fin > ctx.currentTime);
+}
+
+// Fait taire net les motifs génératifs DÉJÀ posés sur la timeline (le clearTimeout
+// du musiqueTimer n'empêche que les prochains). Les oscillateurs ont leur stop déjà
+// planifié à la création : on coupe juste le gain, comme pour le séquenceur.
+function arreterMotifs() {
+  if (!ctx) { motifNodes = []; return; }
+  const t = ctx.currentTime;
+  motifNodes.forEach(n => {
+    try { n.g.gain.cancelScheduledValues(t); n.g.gain.setTargetAtTime(0.0001, t, 0.08); } catch (e) {}
+  });
+  motifNodes = [];
 }
 
 // ---------- Mini-séquenceur : les thèmes composés de js/data/musiques.js ----------
@@ -642,18 +665,42 @@ function arreterPlaylist(etat, douxMs = 700) {
   }
 }
 
+// ---------- Une seule musique à la fois ----------
+// La musique d'action (zombie qui approche sur la carte, combat) ne se SUPERPOSE
+// pas à la musique du lieu : elle la REMPLACE. On suspend donc la couche musicale
+// du lieu (playlist de thème / séquenceur / motifs génératifs) en gardant le lit
+// d'ambiance (vent, drones, stingers), puis on la relance — en fondu — quand
+// l'action retombe. stopAmbiance (changement de scène, combat, mort) remet le
+// drapeau à zéro : le lit entier est démonté, il n'y a plus rien à « reprendre ».
+function suspendreMusiqueLieu() {
+  if (musiqueLieuSuspendue) return;
+  musiqueLieuSuspendue = true;
+  if (musiqueTimer) { clearTimeout(musiqueTimer); musiqueTimer = null; } // plus de nouveaux motifs…
+  arreterMotifs();              // …et on coupe ceux déjà en train de sonner (sinon ils bavent sous l'action)
+  arreterSequenceur();
+  arreterPlaylist(bufferTheme, 300); bufferTheme = null; // fondu court : la musique du lieu s'efface vite sous l'action
+}
+function reprendreMusiqueLieu() {
+  if (!musiqueLieuSuspendue) return;
+  musiqueLieuSuspendue = false;
+  if (!ctx || !sceneCourante || !ambianceCourante) return;
+  planifierMusique(sceneCourante, ambianceCourante, nuitCourante); // thème / séquenceur / motifs, comme à l'arrivée
+}
+
 // ---------- Musique d'action sur l'approche (carte) ----------
-// Au-delà d'un seuil de tension, une playlist d'action sombre monte SOUS la
-// nappe dissonante ; elle se coupe quand la menace s'éloigne pour de bon.
-// Hystérésis (deux seuils + répit) pour ne pas la rallumer/éteindre sans cesse.
-// L'entrée en combat la coupe net (arreterTensionMusique dans startCombatMusic) :
-// la simple retombée à 0 est différée de 5 s et laisserait un doublon transitoire.
+// Au-delà d'un seuil de tension, une playlist d'action sombre REMPLACE la musique
+// du lieu (suspendreMusiqueLieu) et joue sous la seule nappe dissonante de tension ;
+// elle se coupe — et rend la main à la musique du lieu — quand la menace s'éloigne
+// pour de bon. Hystérésis (deux seuils + répit) pour ne pas la rallumer/éteindre
+// sans cesse. L'entrée en combat la coupe net (arreterTensionMusique dans
+// startCombatMusic) : la retombée à 0 est différée de 5 s et laisserait un doublon.
 const TENS_MUS_ON = 0.55, TENS_MUS_OFF = 0.2;
 function majTensionMusique(niveau) {
   const liste = fichiers.themes.tension;
   if (!liste || !liste.length) return;
   if (niveau >= TENS_MUS_ON) {
     if (tensionMusTimer) { clearTimeout(tensionMusTimer); tensionMusTimer = null; } // menace de retour
+    suspendreMusiqueLieu(); // la musique d'action prend la main : la musique du lieu se tait
     if (!tensionMus) tensionMus = creerPlaylist(liste, { fondu: 2.5, repos: [5, 12] });
     return;
   }
@@ -664,6 +711,7 @@ function majTensionMusique(niveau) {
     if (!tensionMusTimer) tensionMusTimer = setTimeout(() => {
       tensionMusTimer = null;
       arreterPlaylist(tensionMus, 1400); tensionMus = null;
+      reprendreMusiqueLieu(); // plus de menace : la musique du lieu revient en fondu
     }, 5000);
   } else if (tensionMusTimer) {
     // Entre les deux seuils alors qu'une coupure était prévue : on l'annule.
