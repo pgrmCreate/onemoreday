@@ -25,6 +25,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # historique COMPLET : nécessaire pour compter les commits (numéro de version)
 
       # On assemble un dossier _site avec UNIQUEMENT le jeu (pas server.js, .git, etc.)
       # et on y grave la version dans version.json + js/version_build.js.
@@ -32,11 +34,18 @@ jobs:
         run: |
           SHA="$(git rev-parse --short HEAD)"
           STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          # Numéro de version LISIBLE : 0.<N>. N = nombre de commits moins une base, donc il
+          # s'incrémente à chaque commit poussé. Base 16 = commits faits AVANT l'ajout du
+          # versionnage → le premier déploiement versionné affiche 0.1.
+          COUNT="$(git rev-list --count HEAD)"
+          MINOR=$((COUNT - 16))
+          if [ "$MINOR" -lt 1 ]; then MINOR=1; fi
+          VERSION="0.$MINOR"
           mkdir _site
           cp -r index.html android.html manifest.webmanifest sw.js css js icons audio _site/
-          printf '{ "sha": "%s", "builtAt": "%s" }\n' "$SHA" "$STAMP" > _site/version.json
-          printf "// Réécrit au déploiement — ne pas éditer à la main.\nexport const BUILD_SHA = '%s';\n" "$SHA" > _site/js/version_build.js
-          echo "Version déployée : $SHA"
+          printf '{ "sha": "%s", "version": "%s", "builtAt": "%s" }\n' "$SHA" "$VERSION" "$STAMP" > _site/version.json
+          printf "// Réécrit au déploiement — ne pas éditer à la main.\nexport const BUILD_SHA = '%s';\nexport const BUILD_VERSION = '%s';\n" "$SHA" "$VERSION" > _site/js/version_build.js
+          echo "Version déployée : $VERSION ($SHA)"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

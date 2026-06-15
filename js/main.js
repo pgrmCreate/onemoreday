@@ -29,7 +29,7 @@ import { demarrerAlertes, stopperAlertes } from './effects.js';
 import { initAudio, playAmbiance, sfx, setMuted, isMuted, getVolume, setVolume, stopCombatMusic, setHeartbeat } from './audio.js';
 import * as multi from './multi.js';
 import { SERVEUR_EN_LIGNE } from './data/serveur.js';
-import { majDisponible, appliquerMaj } from './version.js';
+import { majDisponible, appliquerMaj, versionAffichee } from './version.js';
 
 // La partie est-elle terminée (mort affichée, fin de chapitre, abandon) ?
 // Tant que c'est vrai, l'autosauvegarde est coupée pour ne jamais écraser
@@ -129,6 +129,7 @@ function ecranTitre() {
     </div>
     <div class="warn-adulte">Jeu pour adultes — violence et gore explicites.
     Sur Android : ouvre cette page dans Chrome puis « Ajouter à l'écran d'accueil » pour l'installer.</div>
+    <div class="version-titre">v${versionAffichee()}</div>
     ${pleinEcranDispo() ? `<button class="fs-coin" id="btn-fs-titre" title="${estPleinEcran() ? 'Quitter le plein écran' : 'Plein écran'}">${ico(estPleinEcran() ? 'reduire_ecran' : 'plein_ecran')}</button>` : ''}`);
   const fsBtn = $('#btn-fs-titre');
   if (fsBtn) fsBtn.onclick = () => { sfx('clic'); basculerPleinEcran(); };

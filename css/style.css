@@ -133,6 +133,12 @@ h1.title {
 }
 h1.title em { color: var(--blood2); font-style: normal; }
 .subtitle { text-align: center; color: var(--fg-dim); font-style: italic; margin-top: 6px; }
+/* Numéro de version, discret en bas à droite de l'écran titre */
+.version-titre {
+  position: fixed; right: 12px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: 41;
+  font-family: 'Courier New', monospace; font-size: .72rem; letter-spacing: 1px;
+  color: var(--fg-dim); opacity: .65; pointer-events: none;
+}
 .menu { display: flex; flex-direction: column; gap: 12px; max-width: 360px; margin: 5vh auto 0; }
 
 button.act {

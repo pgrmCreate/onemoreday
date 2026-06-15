@@ -7,9 +7,12 @@
 //
 // Si les deux diffèrent, une mise à jour est disponible. On l'IMPOSE seulement avant de
 // jouer EN LIGNE : le solo et le co-op « même Wi-Fi » ne sont jamais bloqués.
-import { BUILD_SHA } from './version_build.js';
+import { BUILD_SHA, BUILD_VERSION } from './version_build.js';
 
 export function versionLocale() { return BUILD_SHA; }
+
+// Numéro de version LISIBLE pour l'écran titre (« v0.3 »). Incrémenté à chaque déploiement.
+export function versionAffichee() { return BUILD_VERSION || '0.1'; }
 
 // Lit la dernière version publiée (réseau d'abord, jamais le cache du navigateur).
 export async function versionEnLigne() {
