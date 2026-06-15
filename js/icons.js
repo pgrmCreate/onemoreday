@@ -26,6 +26,8 @@ export const ICONS = {
   monter: P('M4 20h4v-4h4v-4h4V8h4M12 4l4 4-4 0'),
   dormir: P('M4 18V8m0 7h16v3M4 13h9a4 4 0 0 1 4 4M7 10.5h.5'),
   ramasser: P('M5 13l4 4 9-9M5 13l-1 5 5-1m5-11 4 4'),
+  // Moyeu + rayons : le menu radial des actions de la case
+  actions: P('M12 9.1a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8zM12 9.1V4m0 16v-5.1M14.9 12H20M4 12h5.1'),
   feu: P('M12 21c-3.9 0-6.5-2.4-6.5-6 0-3 2.5-5 3.5-7.5 1 1.5 1.5 2.5 1.5 4C12 9 13 5 16 3c0 3 2.5 5.5 2.5 9 0 5-2.6 9-6.5 9z'),
   // ---------- combat ----------
   attaque: P('M4 20l9-9M13 11l6.5-6.5L21 6l-1 3-3 1-2 2M6 16l2 2m-4 0 2 2'),

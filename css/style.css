@@ -83,7 +83,11 @@ html, body {
   display: flex; flex-direction: column; gap: 10px;
 }
 .fabs-droite { right: 12px; }
-.fabs-gauche { left: 10px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); flex-direction: row; gap: 6px; }
+/* En bas à gauche : le bouton « Actions » (moyen) AU-DESSUS d'une rangée journal+options. */
+.fabs-gauche { left: 10px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); flex-direction: column; align-items: flex-start; gap: 6px; }
+.fabs-jeu-bas { display: flex; gap: 6px; }
+.fab.moyen { width: 50px; height: 50px; border-color: #4a4030; }
+.fab.moyen .ico { width: 25px; height: 25px; }
 .fab {
   width: 52px; height: 52px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #232327, #131315 75%);
@@ -187,6 +191,8 @@ button.act .req { color: var(--danger); }
      On ne réserve qu'une fine bande pour la barre de lieu, l'info de case et les boutons. */
   max-height: clamp(260px, calc(100dvh - 190px), 84dvh);
   margin: 0 auto; touch-action: manipulation;
+  /* Appui long fiable sur mobile : pas de menu/sélection natif qui vole le geste. */
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
 }
 /* En-tête de lieu compact (une seule ligne au-dessus de la carte) */
 .lieu-bar {

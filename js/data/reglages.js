@@ -98,7 +98,10 @@ export const REGLAGES = {
   // capDiv        : densité de peuplement = nb de cases ÷ capDiv (plus petit = plus de morts).
   echelles: {
     interieur: { cadenceZombie: 1, anneauZombie: 1, capDiv: 7 },
-    quartier:  { cadenceZombie: 4, anneauZombie: 3, capDiv: 5 },
+    // En ville (plan de quartier), un nœud = tout un pâté de maisons. Un mort doit RAMPER
+    // d'un nœud à l'autre — il met très longtemps à traverser (cadence 9 ≈ un pas toutes les
+    // ~15 s en chasse). Il peut venir de loin, mais lentement : tu as toujours le temps de fuir.
+    quartier:  { cadenceZombie: 9, anneauZombie: 3, capDiv: 5 },
     // valeurs par défaut si une échelle n'est pas listée : { cadenceZombie:1, anneauZombie:1, capDiv:7 }
   },
 

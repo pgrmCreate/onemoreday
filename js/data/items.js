@@ -10,12 +10,12 @@ export const ITEMS = {
   // ---------- ARMES DE MÊLÉE ----------
   couteau_cuisine: {
     nom: 'Couteau de cuisine', type: 'arme', poids: 0.3, espace: 1,
-    dmg: [7, 13], dur: 22, bruit: 0, skill: 'dexterite',
-    desc: 'La lame est encore propre. Ça ne durera pas.',
+    dmg: [7, 13], dur: 34, bruit: 0, skill: 'dexterite',
+    desc: 'La lame est encore propre. Ça ne durera pas — mais bien aiguisée, elle tient plus longtemps qu\'on ne croit.',
   },
   couteau_artisanal: {
     nom: 'Couteau artisanal', type: 'arme', poids: 0.3, espace: 1,
-    dmg: [6, 11], dur: 12, bruit: 0, skill: 'dexterite',
+    dmg: [6, 11], dur: 19, bruit: 0, skill: 'dexterite',
     desc: 'Un éclat de verre, un chiffon, du scotch. Ça coupe la chair — et parfois la main qui le tient.',
   },
   batte_baseball: {

@@ -44,6 +44,14 @@ export const CARTES_SALON_CENTRE = {
     nom: 'Grand Hôtel de la Poste', sousTitre: 'place Crousillat — ton terrier depuis 23 jours',
     echelle: 'interieur', tempsParCase: 1, largeur: 6, hauteur: 5,
     exterieur: false, ambiance: 'calme', illu: 'immeuble',
+    // Grille NON UNIFORME : la colonne de l'escalier est resserrée, le couloir et les paliers
+    // sont plus courts que les chambres — de quoi casser le quadrillage tout carré (cf. map.js,
+    // carte.colW / carte.rowH = fraction de la case par colonne / par ligne ; défaut 1).
+    colW: { 0: 0.78 },
+    rowH: { 1: 0.72, 2: 0.6, 4: 0.7 },
+    // GARANTI : une lampe torche se trouve forcément quelque part ici (case fouillable au hasard,
+    // déterministe) — indispensable pour explorer le noir. Voir world.js → assignerGaranties.
+    garanties: ['lampe_torche'],
     // Le terrier du début : peu peuplé et peu dangereux. QUATRE morts au maximum sur
     // tout l'hôtel (cave comprise), tous des errants (les plus faibles) — on apprend à
     // jouer, on ne se fait pas submerger. Ce plafond est désormais RÉELLEMENT tenu : la

@@ -12,6 +12,7 @@ import {
   decouvrir, decouvrirAutour, estDecouverte, casesVisibles, solDe, solVisible, deposerAuSol, revelerSol,
   fouilleEtat, estSecurisee, securiser, zombiesPoolCourant, interieurSecurise,
   niveauSombre, liaison, porteCassee, estGraphe, voisinsCandidats,
+  assignerGaranties, garantiesCase,
 } from './world.js';
 import { svgAmbiance, aAmbiance } from './ambiance.js';
 import { jouerCineUneFois, cineEnCours, jouerCine } from './cinema.js';
@@ -179,8 +180,8 @@ const CODES = {
   securisee:'#5d7a44',
   sol:      '#8a5a28',
 };
-function cadreCase(px, py, CS, inset, couleur, dash = false) {
-  return `<rect x="${px + inset}" y="${py + inset}" width="${CS - 2 * inset}" height="${CS - 2 * inset}" rx="2"
+function cadreCase(px, py, w, h, inset, couleur, dash = false) {
+  return `<rect x="${px + inset}" y="${py + inset}" width="${w - 2 * inset}" height="${h - 2 * inset}" rx="2"
     fill="none" stroke="${couleur}" stroke-width="1.5" ${dash ? 'stroke-dasharray="3 2.5"' : ''}/>`;
 }
 
@@ -325,13 +326,13 @@ function dessinInterieur(cd, x, y, px, py, s) {
 
 // ---------- Murs et portes du plan (façon plan d'évacuation) ----------
 // Chaque bord de case intérieure : mur plein, battant de porte, ou ouverture libre.
-function mursDeCase(cd, x, y, px, py, s, connue) {
+function mursDeCase(cd, x, y, px, py, w, h, connue) {
   const id = G.world.carte;
   const bords = [
-    { dx: 1, dy: 0, x1: px + s, y1: py, x2: px + s, y2: py + s, prio: true },
-    { dx: 0, dy: 1, x1: px, y1: py + s, x2: px + s, y2: py + s, prio: true },
-    { dx: -1, dy: 0, x1: px, y1: py, x2: px, y2: py + s, prio: false },
-    { dx: 0, dy: -1, x1: px, y1: py, x2: px + s, y2: py, prio: false },
+    { dx: 1, dy: 0, x1: px + w, y1: py, x2: px + w, y2: py + h, prio: true },
+    { dx: 0, dy: 1, x1: px, y1: py + h, x2: px + w, y2: py + h, prio: true },
+    { dx: -1, dy: 0, x1: px, y1: py, x2: px, y2: py + h, prio: false },
+    { dx: 0, dy: -1, x1: px, y1: py, x2: px + w, y2: py, prio: false },
   ];
   let out = '';
   for (const b of bords) {
@@ -342,7 +343,7 @@ function mursDeCase(cd, x, y, px, py, s, connue) {
     if (!li) { out += `<line x1="${b.x1}" y1="${b.y1}" x2="${b.x2}" y2="${b.y2}"/>`; continue; }
     const vert = b.x1 === b.x2;
     const mx = (b.x1 + b.x2) / 2, my = (b.y1 + b.y2) / 2;
-    const demi = li === 'ouvert' ? s * .3 : 8; // demi-largeur de l'ouverture
+    const demi = li === 'ouvert' ? Math.min(w, h) * .3 : 8; // demi-largeur de l'ouverture
     out += vert
       ? `<line x1="${b.x1}" y1="${b.y1}" x2="${b.x1}" y2="${my - demi}"/><line x1="${b.x1}" y1="${my + demi}" x2="${b.x1}" y2="${b.y2}"/>`
       : `<line x1="${b.x1}" y1="${b.y1}" x2="${mx - demi}" y2="${b.y1}"/><line x1="${mx + demi}" y1="${b.y1}" x2="${b.x2}" y2="${b.y1}"/>`;
@@ -756,13 +757,9 @@ function ecranAttenteCoop() {
   if (b) b.onclick = () => { sfx('clic'); multi.forcerDepart(); };
 }
 
-// Taille DESSINÉE par type de case (intérieur), en fraction du slot — pour rompre la
-// grille régulière et gagner en immersion. L'escalier est nettement plus petit (une cage
-// d'escalier, pas une pièce), le couloir et le sas un peu resserrés. Le SLOT logique
-// (origine + pas) ne change JAMAIS, donc déplacement / adjacence / clic restent intacts
-// (une base pleine estompée garde la cible de clic à la taille du slot). Type absent = 1.
-// Une case peut imposer sa propre taille via `taille:` (prioritaire) pour varier librement.
-const TAILLE_CASE = { escalier: 0.6, porte: 0.82, couloir: 0.9, sas: 0.78 };
+// Les tailles de cases NON UNIFORMES (intérieur) viennent d'une grille PONDÉRÉE : chaque
+// carte peut donner une largeur par colonne (carte.colW{x}) et une hauteur par ligne
+// (carte.rowH{y}), en fraction d'une case pleine. Tout est géré dans svgCarte ci-dessous.
 
 function svgCarte(reach, vis) {
   if (estGraphe(G.world.carte)) return svgCartePlan(reach, vis); // plan à nœuds libres
@@ -771,8 +768,17 @@ function svgCarte(reach, vis) {
   // Cases plus petites au zoom moyen (quartier) : on voit la rue plus loin.
   const CS = interieur ? 56 : (C.echelle === 'quartier' ? 38 : 46);
   const GAP = interieur ? 0 : 3, PAD = interieur ? 5 : 4;
-  const W = C.largeur * CS + (C.largeur - 1) * GAP + PAD * 2;
-  const H = C.hauteur * CS + (C.hauteur - 1) * GAP + PAD * 2;
+  // Grille PONDÉRÉE (intérieur) : largeur par colonne (carte.colW{x}) et hauteur par ligne
+  // (carte.rowH{y}), en fraction de CS — de quoi rompre le quadrillage tout carré (couloirs
+  // fins, paliers d'escalier courts…) tout en gardant murs, adjacence et clics ALIGNÉS : une
+  // cellule reste un vrai rectangle de la grille (les bords partagés coïncident). Défaut 1.
+  const colF = (x) => (interieur && C.colW && C.colW[x] != null) ? C.colW[x] : 1;
+  const rowF = (y) => (interieur && C.rowH && C.rowH[y] != null) ? C.rowH[y] : 1;
+  const cwA = [], chA = [], colX = [], rowY = [];
+  let accX = PAD; for (let x = 0; x < C.largeur; x++) { cwA[x] = CS * colF(x); colX[x] = accX; accX += cwA[x] + GAP; }
+  let accY = PAD; for (let y = 0; y < C.hauteur; y++) { chA[y] = CS * rowF(y); rowY[y] = accY; accY += chA[y] + GAP; }
+  const W = accX - GAP + PAD;
+  const H = accY - GAP + PAD;
   const toutConnu = hasItem('carte_quartier') && !interieur;
   const connue = (vx, vy) => toutConnu || estDecouverte(G.world.carte, vx, vy);
   const vivante = carteVivante(G.world.carte);
@@ -796,11 +802,11 @@ function svgCarte(reach, vis) {
     const [x, y] = pos.split(',').map(Number);
     if (!connue(x, y)) continue;
     const t = TERRAIN[cd.t] || TERRAIN.rue;
-    const px = PAD + x * (CS + GAP), py = PAD + y * (CS + GAP); // SLOT logique (inchangé)
-    // Taille DESSINÉE : certains types d'intérieur sont un peu plus petits, centrés
-    // dans leur slot. dx/dy/cs servent au DESSIN ; px/py/CS restent le slot (murs + clic).
-    const fT = interieur ? (cd.taille ?? TAILLE_CASE[cd.t] ?? 1) : 1;
-    const cs = CS * fT, dx = px + (CS - cs) / 2, dy = py + (CS - cs) / 2;
+    // La CELLULE (rectangle de la grille pondérée) : fond, murs, halos, clic.
+    const cellX = colX[x], cellY = rowY[y], cellW = cwA[x], cellH = chA[y];
+    // L'ART (mobilier, pions, cadavre) se dessine dans un CARRÉ centré dans la cellule : les
+    // ronds restent ronds et le mobilier proportionné, même dans une cellule non carrée.
+    const cs = Math.min(cellW, cellH), dx = cellX + (cellW - cs) / 2, dy = cellY + (cellH - cs) / 2;
     const ici = x === G.world.x && y === G.world.y;
     const aVue = vis.has(pos);
     const atteign = reach.has(pos);
@@ -817,28 +823,28 @@ function svgCarte(reach, vis) {
         <circle cx="${dx + cs / 2 + 2.5}" cy="${basY + 7.5}" r="1" fill="#6d5d42"/>`;
     }
     if (solVisible(k).length) {
-      inner += `<circle cx="${dx + cs - 8}" cy="${dy + cs - 8}" r="3" fill="${CODES.sol}"/>`;
+      inner += `<circle cx="${cellX + cellW - 8}" cy="${cellY + cellH - 8}" r="3" fill="${CODES.sol}"/>`;
     }
     // noir total : la case s'enfonce dans l'ombre — sauf dans un halo de lampe (la tienne
     // ou celle du coéquipier ; le noir lointain reste noir)
     const eclairee = dansHalo(x, y) && (ici || aVue);
-    if (niv === 2 && !eclairee) inner += `<rect x="${dx + 1}" y="${dy + 1}" width="${cs - 2}" height="${cs - 2}" fill="#050507" opacity=".44"/>`;
+    if (niv === 2 && !eclairee) inner += `<rect x="${cellX + 1}" y="${cellY + 1}" width="${cellW - 2}" height="${cellH - 2}" fill="#050507" opacity=".44"/>`;
     // Liserés : codes couleur de la case (voir Légende)
     const insetEtat = interieur ? 3 : 1.5;
-    if (secur) inner += cadreCase(dx, dy, cs, insetEtat, CODES.securisee);
-    else if ((cd.danger || 0) >= 0.4) inner += cadreCase(dx, dy, cs, insetEtat, CODES.danger);
-    if (niv === 1) inner += cadreCase(dx, dy, cs, insetEtat + 3, CODES.sombre, true);
-    else if (niv === 2) inner += cadreCase(dx, dy, cs, insetEtat + 3, CODES.sombre);
+    if (secur) inner += cadreCase(cellX, cellY, cellW, cellH, insetEtat, CODES.securisee);
+    else if ((cd.danger || 0) >= 0.4) inner += cadreCase(cellX, cellY, cellW, cellH, insetEtat, CODES.danger);
+    if (niv === 1) inner += cadreCase(cellX, cellY, cellW, cellH, insetEtat + 3, CODES.sombre, true);
+    else if (niv === 2) inner += cadreCase(cellX, cellY, cellW, cellH, insetEtat + 3, CODES.sombre);
     // Indice texte : lbl explicite, sinon dérivé du nom (toutes les pièces en intérieur)
     const lbl = cd.lbl !== undefined ? cd.lbl
       : (cd.nom && (interieur || cd.vers || cd.special || cd.t === 'ville' || cd.t === 'village' || cd.t === 'site') ? cd.nom.split(' ')[0] : '');
     if (lbl && !ici) {
-      inner += `<text x="${dx + cs / 2}" y="${dy + cs - 5}" text-anchor="middle" font-size="9" fill="#9a8f7c">${lbl.slice(0, 10)}</text>`;
+      inner += `<text x="${cellX + cellW / 2}" y="${cellY + cellH - 5}" text-anchor="middle" font-size="9" fill="#9a8f7c">${lbl.slice(0, 10)}</text>`;
     }
     // Hors de ta vue : la case reste en mémoire, mais on n'y voit pas
     // ce qui s'y trouve MAINTENANT (et les zombies n'y sont pas dessinés).
     if (!aVue && !ici) {
-      inner += `<rect x="${dx}" y="${dy}" width="${cs}" height="${cs}" fill="#08080a" opacity=".4"/>`;
+      inner += `<rect x="${cellX}" y="${cellY}" width="${cellW}" height="${cellH}" fill="#08080a" opacity=".4"/>`;
     }
     // Eux, et leurs morts. Visibles dans ta ligne de vue : on les voit ARRIVER.
     if (aVue) {
@@ -863,19 +869,16 @@ function svgCarte(reach, vis) {
     if (ici) {
       // Pion joueur : un petit rond discret, légèrement décalé (au-dessus du contenu de la case).
       const off = (pair && pair.carte === G.world.carte && pair.x === x && pair.y === y) ? -3 : 0;
-      const jx = dx + cs / 2 + off, jy = dy + cs / 2 + off;
+      const jx = cellX + cellW / 2 + off, jy = cellY + cellH / 2 + off;
       inner += `<g class="joueur"><circle cx="${jx}" cy="${jy}" r="5.5" fill="#c9b98a" stroke="#0b0b0c" stroke-width="1.8"/>
         <circle cx="${jx}" cy="${jy}" r="8" fill="none" stroke="#c9b98a" stroke-width="1" opacity=".5"/></g>`;
     }
-    // Base PLEINE du slot (estompée) sous une case rétrécie : garde la cible de clic à la
-    // taille du slot et évite un « trou » visuel autour de la case réduite.
-    const base = (cs < CS)
-      ? `<rect class="fond-slot" x="${px}" y="${py}" width="${CS}" height="${CS}" fill="${t.fill}" opacity=".5"/>`
-      : '';
+    // Le FOND remplit toute la cellule : une cellule resserrée (couloir, escalier) est donc
+    // physiquement plus petite — c'est la grille pondérée qui porte la variation de taille.
     cells += `<g class="case ${atteign ? 'atteignable' : ''} ${sel ? 'selection' : ''}" data-case="${pos}">
-      ${base}<rect class="fond" x="${dx}" y="${dy}" width="${cs}" height="${cs}" rx="${interieur ? 0 : 2}" fill="${t.fill}" ${interieur ? '' : `stroke="${t.stroke}"`}/>
-      ${inner}<rect class="hl" x="${dx + 1.5}" y="${dy + 1.5}" width="${cs - 3}" height="${cs - 3}" rx="2"/></g>`;
-    if (interieur) murs += mursDeCase(cd, x, y, px, py, CS, connue);
+      <rect class="fond" x="${cellX}" y="${cellY}" width="${cellW}" height="${cellH}" rx="${interieur ? 0 : 2}" fill="${t.fill}" ${interieur ? '' : `stroke="${t.stroke}"`}/>
+      ${inner}<rect class="hl" x="${cellX + 1.5}" y="${cellY + 1.5}" width="${cellW - 3}" height="${cellH - 3}" rx="2"/></g>`;
+    if (interieur) murs += mursDeCase(cd, x, y, cellX, cellY, cellW, cellH, connue);
   }
   return `<svg class="carte-grille" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${cells}${murs ? `<g fill="none" stroke="${MUR_TRAIT}" stroke-width="3" stroke-linecap="square">${murs}</g>` : ''}</svg>`;
 }
@@ -1143,6 +1146,19 @@ function ouvrirRadial(pos, cx, cy, reach) {
   document.addEventListener('keydown', esc);
 }
 
+// Le bouton « Actions » (coin bas gauche) : ouvre le menu radial DEPUIS le bouton, pour la
+// case SÉLECTIONNÉE (sinon celle où l'on se tient). On clique une case, puis ce bouton.
+export function radialDepuisBouton() {
+  if (!carteCourante() || enCombat() || panelOuvert() || evtOuvert()) return;
+  const pos = selection || `${G.world.x},${G.world.y}`;
+  const reach = atteignables(porteeActuelle());
+  if (!actionsPourCase(pos, reach).length) { toast('Aucune action ici — sélectionne une case proche.'); return; }
+  const b = document.getElementById('btn-actions');
+  let ax = 64, ay = window.innerHeight - 150;
+  if (b) { const r = b.getBoundingClientRect(); ax = r.right + 8; ay = r.top + r.height / 2; }
+  ouvrirRadial(pos, ax, ay, reach);
+}
+
 // (Re)lie les clics sur les cases de la carte. Extrait pour pouvoir rafraîchir
 // la grille seule (boucle temps réel) sans reconstruire tout l'écran.
 let lpTimer = null, lpX = 0, lpY = 0, lpFired = false;
@@ -1205,6 +1221,7 @@ export function renderLieu() {
   const cd = caseCourante() || {};
   const k = keyCourante();
   peuplerCarte(G.world.carte);
+  assignerGaranties(G.world.carte); // pose le butin garanti (lampe, clé…) à la 1re visite
   decouvrirAutour(G.world.carte, G.world.x, G.world.y);
   playAmbiance(G.world.carte);
   reevaluerTension(); // playAmbiance a pu rebâtir la scène (carte / jour↔nuit) : ré-arme la musique d'action au prochain tick
@@ -1691,6 +1708,15 @@ function construireSchedule(cd, f, aTatons) {
     const qty = rng(entry.q[0], entry.q[1]);
     const atFrac = debut + (1 - debut) * (0.12 + Math.random() * 0.83); // réparti sur le reste de la barre
     sched.push({ id: entry.id, qty, dur: d.dur ? d.dur : undefined, atFrac });
+  }
+  // Butin GARANTI affecté à CETTE case (lampe, clé…) : ajouté à coup sûr s'il n'a pas déjà
+  // été trouvé, même à tâtons/dans le noir — c'est la promesse d'un objet indispensable.
+  for (const g of garantiesCase(G.world.carte, G.world.x, G.world.y)) {
+    if (f.pris[g.id] || sched.some(s => s.id === g.id)) continue;
+    const d = defItem(g.id);
+    if (!d) continue;
+    const atFrac = debut + (1 - debut) * (0.25 + Math.random() * 0.55);
+    sched.push({ id: g.id, qty: g.qty || 1, dur: d.dur ? d.dur : undefined, atFrac, garanti: true });
   }
   sched.sort((a, b) => a.atFrac - b.atFrac);
   return sched;

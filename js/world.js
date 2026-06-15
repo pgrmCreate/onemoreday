@@ -268,6 +268,40 @@ export function fouilleEtat(k) {
 export function estSecurisee(k) { return !!G.world.securisees[k]; }
 export function securiser(k) { G.world.securisees[k] = true; }
 
+// ---------- Butin GARANTI : un objet qu'on est SÛR de trouver dans un lieu ----------
+// Une carte peut déclarer `garanties: ['lampe_torche', ...]` (ou [{id, qty}]). À la PREMIÈRE
+// visite, chaque objet garanti est posé sur UNE case fouillable tirée de façon DÉTERMINISTE
+// (même résultat hôte/invité, stable d'une sauvegarde à l'autre) — pas une case précise codée
+// en dur. La fouille de cette case révélera l'objet à coup sûr. Système réutilisable pour une
+// clé, un outil indispensable, etc.
+function hashChaine(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+export function assignerGaranties(carteId) {
+  const c = CARTES[carteId];
+  if (!c || !Array.isArray(c.garanties) || !c.garanties.length) return;
+  if (!G.world.garanties) G.world.garanties = {};
+  if (G.world.garanties[carteId]) return; // déjà dispatché à la 1re visite
+  const fouillables = Object.entries(c.cases).filter(([, cd]) => cd.fouille && !cd.verrou).map(([pos]) => pos);
+  const assign = {};
+  c.garanties.forEach((g, i) => {
+    if (!fouillables.length) return;
+    const id = typeof g === 'string' ? g : g.id;
+    const qty = typeof g === 'string' ? 1 : (g.qty || 1);
+    const libres = fouillables.filter(p => !assign[p]); // éviter d'empiler deux garantis au même endroit
+    const pool = libres.length ? libres : fouillables;
+    const pos = pool[hashChaine(`${carteId}#${id}#${i}`) % pool.length];
+    (assign[pos] || (assign[pos] = [])).push({ id, qty });
+  });
+  G.world.garanties[carteId] = assign;
+}
+export function garantiesCase(carteId, x, y) {
+  const a = G.world.garanties && G.world.garanties[carteId];
+  return (a && a[`${x},${y}`]) || [];
+}
+
 // ---------- Divers ----------
 export function zombiesPoolCourant() {
   const cd = caseCourante();

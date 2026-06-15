@@ -75,6 +75,7 @@ export function newGame(nom) {
       portes: {},     // carteId -> { 'x1,y1|x2,y2': {pv, cassee} } : portes attaquées par eux
       flags: {},      // drapeaux d'histoire
       eventsVus: [],  // ids d'événements "once" déjà joués
+      garanties: {},  // carteId -> { 'x,y': [{id, qty}] } : butin GARANTI dispatché à la 1re visite
       statsTemps: 0,  // minutes écoulées au total
     },
     journal: [],

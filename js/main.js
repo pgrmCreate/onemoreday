@@ -21,7 +21,7 @@ import {
 } from './survival.js';
 import { solDe, keyCourante } from './world.js';
 import { listeRecettes, fabriquer } from './crafting.js';
-import { renderLieu, objectifActuel, initPosition, syncCaseCourante } from './map.js';
+import { renderLieu, objectifActuel, initPosition, syncCaseCourante, radialDepuisBouton } from './map.js';
 import { jouerScene } from './scenes.js';
 import { jouerCine } from './cinema.js';
 import { enCombat } from './combat.js';
@@ -395,6 +395,7 @@ function lierHUD() {
   const fabs = [
     ['#btn-inv', 'sac', () => panneauInventaire()],
     ['#btn-perso', 'corps', () => panneauCorps()],
+    ['#btn-actions', 'actions', radialDepuisBouton],
     ['#btn-journal', 'journal', panneauJournal],
     ['#btn-options', 'options', panneauOptions],
   ];
