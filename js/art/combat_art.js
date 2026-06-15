@@ -236,6 +236,20 @@ ${oeil(p, -5, -164, 2.2)}${oeil(p, 8, -163, 2.2)}
 </g>`;
 }
 
+// ---------- Photos de zombies (PNG détourés) ----------
+// Certains types ont une vraie illustration détourée dans /zombies/. Quand elle existe,
+// on l'affiche EN GRAND dans la scène de combat à la place de la silhouette SVG ; sinon
+// on retombe sur la créature dessinée. Le fichier ne suit pas toujours l'id (gonfle →
+// gonfleur), d'où cette table explicite. Chemin RELATIF (sous-dossier sur GitHub Pages).
+const ZOMBIE_PNG = {
+  errant: 'errant.png', coureur: 'coureur.png', rampant: 'rampant.png',
+  hurleur: 'hurleur.png', enrage: 'enrage.png', gonfle: 'gonfleur.png',
+};
+export function pngZombie(zid) {
+  const f = ZOMBIE_PNG[zid];
+  return f ? 'zombies/' + f : null;
+}
+
 // ---------- Export ----------
 // Le combat superpose DEUX calques distincts : le DÉCOR (arène, plein cadre) en fond,
 // et la CRÉATURE (image autonome, fond transparent) par-dessus — autant de créatures

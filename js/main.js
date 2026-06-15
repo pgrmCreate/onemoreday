@@ -153,7 +153,7 @@ function ecranAide() {
     <h2 class="lieu-nom">Comment survivre</h2>
     <div class="narration">• <em>La carte</em> : touche une case pour la repérer, touche-la encore pour t'y rendre. Tu avances d'une ou deux cases selon ta forme et ta charge. En intérieur, la carte est un plan : les murs disent où l'on ne passe pas, les battants dessinés sont des portes (rouille : verrouillée). Les intérieurs fouillés deviennent sûrs — les rues, jamais.
 • <em>L'obscurité</em> a deux niveaux : la pénombre (violet pointillé — on fouille mal sans lampe) et le noir total (violet plein — sans lumière, fouiller devient un pari).
-• <em>La fouille</em> prend du temps, et chaque passage en prend davantage — mais tu trouves de plus en plus. Chaque zone a une limite : après, elle est retournée de fond en comble.
+• <em>La fouille</em> se fait d'un seul trait : la barre se remplit et les objets sortent peu à peu, posés au sol. À 100 % la zone est vidée. Tu peux t'arrêter quand tu veux — tu ramasses alors ce que tu as déjà trouvé. À deux dans la même salle, ça va plus vite.
 • <em>L'accès rapide</em> : sans ceinture (ou holster, ou gilet), pas question d'ouvrir le sac en plein combat. Tu te bats avec ce que tu as en main, point.
 • <em>Ton état</em> se lit en haut à droite : douleur, fatigue, faim, soif, saignement. Pas de chiffres. Écoute ton corps.
 • <em>Les blessures</em> : égratignure, entaille, blessure profonde, plaie ouverte. Bande ce qui saigne, désinfecte tout, recouds le reste. Une infection non soignée est une condamnation.
@@ -363,7 +363,9 @@ function rejoindrePartie(code, nom, statut) {
     updateHUD();
     demarrerAlertes();
     log(`Tu rejoins la partie de ${nomHote || 'l\'hôte'}. Vous voilà dans le même Salon.`, 'good');
-    renderLieu();
+    // L'invité regarde lui aussi l'intro et « ouvre les yeux » — le monde ne démarre
+    // qu'une fois les DEUX prêts (cf. multi.signalerPret / coopEntrerOuAttendre).
+    jouerIntro();
   });
   multi.demarrer({ code, role: 'guest', nom, url: coopUrl }).then((r) => {
     if (!r.ok) { if (statut) statut.textContent = 'Échec : ' + (r.raison || 'connexion impossible.'); return; }
@@ -377,11 +379,13 @@ function rejoindrePartie(code, nom, statut) {
 // Intro CINÉMATIQUE, peu de texte : la caméra raconte. Trois volets enchaînés —
 // Salon paisible → la ville en feu → la fuite et le terrier barricadé — puis un seul
 // court panneau de réveil (l'objectif). Chaque volet se saute avec « Passer ▸ ».
+// L'intro est PERSONNELLE : chacun la regarde de son côté (on passe distant=true pour
+// ne PAS la diffuser au coéquipier, sinon elle se rejouerait en double chez lui).
 function jouerIntro() {
   jouerCine('intro_avant', () =>
     jouerCine('intro_chaos', () =>
       jouerCine('intro_fuite', () =>
-        jouerScene('intro_reveil'))));
+        jouerScene('intro_reveil'), true), true), true);
 }
 
 // ---------- Boutons fixes ----------

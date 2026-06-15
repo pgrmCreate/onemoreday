@@ -8,6 +8,7 @@
 // Tout est gardé derrière estMulti() : en solo, ce module dort et ne change rien.
 import { G } from './state.js';
 import * as net from './net.js';
+import { lumiereActive, rayonLumiere } from './inventory.js';
 
 let actif = false;   // une session multi est en cours
 let monRole = null;  // 'host' | 'guest'
@@ -21,6 +22,7 @@ export function estHote() { return monRole === 'host'; }
 export function estInvite() { return monRole === 'guest'; }
 export function pairEtat() { return pair; }
 export function pairPresent() { return net.pairPresent(); }
+export function nomPair() { return (pair && pair.nom) || net.nomPair(); } // pseudo du coéquipier (connu dès l'accueil)
 export function poser(nom, fn) { cbs[nom] = fn; } // enregistre un hook de jeu
 
 // Liste des parties ouvertes sur le serveur visé (url = serveur en ligne, ou null = LAN).
@@ -39,10 +41,12 @@ export async function demarrer(opts) {
     if (present) {
       if (estHote()) envoyerMonde();   // un invité arrive : on lui pousse le monde + notre position
       diffuserPosition();
+      if (pret.moi) net.envoyer({ t: 'pret' }); // déjà prêt avant l'arrivée de l'autre : on le (re)dit
       if (cbs.onSysteme) cbs.onSysteme(`${(m && m.nom) || net.nomPair() || 'Ton coéquipier'} a rejoint la partie.`, 'good');
     } else {
       pair = null;
       dodo = { moi: null, pair: null }; // un dormeur s'en va : on oublie sa demande
+      pret.pair = false;                // ... et il n'est plus « prêt » non plus
       if (cbs.onPairMaj) cbs.onPairMaj(null);
       if (cbs.onSysteme) cbs.onSysteme('Ton coéquipier a quitté la partie.', 'warn');
     }
@@ -53,16 +57,21 @@ export async function demarrer(opts) {
   });
   return r;
 }
-export function arreter() { actif = false; monRole = null; pair = null; dodo = { moi: null, pair: null }; net.deconnecter(); }
+export function arreter() { actif = false; monRole = null; pair = null; dodo = { moi: null, pair: null }; pret = { moi: false, pair: false }; demarree = false; net.deconnecter(); }
 
 // ---------- Émissions ----------
 // L'hôte envoie le monde complet à l'invité (adopté tel quel côté invité).
 function envoyerMonde() { net.envoyer({ t: 'monde', world: G.world, nom: G.player.nom }); }
 
 // Ma position + mon état, à chaque pas / rendu. extra : { enCombat, combat }.
+// On y joint l'état de ma lampe (allumée + portée) pour que le coéquipier sache
+// que j'éclaire autour de moi — sa carte allume alors mon halo (cf. svgCarte).
 export function diffuserPosition(extra = {}) {
   if (!actif) return;
-  net.envoyer({ t: 'pos', carte: G.world.carte, x: G.world.x, y: G.world.y, nom: G.player.nom, pvTier: pvTier(), ...extra });
+  net.envoyer({
+    t: 'pos', carte: G.world.carte, x: G.world.x, y: G.world.y, nom: G.player.nom, pvTier: pvTier(),
+    lampe: lumiereActive(), rayonLampe: rayonLumiere(), ...extra,
+  });
 }
 // L'hôte diffuse le monde « vivant » : le temps et les zombies de la carte courante,
 // pour que l'invité voie les mêmes morts bouger au même endroit.
@@ -115,6 +124,30 @@ function evaluerDodo() {
   if (cbs.onDodoGo) cbs.onDodoGo(heures);
 }
 
+// ---------- Départ à deux : on ne « commence » qu'une fois les DEUX prêts ----------
+// Chacun regarde l'intro et appuie « Ouvrir les yeux » → signalerPret(). Tant que les
+// deux ne sont pas prêts, le monde reste figé (battementMonde/tick gardés par
+// partieDemarree) et le premier prêt voit « en attente de X ». Quand les deux le sont,
+// onDeuxPrets se déclenche des deux côtés → départ simultané.
+let pret = { moi: false, pair: false };
+let demarree = false;
+export function pretEtat() { return { ...pret }; }
+// Vrai si le jeu a vraiment démarré : toujours vrai en solo ; en multi, une fois les
+// deux « yeux ouverts ». Sert à GELER l'horloge et les morts jusqu'au départ commun.
+export function partieDemarree() { return !actif || demarree; }
+export function signalerPret() {
+  if (!actif) { demarree = true; return; }
+  pret.moi = true;
+  net.envoyer({ t: 'pret' });
+  evaluerPret();
+}
+// Filet de sécurité : si le coéquipier ne vient pas / part, on peut forcer le départ seul.
+export function forcerDepart() { demarree = true; if (cbs.onDeuxPrets) cbs.onDeuxPrets(); }
+function evaluerPret() {
+  if (demarree) return;
+  if (pret.moi && pret.pair) { demarree = true; if (cbs.onDeuxPrets) cbs.onDeuxPrets(); }
+}
+
 function pvTier() { const p = G.player.pv; return p > 66 ? 'ok' : p > 33 ? 'amoche' : 'critique'; }
 
 // ---------- Réception ----------
@@ -127,7 +160,11 @@ function recevoir(m) {
       if (cbs.onMonde) cbs.onMonde(m.world, m.nom);
       break;
     case 'pos':
-      pair = { nom: m.nom, carte: m.carte, x: m.x, y: m.y, pvTier: m.pvTier, enCombat: !!m.enCombat, combat: m.combat || null };
+      pair = {
+        nom: m.nom, carte: m.carte, x: m.x, y: m.y, pvTier: m.pvTier,
+        enCombat: !!m.enCombat, combat: m.combat || null,
+        lampe: !!m.lampe, rayonLampe: m.rayonLampe || 0,
+      };
       if (cbs.onPairMaj) cbs.onPairMaj(pair);
       break;
     case 'vivant':
@@ -141,6 +178,11 @@ function recevoir(m) {
       break;
     case 'cine':
       if (cbs.onCine) cbs.onCine(m.id);
+      break;
+    case 'pret':
+      pret.pair = true;
+      if (cbs.onPretPair) cbs.onPretPair();
+      evaluerPret();
       break;
     case 'heure':
       if (estInvite()) {

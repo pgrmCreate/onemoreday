@@ -130,6 +130,20 @@ Tu n'es donc **jamais frappé par plusieurs à la fois** — tu les abats **l'un
 L'attaque se **charge** (maintenir = armer, relâcher = frapper) ; chaque geste coûte de
 l'**endurance**. Réglages : `REGLAGES.combat.COUTS` (coûts) et `REGLAGES.combat.CHARGE` (profil de charge).
 
+> **HUD de combat** : la **santé du mort actif** se lit sur une **barre horizontale en bas
+> au centre** (`#cb-zhp`, pilotée par `majBarres`) ; le bouton **Esquiver** est à **droite de
+> Se défendre** (`.cb-def-row`) — un tap qui vaut l'esquive réflexe pendant une ruée, sinon un
+> pas de côté délibéré (`resoudreEsquive`). **Visuel des morts** : si une **photo détourée**
+> existe dans `/zombies/` (`combat_art.js → pngZombie`, table `ZOMBIE_PNG` car `gonfle`→`gonfleur.png`,
+> `enrage`→`enrage.png`), elle s'affiche à la place de la silhouette SVG (`hordeHTML → creatureMarkup`) ;
+> sinon on retombe sur `combat_creatures.js`. Les 6 PNG sont précachés dans `sw.js`.
+
+> **Co-op — rejoindre un combat (anti-course)** : la tuile « Rejoindre » n'ouvre PLUS un combat
+> à l'aveugle. Le joueur **DEMANDE** (`map.js → rejoindreCombatPair` envoie `demande-rejoindre`),
+> et seul l'**hôte de la rencontre** — s'il a un combat VIVANT au même `enc` — répond `rejoindre-ok`
+> avec la **file à jour** (`combat.js → repondreDemandeRejoindre`) ; un combat fini répond
+> `rejoindre-non` (ou le timeout de 1,8 s tranche). Un mort tué ne laisse donc plus de bouton fantôme.
+
 ---
 
 ## 6. Le dessin (cinématiques & ambiances)
@@ -172,6 +186,10 @@ Tout ce qui suit se change **à un seul endroit**, chaque champ est commenté *a
 | **Anneau plus long en ville** | `echelles.quartier.anneauZombie` | ↑ = plus de temps de réagir |
 | Hordes plus/moins denses | `echelles.*.capDiv` | ↓ = plus de morts par carte |
 | Combat plus/moins coûteux | `combat.COUTS`, `combat.CHARGE` | endurance, profil de charge |
+| **Piles qui durent plus/moins** | `lumiere.MIN_PAR_PILES` (déf. 1440 = 24 h), `MIN_TORCHE` | minutes de jeu par paire / par torche |
+| **Portée d'une lampe** | `lumiere.RAYONS` (par id : `lampe_torche` 2…) | nb de cases éclairées autour (intérieur) |
+| **Fouille plus/moins longue** | `fouille.DUREE_MS` (par échelle), `TATONS_MULT` | durée d'une fouille COMPLÈTE (barre 0→100 %) |
+| **Aide à la fouille à deux** | `fouille.COOP_MULT` | ↑ = la barre se remplit plus vite à deux |
 
 ### Recettes express
 - **« En ville, ils vont encore trop vite »** → augmente `echelles.quartier.cadenceZombie`

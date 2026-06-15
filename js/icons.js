@@ -37,6 +37,8 @@ export const ICONS = {
   fuir: P('M5 20l4-5m4-8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM7 9l4-2 3 3 4 1m-6-4-1 6 4 3-1 5'),
   changer: P('M4 8h13m0 0-3-3m3 3-3 3M20 16H7m0 0 3-3m-3 3 3 3'),
   pistolet: P('M3 8h17v4h-7l-1 5H8l1.5-5H7a4 4 0 0 1-4-4zm14 4v2'),
+  // Esquiver : une silhouette qui plonge sur le côté + un trait de mouvement
+  esquiver: P('M14 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM14 7l-3 5 3 3-2 6m2-9 3 2', '<path d="M3 14q4 3 8-1"/>'),
   cible: P('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-5a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-4h.01M12 3v2m0 14v2M3 12h2m14 0h2'),
   ceinture: P('M3 12h18M3 12c2-1.5 4-2 6-2m12 2c-2-1.5-4-2-6-2m-6 0V8h6v2m-6 0h6m-4 2v3h2v-3'),
   // ---------- états (moodles) ----------

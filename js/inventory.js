@@ -11,6 +11,7 @@ import { ITEMS, item } from './data/items.js';
 import { CLOTHES, cloth } from './data/clothing.js';
 import { sfx } from './audio.js';
 import { deposerAuSol, keyCourante } from './world.js';
+import { REGLAGES } from './data/reglages.js';
 
 const SLOTS_VETEMENTS = ['tete', 'torse', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
 
@@ -366,8 +367,8 @@ export function hasOutil(tag) {
 // d'instance on:true). Allumée, elle consomme en continu : les lampes à piles
 // mangent une paire de piles en ~3 h de jeu (champ usure 0→1), la torche
 // artisanale se consume en ~45 min puis part en cendres.
-const MIN_PAR_PILES = 180; // ~3 h de jeu par paire de piles
-const MIN_TORCHE = 45;     // une torche brûle ~45 min
+const MIN_PAR_PILES = REGLAGES.lumiere.MIN_PAR_PILES; // minutes de jeu par paire de piles (~24 h)
+const MIN_TORCHE = REGLAGES.lumiere.MIN_TORCHE;       // une torche brûle ~45 min
 
 export function estLampe(id) { return id === 'lampe_torche' || id === 'lampe_frontale' || id === 'torche'; }
 // Lampe qui mange des PILES (la torche, elle, brûle au feu) — pour la gestion des piles.
@@ -379,6 +380,20 @@ export function lumiereActive() {
   const allumee = (e) => !!(e && estLampe(e.id) && e.on);
   if (allumee(G.player.equip.arme)) return true;
   return accesRapide().some(allumee);
+}
+
+// Portée (en cases) du halo d'une lampe selon son type — défaut 1.
+// La lampe torche porte à 2 cases, la torche enflammée à 1 (cf. REGLAGES.lumiere.RAYONS).
+export function rayonLampe(id) { return REGLAGES.lumiere.RAYONS[id] || 1; }
+
+// Portée du halo que J'ÉCLAIRE réellement : la plus grande parmi mes lampes ALLUMÉES
+// (mêmes emplacements que lumiereActive : main + accès rapide). 0 si aucune n'éclaire.
+export function rayonLumiere() {
+  let r = 0;
+  const considere = (e) => { if (e && estLampe(e.id) && e.on) r = Math.max(r, rayonLampe(e.id)); };
+  considere(G.player.equip.arme);
+  accesRapide().forEach(considere);
+  return r;
 }
 
 // Toutes les lampes que possède le joueur, avec leur emplacement.

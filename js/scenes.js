@@ -8,6 +8,7 @@ import { svgScene } from './illustrations.js';
 import { appliquerEffets, besoinRempli, besoinTexte, jetReussi } from './effects.js';
 import { playAmbiance, startCombatMusic, stopCombatMusic, sfx } from './audio.js';
 import { jouerCine, jouerCineUneFois } from './cinema.js';
+import * as multi from './multi.js';
 
 let sceneTimer = null;
 let timerAnim = null;
@@ -24,7 +25,12 @@ function goTo(cible) {
     stopCombatMusic();
     G.world.sceneCourante = null;
     save();
-    import('./map.js').then(m => m.renderLieu());
+    // En co-op, le tout premier retour au monde (« Ouvrir les yeux ») n'entre PAS tout
+    // de suite : on attend que les DEUX joueurs aient ouvert les yeux (départ commun).
+    import('./map.js').then(m => {
+      if (multi.estMulti() && !multi.partieDemarree()) m.coopEntrerOuAttendre();
+      else m.renderLieu();
+    });
     return;
   }
   if (cible === '#arrivee') {

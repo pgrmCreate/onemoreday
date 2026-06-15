@@ -24,7 +24,7 @@ import {
 import { EVENTS } from './data/events.js';
 import { item } from './data/items.js';
 import {
-  render, updateHUD, setLieuLabel, log, btnAct, $, toast,
+  render, updateHUD, setLieuLabel, log, btnAct, $, toast, showHUD,
   showPanel, closePanel, showEvt, closeEvt, attente, panelOuvert, evtOuvert,
 } from './ui.js';
 import { ico } from './icons.js';
@@ -35,13 +35,13 @@ import {
   surcharge, enSurpoids, poidsPlafond, equiperDepuisSol, libelleJetes,
   estContenant, recipientOuvert, contenance, descEau, fmtL, instancePourEau,
   tenirRecipient, prendreEnMain,
-  lumiereActive, basculerLumiere, etatLumiere,
+  lumiereActive, basculerLumiere, etatLumiere, rayonLumiere,
 } from './inventory.js';
 import { cloth } from './data/clothing.js';
 import { advanceTime, dormir, attendre } from './survival.js';
 import { appliquerEffets, besoinRempli, besoinTexte, jetReussi } from './effects.js';
-import { demarrerCombat, enCombat, noteCombat, appliquerCombatDistant, pauseCombatPourCine, reprendreCombatAvecDecompte } from './combat.js';
-import { playAmbiance, sfx, setTension } from './audio.js';
+import { demarrerCombat, enCombat, noteCombat, appliquerCombatDistant, pauseCombatPourCine, reprendreCombatAvecDecompte, repondreDemandeRejoindre } from './combat.js';
+import { playAmbiance, sfx, setTension, setChrono } from './audio.js';
 import { jouerScene } from './scenes.js';
 import * as multi from './multi.js';
 
@@ -587,13 +587,22 @@ function tuilePairCombat() {
   if (manhattanPair(pr) > 4) return '';
   return tuile('data-rejoindre="1"', 'attaque', 'Rejoindre le combat', `${pr.nom || 'ton coéquipier'} se bat tout près`, { classe: 'trouves-btn' });
 }
+// Rejoindre le combat du coéquipier — désormais avec POIGNÉE DE MAIN anti-course : on ne
+// démarre PAS un combat tout de suite (le sien est peut-être déjà fini). On DEMANDE, et on
+// n'entre que si l'hôte du combat confirme (avec la file à jour). Sans réponse → combat fini.
+let rejoindreEnAttente = null; // enc qu'on attend de rejoindre (null = aucune demande en cours)
+let rejoindreTimer = null;
 function rejoindreCombatPair() {
   const pr = multi.pairEtat();
-  if (!pr || !pr.enCombat || !pr.combat) { toast('Le combat est déjà fini.'); return; }
-  const ids = (pr.combat.ids && pr.combat.ids.length) ? [...pr.combat.ids] : [pick(zombiesPoolCourant())];
-  multi.diffuserCombat({ sub: 'rejoint', nom: G.player.nom });
-  log('Tu te jettes dans la mêlée pour épauler ton coéquipier.', 'good');
-  demarrerCombat(ids, { onFin: () => renderLieu(), rejointPair: true, enc: pr.combat && pr.combat.enc });
+  if (!pr || !pr.enCombat || !pr.combat) { toast('Le combat est déjà fini.'); renderLieu(); return; }
+  if (rejoindreEnAttente) return; // demande déjà partie : on attend la réponse
+  rejoindreEnAttente = pr.combat.enc;
+  multi.diffuserCombat({ sub: 'demande-rejoindre', enc: pr.combat.enc, nom: G.player.nom });
+  toast('Tu te précipites pour l\'épauler…');
+  clearTimeout(rejoindreTimer);
+  rejoindreTimer = setTimeout(() => {
+    if (rejoindreEnAttente) { rejoindreEnAttente = null; toast('Le combat est déjà fini.'); renderLieu(); }
+  }, 1800); // pas de réponse à temps → le combat s'est terminé entre-temps
 }
 
 // Co-op : pousser l'état « monde » d'une case (objets au sol + fouille + sécurisée)
@@ -606,6 +615,9 @@ export function syncCaseCourante() { syncCaseMonde(keyCourante()); }
 
 // Co-op : la case que le COÉQUIPIER est en train de fouiller (null s'il ne fouille pas).
 let fouillePairK = null;
+// La fouille EN COURS chez moi (overlay continu) : exposée pour que les événements
+// réseau (objet trouvé, progression, fin) du coéquipier viennent l'alimenter. null = aucune.
+let fouilleSession = null;
 // Je signale au coéquipier que je commence / termine de fouiller une case, pour qu'il
 // n'y vienne pas en même temps (et ne voie pas sa fouille « annulée »). Inerte en solo.
 function signalerFouille(k, etat) {
@@ -624,9 +636,17 @@ let pairCombatPrec = false;
 function brancherMulti() {
   // Monde partagé : on adopte l'état de case reçu (butin/fouille communs, dernier écrivain).
   multi.poser('onEvenement', (m) => {
-    // Présence de fouille : le coéquipier (dé)marre une fouille → on la mémorise pour
-    // ne pas fouiller la même case en même temps (cf. fouiller()).
-    if (m.e === 'fouille') { fouillePairK = m.etat === 'debut' ? m.k : null; return; }
+    // Fouille partagée : présence + flux d'objets trouvés / progression / fin, relayés au
+    // panneau de fouille en cours (cf. lancerFouilleContinue) pour que le coéquipier voie
+    // la MÊME barre se remplir et les MÊMES objets sortir, sans double dépôt.
+    if (m.e === 'fouille') {
+      if (m.etat === 'debut') fouillePairK = m.k;
+      else if (m.etat === 'fin') { if (fouillePairK === m.k) fouillePairK = null; }
+      else if (m.etat === 'trouve') { if (fouilleSession && fouilleSession.k === m.k) fouilleSession.onTrouveDistant(m.label); }
+      else if (m.etat === 'progress') { if (fouilleSession && fouilleSession.k === m.k) fouilleSession.onProgressDistant(m.frac); }
+      else if (m.etat === 'complete') { if (fouilleSession && fouilleSession.k === m.k) fouilleSession.onCompleteDistant(); }
+      return;
+    }
     if (m.e !== 'case') return;
     if (Array.isArray(m.sol)) { if (m.sol.length) G.world.sol[m.k] = m.sol; else delete G.world.sol[m.k]; }
     if (m.fouille) {
@@ -635,7 +655,7 @@ function brancherMulti() {
       // la fouille du joueur paraissait « annulée » (compteur qui saute, butin escamoté).
       const cur = G.world.fouilles[m.k];
       G.world.fouilles[m.k] = cur
-        ? { n: Math.max(cur.n || 0, m.fouille.n || 0), pris: { ...(cur.pris || {}), ...(m.fouille.pris || {}) } }
+        ? { n: Math.max(cur.n || 0, m.fouille.n || 0), frac: Math.max(cur.frac || 0, m.fouille.frac || 0), pris: { ...(cur.pris || {}), ...(m.fouille.pris || {}) } }
         : m.fouille;
     }
     if (m.secur) G.world.securisees[m.k] = true; else delete G.world.securisees[m.k];
@@ -654,16 +674,40 @@ function brancherMulti() {
     else { rafraichirCarteSeule(); majBarrePair(); } // simple déplacement du pion
   });
   multi.poser('onCombat', (m) => {
-    if (m.sub === 'rejoint') {
+    if (m.sub === 'demande-rejoindre') {
+      // Le coéquipier veut me rejoindre : si MON combat (cet enc) est vivant, j'accepte
+      // et renvoie la file à jour ; sinon je refuse (il verra « déjà fini »).
+      repondreDemandeRejoindre(m);
+    } else if (m.sub === 'rejoindre-ok') {
+      if (rejoindreEnAttente !== m.enc) return;       // réponse à une autre/ancienne demande
+      rejoindreEnAttente = null; clearTimeout(rejoindreTimer);
+      if (enCombat()) return;                          // déjà entré entre-temps
+      const ids = (m.ids && m.ids.length) ? [...m.ids] : [pick(zombiesPoolCourant())];
+      log('Tu te jettes dans la mêlée pour épauler ton coéquipier.', 'good');
+      demarrerCombat(ids, { onFin: () => renderLieu(), rejointPair: true, enc: m.enc });
+    } else if (m.sub === 'rejoindre-non') {
+      if (rejoindreEnAttente === m.enc) {
+        rejoindreEnAttente = null; clearTimeout(rejoindreTimer);
+        toast('Le combat est déjà fini.'); renderLieu();
+      }
+    } else if (m.sub === 'rejoint') {
       const txt = `${m.nom || 'Ton coéquipier'} t'a rejoint dans le combat !`;
       if (enCombat()) noteCombat(`<b>${txt}</b>`); else { toast(txt); sfx('alerte'); }
     } else if (m.sub === 'degats' || m.sub === 'fin') {
       appliquerCombatDistant(m);
+      // Une demande de rejoindre en vol alors que le combat se termine : on l'annule.
+      if (m.sub === 'fin' && rejoindreEnAttente === m.enc) {
+        rejoindreEnAttente = null; clearTimeout(rejoindreTimer);
+        if (!enCombat()) { toast('Le combat est déjà fini.'); renderLieu(); }
+      }
     }
   });
   // Cinématique partagée : si le coéquipier en déclenche une, je la vois aussi.
   // En plein combat, le combat se fige, la scène se joue, puis reprend après un décompte.
   multi.poser('onCine', (id) => {
+    // On MARQUE la scène comme vue de ce côté aussi : sans ça, l'invité re-déclencherait
+    // « premiere_nuit » via son propre renderLieu après la version relayée (nuit en double).
+    setFlag('cine_' + id); save();
     if (cineEnCours()) return; // déjà une scène à l'écran
     if (enCombat()) {
       if (pauseCombatPourCine()) jouerCine(id, () => reprendreCombatAvecDecompte(), true);
@@ -681,8 +725,42 @@ function brancherMulti() {
     if (panelOuvert() && (($('.panel-head h2') || {}).textContent === 'Dormir')) panneauSommeil();
   });
   multi.poser('onDodoGo', (heures) => executerSommeil(heures));
+  // Départ à deux : quand les DEUX ont ouvert les yeux, on entre dans le monde ensemble.
+  multi.poser('onDeuxPrets', () => { showHUD(true); renderLieu(); });
+  // Le coéquipier vient de se déclarer prêt : on rafraîchit l'écran d'attente (pseudo).
+  multi.poser('onPretPair', () => { if ($('.attente-coop')) ecranAttenteCoop(); });
 }
 brancherMulti();
+
+// ---------- Départ co-op : « Ouvrir les yeux » à deux ----------
+// Appelé quand un joueur a fini l'intro et appuyé « Ouvrir les yeux ». En solo : on
+// entre directement. En co-op : on se déclare prêt et on attend l'autre (écran d'attente).
+// Quand les deux sont prêts, onDeuxPrets (ci-dessus) lance le monde des deux côtés.
+export function coopEntrerOuAttendre() {
+  if (!multi.estMulti()) { renderLieu(); return; }
+  ecranAttenteCoop();
+  multi.signalerPret(); // si l'autre est déjà prêt, onDeuxPrets enchaîne aussitôt le départ
+}
+function ecranAttenteCoop() {
+  const echap = (s) => String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  const nom = echap(multi.nomPair() || 'ton coéquipier');
+  render(`
+    <div class="attente-coop">
+      <div class="ac-pulse">${ico('oeil')}</div>
+      <h2 class="lieu-nom">Tu ouvres les yeux.</h2>
+      <p class="narration">En attente de <b>${nom}</b> — il doit ouvrir les yeux à son tour pour que le premier jour commence en même temps pour vous deux.</p>
+      <div class="actions">${btnAct('data-seul="1"', 'Commencer sans attendre', 'si ton coéquipier tarde trop')}</div>
+    </div>`);
+  showHUD(false);
+  const b = $('[data-seul]');
+  if (b) b.onclick = () => { sfx('clic'); multi.forcerDepart(); };
+}
+
+// Taille DESSINÉE par type de case (intérieur), en fraction du slot. Variation MODESTE :
+// jamais minuscule ni géante — juste de quoi rompre la grille régulière (un escalier, un
+// couloir, un sas un peu plus petits). Le SLOT logique (origine + pas) ne change JAMAIS,
+// donc déplacement / adjacence / clic restent intacts. Type absent = 1 (pleine taille).
+const TAILLE_CASE = { escalier: 0.8, porte: 0.88, couloir: 0.92, sas: 0.86 };
 
 function svgCarte(reach, vis) {
   if (estGraphe(G.world.carte)) return svgCartePlan(reach, vis); // plan à nœuds libres
@@ -700,14 +778,27 @@ function svgCarte(reach, vis) {
   const morts = vivante ? mortsSur(G.world.carte) : [];
   const champOuie = vivante ? champOuieJoueur(G.world.carte) : null; // sauts (plan) ou null (grille)
   const pair = multi.estMulti() ? multi.pairEtat() : null; // le coéquipier, s'il y en a un
-  // Une lampe allumée en main ou à la ceinture troue le noir autour de toi.
+  // Une lampe allumée en main ou à la ceinture troue le noir autour de toi, sur un
+  // RAYON qui dépend du type de lampe (la lampe torche porte à 2 cases).
   const lampe = lumiereActive();
+  const rLampe = lampe ? rayonLumiere() : 0;
+  // Co-op : la lampe du coéquipier éclaire AUSSI, autour de SA position (même carte) —
+  // les deux halos se rejoignent quand vous êtes proches ou sur la même case.
+  const pairLampe = !!(pair && pair.carte === G.world.carte && pair.lampe);
+  const rPair = pairLampe ? (pair.rayonLampe || 1) : 0;
+  const dansHalo = (x, y) =>
+    (lampe && Math.abs(x - G.world.x) <= rLampe && Math.abs(y - G.world.y) <= rLampe)
+    || (pairLampe && Math.abs(x - pair.x) <= rPair && Math.abs(y - pair.y) <= rPair);
   let cells = '', murs = '';
   for (const [pos, cd] of Object.entries(C.cases)) {
     const [x, y] = pos.split(',').map(Number);
     if (!connue(x, y)) continue;
     const t = TERRAIN[cd.t] || TERRAIN.rue;
-    const px = PAD + x * (CS + GAP), py = PAD + y * (CS + GAP);
+    const px = PAD + x * (CS + GAP), py = PAD + y * (CS + GAP); // SLOT logique (inchangé)
+    // Taille DESSINÉE : certains types d'intérieur sont un peu plus petits, centrés
+    // dans leur slot. dx/dy/cs servent au DESSIN ; px/py/CS restent le slot (murs + clic).
+    const fT = interieur ? (TAILLE_CASE[cd.t] ?? 1) : 1;
+    const cs = CS * fT, dx = px + (CS - cs) / 2, dy = py + (CS - cs) / 2;
     const ici = x === G.world.x && y === G.world.y;
     const aVue = vis.has(pos);
     const atteign = reach.has(pos);
@@ -716,67 +807,72 @@ function svgCarte(reach, vis) {
     const secur = estSecurisee(k);
     const niv = niveauSombre(cd);
     // le dessin de l'environnement, par-dessus le fond
-    let inner = interieur ? dessinInterieur(cd, x, y, px, py, CS) : dessinExterieur(cd, x, y, px, py, CS);
+    let inner = interieur ? dessinInterieur(cd, x, y, dx, dy, cs) : dessinExterieur(cd, x, y, dx, dy, cs);
     // une entrée (bâtiment, sortie d'intérieur) : le petit rectangle de porte
     if (cd.vers) {
-      const basY = ['batiment', 'village', 'ville', 'site'].includes(cd.t) ? py + CS - 20 : py + 7;
-      inner += `<rect x="${px + CS / 2 - 5.5}" y="${basY}" width="11" height="14" rx="1" fill="#16130e" stroke="${cd.verrou && !G.world.verrous[k] ? '#8a5a28' : '#6d5d42'}" stroke-width="1.3"/>
-        <circle cx="${px + CS / 2 + 2.5}" cy="${basY + 7.5}" r="1" fill="#6d5d42"/>`;
+      const basY = ['batiment', 'village', 'ville', 'site'].includes(cd.t) ? dy + cs - 20 : dy + 7;
+      inner += `<rect x="${dx + cs / 2 - 5.5}" y="${basY}" width="11" height="14" rx="1" fill="#16130e" stroke="${cd.verrou && !G.world.verrous[k] ? '#8a5a28' : '#6d5d42'}" stroke-width="1.3"/>
+        <circle cx="${dx + cs / 2 + 2.5}" cy="${basY + 7.5}" r="1" fill="#6d5d42"/>`;
     }
     if (solVisible(k).length) {
-      inner += `<circle cx="${px + CS - 8}" cy="${py + CS - 8}" r="3" fill="${CODES.sol}"/>`;
+      inner += `<circle cx="${dx + cs - 8}" cy="${dy + cs - 8}" r="3" fill="${CODES.sol}"/>`;
     }
-    // noir total : la case s'enfonce dans l'ombre — sauf dans le halo de ta lampe
-    // (ta case et les cases adjacentes visibles ; le noir lointain reste noir)
-    const eclairee = lampe && Math.abs(x - G.world.x) <= 1 && Math.abs(y - G.world.y) <= 1 && (ici || aVue);
-    if (niv === 2 && !eclairee) inner += `<rect x="${px + 1}" y="${py + 1}" width="${CS - 2}" height="${CS - 2}" fill="#050507" opacity=".44"/>`;
+    // noir total : la case s'enfonce dans l'ombre — sauf dans un halo de lampe (la tienne
+    // ou celle du coéquipier ; le noir lointain reste noir)
+    const eclairee = dansHalo(x, y) && (ici || aVue);
+    if (niv === 2 && !eclairee) inner += `<rect x="${dx + 1}" y="${dy + 1}" width="${cs - 2}" height="${cs - 2}" fill="#050507" opacity=".44"/>`;
     // Liserés : codes couleur de la case (voir Légende)
     const insetEtat = interieur ? 3 : 1.5;
-    if (secur) inner += cadreCase(px, py, CS, insetEtat, CODES.securisee);
-    else if ((cd.danger || 0) >= 0.4) inner += cadreCase(px, py, CS, insetEtat, CODES.danger);
-    if (niv === 1) inner += cadreCase(px, py, CS, insetEtat + 3, CODES.sombre, true);
-    else if (niv === 2) inner += cadreCase(px, py, CS, insetEtat + 3, CODES.sombre);
+    if (secur) inner += cadreCase(dx, dy, cs, insetEtat, CODES.securisee);
+    else if ((cd.danger || 0) >= 0.4) inner += cadreCase(dx, dy, cs, insetEtat, CODES.danger);
+    if (niv === 1) inner += cadreCase(dx, dy, cs, insetEtat + 3, CODES.sombre, true);
+    else if (niv === 2) inner += cadreCase(dx, dy, cs, insetEtat + 3, CODES.sombre);
     // Indice texte : lbl explicite, sinon dérivé du nom (toutes les pièces en intérieur)
     const lbl = cd.lbl !== undefined ? cd.lbl
       : (cd.nom && (interieur || cd.vers || cd.special || cd.t === 'ville' || cd.t === 'village' || cd.t === 'site') ? cd.nom.split(' ')[0] : '');
     if (lbl && !ici) {
-      inner += `<text x="${px + CS / 2}" y="${py + CS - 5}" text-anchor="middle" font-size="9" fill="#9a8f7c">${lbl.slice(0, 10)}</text>`;
+      inner += `<text x="${dx + cs / 2}" y="${dy + cs - 5}" text-anchor="middle" font-size="9" fill="#9a8f7c">${lbl.slice(0, 10)}</text>`;
     }
     // Hors de ta vue : la case reste en mémoire, mais on n'y voit pas
     // ce qui s'y trouve MAINTENANT (et les zombies n'y sont pas dessinés).
     if (!aVue && !ici) {
-      inner += `<rect x="${px}" y="${py}" width="${CS}" height="${CS}" fill="#08080a" opacity=".4"/>`;
+      inner += `<rect x="${dx}" y="${dy}" width="${cs}" height="${cs}" fill="#08080a" opacity=".4"/>`;
     }
     // Eux, et leurs morts. Visibles dans ta ligne de vue : on les voit ARRIVER.
     if (aVue) {
       // cadavres au sol + faux-morts (affichés comme des corps tant qu'ils dorment)
       const corps = morts.some(m => m.x === x && m.y === y)
         || zombies.some(z => z.faitLeMort && z.x === x && z.y === y);
-      if (corps) inner += pictoCadavre(px, py, CS);
+      if (corps) inner += pictoCadavre(dx, dy, cs);
       const zlist = zombies.filter(z => !z.faitLeMort && z.x === x && z.y === y);
-      if (zlist.length) inner += pionZombie(px, py, CS, zlist.length, zlist[0].dir, !!zlist[0].spin);
+      if (zlist.length) inner += pionZombie(dx, dy, cs, zlist.length, zlist[0].dir, !!zlist[0].spin);
     } else if (!ici) {
       // Ouïe : un zombie vivant tout proche, hors de vue → point rouge estompé.
       const dist = distOuie(champOuie, x, y);
       if (dist <= OUIE_JOUEUR && zombies.some(z => !z.faitLeMort && z.x === x && z.y === y)) {
-        inner += pointOuie(px, py, CS);
+        inner += pointOuie(dx, dy, cs);
       }
     }
     // Le coéquipier (co-op) : on ne le voit QUE dans sa ligne de mire, comme eux.
     // Sur la même case que toi, on le décale pour que les deux ronds restent lisibles.
     if (pair && aVue && pair.carte === G.world.carte && pair.x === x && pair.y === y) {
-      inner += pionAllie(px, py, CS, pair, ici ? 3 : 0);
+      inner += pionAllie(dx, dy, cs, pair, ici ? 3 : 0);
     }
     if (ici) {
       // Pion joueur : un petit rond discret, légèrement décalé (au-dessus du contenu de la case).
       const off = (pair && pair.carte === G.world.carte && pair.x === x && pair.y === y) ? -3 : 0;
-      const jx = px + CS / 2 + off, jy = py + CS / 2 + off;
+      const jx = dx + cs / 2 + off, jy = dy + cs / 2 + off;
       inner += `<g class="joueur"><circle cx="${jx}" cy="${jy}" r="5.5" fill="#c9b98a" stroke="#0b0b0c" stroke-width="1.8"/>
         <circle cx="${jx}" cy="${jy}" r="8" fill="none" stroke="#c9b98a" stroke-width="1" opacity=".5"/></g>`;
     }
+    // Base PLEINE du slot (estompée) sous une case rétrécie : garde la cible de clic à la
+    // taille du slot et évite un « trou » visuel autour de la case réduite.
+    const base = (cs < CS)
+      ? `<rect class="fond-slot" x="${px}" y="${py}" width="${CS}" height="${CS}" fill="${t.fill}" opacity=".5"/>`
+      : '';
     cells += `<g class="case ${atteign ? 'atteignable' : ''} ${sel ? 'selection' : ''}" data-case="${pos}">
-      <rect class="fond" x="${px}" y="${py}" width="${CS}" height="${CS}" rx="${interieur ? 0 : 2}" fill="${t.fill}" ${interieur ? '' : `stroke="${t.stroke}"`}/>
-      ${inner}<rect class="hl" x="${px + 1.5}" y="${py + 1.5}" width="${CS - 3}" height="${CS - 3}" rx="2"/></g>`;
+      ${base}<rect class="fond" x="${dx}" y="${dy}" width="${cs}" height="${cs}" rx="${interieur ? 0 : 2}" fill="${t.fill}" ${interieur ? '' : `stroke="${t.stroke}"`}/>
+      ${inner}<rect class="hl" x="${dx + 1.5}" y="${dy + 1.5}" width="${cs - 3}" height="${cs - 3}" rx="2"/></g>`;
     if (interieur) murs += mursDeCase(cd, x, y, px, py, CS, connue);
   }
   return `<svg class="carte-grille" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${cells}${murs ? `<g fill="none" stroke="${MUR_TRAIT}" stroke-width="3" stroke-linecap="square">${murs}</g>` : ''}</svg>`;
@@ -821,6 +917,24 @@ function svgCartePlan(reach, vis) {
   const champOuie = vivante ? champOuieJoueur(G.world.carte) : null; // distance d'ouïe en SAUTS sur le plan
   const pair = multi.estMulti() ? multi.pairEtat() : null;
   const lampe = lumiereActive();
+  // Co-op : la lampe du coéquipier éclaire autour de SON nœud (sur quelques sauts de rue,
+  // selon le type de lampe) — pour qu'on s'entraide à trouer le noir, même séparés.
+  const pairLampe = !!(pair && pair.carte === G.world.carte && pair.lampe);
+  const haloPair = new Set();
+  if (pairLampe) {
+    let front = [`${pair.x},${pair.y}`]; haloPair.add(front[0]);
+    for (let d = 0; d < (pair.rayonLampe || 1); d++) {
+      const suiv = [];
+      for (const kk of front) {
+        const [hx, hy] = kk.split(',').map(Number);
+        for (const [nx, ny] of voisinsCandidats(G.world.carte, hx, hy)) {
+          const nk = `${nx},${ny}`;
+          if (!haloPair.has(nk)) { haloPair.add(nk); suiv.push(nk); }
+        }
+      }
+      front = suiv;
+    }
+  }
   // Dimensions du plan : carte.vue, sinon enveloppe des nœuds.
   let W = C.vue && C.vue.x, H = C.vue && C.vue.y;
   if (!W || !H) {
@@ -869,7 +983,7 @@ function svgCartePlan(reach, vis) {
     if (estSecurisee(k)) inner += anneauN(cx, cy, r + 3, CODES.securisee);
     else if ((cd.danger || 0) >= 0.4) inner += anneauN(cx, cy, r + 3, CODES.danger);
     const niv = niveauSombre(cd);
-    const eclairee = lampe && (ici || aVue);
+    const eclairee = (lampe && (ici || aVue)) || (pairLampe && haloPair.has(pos));
     if (niv === 2 && !eclairee) inner += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#050507" opacity=".44"/>`;
     if (niv === 1) inner += anneauN(cx, cy, r + 5, CODES.sombre, true);
     else if (niv === 2) inner += anneauN(cx, cy, r + 5, CODES.sombre);
@@ -1009,12 +1123,13 @@ export function renderLieu() {
       cd.versNom || (cible ? cible.nom : '?'), bloque ? '<span class="req">accès bloqué</span>' : `${cd.vers.temps ?? C.tempsParCase} min`);
   }
   if (cd.fouille) {
-    const epuisee = f.n >= cd.fouille.max;
-    const tMin = tempsFouille(f.n);
+    const epuisee = fouilleFinie(f, cd);
+    const entamee = (f.frac || 0) > 0 && !epuisee;
+    const pct = Math.round((f.frac || 0) * 100);
     const nivF = niveauSombre(cd);
     const mention = nivF === 2 ? ' · <span class="req">noir total</span>' : nivF === 1 ? ' · pénombre' : '';
-    html += tuile('data-fouille="1"', 'fouille', `Fouiller (${f.n}/${cd.fouille.max})`,
-      epuisee ? 'retournée de fond en comble' : `${tMin} min${mention}`,
+    html += tuile('data-fouille="1"', 'fouille', entamee ? 'Continuer la fouille' : 'Fouiller',
+      epuisee ? 'plus rien à fouiller' : (entamee ? `déjà ${pct} % — reprendre${mention}` : `tout y passer${mention}`),
       { disabled: epuisee });
   }
   if (nbSol) {
@@ -1056,7 +1171,9 @@ export function renderLieu() {
   if (sp) sp.onclick = () => { if (enMarche) return; sfx('clic'); actionSpeciale(sp.dataset.special); };
 
   // La toute première nuit de l'aventure : un plan sur la place, du noir total.
-  if (estNuit() && !getFlag('cine_premiere_nuit') && !getFlag('chapitre2') && !enMarche) {
+  // En co-op, SEUL l'hôte la déclenche (il fait foi sur l'horloge) puis la diffuse à
+  // l'invité — sinon les deux la lanceraient chacun de leur côté (nuit jouée en double).
+  if (estNuit() && !getFlag('cine_premiere_nuit') && !getFlag('chapitre2') && !enMarche && !multi.estInvite()) {
     jouerCineUneFois('premiere_nuit');
   }
 }
@@ -1076,6 +1193,21 @@ function barreRonde() {
     ${L.a ? `<button class="brond ${L.on ? 'on' : ''}" data-lampe="1" title="${titre}">${ico('lumiere')}</button>` : ''}
     <button class="brond" data-attendre="1" title="Attendre">${ico('sablier')}</button>
   </div>`;
+}
+
+// Rafraîchit EN PLACE l'indicateur de lumière (texte + % piles) sans reconstruire la
+// carte : appelé à chaque battement du monde pour que la charge des piles « descende »
+// sous les yeux, même quand le joueur n'agit pas (sinon le % paraît figé entre deux actions).
+function majIndicateurLumiere() {
+  const st = document.querySelector('.lampe-statut');
+  if (!st) return;
+  const L = etatLumiere();
+  const span = st.querySelector('span');
+  if (span) span.textContent = L.texte;
+  st.classList.toggle('on', !!L.on);
+  st.classList.toggle('vide', !L.a && !L.on);
+  const btn = document.querySelector('[data-lampe]');
+  if (btn) btn.classList.toggle('on', !!L.on);
 }
 
 function basculerLampePortee() {
@@ -1373,13 +1505,11 @@ function typeEvenement() {
   return 'rue';
 }
 
-// ---------- Fouille : répétable, de plus en plus longue, de plus en plus payante ----------
-const TEMPS_FOUILLE_BASE = { interieur: 10, quartier: 15, ville: 20, region: 30 };
-function tempsFouille(n) {
-  const C = carteCourante();
-  const base = TEMPS_FOUILLE_BASE[C.echelle] || 15;
-  return Math.round(base * (1 + 0.6 * n)); // chaque passage coûte plus de temps
-}
+// ---------- Fouille : UNE action continue, le butin sort au fil de la barre ----------
+// On fouille une case d'un seul trait : la barre se remplit, les objets se révèlent
+// petit à petit (déposés AU SOL et listés dans l'overlay), et à 100 % la case est
+// vidée. On peut s'arrêter quand on veut : ce qui a déjà été trouvé reste au sol, à
+// ramasser. La progression (frac) est mémorisée — reprendre une fouille la continue.
 
 function fouiller(aTatons = false) {
   const cd = caseCourante();
@@ -1388,15 +1518,8 @@ function fouiller(aTatons = false) {
   // L'accès est bloqué (grille, rideau, cadenas) : il faut d'abord ouvrir.
   if (cd.verrou && !G.world.verrous[k]) { ecranVerrou(cd, k); return; }
   const f = fouilleEtat(k);
-  if (f.n >= cd.fouille.max) { toast('Tu as déjà tout retourné ici.'); return; }
-  // Co-op : un seul fouilleur par case à la fois. Si le coéquipier est en train de
-  // fouiller CETTE case (et toujours dessus), on le laisse finir — sinon nos deux
-  // fouilles se télescopent et l'une paraît « annulée » (compteur qui saute, butin
-  // déjà pris). On se fie à sa présence réelle pour ne jamais rester bloqué s'il part.
-  if (multi.estMulti() && fouillePairK === k && pairSurCase(k)) {
-    toast('Ton coéquipier fouille déjà ici — laisse-le finir.');
-    return;
-  }
+  if (fouilleFinie(f, cd)) { toast('Tu as déjà tout retourné ici.'); return; }
+  if (fouilleSession) return; // déjà une fouille en cours
 
   if (niveauSombre(cd) === 2 && !lumiereActive() && !aTatons) {
     const box = showEvt(`<div class="narration">Il fait noir là-dedans. Sans lumière allumée, tu ne verras rien venir — ni les objets, ni le reste.</div>
@@ -1409,105 +1532,180 @@ function fouiller(aTatons = false) {
     return;
   }
 
-  // Le temps s'accélère quand on agit : chaque fouille mange de longues minutes.
-  const minutes = tempsFouille(f.n);
-  signalerFouille(k, 'debut'); // co-op : je commence à fouiller cette case
-  attente(aTatons ? 'Tu fouilles à tâtons…' : 'Tu fouilles…', minutes, () => {
-    signalerFouille(k, 'fin'); // la fouille se conclut (quelle qu'en soit l'issue)
-    // Le temps file en temps réel pendant l'attente : pas de saut d'horloge ici.
-    G.player.sta = Math.max(0, G.player.sta - (4 + 2 * f.n));
-
-    // Danger : farfouiller fait du bruit, et plus longtemps on reste, plus on en fait.
-    if (carteVivante(G.world.carte)) {
-      // Carte VIVANTE (intérieur / quartier) : le bruit ATTIRE les VRAIS morts de la
-      // carte — tu les vois arriver sur la grille, et ils RESTENT plafonnés par le
-      // `cap` de la carte (capZombies). On NE génère plus de mort « fantôme » hors
-      // plafond : c'est ce qui faisait exploser le décompte (l'hôtel pouvait t'opposer
-      // bien plus que ses 4 errants). Fouiller à tâtons / la nuit = plus de bruit donc
-      // on ameute plus large, pas un combat surgi de nulle part.
-      const portee = 4 + f.n + (aTatons ? 2 : 0) + (estNuit() ? 1 : 0);
-      attirerZombies(G.world.carte, G.world.x, G.world.y, portee);
-    } else {
-      // Carte ABSTRAITE (ville / région) : pas de grille de morts à ameuter →
-      // l'embuscade directe reste la seule façon de matérialiser le danger.
-      let danger = (cd.danger ?? 0.2) * (1 + 0.2 * f.n);
-      if (estSecurisee(k)) danger *= 0.15;
-      if (aTatons) danger *= 1.6;
-      if (estNuit()) danger *= 1.3;
-      if (chance(danger)) {
-        log(`En fouillant ${ (cd.nom || 'la zone').toLowerCase() }, tu n'étais pas seul. Tu lâches tout et tu te retournes — la fouille est interrompue.`, 'bad');
-        demarrerCombat([pick(zombiesPoolCourant())], {
-          surprise: aTatons,
-          // Une attaque ANNULE la fouille : on ne ramasse rien, même en sortant vainqueur.
-          // Il faudra recommencer à fouiller pour espérer trouver quelque chose.
-          onFin: () => renderLieu(),
-        });
-        return;
-      }
-    }
-    terminerFouille(aTatons, k, cd);
-  }, { onAnnule: () => signalerFouille(k, 'fin') });
+  lancerFouilleContinue(aTatons, k, cd);
 }
 
-function terminerFouille(aTatons, kArg, cdArg) {
-  // k et cd sont CAPTURÉS au lancement de la fouille : si le joueur a bougé pendant
-  // l'attente (ou en co-op), on applique bien le résultat à la case fouillée.
-  const cd = cdArg || caseCourante();
-  const k = kArg || keyCourante();
-  const f = fouilleEtat(k);
-  // Co-op : le coéquipier a pu vider cette case pendant que je fouillais (état partagé).
-  // On ne « re-fouille » pas au-delà du plafond. Ma fouille n'est pas perdue pour autant :
-  // ce qu'il a sorti est au sol, commun aux deux.
-  if (f.n >= cd.fouille.max) {
-    log(`${cd.nom || 'La zone'} : ton coéquipier a déjà tout retourné ici.`, '');
-    renderLieu();
-    return;
-  }
+function fouilleFinie(f, cd) { return (f.frac || 0) >= 1 || f.n >= cd.fouille.max; }
+
+// Le « programme » de découvertes d'une fouille COMPLÈTE : pour chaque objet de la table
+// encore non pris, on décide une fois s'il sera trouvé, à quelle fraction de la barre il
+// sortira. Déterministe côté DÉPOSITAIRE (un seul des deux dépose en co-op → pas de doublon).
+function construireSchedule(cd, f, aTatons) {
   const niv = niveauSombre(cd);
-  // (la lumière se consomme désormais EN CONTINU, tant que la lampe est allumée — cf. usureLampes)
-  // Plus on creuse, plus on a de chances de mettre la main sur ce qui reste.
-  // En pénombre sans lampe allumée, on passe à côté d'une partie des choses.
-  const malusPenombre = (niv === 1 && !lumiereActive()) ? 0.75 : 1;
-  const profondeur = Math.min(1.15, (0.55 + 0.3 * f.n)) * (aTatons ? 0.5 : 1) * malusPenombre;
-  const deniches = [];
+  const malusPenombre = (niv === 1 && !lumiereActive()) ? 0.8 : 1;
+  // Une fouille complète retrouve ~tout le trouvable ; tâtons/pénombre en laissent passer.
+  const profondeur = 1.15 * (aTatons ? 0.55 : 1) * malusPenombre;
+  const debut = f.frac || 0;
+  const sched = [];
   for (const entry of (cd.fouille.table || [])) {
     const d = defItem(entry.id);
     if (!d) { console.warn('Loot inconnu :', entry.id); continue; }
     if (f.pris[entry.id]) continue;
-    if (!chance(entry.p * profondeur)) continue;
+    if (!chance(Math.min(0.96, entry.p * profondeur))) continue;
     const qty = rng(entry.q[0], entry.q[1]);
-    deposerAuSol(k, { id: entry.id, qty, dur: d.dur ? d.dur : undefined });
-    f.pris[entry.id] = true;
-    deniches.push(`${d.nom}${qty > 1 ? ' ×' + qty : ''}`);
+    const atFrac = debut + (1 - debut) * (0.12 + Math.random() * 0.83); // réparti sur le reste de la barre
+    sched.push({ id: entry.id, qty, dur: d.dur ? d.dur : undefined, atFrac });
   }
-  // Ce qui traînait caché (une arme jetée en combat...) finit par se retrouver.
-  const reveles = revelerSol(k);
-  f.n++;
-  if (deniches.length) {
-    log(`Déniché : ${deniches.join(', ')}.`, 'good');
-    sfx('loot');
-  } else if (reveles) {
-    log('Tu remets la main sur ce qui était tombé là.', 'good');
-    sfx('loot');
-  } else {
-    log(`${cd.nom || 'La zone'} : rien de plus cette fois.`, '');
+  sched.sort((a, b) => a.atFrac - b.atFrac);
+  return sched;
+}
+
+function lancerFouilleContinue(aTatons, k, cd) {
+  const C = carteCourante();
+  const f = fouilleEtat(k);
+  const dureeBase = (REGLAGES.fouille.DUREE_MS[C.echelle] || 14000) * (aTatons ? REGLAGES.fouille.TATONS_MULT : 1);
+  // Le DÉPOSITAIRE est seul à sortir les objets (anti-doublon en co-op) : l'hôte dès qu'il
+  // fouille, sinon le fouilleur unique. L'invité qui aide l'hôte ne fait que VOIR sortir le butin.
+  const coopAct = () => multi.estMulti() && fouillePairK === k && pairSurCase(k);
+  const jeDepose = () => !multi.estMulti() || multi.estHote() || !coopAct();
+  const schedule = construireSchedule(cd, f, aTatons); // chacun en a un : sert dès qu'on est dépositaire
+  const revele = new Set();
+
+  signalerFouille(k, 'debut');
+
+  const ov = $('#fouille-progress');
+  if (!ov) { // pas d'overlay (sécurité) : on retombe sur un dépôt immédiat
+    schedule.forEach(e => { if (!f.pris[e.id]) { deposerAuSol(k, { id: e.id, qty: e.qty, dur: e.dur }); f.pris[e.id] = true; } });
+    finaliserFouilleComplete(k, cd); signalerFouille(k, 'fin'); renderLieu(); if (solVisible(k).length) panneauTrouves();
+    return;
   }
+  const bar = ov.querySelector('.fouille-bar > i');
+  const liste = $('#fouille-trouves');
+  ov.querySelector('.fouille-label').textContent = aTatons ? 'Tu fouilles à tâtons…' : 'Tu fouilles…';
+  if (liste) liste.innerHTML = '';
+  ov.classList.remove('hidden');
+  setChrono(true);
+
+  let frac = f.frac || 0;
+  let actif = true, timer = null, last = performance.now(), dernierProg = 0;
+  if (bar) { bar.style.transition = 'width .15s linear'; bar.style.width = (frac * 100) + '%'; }
+
+  const ligneTrouve = (label) => {
+    if (!liste) return;
+    const p = document.createElement('div'); p.className = 'ft-item'; p.textContent = '+ ' + label;
+    liste.appendChild(p); liste.scrollTop = liste.scrollHeight;
+  };
+  const reveler = (e) => {
+    revele.add(e.id);
+    if (f.pris[e.id]) return; // déjà sorti (par le coéquipier) : on ne double pas
+    deposerAuSol(k, { id: e.id, qty: e.qty, dur: e.dur });
+    f.pris[e.id] = true;
+    const d = defItem(e.id);
+    const label = `${d ? d.nom : e.id}${e.qty > 1 ? ' ×' + e.qty : ''}`;
+    ligneTrouve(label);
+    sfx('loot');
+    syncCaseMonde(k);
+    if (multi.estMulti()) multi.diffuserEvenement({ e: 'fouille', k, etat: 'trouve', label });
+  };
+
+  const terminer = (complete, distant = false) => {
+    if (!actif) return;
+    actif = false;
+    if (timer) clearInterval(timer);
+    fouilleSession = null;
+    ov.classList.add('hidden');
+    setChrono(false);
+    signalerFouille(k, 'fin');
+    f.frac = complete ? 1 : Math.min(0.999, frac);
+    // Endurance dépensée, proportionnelle à ce qu'on a fouillé cette fois (aider fatigue aussi).
+    G.player.sta = Math.max(0, G.player.sta - Math.round(3 + 7 * frac));
+    let combat = false;
+    if (jeDepose()) {
+      if (complete) combat = finaliserFouilleComplete(k, cd, distant);
+      else { save(); syncCaseMonde(k); }
+      if (complete && !distant && multi.estMulti()) multi.diffuserEvenement({ e: 'fouille', k, etat: 'complete' });
+      // Le bruit de la fouille a pu attirer / réveiller : conséquences à la conclusion.
+      if (complete && !distant) combat = consequencesFouille(k, cd, aTatons) || combat;
+    } else {
+      save();
+    }
+    if (combat) return; // le combat a pris la main (le butin déjà trouvé reste au sol)
+    renderLieu();
+    if (solVisible(k).length) panneauTrouves(); // s'arrêter = ramasser ce qu'on a trouvé
+  };
+
+  // Le coéquipier alimente CETTE fouille : objets qu'il sort, progression, fin.
+  fouilleSession = {
+    k,
+    onTrouveDistant: (label) => { if (!jeDepose()) ligneTrouve(label); },
+    onProgressDistant: (fr) => { if (!jeDepose() && fr > frac) { frac = fr; if (bar) bar.style.width = (frac * 100) + '%'; } },
+    onCompleteDistant: () => terminer(true, true),
+  };
+
+  // Boucle pilotée par setInterval (et non requestAnimationFrame) : elle continue de
+  // tourner même si l'onglet passe en arrière-plan (rAF, lui, se met en pause) — la
+  // fouille avance alors correctement grâce au delta de temps réel mesuré.
+  const tick = () => {
+    if (!actif) return;
+    const now = performance.now();
+    const dt = now - last; last = now;
+    const vit = (coopAct() ? REGLAGES.fouille.COOP_MULT : 1) / dureeBase;
+    frac = Math.min(1, frac + dt * vit);
+    if (bar) bar.style.width = (frac * 100) + '%';
+    if (jeDepose()) {
+      for (const e of schedule) if (!revele.has(e.id) && frac >= e.atFrac) reveler(e);
+      if (multi.estMulti() && now - dernierProg > 550) { dernierProg = now; multi.diffuserEvenement({ e: 'fouille', k, etat: 'progress', frac }); }
+    }
+    if (frac >= 1) { terminer(true); return; }
+  };
+  timer = setInterval(tick, 120);
+
+  const btnStop = ov.querySelector('.fouille-annuler');
+  if (btnStop) btnStop.onclick = () => { if (actif) terminer(false); };
+}
+
+// Fin d'une fouille COMPLÈTE (dépositaire) : la case est vidée et marquée. Retourne
+// false (le combat éventuel est géré à part, par consequencesFouille).
+function finaliserFouilleComplete(k, cd, distant = false) {
+  const f = fouilleEtat(k);
+  f.n = cd.fouille.max; f.frac = 1;
+  const reveles = revelerSol(k); // ce qui traînait caché (arme jetée en combat...) refait surface
+  if (reveles) log('Tu remets la main sur ce qui était tombé là.', 'good');
   const C = carteCourante();
   if (C.echelle === 'interieur' && !estSecurisee(k)) {
     securiser(k);
-    log(`${cd.nom} : pièce nettoyée et sécurisée.`, 'good');
+    log(`${cd.nom || 'La pièce'} : fouillée de fond en comble, sécurisée.`, 'good');
     if (interieurSecurise(G.world.carte)) log(`${C.nom} : tout est fouillé. L'endroit est à toi.`, 'good');
+  } else {
+    log(`${cd.nom || 'La zone'} : il n'y a plus rien à fouiller ici.`, '');
   }
   save();
-  syncCaseMonde(k); // co-op : la fouille et le butin sont communs
-  // Pendant que tu farfouillais, eux marchaient.
+  syncCaseMonde(k);
+  return false;
+}
+
+// Le bruit de la fouille à sa conclusion : sur carte vivante, on ameute les vrais morts
+// (un tick les fait approcher) ; sur carte abstraite, risque d'embuscade. Le butin déjà
+// trouvé est DÉJÀ au sol, donc un combat ne le fait plus perdre. Retourne true si combat.
+function consequencesFouille(k, cd, aTatons) {
   if (carteVivante(G.world.carte)) {
+    const portee = 4 + (aTatons ? 2 : 0) + (estNuit() ? 1 : 0);
+    attirerZombies(G.world.carte, G.world.x, G.world.y, portee);
     const vis = casesVisibles(G.world.carte, G.world.x, G.world.y);
     const ev = tickZombies(G.world.carte, vis);
-    if (ev.contact) { renderLieu(); lancerCombatContact(ev.contact); return; }
+    if (ev.contact) { renderLieu(); lancerCombatContact(ev.contact); return true; }
+  } else {
+    let danger = (cd.danger ?? 0.2);
+    if (estSecurisee(k)) danger *= 0.15;
+    if (aTatons) danger *= 1.6;
+    if (estNuit()) danger *= 1.3;
+    if (chance(danger)) {
+      log(`En fouillant ${(cd.nom || 'la zone').toLowerCase()}, tu n'étais pas seul. Tu te retournes d'un bloc.`, 'bad');
+      demarrerCombat([pick(zombiesPoolCourant())], { surprise: aTatons, onFin: () => renderLieu() });
+      return true;
+    }
   }
-  renderLieu();
-  if (deniches.length || reveles) panneauTrouves();
+  return false;
 }
 
 // ---------- Puiser : remplir bouteilles et contenants à une source d'eau ----------
@@ -2194,7 +2392,9 @@ function poserTension(t) {
 function modaleBloque() {
   if (enCombat() || cineEnCours() || panelOuvert() || evtOuvert()) return true;
   const att = $('#attente');
-  return !!(att && !att.classList.contains('hidden'));
+  if (att && !att.classList.contains('hidden')) return true;
+  const fo = $('#fouille-progress'); // fouille continue en cours : le monde se fige aussi
+  return !!(fo && !fo.classList.contains('hidden'));
 }
 
 // Tension musicale d'après le zombie le plus menaçant alentour.
@@ -2214,6 +2414,7 @@ function majTension(vis) {
 
 function tickTempsReel() {
   if (!G || !G.world || enMarche) return;
+  if (multi.estMulti() && !multi.partieDemarree()) return; // co-op : pas avant le départ commun
   if (typeof document === 'undefined' || document.hidden) return;
   if (!carteVivante(G.world.carte) || !document.querySelector('.carte-grille') || modaleBloque()) {
     poserTension(0);
@@ -2261,6 +2462,7 @@ function mondeActif() {
   if (typeof document === 'undefined' || document.hidden) return false;
   if (!enJeu()) return false;
   if (enCombat() || cineEnCours()) return false; // combat tour par tour / cinématique : le temps se fige
+  if (multi.estMulti() && !multi.partieDemarree()) return false; // co-op : horloge gelée jusqu'au départ commun
   return true;
 }
 // La bascule jour↔nuit doit rafraîchir l'ambiance et l'ombrage de la carte.
@@ -2278,6 +2480,7 @@ function battementMonde() {
   r.messages.forEach(m => log(m.t, m.c));
   verifierBasculeNuit();
   updateHUD();
+  majIndicateurLumiere(); // les piles s'usent en continu : on le voit à l'écran sans agir
   if (r.mort) return; // l'écran de mort (omd-mort) prend le relais
   if (multi.estHote()) multi.diffuserHeure(); // l'hôte fait foi et diffuse l'heure
   if (++battementsDepuisSave >= 20) { battementsDepuisSave = 0; save(); }

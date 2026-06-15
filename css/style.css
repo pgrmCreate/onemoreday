@@ -415,6 +415,9 @@ b.code, .code {
 .cb-horde { position: absolute; inset: 0; }
 .z-layer { position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); }
 .z-layer .z-svg { display: block; width: 100%; height: auto; }
+/* Photo détourée (PNG) du zombie : posée sur le bas, jamais déformée, tête non rognée. */
+.z-layer .z-png { display: block; width: 100%; height: auto; }
+.z-actif .z-png { width: auto; height: auto; max-width: 100%; max-height: 70vh; margin: 0 auto; }
 .z-actif {
   width: 60%; max-width: 340px; z-index: 3;
   filter: drop-shadow(0 14px 16px rgba(0,0,0,.55));
@@ -476,6 +479,16 @@ b.code, .code {
 .cb-sta-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #4f6b41, #8aa86a); transition: width .25s; }
 .cb-sta-fill.bas { background: #c4574a; }
 
+/* --- Santé du zombie : barre horizontale en bas, au centre --- */
+.cb-zhp-wrap {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  width: min(44%, 280px); height: 8px; z-index: 6;
+  background: rgba(0,0,0,.6); border: 1px solid rgba(200,194,180,.35); border-radius: 5px; overflow: hidden;
+}
+.cb-zhp-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #4a0d10, var(--blood2)); transition: width .18s linear; }
+.cb-zhp-fill.bas { background: linear-gradient(90deg, #3a0a0d, #7a1018); }
+
 /* --- Boutons ronds transparents, icône seule --- */
 .cbtn {
   position: absolute; z-index: 6; width: 62px; height: 62px; border-radius: 50%;
@@ -501,6 +514,10 @@ b.code, .code {
   display: flex; flex-direction: column; align-items: center; gap: 14px; z-index: 6;
 }
 .cb-fuir { opacity: .9; }
+/* Rangée du bas-gauche : SE DÉFENDRE (grand) avec ESQUIVER à sa DROITE. */
+.cb-def-row { display: flex; align-items: flex-end; gap: 12px; }
+.cb-esquive { width: 56px; height: 56px; }
+.cb-esquive .ico { width: 26px; height: 26px; }
 .cb-defense.actif { border-color: var(--steel); background: rgba(20,30,38,.5); box-shadow: 0 0 16px rgba(68,80,90,.5); }
 .cb-acces {
   position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
@@ -601,6 +618,45 @@ b.code, .code {
 }
 .attente-annuler:hover { color: var(--fg); border-color: var(--rust); }
 .attente-annuler.hidden { display: none; }
+
+/* ---------- Fouille continue (barre + objets trouvés au fil de l'eau) ---------- */
+.fouille-ov {
+  position: fixed; inset: 0; z-index: 95;
+  background: rgba(5,5,6,.66);
+  display: flex; align-items: center; justify-content: center;
+  animation: attente-in .15s ease-out;
+}
+.fouille-ov.hidden { display: none; }
+.fouille-box { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(86vw, 360px); }
+.fouille-spinner {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: #c9b98a;
+  animation: attente-tour .7s linear infinite;
+}
+.fouille-label { color: var(--fg-dim); font-style: italic; font-size: .95rem; letter-spacing: .5px; text-shadow: 0 1px 8px #000; }
+.fouille-bar { width: 100%; height: 7px; border-radius: 4px; background: rgba(255,255,255,.08); border: 1px solid var(--border); overflow: hidden; }
+.fouille-bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8a7d5a, #c9b98a); }
+.fouille-trouves {
+  width: 100%; max-height: 34vh; overflow-y: auto; display: flex; flex-direction: column; gap: 3px;
+  margin-top: 2px; min-height: 1.4em;
+}
+.fouille-trouves .ft-item {
+  color: #b9d29a; font-size: .9rem; letter-spacing: .3px; text-shadow: 0 1px 6px #000;
+  animation: ft-pop .3s ease-out;
+}
+@keyframes ft-pop { from { opacity: 0; transform: translateY(6px); } }
+.fouille-annuler {
+  margin-top: 6px; background: transparent; border: 1px solid var(--border);
+  color: var(--fg-dim); padding: 6px 16px; border-radius: 16px; font-size: .85rem;
+  cursor: pointer; letter-spacing: .5px;
+}
+.fouille-annuler:hover { color: var(--fg); border-color: var(--rust); }
+
+/* ---------- Co-op : « Ouvrir les yeux » à deux (écran d'attente) ---------- */
+.attente-coop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 70vh; text-align: center; padding: 0 24px; }
+.attente-coop .ac-pulse { width: 46px; height: 46px; color: #c9b98a; opacity: .85; animation: pulse 1.6s ease-in-out infinite; }
+.attente-coop .ac-pulse .ico { width: 46px; height: 46px; }
+.attente-coop .narration { max-width: 420px; }
 
 /* ---------- Toast ---------- */
 .toast {

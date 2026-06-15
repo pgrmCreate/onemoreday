@@ -17,7 +17,7 @@ import {
 import { ajouterBlessure, mortJoueur } from './survival.js';
 import { render, updateHUD, showHUD, log, $ } from './ui.js';
 import { ico } from './icons.js';
-import { svgCombatDecor, svgCombatZombie } from './illustrations.js';
+import { svgCombatDecor, svgCombatZombie, pngZombie } from './illustrations.js';
 import { startCombatMusic, stopCombatMusic, sfx, setHeartbeat } from './audio.js';
 import * as multi from './multi.js';
 import { REGLAGES } from './data/reglages.js';
@@ -82,6 +82,26 @@ export function demarrerCombat(zombieIds, opts = {}) {
 
 // Co-op : un message externe (ex. « X t'a rejoint ») glissé dans le journal de combat.
 export function noteCombat(html) { if (C) clog(html, 'coup'); }
+
+// Co-op : re-pousse la photo LIVE de la rencontre (file à jour) au coéquipier — pour
+// qu'une demande de « rejoindre » porte sur les morts ENCORE debout, pas un instantané périmé.
+function diffuserSnapshotCombat() {
+  if (multi.estMulti() && C && C.enc) {
+    multi.diffuserPosition({ enCombat: true, combat: { ids: [C.z.id, ...C.queue], enc: C.enc } });
+  }
+}
+
+// Co-op : le coéquipier DEMANDE à rejoindre ce combat. Seul l'hôte de la rencontre (celui
+// qui a un combat VIVANT au même enc) répond — et il renvoie la file ACTUELLE. Un combat
+// fini (C nul / C.fini / autre enc) ne peut JAMAIS être rejoint → plus de « combat fantôme ».
+export function repondreDemandeRejoindre(m) {
+  if (C && !C.fini && C.enc === m.enc) {
+    multi.diffuserCombat({ sub: 'rejoindre-ok', enc: C.enc, ids: [C.z.id, ...C.queue] });
+    clog(`<b>${m.nom || 'Ton coéquipier'} accourt pour t'épauler !</b>`, 'coup');
+  } else {
+    multi.diffuserCombat({ sub: 'rejoindre-non', enc: m.enc });
+  }
+}
 
 // Co-op : une cinématique déclenchée par le coéquipier surgit pendant mon combat.
 // On FIGE le combat (la menace ne monte plus, la charge en cours est annulée) ;
@@ -261,6 +281,13 @@ function majBarres() {
     s.style.width = (r * 100) + '%';
     s.classList.toggle('bas', r < 0.25);
   }
+  // Santé du zombie actif : barre horizontale en bas, au centre.
+  const zhp = $('#cb-zhp');
+  if (zhp) {
+    const rz = Math.max(0, C.z.hp) / C.z.hpMax;
+    zhp.style.width = (rz * 100) + '%';
+    zhp.classList.toggle('bas', rz < 0.3);
+  }
   updateHUD();
   // État des boutons ronds selon l'endurance — pendant une charge, une frappe en vol
   // ou un autre bouton maintenu, on n'arme rien d'autre.
@@ -268,6 +295,8 @@ function majBarres() {
     const cout = parseFloat(b.dataset.cout);
     const act = b.dataset.act;
     if (act === 'defense' || act === 'journal') { b.disabled = false; return; }
+    // Esquive : toujours active pendant une fenêtre réflexe (le QTE n'a pas de coût).
+    if (act === 'esquiver' && C.qteFinir) { b.disabled = false; return; }
     if (C.def) { b.disabled = true; return; }   // garde levée : rien d'autre
     if (C.chg) { b.disabled = act !== 'attaquer'; return; }
     if (C.hold) { b.disabled = b !== C.hold.btn; return; }
@@ -328,6 +357,7 @@ function lancerEsquiveQTE() {
     if (fini) return;
     fini = true;
     ov.remove();
+    C.qteFinir = null; // la fenêtre se referme : le bouton Esquiver redevient « délibéré »
     if (!C || C.fini) return;
     if (C.qteTimer) { clearTimeout(C.qteTimer); C.qteTimer = null; }
     if (reussi) {
@@ -343,8 +373,37 @@ function lancerEsquiveQTE() {
       resoudreAttaque(0.3); // la fenêtre est passée : les réflexes ne sauvent presque plus
     }
   };
+  // Le bouton ESQUIVER (à droite de la garde) déclenche aussi cette fenêtre réflexe.
+  C.qteFinir = finir;
   ov.querySelector('.qte-btn').onclick = () => finir(true);
   C.qteTimer = setTimeout(() => finir(false), fenetre);
+}
+
+// Le bouton ESQUIVER, en tap. Pendant une fenêtre réflexe, il vaut le QTE. Sinon c'est
+// un pas de côté DÉLIBÉRÉ : payant si le mort est sur le point de frapper (menace haute),
+// peu utile s'il n'est pas encore lancé — à doser, comme tout ce qui coûte de l'endurance.
+function resoudreEsquive() {
+  if (!C || C.fini) return;
+  if (C.qteFinir) { C.qteFinir(true); return; }     // une ruée est en cours : c'est LE moment
+  if (C.def || C.chg || C.hold || C.frappe) return; // pas pendant une autre action
+  if (C.aTerre) { flashCombat('Inutile', ''); return; } // il est au sol : rien à esquiver
+  if (!depenser(COUTS.esquive)) return;
+  const agi = skillLevel('agilite') + bonusAgiliteVetements();
+  if (C.z.menace > 0.5) {
+    sfx('esquive');
+    flashCombat('Esquive !', 'coup');
+    clog('Tu anticipes sa ruée et plonges sur le côté — il mord le vide. <em>Une seconde pour frapper.</em>', 'coup');
+    C.z.menace = 0;
+    C.contreJusqua = performance.now() + 2200;
+    const up = gainSkill('agilite', 3);
+    if (up) clog(`<b>Agilité niveau ${up.niveau} !</b>`, 'coup');
+  } else {
+    sfx('rate');
+    flashCombat('Pas de côté', '');
+    clog('Tu prends tes distances d\'un pas vif. Il n\'était pas encore lancé — tu n\'as fait que souffler un peu.', '');
+    C.z.menace = Math.max(0, C.z.menace - 0.18);
+  }
+  majBarres();
 }
 
 function resoudreAttaque(factEsquive) {
@@ -715,6 +774,7 @@ function zombieMort() {
     clog(`<b>Pas le temps de souffler : ${leZombie(C.z.def.nom)} est sur toi !</b>`, 'degats');
     clog(`<span class="gore">${C.z.def.desc}</span>`);
     renderCombat(true);
+    diffuserSnapshotCombat(); // co-op : la file a changé — on tient le coéquipier à jour
   } else {
     finVictoire();
   }
@@ -994,13 +1054,20 @@ function ringMarkup() {
   return `<span class="cb-ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="cb-ring-fond" cx="18" cy="18" r="15.5"/><circle class="cb-ring-prog" cx="18" cy="18" r="15.5" style="stroke-dasharray:${ANNEAU_CIRC};stroke-dashoffset:${ANNEAU_CIRC}"/></svg></span>`;
 }
 
+// Le visuel d'un zombie : sa PHOTO détourée si elle existe (errant, coureur…), sinon la
+// silhouette SVG dessinée. La photo remplit le calque, posée sur le bas comme la créature.
+function creatureMarkup(zid) {
+  const png = pngZombie(zid);
+  return png ? `<img class="z-png" src="${png}" alt="" draggable="false">` : svgCombatZombie(zid);
+}
+
 // Les morts présents : l'actif grand au centre, la file derrière, plus petite et estompée.
 function hordeHTML() {
-  let h = `<div class="z-layer z-actif${C.aTerre ? ' z-terre' : ''}" id="z-actif">${svgCombatZombie(C.z.id)}</div>`;
+  let h = `<div class="z-layer z-actif${C.aTerre ? ' z-terre' : ''}" id="z-actif">${creatureMarkup(C.z.id)}</div>`;
   C.queue.slice(0, 4).forEach((id, i) => {
     const cote = i % 2 === 0 ? -1 : 1;
     const prof = Math.floor(i / 2) + 1;
-    h += `<div class="z-layer z-fond" style="--cote:${cote};--prof:${prof}">${svgCombatZombie(id)}</div>`;
+    h += `<div class="z-layer z-fond" style="--cote:${cote};--prof:${prof}">${creatureMarkup(id)}</div>`;
   });
   return h;
 }
@@ -1036,12 +1103,20 @@ function renderCombat() {
     </div>
     <div class="cb-sta-wrap"><div class="cb-sta-fill" id="cb-sta"></div></div>
 
+    <!-- Santé du zombie : barre horizontale en bas, au centre -->
+    <div class="cb-zhp-wrap" id="cb-zhp-wrap" aria-label="Santé de l'adversaire">
+      <div class="cb-zhp-fill" id="cb-zhp"></div>
+    </div>
+
     <div class="cb-acces" id="cb-acces">${accesHTML()}</div>
     <button class="cbtn small cb-journal" data-act="journal" title="Journal de combat">${ico('journal')}</button>
 
     <div class="cb-defense-col">
       ${fuitePossible ? `<button class="cbtn small cb-fuir" data-act="fuir" data-cout="${COUTS.fuir}" title="Fuir (maintenir)">${ringMarkup()}<span class="cb-ic">${ico('fuir')}</span></button>` : ''}
-      <button class="cbtn big cb-defense chg-btn" data-act="defense" data-cout="0" title="Se défendre — maintenir pour charger la garde">${ringMarkup()}<span class="cb-ic">${ico('defense')}</span></button>
+      <div class="cb-def-row">
+        <button class="cbtn big cb-defense chg-btn" data-act="defense" data-cout="0" title="Se défendre — maintenir pour charger la garde">${ringMarkup()}<span class="cb-ic">${ico('defense')}</span></button>
+        <button class="cbtn cb-esquive" data-act="esquiver" data-cout="${COUTS.esquive}" title="Esquiver — un pas de côté quand il se jette sur toi">${ico('esquiver')}</button>
+      </div>
     </div>
 
     <div class="cb-attaque-col">
@@ -1088,6 +1163,12 @@ function wireCombat() {
   }
   // REPOUSSER / FUIR / ACCÈS RAPIDE : jauge maintenue → l'action n'a lieu qu'à la jauge pleine.
   document.querySelectorAll('.cb [data-act="pousser"], .cb [data-act="fuir"], .cb [data-act="acces"]').forEach(armerBoutonMaintenu);
+  // ESQUIVER : un simple tap (réflexe) — pas de jauge à maintenir.
+  const btnEsq = document.querySelector('.cb [data-act="esquiver"]');
+  if (btnEsq) {
+    btnEsq.onclick = (e) => { e.preventDefault(); resoudreEsquive(); };
+    btnEsq.oncontextmenu = (e) => e.preventDefault();
+  }
   // JOURNAL : simple appui ouvre/ferme l'historique complet.
   document.querySelectorAll('.cb [data-act="journal"], .cb [data-act="journal-x"]').forEach(b => {
     b.onclick = () => {

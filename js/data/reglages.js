@@ -23,6 +23,34 @@ export const REGLAGES = {
   },                      // ↑ pour ralentir l'écoulement du temps, ↓ pour l'accélérer.
 
   // ===========================================================================
+  //  LA LUMIÈRE — durée des piles / torche et PORTÉE du halo de lampe
+  // ===========================================================================
+  // L'usure s'applique EN CONTINU (js/inventory.js → usureLampes, appelé par le
+  // battement du monde) : une lampe allumée vide ses piles que tu agisses ou non.
+  lumiere: {
+    MIN_PAR_PILES: 1440,  // minutes de jeu par paire de piles. 1440 = 24 h NON-STOP avant de changer.
+                          //   ↑ pour des piles qui durent plus longtemps, ↓ pour plus de tension.
+    MIN_TORCHE: 45,       // une torche enflammée se consume en ~45 min (volontairement courte).
+
+    // PORTÉE (en cases) du halo de chaque lampe à l'intérieur. La lampe torche
+    // (de poche) porte loin ; la torche enflammée éclaire au plus près. Défaut : 1.
+    RAYONS: { lampe_torche: 2, lampe_frontale: 2, torche: 1 },
+  },
+
+  // ===========================================================================
+  //  LA FOUILLE — une action CONTINUE qui découvre le butin au fil de la barre
+  // ===========================================================================
+  // Fouiller une case se fait d'un seul trait : la barre se remplit, les objets
+  // se révèlent peu à peu et tombent « au sol ». À 100 % la case est vide. On peut
+  // annuler à tout moment et ramasser ce qui a déjà été trouvé.
+  fouille: {
+    // Durée d'une fouille COMPLÈTE (0→100 %), en ms réelles, par échelle de carte.
+    DUREE_MS: { interieur: 11000, quartier: 15000, ville: 18000, region: 24000 },
+    TATONS_MULT: 1.25,    // fouiller à tâtons (sans lumière) est plus lent ET moins payant.
+    COOP_MULT: 1.7,       // à DEUX dans la même salle, la barre se remplit COOP_MULT fois plus vite.
+  },
+
+  // ===========================================================================
   //  LES MORTS EN TEMPS RÉEL SUR LA CARTE  (js/zombies_map.js)
   // ===========================================================================
   // Les morts errent, te repèrent (cône de vue / ouïe), te poursuivent et, au
@@ -81,7 +109,7 @@ export const REGLAGES = {
   // de l'ENDURANCE. L'attaque se CHARGE (maintenir = armer, relâcher = frapper).
   combat: {
     // Coût en endurance de chaque action.
-    COUTS: { tir: 8, pousser: 10, jeter: 12, fuir: 22, changer: 5, bander: 16 },
+    COUTS: { tir: 8, pousser: 10, jeter: 12, fuir: 22, changer: 5, bander: 16, esquive: 6 },
 
     // RÉCUPÉRATION D'ENDURANCE (par seconde). On récupère LE PLUS VITE quand on ne
     // fait RIEN : ni charge d'attaque, ni garde, ni bouton maintenu. Dès qu'on agit

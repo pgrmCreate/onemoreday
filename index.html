@@ -34,6 +34,16 @@
     <div id="attente" class="attente hidden" aria-hidden="true">
       <div class="attente-box"><div class="attente-spinner"></div><div class="attente-label"></div><div class="attente-bar"><i></i></div><button class="attente-annuler" type="button">Annuler</button></div>
     </div>
+    <!-- Fouille continue : barre qui se remplit + objets trouvés au fil de l'eau -->
+    <div id="fouille-progress" class="fouille-ov hidden" aria-hidden="true">
+      <div class="fouille-box">
+        <div class="fouille-spinner"></div>
+        <div class="fouille-label">Tu fouilles…</div>
+        <div class="fouille-bar"><i></i></div>
+        <div class="fouille-trouves" id="fouille-trouves"></div>
+        <button class="fouille-annuler" type="button">Arrêter et ramasser</button>
+      </div>
+    </div>
     <div id="toast" class="toast hidden"></div>
     <!-- Voile d'alerte d'infection : pulse périodiquement tant qu'une blessure est infectée -->
     <div id="voile-infection" aria-hidden="true"></div>
