@@ -15,7 +15,12 @@
       "WebSearch",
       "NotebookEdit",
       "Skill",
-      "mcp__visualize__show_widget"
+      "mcp__visualize__show_widget",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(rm -f .git/COMMIT_EDITMSG_TMP)",
+      "Bash(git push *)",
+      "mcp__visualize__read_me"
     ],
     "defaultMode": "bypassPermissions"
   }

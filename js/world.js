@@ -230,6 +230,11 @@ export function decouvrirAutour(carteId, x, y) {
     for (const [vx, vy] of voisinsCandidats(carteId, x, y)) decouvrir(carteId, vx, vy);
     return;
   }
+  // INTÉRIEUR : découverte à la VUE seule. Pas de révélation aveugle des cases adjacentes —
+  // sinon on « voit » les chambres voisines derrière leurs portes fermées dès le départ. On
+  // ne découvre une pièce qu'en y mettant les yeux (porte ouverte, ligne de vue dégagée).
+  const c = CARTES[carteId];
+  if (c && c.echelle === 'interieur') return;
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {
       if (caseDef(carteId, x + dx, y + dy)) decouvrir(carteId, x + dx, y + dy);

@@ -215,6 +215,38 @@ button.act .req { color: var(--danger); }
   /* Appui long fiable sur mobile : pas de menu/sélection natif qui vole le geste. */
   -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
 }
+/* ---------- Déplacement LIBRE (échelle intérieur) ----------
+   Le cadre a une HAUTEUR fixe (fenêtre caméra) ; le SVG le remplit et fait défiler le plan.
+   Le geste (joystick) ne doit jamais déclencher le défilement de la page. */
+.carte-wrap.libre {
+  height: clamp(300px, calc(100dvh - 220px), 82dvh);
+  touch-action: none;
+}
+.carte-grille.libre {
+  width: 100%; height: 100%; max-height: none; margin: 0;
+}
+/* Joystick flottant : apparaît sous le doigt, ne capte pas les pointeurs (c'est le cadre qui gère) */
+.fm-joy {
+  position: absolute; width: 96px; height: 96px; border-radius: 50%;
+  border: 2px solid rgba(201,185,138,.45); background: rgba(10,10,12,.32);
+  pointer-events: none; z-index: 3; display: none; transform: translate(-50%,-50%);
+}
+.fm-joy.on { display: block; }
+.fm-joy-knob {
+  position: absolute; left: 50%; top: 50%; width: 42px; height: 42px;
+  border-radius: 50%; background: rgba(201,185,138,.85); border: 2px solid #0b0b0c;
+  transform: translate(-50%,-50%);
+}
+/* Repère DISCRET de zone fouillable : petite loupe ocre qui respire doucement. */
+.carte-grille .fm-fouille { opacity: .5; animation: fm-fouille-pouls 2.6s ease-in-out infinite; }
+@keyframes fm-fouille-pouls { 50% { opacity: .92; } }
+/* Morts en déplacement libre : le pion CLIGNOTE à l'approche, plus vite (avec halo) au contact.
+   On n'anime que l'opacité/le filtre — JAMAIS le transform, réservé au positionnement par frame. */
+.carte-grille .fm-z.z-approche { animation: fm-z-pouls 1s ease-in-out infinite; }
+.carte-grille .fm-z.z-contact { animation: fm-z-pouls .4s ease-in-out infinite; filter: drop-shadow(0 0 4px #e0503e); }
+@keyframes fm-z-pouls { 50% { opacity: .5; } }
+/* Bouton-raccourci « Fouiller » : FAB rond (loupe) au-dessus du bouton Actions ; grisé si épuisé. */
+.fab-fouille.off { opacity: .4; cursor: not-allowed; }
 /* En-tête de lieu compact (une seule ligne au-dessus de la carte) */
 .lieu-bar {
   display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px; flex-wrap: wrap;

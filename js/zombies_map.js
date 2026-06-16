@@ -38,6 +38,13 @@ const MEMOIRE_TICKS = RZ.MEMOIRE_TICKS;
 const CONE_PORTEE = RZ.CONE_PORTEE;
 const P_ERRANCE = RZ.P_ERRANCE;
 
+// Contact CONTINU (déplacement libre intérieur) : le combat se déclenche au CONTACT RÉEL des
+// ronds (géré frame par frame côté freemove/map.js), pas par l'anneau de case adjacente. Quand
+// c'est actif, le tick NE FIGE PLUS les morts (ils continuent de poursuivre) et ne renvoie aucun
+// `contact` — c'est la distance pixel entre le rond du joueur et celui du mort qui décide.
+export let CONTACT_CONTINU = false;
+export function setContactContinu(v) { CONTACT_CONTINU = v; }
+
 // Anneau de contact EFFECTIF sur une carte donnée : la base, étirée par l'échelle.
 // En quartier (un nœud = un pâté de maisons), l'instant suspendu avant la morsure
 // dure bien plus longtemps — c'est ce qui te laisse le temps de t'écarter ou de fuir.
@@ -325,8 +332,11 @@ export function tickZombies(carteId, vis) {
     const def = zombie(z.id) || {};
     const dist = distJ(z.x, z.y);
 
+    // En contact CONTINU (déplacement libre), aucun anneau de case : on purge un éventuel
+    // reliquat et le mort poursuit sans se figer (le contact réel des ronds fait foi ailleurs).
+    if (CONTACT_CONTINU) { if (z.spin) delete z.spin; }
     // --- anneau de contact en cours : il est sur toi, l'instant se fige ---
-    if (z.spin) {
+    else if (z.spin) {
       z.spin--;
       if (z.spin <= 0) {
         delete z.spin;
@@ -348,7 +358,8 @@ export function tickZombies(carteId, vis) {
     }
 
     // --- au contact (passage ouvert) et en chasse : il s'immobilise, l'anneau démarre ---
-    if (z.ag && auContact(carteId, z.x, z.y, px, py)) {
+    // (sauf en contact CONTINU : il ne se fige pas, il vient au contact réel du rond)
+    if (!CONTACT_CONTINU && z.ag && auContact(carteId, z.x, z.y, px, py)) {
       z.spin = spinTicks(carteId);
       z.dir = regard(c, z.x, z.y, px, py);
       ev.spins.push(z);

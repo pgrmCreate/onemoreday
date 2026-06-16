@@ -97,7 +97,11 @@ export const REGLAGES = {
   // anneauZombie  : multiplie SPIN_TICKS (3 = anneau de contact trois fois plus long).
   // capDiv        : densité de peuplement = nb de cases ÷ capDiv (plus petit = plus de morts).
   echelles: {
-    interieur: { cadenceZombie: 1, anneauZombie: 1, capDiv: 7 },
+    // En intérieur, le déplacement est LIBRE et le mort poursuit en CONTINU (pixel par pixel,
+    // cf. js/map.js → fmFrame). On ralentit son tick logique (cadence 2) pour qu'il reste sous la
+    // vitesse du joueur et bien esquivable — le pion visuel glisse alors d'une case à l'autre sans
+    // décrocher de sa case logique.
+    interieur: { cadenceZombie: 2, anneauZombie: 1, capDiv: 7 },
     // En ville (plan de quartier), un nœud = tout un pâté de maisons. Un mort doit RAMPER
     // d'un nœud à l'autre — il met très longtemps à traverser (cadence 9 ≈ un pas toutes les
     // ~15 s en chasse). Il peut venir de loin, mais lentement : tu as toujours le temps de fuir.

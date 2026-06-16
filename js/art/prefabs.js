@@ -106,15 +106,16 @@ export function dessinerDecor(decor, cellX, cellY, cellW, cellH) {
   return `<g class="mob decor">${s}</g>`;
 }
 
-// Zones « creuses » : une partie de la case rendue comme du MUR/vide (cage étroite, recoin,
-// pièce en L). Purement visuel : la case reste une cellule jouable entière.
+// Zones « creuses » : une partie de la case rendue comme un MUR PLEIN épais (recoin, pièce en L,
+// séparation large entre deux salles). Dessinée comme un bloc dans le ton des murs (PAS du noir),
+// et INFRANCHISSABLE (cf. freemove.js → mursInterieur) : c'est un vrai mur épais.
 export function dessinerCreux(creux, cellX, cellY, cellW, cellH) {
   if (!Array.isArray(creux) || !creux.length) return '';
   let s = '';
   for (const r of creux) {
     const bx = cellX + (r.x || 0) * cellW, by = cellY + (r.y || 0) * cellH;
     const bw = (r.w || 0) * cellW, bh = (r.h || 0) * cellH;
-    s += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="#0f0f11" stroke="#15140f" stroke-width="1"/>`;
+    s += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="#332e25" stroke="#4f4636" stroke-width="2"/>`;
   }
   return s;
 }
@@ -160,7 +161,9 @@ export const FURNISH = [
 ];
 export function autoDecor(cd) {
   if (cd.decor) return null;            // un calque de dessin explicite reprend toute la main
-  if (cd.t === 'escalier') return { decor: [{ p: 'cage_escalier', x: .12, y: .08, w: .4, h: .84 }], creux: [{ x: .58, y: 0, w: .42, h: 1 }] };
+  // Escalier : la cage de marches occupe toute la case (PAS de creux : la case reste franchissable,
+  // c'est un vrai passage pour monter/descendre — le « système d'étage » la transforme en liaison).
+  if (cd.t === 'escalier') return { decor: [{ p: 'cage_escalier', x: .16, y: .1, w: .68, h: .8 }] };
   if (cd.t !== 'piece' || cd.mob) return null; // mobilier explicite (ou null) : on garde le rendu historique
   const nom = cd.nom || '';
   for (const [re, fn] of FURNISH) if (re.test(nom)) return fn(cd);

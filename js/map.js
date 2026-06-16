@@ -20,8 +20,9 @@ import {
   carteVivante, peuplerCarte, zombiesSur, retirerZombie, meuteAuContact,
   tickZombies, attirerZombies, champOuieJoueur,
   fauxMortEn, reveillerFauxMort, ajouterMort, mortsSur,
-  TICK_MS, OUIE_JOUEUR,
+  TICK_MS, OUIE_JOUEUR, setContactContinu,
 } from './zombies_map.js';
+import { zombie as zombieDef } from './data/zombies.js';
 import { EVENTS } from './data/events.js';
 import { item } from './data/items.js';
 import {
@@ -31,6 +32,10 @@ import {
 import { ico } from './icons.js';
 import { svgScene } from './illustrations.js';
 import { dessinerDecor, dessinerCloisons, dessinerCreux, autoDecor } from './art/prefabs.js';
+import {
+  layoutInterieur, celluleEn, centreCellule, estBloque, RAYON as RAYON_JOUEUR,
+  demarrerFreemove, arreterFreemove, freemoveActif, redessinerFreemove,
+} from './freemove.js';
 import {
   addItem, hasItem, removeItem, poidsTotal, poidsMax, placePour,
   espaceUtilise, espaceMax, defItem, countItem,
@@ -60,7 +65,16 @@ export function initPosition() {
   G.world.carte = DEPART.carte;
   G.world.x = DEPART.x;
   G.world.y = DEPART.y;
+  placerSurCase(DEPART.x, DEPART.y);
   decouvrirAutour(DEPART.carte, DEPART.x, DEPART.y);
+}
+
+// Pose la position CONTINUE (fx,fy) au centre de la case logique — après tout téléport
+// (entrée d'un lieu, réveil, départ commun). Hors intérieur (pas de déplacement libre) :
+// sans effet, fx/fy ne servent pas.
+function placerSurCase(x, y) {
+  const C = carteCourante();
+  if (C && C.echelle === 'interieur') { const c = centreCellule(C, x, y); G.world.fx = c.fx; G.world.fy = c.fy; }
 }
 
 // ---------- Objectif courant ----------
@@ -786,10 +800,102 @@ function ecranAttenteCoop() {
 // carte peut donner une largeur par colonne (carte.colW{x}) et une hauteur par ligne
 // (carte.rowH{y}), en fraction d'une case pleine. Tout est géré dans svgCarte ci-dessous.
 
+// ============ Plan intérieur en DÉPLACEMENT LIBRE ============
+// Contenu de #fm-cam : mêmes dessins qu'en mode cases (sol, meubles, murs, cloisons, zombies,
+// brouillard, lumière) mais à la grille AGRANDIE (layoutInterieur), et le rond joueur est posé
+// à sa position CONTINUE (G.world.fx/fy) par-dessus — pas au centre d'une case.
+function contenuInterieurLibre(C, vis) {
+  const L = layoutInterieur(C);
+  const connue = (vx, vy) => estDecouverte(G.world.carte, vx, vy);
+  const vivante = carteVivante(G.world.carte);
+  const zombies = vivante ? zombiesSur(G.world.carte) : [];
+  const morts = vivante ? mortsSur(G.world.carte) : [];
+  const champOuie = vivante ? champOuieJoueur(G.world.carte) : null;
+  const pair = multi.estMulti() ? multi.pairEtat() : null;
+  const lampe = lumiereActive();
+  const rLampe = lampe ? rayonLumiere() : 0;
+  const pairLampe = !!(pair && pair.carte === G.world.carte && pair.lampe);
+  const rPair = pairLampe ? (pair.rayonLampe || 1) : 0;
+  const dansHalo = (x, y) =>
+    (lampe && Math.abs(x - G.world.x) <= rLampe && Math.abs(y - G.world.y) <= rLampe)
+    || (pairLampe && Math.abs(x - pair.x) <= rPair && Math.abs(y - pair.y) <= rPair);
+  let cells = '', murs = '', parois = '';
+  for (const [pos, cd] of Object.entries(C.cases)) {
+    const [x, y] = pos.split(',').map(Number);
+    if (!connue(x, y)) continue;
+    const t = TERRAIN[cd.t] || TERRAIN.rue;
+    const cellX = L.colX[x], cellY = L.rowY[y], cellW = L.cwA[x], cellH = L.chA[y];
+    const cs = Math.min(cellW, cellH), dx = cellX + (cellW - cs) / 2, dy = cellY + (cellH - cs) / 2;
+    const ici = x === G.world.x && y === G.world.y;
+    const aVue = vis.has(pos);
+    const k = ckey(G.world.carte, x, y);
+    const secur = estSecurisee(k);
+    const niv = niveauSombre(cd);
+    const auto = autoDecor(cd);
+    const decorSrc = cd.decor || (auto && auto.decor) || null;
+    const creuxSrc = cd.creux || (auto && auto.creux) || null;
+    let inner = dessinInterieur(cd, x, y, dx, dy, cs, !!(auto && auto.decor));
+    if (creuxSrc) inner += dessinerCreux(creuxSrc, cellX, cellY, cellW, cellH);
+    if (decorSrc) inner += dessinerDecor(decorSrc, cellX, cellY, cellW, cellH);
+    if (cd.vers) {
+      const basY = dy + 7;
+      inner += `<rect x="${dx + cs / 2 - 5.5}" y="${basY}" width="11" height="14" rx="1" fill="#16130e" stroke="${cd.verrou && !G.world.verrous[k] ? '#8a5a28' : '#6d5d42'}" stroke-width="1.3"/>
+        <circle cx="${dx + cs / 2 + 2.5}" cy="${basY + 7.5}" r="1" fill="#6d5d42"/>`;
+    }
+    if (solVisible(k).length) inner += `<circle cx="${cellX + cellW - 8}" cy="${cellY + cellH - 8}" r="3" fill="${CODES.sol}"/>`;
+    // Repère DISCRET de zone fouillable (petite loupe ocre) — tant qu'il reste à fouiller.
+    if (cd.fouille && !fouilleFinie(fouilleEtat(k), cd)) {
+      inner += `<g class="fm-fouille" transform="translate(${cellX + 13},${cellY + 14})"><circle r="4.6" fill="none" stroke="#b89a5a" stroke-width="1.4"/><line x1="3.3" y1="3.3" x2="7" y2="7" stroke="#b89a5a" stroke-width="1.7" stroke-linecap="round"/></g>`;
+    }
+    const eclairee = dansHalo(x, y) && (ici || aVue);
+    if (niv === 2 && !eclairee) inner += `<rect x="${cellX + 1}" y="${cellY + 1}" width="${cellW - 2}" height="${cellH - 2}" fill="#050507" opacity=".44"/>`;
+    if (secur) inner += cadreCase(cellX, cellY, cellW, cellH, 3, CODES.securisee);
+    else if ((cd.danger || 0) >= 0.4) inner += cadreCase(cellX, cellY, cellW, cellH, 3, CODES.danger);
+    if (niv === 1) inner += cadreCase(cellX, cellY, cellW, cellH, 6, CODES.sombre, true);
+    else if (niv === 2) inner += cadreCase(cellX, cellY, cellW, cellH, 6, CODES.sombre);
+    const lbl = cd.lbl !== undefined ? cd.lbl : (cd.nom ? cd.nom.split(' ')[0] : '');
+    if (lbl && !ici) inner += `<text x="${cellX + cellW / 2}" y="${cellY + cellH - 5}" text-anchor="middle" font-size="11" fill="#9a8f7c">${lbl.slice(0, 12)}</text>`;
+    if (!aVue && !ici) inner += `<rect x="${cellX}" y="${cellY}" width="${cellW}" height="${cellH}" fill="#08080a" opacity=".4"/>`;
+    if (aVue) {
+      const corps = morts.some(m => m.x === x && m.y === y) || zombies.some(z => z.faitLeMort && z.x === x && z.y === y);
+      if (corps) inner += pictoCadavre(dx, dy, cs);
+      // Les morts VIVANTS ne sont plus dessinés ici : ils bougent en continu, dessinés à part (voir `acteurs`).
+    } else if (!ici) {
+      const dist = distOuie(champOuie, x, y);
+      if (dist <= OUIE_JOUEUR && zombies.some(z => !z.faitLeMort && z.x === x && z.y === y)) inner += pointOuie(dx, dy, cs);
+    }
+    if (pair && aVue && pair.carte === G.world.carte && pair.x === x && pair.y === y) inner += pionAllie(dx, dy, cs, pair, 0);
+    cells += `<g>
+      <rect class="fond" x="${cellX}" y="${cellY}" width="${cellW}" height="${cellH}" fill="${t.fill}"/>${inner}</g>`;
+    murs += mursDeCase(cd, x, y, cellX, cellY, cellW, cellH, connue);
+    const cloiSrc = cd.cloisons || (auto && auto.cloisons) || null;
+    if (cloiSrc) parois += dessinerCloisons(cloiSrc, cellX, cellY, cellW, cellH);
+  }
+  // Les morts VIVANTS, à leur position CONTINUE (déplacés chaque frame par fmFrame) — visibles
+  // dans ta vue seulement. Chaque pion a un id stable (uid) pour bouger sans tout redessiner.
+  let acteurs = '';
+  if (vivante) for (const z of zombies) {
+    if (z.faitLeMort || !vis.has(`${z.x},${z.y}`)) continue;
+    if (z.zfx == null || isNaN(z.zfx)) { const cc = centreCellule(C, z.x, z.y); z.zfx = cc.fx; z.zfy = cc.fy; }
+    acteurs += `<g id="fm-z-${z.uid}" class="fm-z" transform="translate(${z.zfx},${z.zfy})">${pionZombie(-14, -14, 28, 1, z.dir, false)}</g>`;
+  }
+  // Le rond joueur, à sa position continue — déplacé chaque frame par freemove.js.
+  const joueur = `<g id="fm-joueur" class="joueur" transform="translate(${G.world.fx},${G.world.fy})">
+    <circle r="9.5" fill="#c9b98a" stroke="#0b0b0c" stroke-width="2.2"/>
+    <circle r="14" fill="none" stroke="#c9b98a" stroke-width="1.3" opacity=".5"/></g>`;
+  return `${cells}${murs ? `<g fill="none" stroke="${MUR_TRAIT}" stroke-width="3" stroke-linecap="square">${murs}</g>` : ''}${parois}${acteurs}${joueur}`;
+}
+
 function svgCarte(reach, vis) {
   if (estGraphe(G.world.carte)) return svgCartePlan(reach, vis); // plan à nœuds libres
   const C = carteCourante();
   const interieur = C.echelle === 'interieur';
+  // Échelle intérieur : DÉPLACEMENT LIBRE (rond qui glisse, caméra). Le contenu vit dans un
+  // groupe caméra ; freemove.js fait défiler le plan et déplace le rond.
+  if (interieur) {
+    const L = layoutInterieur(C);
+    return `<svg id="fm-svg" class="carte-grille libre" preserveAspectRatio="xMidYMid meet" viewBox="0 0 ${L.W} ${L.H}" xmlns="http://www.w3.org/2000/svg"><g id="fm-cam">${contenuInterieurLibre(C, vis)}</g></svg>`;
+  }
   // Cases plus petites au zoom moyen (quartier) : on voit la rue plus loin.
   const CS = interieur ? 56 : (C.echelle === 'quartier' ? 38 : 46);
   const GAP = interieur ? 0 : 3, PAD = interieur ? 5 : 4;
@@ -1246,6 +1352,9 @@ function lierCasesCarte(reach) {
 // enfoncées) sans toucher au reste de l'écran : c'est ce que joue la boucle
 // temps réel à chaque pas des zombies, pour ne pas tout reconstruire.
 function rafraichirCarteSeule() {
+  // Intérieur en déplacement libre : on ne remplace pas le SVG (caméra/écouteurs), on
+  // reconstruit seulement le contenu du groupe caméra (cases/zombies/rond).
+  if (freemoveActif()) { redessinerFreemove(); return; }
   const svg = document.querySelector('.carte-wrap .carte-grille');
   if (!svg) return;
   const reach = atteignables(porteeActuelle());
@@ -1254,11 +1363,88 @@ function rafraichirCarteSeule() {
   lierCasesCarte(reach);
 }
 
+// ---------- Tuiles d'action de la case courante (extraites : rebâties au changement de case
+// en déplacement libre, sans toucher à la carte ni au reste de l'écran) ----------
+function tilesActions(cd, k, C, f, nbSol) {
+  let html = '';
+  if (cd.vers) {
+    const cible = carte(cd.vers.carte);
+    const bloque = cd.verrou && !G.world.verrous[k];
+    html += tuile('data-entrer="1"', bloque ? 'verrou' : (cible && cible.echelle === 'interieur' ? 'entrer' : 'sortir'),
+      cd.versNom || (cible ? cible.nom : '?'), bloque ? '<span class="req">accès bloqué</span>' : `${cd.vers.temps ?? C.tempsParCase} min`);
+  }
+  if (cd.fouille) {
+    const epuisee = fouilleFinie(f, cd);
+    const entamee = (f.frac || 0) > 0 && !epuisee;
+    const pct = Math.round((f.frac || 0) * 100);
+    const nivF = niveauSombre(cd);
+    const mention = nivF === 2 ? ' · <span class="req">noir total</span>' : nivF === 1 ? ' · pénombre' : '';
+    html += tuile('data-fouille="1"', 'fouille', entamee ? 'Continuer la fouille' : 'Fouiller',
+      epuisee ? 'plus rien à fouiller' : (entamee ? `déjà ${pct} % — reprendre${mention}` : `tout y passer${mention}`),
+      { disabled: epuisee });
+  }
+  if (nbSol) html += tuile('data-sol="1"', 'ramasser', `Ramasser (${nbSol})`, 'examiner ce qui traîne', { classe: 'trouves-btn' });
+  if (cd.special) html += tuileSpeciale(cd, k);
+  if (accesEau(cd) && cd.special !== 'fontaine') {
+    html += tuile('data-puiser="1"', 'soif', 'Puiser de l\'eau',
+      aDeQuoiPuiser() ? 'remplir un contenant — eau croupie' : '<span class="req">aucun contenant à remplir</span>',
+      { disabled: !aDeQuoiPuiser() });
+  }
+  if (C.echelle === 'interieur') html += tuile('data-dormir="1"', 'dormir', 'Dormir', sommeilInfo());
+  html += tuilePairCombat(); // co-op : rejoindre le combat du coéquipier tout proche
+  return html;
+}
+function lierTilesActions() {
+  const lier = (sel, fn) => { const b = $(sel); if (b) b.onclick = () => { if (enMarche) return; sfx('clic'); fn(); }; };
+  lier('[data-entrer]', entrerCase);
+  lier('[data-fouille]', () => fouiller());
+  lier('[data-sol]', panneauTrouves);
+  lier('[data-puiser]', panneauPuiser);
+  lier('[data-dormir]', panneauSommeil);
+  lier('[data-rejoindre]', rejoindreCombatPair);
+  const sp = $('[data-special]');
+  if (sp) sp.onclick = () => { if (enMarche) return; sfx('clic'); actionSpeciale(sp.dataset.special); };
+}
+// Met à jour info de case + tuiles d'action quand on change de case en se déplaçant
+// (le bas de l'écran suit la case où l'on se tient, sans reconstruire toute la page).
+function majBasActions() {
+  const C = carteCourante(); if (!C) return;
+  const cd = caseCourante() || {};
+  const k = keyCourante();
+  const f = cd.fouille ? fouilleEtat(k) : null;
+  const nbSol = solVisible(k).reduce((s, e) => s + (e.qty || 1), 0);
+  setLieuLabel(`${cd.nom || C.nom}`);
+  const ci = document.getElementById('case-info');
+  if (ci) ci.innerHTML = `<div class="ci-nom">${cd.nom || C.nom}</div>${cd.desc ? `<div class="ci-desc">${cd.desc}</div>` : ''}<div class="ci-tags">${tagsCase(cd, k)}</div>`;
+  const za = document.getElementById('zone-actions');
+  const tiles = za && za.querySelector('.tiles');
+  if (tiles) { tiles.innerHTML = tilesActions(cd, k, C, f, nbSol); lierTilesActions(); }
+  majFouilleTop();
+}
+
+// Bouton-raccourci « Fouiller » : un FAB rond (loupe) juste au-dessus du bouton Actions.
+// Masqué hors intérieur ou si la case n'a pas de fouille ; grisé si épuisée ; visible et
+// actif s'il reste à fouiller. Mêmes règles que la tuile du bas — c'est un raccourci.
+function majFouilleTop() {
+  const b = document.getElementById('btn-fouille');
+  if (!b) return;
+  const C = carteCourante();
+  const cd = caseCourante() || {};
+  if (!C || C.echelle !== 'interieur' || !cd.fouille) { b.classList.add('hidden'); b.onclick = null; return; }
+  const epuisee = fouilleFinie(fouilleEtat(keyCourante()), cd);
+  if (!b.firstChild) b.innerHTML = ico('fouille');
+  b.classList.remove('hidden');
+  b.classList.toggle('off', epuisee);
+  b.disabled = epuisee;
+  b.onclick = () => { if (enMarche || epuisee || enCombat() || panelOuvert() || evtOuvert()) return; sfx('clic'); fouiller(); };
+}
+
 export function renderLieu() {
   const C = carteCourante();
   if (!C) { console.error('Carte inconnue', G.world.carte); return; }
   const cd = caseCourante() || {};
   const k = keyCourante();
+  const interieur = C.echelle === 'interieur';
   peuplerCarte(G.world.carte);
   assignerGaranties(G.world.carte); // pose le butin garanti (lampe, clé…) à la 1re visite
   assignerEvenements(G.world.carte); // pré-place les événements (mêmes lieux pour les deux en co-op)
@@ -1286,7 +1472,7 @@ export function renderLieu() {
   let html = `
   <div class="lieu-bar"><span class="lb-nom">${C.nom}</span>
     <span class="lb-sub">${ECHELLE_NOM[C.echelle]}${C.exterieur ? ' — à découvert' : ''}${estNuit() ? ' — nuit' : ''}</span>${pairBarre(vis)}</div>
-  <div class="carte-wrap${vueDessin && fond ? ' vue-dessin' : ''}">
+  <div class="carte-wrap${interieur ? ' libre' : ''}${vueDessin && fond ? ' vue-dessin' : ''}">
     ${fond ? `<div class="carte-fond">${fond}</div><div class="carte-voile"></div>` : ''}
     ${svgCarte(reach, vis)}
     <div class="carte-legende">
@@ -1300,40 +1486,7 @@ export function renderLieu() {
     <div class="ci-tags">${tagsCase(cd, k)}</div>
   </div>
   ${barreRonde()}
-  <div class="actions"><div class="tiles">`;
-
-  // --- actions sur la case courante ---
-  if (cd.vers) {
-    const cible = carte(cd.vers.carte);
-    const bloque = cd.verrou && !G.world.verrous[k];
-    html += tuile('data-entrer="1"', bloque ? 'verrou' : (cible && cible.echelle === 'interieur' ? 'entrer' : 'sortir'),
-      cd.versNom || (cible ? cible.nom : '?'), bloque ? '<span class="req">accès bloqué</span>' : `${cd.vers.temps ?? C.tempsParCase} min`);
-  }
-  if (cd.fouille) {
-    const epuisee = fouilleFinie(f, cd);
-    const entamee = (f.frac || 0) > 0 && !epuisee;
-    const pct = Math.round((f.frac || 0) * 100);
-    const nivF = niveauSombre(cd);
-    const mention = nivF === 2 ? ' · <span class="req">noir total</span>' : nivF === 1 ? ' · pénombre' : '';
-    html += tuile('data-fouille="1"', 'fouille', entamee ? 'Continuer la fouille' : 'Fouiller',
-      epuisee ? 'plus rien à fouiller' : (entamee ? `déjà ${pct} % — reprendre${mention}` : `tout y passer${mention}`),
-      { disabled: epuisee });
-  }
-  if (nbSol) {
-    html += tuile('data-sol="1"', 'ramasser', `Ramasser (${nbSol})`, 'examiner ce qui traîne', { classe: 'trouves-btn' });
-  }
-  if (cd.special) html += tuileSpeciale(cd, k);
-  // Une source d'eau sans case spéciale (citerne du triage, berge d'un canal...)
-  if (accesEau(cd) && cd.special !== 'fontaine') {
-    html += tuile('data-puiser="1"', 'soif', 'Puiser de l\'eau',
-      aDeQuoiPuiser() ? 'remplir un contenant — eau croupie' : '<span class="req">aucun contenant à remplir</span>',
-      { disabled: !aDeQuoiPuiser() });
-  }
-  if (C.echelle === 'interieur') {
-    html += tuile('data-dormir="1"', 'dormir', 'Dormir', sommeilInfo());
-  }
-  html += tuilePairCombat(); // co-op : rejoindre le combat du coéquipier tout proche
-  html += `</div></div>`;
+  <div class="actions" id="zone-actions"><div class="tiles">${tilesActions(cd, k, C, f, nbSol)}</div></div>`;
   // Journal de bord : MASQUÉ sur mobile (s'ouvre via le bouton Journal, pour laisser la
   // place à la carte) mais TOUJOURS visible sur PC sous les actions — l'écran est assez
   // grand (cf. CSS .gamelog-inline, affiché seulement en grand écran). Sur mobile la règle
@@ -1345,20 +1498,27 @@ export function renderLieu() {
   if (multi.estMulti()) multi.diffuserPosition(); // co-op : signaler ma position/état au coéquipier
 
   // --- interactions carte ---
-  lierCasesCarte(reach);
+  if (interieur) {
+    // Déplacement LIBRE : pas de clic-pour-aller (le rond se pilote au joystick / aux flèches).
+    setContactContinu(true); // combat au CONTACT RÉEL des ronds (plus l'anneau de case adjacente)
+    demarrerFreemove({
+      dessiner: () => contenuInterieurLibre(carteCourante(), casesVisibles(G.world.carte, G.world.x, G.world.y)),
+      onCellChange: fmCellChange,
+      onFrame: fmFrame,
+      actif: () => !modaleBloque(),
+    });
+  } else {
+    setContactContinu(false);
+    arreterFreemove();
+    lierCasesCarte(reach);
+  }
+  majFouilleTop();
+  lierTilesActions();
   const lier = (sel, fn) => { const b = $(sel); if (b) b.onclick = () => { if (enMarche) return; sfx('clic'); fn(); }; };
-  lier('[data-entrer]', entrerCase);
-  lier('[data-fouille]', () => fouiller());
-  lier('[data-sol]', panneauTrouves);
-  lier('[data-puiser]', panneauPuiser);
-  lier('[data-dormir]', panneauSommeil);
   lier('[data-legende]', panneauLegende);
   lier('[data-vue]', () => { vueDessin = !vueDessin; renderLieu(); });
   lier('[data-attendre]', panneauAttendre);
   lier('[data-lampe]', basculerLampePortee);
-  lier('[data-rejoindre]', rejoindreCombatPair);
-  const sp = $('[data-special]');
-  if (sp) sp.onclick = () => { if (enMarche) return; sfx('clic'); actionSpeciale(sp.dataset.special); };
 
   // La toute première nuit de l'aventure : un plan sur la place, du noir total.
   // En co-op, SEUL l'hôte la déclenche (il fait foi sur l'horloge) puis la diffuse à
@@ -1620,6 +1780,95 @@ function lancerCombatContact(z) {
   });
 }
 
+// Changement de CASE pendant un déplacement libre : on met à jour le brouillard, on réveille
+// un faux-mort sur lequel on marche, on émet un pas (parfois un craquement qui attire les
+// morts), on déclenche un événement pré-placé le cas échéant — puis on redessine le plan
+// (lumière/zombies/fog actualisés). Le COMBAT reste géré par le tick (contact d'une case
+// adjacente) ; le contact « anneau des ronds » viendra à la brique 2.
+function fmCellChange(x, y) {
+  const carteId = G.world.carte;
+  decouvrirAutour(carteId, x, y);
+  G.player.sta = Math.max(0, G.player.sta - 0.4);
+  if (carteVivante(carteId)) {
+    const fm = fauxMortEn(carteId, x, y);
+    if (fm) { reveillerFauxMort(fm); sfx('zombie'); }
+    if (++pasDepuisCraque >= 4 && chance(estNuit() ? 0.5 : 0.32)) {
+      pasDepuisCraque = 0; sfx('pas_craque'); attirerZombies(carteId, x, y, estNuit() ? 3 : 2);
+    } else sfx('pas');
+  } else sfx('pas');
+  majBasActions(); // le bas de l'écran (Sortir/Fouiller/Dormir…) suit la case où l'on se tient
+  const k = ckey(carteId, x, y);
+  const evId = evenementPlaceCourant(k);
+  if (evId) {
+    const ev = EVENTS.find(e => e.id === evId);
+    if (ev && evenementJouable(ev)) { G.world.eventsFaits[k] = true; redessinerFreemove(); jouerEvent(ev); return; }
+  }
+  redessinerFreemove();
+}
+
+// ---------- Déplacement LIBRE : les morts en mouvement CONTINU + contact des ronds ----------
+// Le combat ne se déclenche plus par anneau de case (désactivé via setContactContinu) mais au
+// CONTACT RÉEL des ronds : chaque frame on fait GLISSER chaque mort vers sa cible — ton rond s'il
+// te chasse de près, sinon le centre de la case décidée par le tick (pathfinding, portes, errance) —
+// à SA vitesse. Quand son rond touche le tien, une fenêtre de ~1 s s'ouvre avant la morsure : le
+// temps de t'écarter. Plus rapide qu'eux, tu peux donc esquiver.
+const Z_RAYON = 11;                       // rayon visuel du rond d'un mort
+const CONTACT_RONDS = RAYON_JOUEUR + 9;   // distance centre-à-centre = chevauchement des ronds
+const FENETRE_FUITE = 0.9;                // secondes de contact avant la morsure (temps pour fuir)
+const APPROCHE_PX = 135;                  // distance à laquelle un mort en chasse « menace » (clignote)
+
+function vitesseZombiePx(z) {
+  const def = zombieDef(z.id) || {};
+  // « lent » (la majorité) traîne, « vif » (coureur/enragé/chien) presse — tous BIEN sous le joueur
+  // (130 px/s), pour qu'on puisse toujours les distancer et les esquiver.
+  return (def.vitesse || 9999) >= 6000 ? 40 : 66;
+}
+function deplacerMortVers(z, tx, ty, dist, carteId, C) {
+  let dx = tx - z.zfx, dy = ty - z.zfy; const n = Math.hypot(dx, dy);
+  if (n < 0.6) return; dx /= n; dy /= n;
+  const step = Math.min(dist, n);
+  const nx = z.zfx + dx * step; if (!estBloque(C, carteId, nx, z.zfy, 8)) z.zfx = nx;
+  const ny = z.zfy + dy * step; if (!estBloque(C, carteId, z.zfx, ny, 8)) z.zfy = ny;
+}
+function fmFrame(dt) {
+  const carteId = G.world.carte;
+  if (!carteVivante(carteId)) return;
+  const C = carteCourante();
+  const px = G.world.fx, py = G.world.fy;
+  let combatZ = null;
+  for (const z of zombiesSur(carteId)) {
+    if (z.faitLeMort) continue;
+    const cc = centreCellule(C, z.x, z.y);
+    if (z.zfx == null || isNaN(z.zfx)) { z.zfx = cc.fx; z.zfy = cc.fy; }
+    let tx = cc.fx, ty = cc.fy;
+    // Il fonce sur TON rond seulement s'il a un passage réellement OUVERT vers ta case (même
+    // cellule, ou cellule orthogonale reliée sans porte close). Sinon il reste calé sur sa case
+    // logique (décidée par le tick, qui respecte murs et portes) : aucun mort ne « traverse » une
+    // porte fermée — il devra l'enfoncer (bois) ou passer par ailleurs.
+    if (z.ag) {
+      const meme = z.x === G.world.x && z.y === G.world.y;
+      const ortho = Math.abs(z.x - G.world.x) + Math.abs(z.y - G.world.y) === 1;
+      let ouvert = meme;
+      if (ortho) {
+        const li = liaison(carteId, z.x, z.y, G.world.x, G.world.y);
+        ouvert = li === 'ouvert' || ((li === 'porte' || li === 'porte_fer') && porteCassee(carteId, z.x, z.y, G.world.x, G.world.y));
+      }
+      if (ouvert) { tx = px; ty = py; }
+    }
+    deplacerMortVers(z, tx, ty, vitesseZombiePx(z) * dt, carteId, C);
+    const d = Math.hypot(z.zfx - px, z.zfy - py);
+    if (d < CONTACT_RONDS) { z._touch = (z._touch || 0) + dt; if (z._touch >= FENETRE_FUITE && !combatZ) combatZ = z; }
+    else z._touch = 0;
+    const node = document.getElementById('fm-z-' + z.uid);
+    if (node) {
+      node.setAttribute('transform', `translate(${z.zfx.toFixed(2)},${z.zfy.toFixed(2)})`);
+      node.classList.toggle('z-contact', d < CONTACT_RONDS);
+      node.classList.toggle('z-approche', d >= CONTACT_RONDS && d < APPROCHE_PX && !!z.ag);
+    }
+  }
+  if (combatZ) lancerCombatContact(combatZ);
+}
+
 function entrerCase() {
   const cd = caseCourante();
   if (!cd || !cd.vers) return;
@@ -1633,6 +1882,7 @@ function entrerCase() {
     // (boucle « battement du monde »), identique pour les deux joueurs en co-op.
     G.world.carte = cd.vers.carte;
     G.world.x = cd.vers.x; G.world.y = cd.vers.y;
+    placerSurCase(G.world.x, G.world.y); // position continue au centre de la case d'arrivée
     peuplerCarte(G.world.carte);
     assignerGaranties(G.world.carte);
     assignerEvenements(G.world.carte); // placés AVANT l'arrivée (sinon le 1er pas sur la carte n'aurait rien)

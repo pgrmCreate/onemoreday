@@ -92,6 +92,7 @@ export function newGame(nom) {
       jour: 1, heure: 8, minute: 0,
       // Position : une carte (échelle quelconque) + des coordonnées de case
       carte: null, x: 0, y: 0, // définis par map.js au lancement (DEPART du monde)
+      fx: 0, fy: 0, // position CONTINUE en pixels (échelle intérieur : déplacement libre, cf. freemove.js)
       decouverts: {}, // carteId -> ['x,y', ...] : brouillard de guerre
       fouilles: {},   // 'carte:x,y' -> { n: fouilles faites, pris: {itemId:true} }
       sol: {},        // 'carte:x,y' -> [{id, qty, dur?, cache?}] objets au sol (cache = révélé par une fouille)
@@ -132,6 +133,7 @@ export function load() {
     if (!G.world.zmap) G.world.zmap = {};   // sauvegardes d'avant les zombies sur carte
     if (!G.world.portes) G.world.portes = {}; // sauvegardes d'avant les portes à PV
     if (G.world.seed === undefined) G.world.seed = Math.floor(Math.random() * 1e9); // graine partagée
+    if (G.world.fx === undefined) { G.world.fx = 0; G.world.fy = 0; } // position continue (déplacement libre intérieur)
     if (!G.world.eventsPlaces) G.world.eventsPlaces = {}; // événements pré-placés
     if (!G.world.eventsFaits) G.world.eventsFaits = {};   // événements pré-placés déjà joués
     return G;
