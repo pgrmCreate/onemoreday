@@ -40,6 +40,8 @@ const E = {
   peintType: 'piece',  // type appliqué par l'outil Peindre
   outilD: 'prefab',    // outil du calque Dessin : 'sel' | 'prefab' | 'cloison' | 'porte' | 'creux'
   prefab: 'lit',       // prefab courant à poser
+  outilEv: 'case',     // calque Événements : 'case' (par case) | 'pinceau' (semis multi-cases)
+  evStamp: { id: '', p: 0.5 }, // événement + proba à semer au pinceau
   geom: null,          // géométrie de la dernière grille rendue (pour le pointage)
 };
 
@@ -452,10 +454,10 @@ function inspEvents(pos, cd) {
       <span class="ed-row-pv" data-epv="${i}">${pct(s.p)}%</span>
       <button data-edel="${i}" class="ed-x" aria-label="retirer">✕</button></div>`;
   }).join('');
-  const opts = EVENTS.map(e => `<option value="${e.id}">${e.id}${e.types ? ' — ' + e.types.join('/') : ''}</option>`).join('');
+  const opts = EVENTS.map(e => `<option value="${e.id}">${e.user ? '★ ' : ''}${e.id}${e.types ? ' — ' + e.types.join('/') : ''}</option>`).join('');
   return `<div class="ed-sec">
     <div class="ed-sec-t">${echap(cd.nom || pos)}</div>
-    <div class="ed-hint">Chance d'événement sur cette case (placement manuel). Le 1er qui « passe » se déclenche.</div>
+    <div class="ed-hint">Chance d'événement sur cette case (placement manuel). Le 1er qui « passe » se déclenche. ★ = tes événements.</div>
     <div class="ed-list">${liste || '<div class="ed-hint">Aucun événement ici.</div>'}</div>
     <div class="ed-sub">Ajouter un événement :</div>
     <select id="ed-ev-sel">${opts}</select>
@@ -572,6 +574,139 @@ function importer() {
 }
 function tester() { sauverCourante(); window.open(`index.html?test=${encodeURIComponent(E.id)}`, '_blank'); }
 
+// ============ ÉVÉNEMENTS CRÉÉS PAR L'UTILISATEUR ============
+// Stockés dans 'omd_events_v1' (surcouche locale). Fusionnés dans EVENTS (cf. events.js) pour
+// le placement manuel — dans l'éditeur comme en jeu de test. Ici on les crée / édite / supprime.
+function lireEventsU() { try { return JSON.parse(localStorage.getItem('omd_events_v1') || '[]'); } catch (e) { return []; } }
+function ecrireEventsU(arr) { try { localStorage.setItem('omd_events_v1', JSON.stringify(arr)); } catch (e) { alert('Sauvegarde impossible : ' + e.message); } }
+function enregistrerEventU(ev) {
+  const arr = lireEventsU(); const i = arr.findIndex(e => e.id === ev.id);
+  if (i >= 0) arr[i] = ev; else arr.push(ev);
+  ecrireEventsU(arr);
+  ev.user = true; const j = EVENTS.findIndex(e => e.id === ev.id); // sync mémoire (select + rendu)
+  if (j >= 0) EVENTS[j] = ev; else EVENTS.push(ev);
+}
+function supprimerEventU(id) {
+  ecrireEventsU(lireEventsU().filter(e => e.id !== id));
+  const j = EVENTS.findIndex(e => e.id === id); if (j >= 0) EVENTS.splice(j, 1);
+}
+
+// Formulaire de création / édition d'un événement (modale).
+function montrerFormEvent(ev) {
+  const edition = !!ev;
+  const data = ev ? JSON.parse(JSON.stringify(ev))
+    : { id: 'ev_user_' + Date.now().toString(36), types: ['interieur'], texte: '', choix: [{ label: '', texte: '', effets: {} }] };
+  const d = document.createElement('div'); d.className = 'ed-modale';
+  const champsChoix = (ch, i) => {
+    const e = ch.effets || {}, it = (e.items && e.items[0]) || {};
+    return `<div class="ed-eff" data-ci="${i}">
+      <input class="ev-lab" placeholder="Intitulé du bouton (ex. Fouiller la caisse)" value="${echapAttr(ch.label || '')}">
+      <textarea class="ev-rtxt" rows="2" placeholder="Texte du résultat (optionnel)">${echap(ch.texte || '')}</textarea>
+      <div class="ev-effrow">
+        <label>PV<input type="number" class="ev-e" data-k="pv" value="${e.pv ?? ''}"></label>
+        <label>Énergie<input type="number" class="ev-e" data-k="sta" value="${e.sta ?? ''}"></label>
+        <label>Faim<input type="number" class="ev-e" data-k="faim" value="${e.faim ?? ''}"></label>
+        <label>Soif<input type="number" class="ev-e" data-k="soif" value="${e.soif ?? ''}"></label>
+      </div>
+      <div class="ev-effrow">
+        <label>Objet gagné<input class="ev-item" placeholder="id objet" value="${echapAttr(it.id || '')}"></label>
+        <label>×<input type="number" class="ev-itemq" value="${it.qty || 1}"></label>
+        <label>Flag<input class="ev-flag" placeholder="nom_du_flag" value="${echapAttr(e.flag || '')}"></label>
+      </div>
+      <button class="ed-x ev-delc" data-ci="${i}">✕ ce choix</button>
+    </div>`;
+  };
+  const corps = () => `<div class="ed-modale-in">
+    <h2>${edition ? 'Modifier' : 'Créer'} un événement</h2>
+    <label class="ed-lab">Identifiant<input id="ev-id" value="${echapAttr(data.id)}" ${edition ? 'readonly' : ''}></label>
+    <label class="ed-lab">Texte (la narration)<textarea id="ev-texte" rows="3" placeholder="Ce que le joueur lit en arrivant…">${echap(data.texte || '')}</textarea></label>
+    <div class="ed-lab">Types de lieux
+      <div class="ev-types">
+        ${['interieur', 'rue', 'parc'].map(ty => `<label><input type="checkbox" class="ev-ty" value="${ty}" ${(data.types || []).includes(ty) ? 'checked' : ''}>${ty}</label>`).join('')}
+        <label><input type="checkbox" id="ev-once" ${data.once ? 'checked' : ''}>une seule fois</label>
+      </div>
+    </div>
+    <div class="ed-sub" style="margin-top:8px">Choix proposés au joueur</div>
+    <div id="ev-choix">${(data.choix || []).map(champsChoix).join('')}</div>
+    <button id="ev-addc">＋ Ajouter un choix</button>
+    <div class="ed-btns" style="margin-top:12px">
+      <button class="ed-primary" id="ev-save">Enregistrer</button>
+      <button id="ev-cancel">Annuler</button>
+    </div></div>`;
+  const lireForm = () => {
+    data.id = (el('ev-id').value || data.id).trim();
+    data.texte = el('ev-texte').value;
+    data.types = [...d.querySelectorAll('.ev-ty:checked')].map(c => c.value);
+    if (!data.types.length) data.types = ['interieur'];
+    if (el('ev-once').checked) data.once = true; else delete data.once;
+    const choix = [];
+    d.querySelectorAll('.ed-eff').forEach(node => {
+      const q = (cls) => node.querySelector('.' + cls);
+      const effets = {};
+      node.querySelectorAll('.ev-e').forEach(inp => { const v = parseInt(inp.value, 10); if (!isNaN(v) && v !== 0) effets[inp.dataset.k] = v; });
+      const itemId = q('ev-item').value.trim();
+      if (itemId) effets.items = [{ id: itemId, qty: Math.max(1, parseInt(q('ev-itemq').value, 10) || 1) }];
+      const flag = q('ev-flag').value.trim(); if (flag) effets.flag = flag;
+      const ch = { label: q('ev-lab').value.trim() || 'Continuer', effets };
+      const rtxt = q('ev-rtxt').value.trim(); if (rtxt) ch.texte = rtxt;
+      choix.push(ch);
+    });
+    data.choix = choix.length ? choix : [{ label: 'Continuer', effets: {} }];
+  };
+  const brancher = () => {
+    el('ev-addc').onclick = () => { lireForm(); data.choix.push({ label: '', texte: '', effets: {} }); rerender(); };
+    d.querySelectorAll('.ev-delc').forEach(b => b.onclick = () => { lireForm(); data.choix.splice(+b.dataset.ci, 1); if (!data.choix.length) data.choix = [{ label: '', effets: {} }]; rerender(); });
+    el('ev-cancel').onclick = () => d.remove();
+    el('ev-save').onclick = () => {
+      lireForm();
+      if (!data.id) { alert('Donne un identifiant.'); return; }
+      if (!data.texte.trim()) { alert('Écris le texte de l\'événement.'); return; }
+      enregistrerEventU(data); E.evStamp.id = data.id; d.remove(); rendre();
+    };
+  };
+  const rerender = () => { d.innerHTML = corps(); brancher(); };
+  d.addEventListener('click', (e) => { if (e.target === d) d.remove(); });
+  document.body.appendChild(d); rerender();
+}
+
+// Pinceau d'événements : glisser un rectangle → semer l'événement courant sur les cases couvertes.
+function brancherPinceauEv(svg) {
+  if (E.carte.graphe || !E.geom) return;
+  let drag = null, temp = null;
+  svg.style.touchAction = 'none';
+  svg.onpointerdown = (e) => {
+    const p = svgPoint(svg, e.clientX, e.clientY);
+    drag = { x0: p.x, y0: p.y };
+    temp = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    temp.setAttribute('class', 'ed-temp'); svg.appendChild(temp);
+    try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+  };
+  svg.onpointermove = (e) => {
+    if (!drag) return; const p = svgPoint(svg, e.clientX, e.clientY);
+    temp.setAttribute('x', Math.min(drag.x0, p.x)); temp.setAttribute('y', Math.min(drag.y0, p.y));
+    temp.setAttribute('width', Math.abs(p.x - drag.x0)); temp.setAttribute('height', Math.abs(p.y - drag.y0));
+  };
+  svg.onpointerup = (e) => {
+    if (!drag) return; const p = svgPoint(svg, e.clientX, e.clientY);
+    const id = E.evStamp.id || (EVENTS[0] && EVENTS[0].id);
+    if (!id) { drag = null; majDonnees(); return; }
+    const x1 = Math.min(drag.x0, p.x), y1 = Math.min(drag.y0, p.y), x2 = Math.max(drag.x0, p.x), y2 = Math.max(drag.y0, p.y);
+    const g = E.geom; const couvertes = [];
+    for (let x = 0; x < E.carte.largeur; x++) for (let y = 0; y < E.carte.hauteur; y++) {
+      if (!E.carte.cases[`${x},${y}`]) continue;
+      const ccx = g.colX[x] + g.cwA[x] / 2, ccy = g.rowY[y] + g.chA[y] / 2;
+      if (ccx >= x1 && ccx <= x2 && ccy >= y1 && ccy <= y2) couvertes.push(`${x},${y}`);
+    }
+    if (!couvertes.length) { const c = celluleEn(p.x, p.y); if (c && E.carte.cases[c.pos]) couvertes.push(c.pos); } // clic simple
+    for (const pos of couvertes) {
+      const cd = E.carte.cases[pos], arr = cd.evEd || (cd.evEd = []);
+      if (!arr.some(s => s.id === id)) arr.push({ id, p: E.evStamp.p });
+    }
+    if (couvertes.length) E.sel = couvertes[couvertes.length - 1];
+    drag = null; temp = null; majDonnees();
+  };
+}
+
 // ============ AIDE ============
 function montrerAide() {
   const d = document.createElement('div');
@@ -621,12 +756,35 @@ function rendreRail() {
       html += `<div class="ed-sub" style="margin-top:8px">Prefab à poser</div><div class="ed-prefabs">${pal}</div>`;
     }
     html += `<div class="ed-hint" style="margin-top:8px">Glisse dans une case pour poser. Détails à droite.</div></div>`;
+  } else if (E.calque === 'events') {
+    const u = lireEventsU();
+    html += `<div class="ed-outils">
+      <button class="ed-btn-large" id="ev-creer">＋ Créer un événement</button>
+      <div class="ed-sub" style="margin-top:8px">Mes événements (${u.length})</div>
+      <div class="ed-evlist">${u.map(e => `<div class="ed-row"><span class="ed-row-nom" title="${echapAttr((e.texte || '').slice(0, 100))}">${echap(e.id)}</span><button class="ed-mini" data-evedit="${echapAttr(e.id)}" title="Modifier">✎</button><button class="ed-x" data-evdel="${echapAttr(e.id)}">✕</button></div>`).join('') || '<div class="ed-hint">Aucun pour l\'instant.</div>'}</div>
+      <div class="ed-sub" style="margin-top:10px">Outil</div>
+      <button class="ed-outil ${E.outilEv === 'case' ? 'on' : ''}" data-outilev="case">Par case</button>
+      ${E.carte && !E.carte.graphe ? `<button class="ed-outil ${E.outilEv === 'pinceau' ? 'on' : ''}" data-outilev="pinceau">Pinceau (multi-cases)</button>` : ''}`;
+    if (E.outilEv === 'pinceau' && E.carte && !E.carte.graphe) {
+      if (!E.evStamp.id && EVENTS[0]) E.evStamp.id = EVENTS[0].id;
+      const opts = EVENTS.map(e => `<option value="${echapAttr(e.id)}" ${E.evStamp.id === e.id ? 'selected' : ''}>${e.user ? '★ ' : ''}${echap(e.id)}</option>`).join('');
+      html += `<label class="ed-sub" style="margin-top:8px">Événement à semer<select id="ev-stamp">${opts}</select></label>
+        <label class="ed-sub">Probabilité <span id="ev-pv">${pct(E.evStamp.p)}</span>%<input type="range" min="5" max="100" step="5" value="${pct(E.evStamp.p)}" id="ev-pp"></label>
+        <div class="ed-hint">Glisse un rectangle sur la carte pour semer cet événement sur toutes les cases couvertes.</div>`;
+    }
+    html += `</div>`;
   }
   el('ed-rail').innerHTML = html;
   el('ed-rail').querySelectorAll('[data-calque]').forEach(b => b.onclick = () => { E.calque = b.dataset.calque; rendre(); });
   el('ed-rail').querySelectorAll('[data-outil]').forEach(b => b.onclick = () => { E.outil = b.dataset.outil; rendreRail(); });
   el('ed-rail').querySelectorAll('[data-outild]').forEach(b => b.onclick = () => { E.outilD = b.dataset.outild; rendre(); });
   el('ed-rail').querySelectorAll('[data-prefab]').forEach(b => b.onclick = () => { E.prefab = b.dataset.prefab; rendreRail(); });
+  el('ed-rail').querySelectorAll('[data-outilev]').forEach(b => b.onclick = () => { E.outilEv = b.dataset.outilev; rendre(); });
+  el('ed-rail').querySelectorAll('[data-evedit]').forEach(b => b.onclick = () => { const ev = lireEventsU().find(e => e.id === b.dataset.evedit); if (ev) montrerFormEvent(ev); });
+  el('ed-rail').querySelectorAll('[data-evdel]').forEach(b => b.onclick = () => { if (confirm('Supprimer l\'événement ' + b.dataset.evdel + ' ?')) { supprimerEventU(b.dataset.evdel); rendre(); } });
+  const evc = el('ev-creer'); if (evc) evc.onclick = () => montrerFormEvent();
+  const evs = el('ev-stamp'); if (evs) evs.onchange = () => { E.evStamp.id = evs.value; };
+  const evp = el('ev-pp'); if (evp) evp.oninput = () => { E.evStamp.p = parseInt(evp.value, 10) / 100; const v = el('ev-pv'); if (v) v.textContent = pct(E.evStamp.p); };
   const peint = el('ed-peint'); if (peint) peint.onchange = () => { E.peintType = peint.value; };
 }
 
@@ -636,10 +794,12 @@ function rendreCanvas() {
   if (!E.carte) { box.innerHTML = `<div class="ed-empty">Ouvre une carte dans le menu en haut pour commencer.</div>`; return; }
   box.innerHTML = svgCarteEd(E.carte);
   const svg = box.querySelector('svg');
-  // Le clic-case sert toujours à SÉLECTIONNER (terrain/zombies/events, et l'outil Sélection du Dessin).
-  const selectionSeule = E.calque !== 'dessin' || E.outilD === 'sel';
+  // Le clic-case SÉLECTIONNE (terrain/zombies/events par case, et l'outil Sélection du Dessin).
+  const pinceauEv = E.calque === 'events' && E.outilEv === 'pinceau' && !E.carte.graphe;
+  const selectionSeule = (E.calque !== 'dessin' && !pinceauEv) || (E.calque === 'dessin' && E.outilD === 'sel');
   if (selectionSeule) box.querySelectorAll('[data-case]').forEach(g => g.onclick = () => clicCase(g.dataset.case));
   if (E.calque === 'dessin' && !E.carte.graphe) brancherDessin(svg);
+  if (pinceauEv) brancherPinceauEv(svg);
 }
 function majDonnees() { sauverCourante(); rendreCanvas(); rendreInspect(); }
 function rendre() { rendreTop(); rendreRail(); rendreCanvas(); rendreInspect(); }

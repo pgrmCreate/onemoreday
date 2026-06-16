@@ -192,3 +192,22 @@ const EVENTS_BASE = [
 ];
 
 export const EVENTS = [...EVENTS_BASE, ...EVENTS_RUE, ...EVENTS_INTERIEUR, ...EVENTS_PARC];
+
+// ---------- Événements créés par l'utilisateur (éditeur de cartes) ----------
+// Stockés dans la surcouche locale 'omd_events_v1' (jamais dans ce fichier). Fusionnés ici
+// pour être disponibles au placement MANUEL (cd.evEd) — dans l'éditeur comme en mode test.
+// Marqués `user:true` afin de NE PAS être tirés par le placement AUTOMATIQUE des vraies cartes.
+export function chargerEvenementsUtilisateur() {
+  let n = 0;
+  try {
+    const u = JSON.parse(localStorage.getItem('omd_events_v1') || '[]');
+    const connus = new Set(EVENTS.map(e => e.id));
+    for (const ev of Array.isArray(u) ? u : []) {
+      if (!ev || !ev.id || !Array.isArray(ev.choix) || !ev.choix.length || connus.has(ev.id)) continue;
+      ev.user = true;
+      EVENTS.push(ev); connus.add(ev.id); n++;
+    }
+  } catch (e) { /* pas de localStorage (validation Node) : on ignore */ }
+  return n;
+}
+if (typeof localStorage !== 'undefined') chargerEvenementsUtilisateur();

@@ -2558,8 +2558,8 @@ function assignerEvenements(carteId) {
     const danger = cd.danger || 0;
     if (danger <= 0) continue;
     const type = typeDe(cd);
-    const candidats = EVENTS.filter(ev =>
-      (ev.types && ev.types.includes(type)) || (ev.lieux && ev.lieux.includes(carteId)));
+    const candidats = EVENTS.filter(ev => !ev.user && // les événements créés par l'utilisateur ne se posent QUE manuellement (evEd)
+      ((ev.types && ev.types.includes(type)) || (ev.lieux && ev.lieux.includes(carteId))));
     if (!candidats.length) continue;
     // Densité comparable à l'ancien tirage par pas, mais FIXÉE (un seul événement par case).
     if (rnd() >= Math.min(0.5, danger * 0.7)) continue;
