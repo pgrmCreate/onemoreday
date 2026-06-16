@@ -35,11 +35,12 @@ jobs:
           SHA="$(git rev-parse --short HEAD)"
           STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           # Numéro de version LISIBLE : 0.<N>. N = nombre de commits moins une base, donc il
-          # s'incrémente à chaque commit poussé. Base 16 = commits faits AVANT l'ajout du
-          # versionnage → le premier déploiement versionné affiche 0.1.
+          # s'incrémente à CHAQUE push sur master (0.2, puis 0.3, 0.4…). Base RÉ-ANCRÉE le
+          # 16/06/2026 (24 commits) à 23 pour que le déploiement SUIVANT (25e commit) reparte
+          # à 0.2. Plancher 2 : on ne redescend jamais sous 0.2.
           COUNT="$(git rev-list --count HEAD)"
-          MINOR=$((COUNT - 16))
-          if [ "$MINOR" -lt 1 ]; then MINOR=1; fi
+          MINOR=$((COUNT - 23))
+          if [ "$MINOR" -lt 2 ]; then MINOR=2; fi
           VERSION="0.$MINOR"
           mkdir _site
           cp -r index.html android.html manifest.webmanifest sw.js css js icons audio _site/
