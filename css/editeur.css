@@ -1,0 +1,103 @@
+/* ============ Éditeur de cartes — thème sombre, autonome ============ */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: #0b0b0c; color: #d8cdb6;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+}
+#ed-app { display: flex; flex-direction: column; height: 100vh; }
+
+/* --- Barre du haut --- */
+#ed-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 14px; background: #141315; border-bottom: 1px solid #2a2620; flex-wrap: wrap;
+}
+.ed-top-l, .ed-top-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ed-logo { font-weight: 600; color: #c9b98a; letter-spacing: .3px; }
+.ed-badge { font-size: 12px; color: #9a8f7c; background: #211e19; border: 1px solid #38322a; border-radius: 8px; padding: 2px 9px; }
+
+/* --- Corps : rail / canvas / inspecteur --- */
+#ed-body { display: flex; flex: 1; min-height: 0; }
+#ed-rail { width: 168px; flex-shrink: 0; background: #111012; border-right: 1px solid #2a2620; padding: 10px; overflow-y: auto; }
+#ed-canvas { flex: 1; min-width: 0; overflow: auto; padding: 16px; display: flex; align-items: flex-start; justify-content: center; background: #0d0d0f; }
+#ed-inspect { width: 286px; flex-shrink: 0; background: #111012; border-left: 1px solid #2a2620; padding: 12px; overflow-y: auto; }
+
+/* --- Calques + outils --- */
+.ed-calque { display: flex; align-items: center; gap: 8px; width: 100%; margin-bottom: 6px; padding: 9px 10px; text-align: left; }
+.ed-calque.on { background: #1e2a3a; border-color: #3a6796; color: #cfe2f6; }
+.ed-ic { font-size: 16px; width: 18px; text-align: center; }
+.ed-outils { margin-top: 12px; padding-top: 10px; border-top: 1px solid #2a2620; }
+.ed-outil { width: 100%; margin-bottom: 5px; }
+.ed-outil.on { background: #1e2a3a; border-color: #3a6796; color: #cfe2f6; }
+.ed-sub { font-size: 12px; color: #8a8273; margin: 4px 0; }
+
+/* --- Boutons / champs (communs) --- */
+button {
+  background: #1a1814; color: #d8cdb6; border: 1px solid #3a342a; border-radius: 8px;
+  padding: 7px 11px; font-size: 13px; cursor: pointer; font-family: inherit;
+}
+button:hover { background: #221f19; border-color: #4f4636; }
+button:active { transform: scale(.98); }
+.ed-primary { background: #1e3a24; border-color: #3a7a4a; color: #cdf0d4; }
+.ed-primary:hover { background: #234a2c; }
+.ed-danger-btn { background: #2a1414; border-color: #6a2a2a; color: #e8b0b0; }
+select, input[type=text], input:not([type]) {
+  background: #0f0e10; color: #d8cdb6; border: 1px solid #3a342a; border-radius: 7px;
+  padding: 6px 8px; font-size: 13px; font-family: inherit; width: 100%;
+}
+#ed-map { width: auto; min-width: 220px; max-width: 340px; }
+input[type=range] { width: 100%; accent-color: #5a9be8; }
+
+/* --- Canvas (SVG carte) --- */
+.ed-grille { width: 100%; max-width: 920px; height: auto; }
+.ed-case { cursor: pointer; }
+.ed-case:hover rect:first-child, .ed-case:hover circle:first-child { filter: brightness(1.35); }
+.ed-empty { color: #8a8273; margin-top: 40px; text-align: center; max-width: 320px; }
+
+/* --- Inspecteur --- */
+.ed-sec-t { font-weight: 600; color: #c9b98a; margin-bottom: 6px; }
+.ed-hint { font-size: 12px; color: #8a8273; line-height: 1.5; margin: 6px 0; }
+.ed-warn { font-size: 12px; color: #e8c98a; background: #2a2414; border: 1px solid #5a4a1f; border-radius: 8px; padding: 6px 8px; margin: 6px 0; line-height: 1.4; }
+.ed-lab { display: block; font-size: 12px; color: #9a8f7c; margin: 9px 0 0; }
+.ed-lab select, .ed-lab input { margin-top: 3px; }
+.ed-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.ed-list { margin: 8px 0; }
+.ed-row { display: flex; align-items: center; gap: 7px; padding: 5px 0; border-bottom: 1px solid #211e19; }
+.ed-row-nom { flex: 1; font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-row input[type=range] { width: 84px; flex-shrink: 0; }
+.ed-row-pv { font-size: 12px; color: #c9b98a; width: 34px; text-align: right; flex-shrink: 0; }
+.ed-x { padding: 2px 7px; font-size: 12px; background: #2a1414; border-color: #5a2a2a; color: #e8a0a0; }
+.ed-pal { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.ed-chip { padding: 4px 9px; font-size: 12px; border-radius: 12px; }
+#ed-ev-sel { margin-bottom: 7px; }
+
+/* --- Calque de dessin : prefabs/mobilier au trait, comme le jeu (WYSIWYG) --- */
+.ed-grille .mob { fill: none; stroke: #6f6757; stroke-width: 1.1; opacity: .72; }
+.ed-grille text { pointer-events: none; }
+.ed-dessin { cursor: crosshair; }
+.ed-bord { cursor: pointer; }
+.ed-bord:hover { opacity: 1; stroke-width: 9; }
+rect.ed-temp { fill: rgba(90,155,232,.18); stroke: #5a9be8; stroke-width: 1.5; stroke-dasharray: 4 3; pointer-events: none; }
+line.ed-temp { fill: none; stroke: #cfa24a; stroke-width: 2.4; stroke-linecap: round; pointer-events: none; }
+
+/* Palette de prefabs */
+.ed-prefabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 6px; }
+.ed-prefab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 2px; }
+.ed-prefab svg { width: 34px; height: 34px; }
+.ed-prefab svg .mob { fill: none; stroke: #b9ad95; stroke-width: 1.1; opacity: .92; }
+.ed-prefab span { font-size: 9px; color: #9a8f7c; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
+.ed-prefab.on { background: #1e2a3a; border-color: #3a6796; }
+
+/* Lignes de l'inspecteur Dessin */
+.ed-mini { padding: 2px 7px; font-size: 12px; flex-shrink: 0; }
+.ed-dim { color: #7a7363; font-size: 11px; }
+
+/* Modale d'aide */
+.ed-tag { font-size: 11px; color: #8fb4dc; font-weight: 400; }
+.ed-modale { position: fixed; inset: 0; background: rgba(0,0,0,.62); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+.ed-modale-in { background: #151416; border: 1px solid #38322a; border-radius: 12px; padding: 18px 22px; max-width: 580px; max-height: 86vh; overflow-y: auto; }
+.ed-modale-in h2 { color: #c9b98a; margin: 0 0 10px; font-size: 19px; }
+.ed-modale-in h3 { color: #b9ad95; margin: 15px 0 4px; font-size: 15px; }
+.ed-modale-in p, .ed-modale-in li { line-height: 1.55; color: #c4b9a2; margin: 5px 0; }
+.ed-modale-in ul { margin: 4px 0; padding-left: 18px; }

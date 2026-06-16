@@ -44,10 +44,10 @@ export const CARTES_SALON_CENTRE = {
     nom: 'Grand Hôtel de la Poste', sousTitre: 'place Crousillat — ton terrier depuis 23 jours',
     echelle: 'interieur', tempsParCase: 1, largeur: 6, hauteur: 5,
     exterieur: false, ambiance: 'calme', illu: 'immeuble',
-    // Grille NON UNIFORME : la colonne de l'escalier est resserrée, le couloir et les paliers
-    // sont plus courts que les chambres — de quoi casser le quadrillage tout carré (cf. map.js,
-    // carte.colW / carte.rowH = fraction de la case par colonne / par ligne ; défaut 1).
-    colW: { 0: 0.78 },
+    // Grille NON UNIFORME : couloir et paliers plus courts que les chambres (rowH), de quoi
+    // casser le quadrillage carré (cf. map.js, carte.rowH = fraction de hauteur par ligne ; défaut 1).
+    // L'escalier n'est plus resserré par colonne (ce qui pénalisait la Réception, même colonne) :
+    // il est désormais dessiné en CAGE ÉTROITE via le calque de dessin (decor cage_escalier + creux).
     rowH: { 1: 0.72, 2: 0.6, 4: 0.7 },
     // GARANTI : une lampe torche se trouve forcément quelque part ici (case fouillable au hasard,
     // déterministe) — indispensable pour explorer le noir. Voir world.js → assignerGaranties.
@@ -81,6 +81,17 @@ export const CARTES_SALON_CENTRE = {
       // ----- 2e étage -----
       '1,0': {
         t: 'piece', nom: 'Chambre 201', lbl: '201', danger: 0.2,
+        // Salle de bain dessinée DANS la chambre (coin haut-droit) : cloison + porte, sans case dédiée.
+        decor: [
+          { p: 'lit', x: 0.1, y: 0.46, w: 0.4, h: 0.46 },
+          { p: 'armoire', x: 0.1, y: 0.08, w: 0.32, h: 0.13 },
+          { p: 'lavabo', x: 0.64, y: 0.08, w: 0.12, h: 0.12 },
+          { p: 'wc', x: 0.8, y: 0.07, w: 0.14, h: 0.2 },
+        ],
+        cloisons: [
+          { x1: 0.6, y1: 0, x2: 0.6, y2: 0.4 },
+          { x1: 0.6, y1: 0.4, x2: 1, y2: 0.4, porte: 0.78 },
+        ],
         desc: 'Le lit est fait, la valise ouverte sur le porte-bagages. Le client de la 201 n\'a jamais réglé sa note — il n\'a jamais quitté la ville non plus.',
         fouille: { max: 3, table: [
           { id: 'chiffon', q: [1, 2], p: 0.8 }, { id: 'pull_laine', q: [1, 1], p: 0.5 },
@@ -91,6 +102,17 @@ export const CARTES_SALON_CENTRE = {
       },
       '2,0': {
         t: 'piece', nom: 'Chambre 202', lbl: '202', danger: 0.15,
+        // La chambre du couple : un lit DOUBLE, une commode, et sa salle de bain.
+        decor: [
+          { p: 'lit_double', x: 0.08, y: 0.46, w: 0.46, h: 0.46 },
+          { p: 'commode', x: 0.1, y: 0.08, w: 0.34, h: 0.12 },
+          { p: 'lavabo', x: 0.64, y: 0.08, w: 0.12, h: 0.12 },
+          { p: 'wc', x: 0.8, y: 0.07, w: 0.14, h: 0.2 },
+        ],
+        cloisons: [
+          { x1: 0.6, y1: 0, x2: 0.6, y2: 0.4 },
+          { x1: 0.6, y1: 0.4, x2: 1, y2: 0.4, porte: 0.78 },
+        ],
         desc: 'Deux brosses à dents dans le verre, deux alliances sur la table de nuit. Ils sont partis ensemble, vers quelque chose qu\'ils croyaient mieux. Le lit n\'est défait que d\'un côté.',
         fouille: { max: 3, table: [
           { id: 'tshirt', q: [1, 2], p: 0.6 }, { id: 'jean', q: [1, 1], p: 0.4 },
@@ -100,6 +122,17 @@ export const CARTES_SALON_CENTRE = {
       },
       '3,0': {
         t: 'piece', nom: 'Ta chambre — la 203', lbl: 'Ta ch.', refuge: true, danger: 0,
+        // Ton terrier : matelas au sol (contre la porte), un tapis, ta salle de bain.
+        decor: [
+          { p: 'lit', x: 0.1, y: 0.5, w: 0.4, h: 0.42 },
+          { p: 'tapis', x: 0.12, y: 0.18, w: 0.34, h: 0.24 },
+          { p: 'baignoire', x: 0.63, y: 0.06, w: 0.16, h: 0.28 },
+          { p: 'wc', x: 0.82, y: 0.07, w: 0.13, h: 0.2 },
+        ],
+        cloisons: [
+          { x1: 0.6, y1: 0, x2: 0.6, y2: 0.4 },
+          { x1: 0.6, y1: 0.4, x2: 1, y2: 0.4, porte: 0.78 },
+        ],
         desc: 'Un matelas tiré contre la porte, des bouteilles vides en rang d\'oignons, et la fenêtre sur la place Crousillat. Vingt-trois jours que tu regardes la Fontaine Moussue couler pour personne.',
         fouille: { max: 2, table: [
           { id: 'chiffon', q: [1, 2], p: 0.9 }, { id: 'photo_famille', q: [1, 1], p: 1 },
@@ -108,6 +141,16 @@ export const CARTES_SALON_CENTRE = {
       },
       '4,0': {
         t: 'piece', nom: 'Chambre 204', lbl: '204', danger: 0.3, sombre: 1,
+        decor: [
+          { p: 'lit', x: 0.1, y: 0.46, w: 0.4, h: 0.46 },
+          { p: 'armoire', x: 0.1, y: 0.08, w: 0.32, h: 0.13 },
+          { p: 'lavabo', x: 0.64, y: 0.08, w: 0.12, h: 0.12 },
+          { p: 'wc', x: 0.8, y: 0.07, w: 0.14, h: 0.2 },
+        ],
+        cloisons: [
+          { x1: 0.6, y1: 0, x2: 0.6, y2: 0.4 },
+          { x1: 0.6, y1: 0.4, x2: 1, y2: 0.4, porte: 0.78 },
+        ],
         desc: 'Les volets sont restés fermés depuis le premier jour et la pièce baigne dans une pénombre épaisse. Ça sent le tissu moisi et autre chose, en dessous — quelque chose de sucré.',
         fouille: { max: 3, table: [
           { id: 'casquette', q: [1, 1], p: 0.4 }, { id: 'jean', q: [1, 1], p: 0.35 },
@@ -125,6 +168,7 @@ export const CARTES_SALON_CENTRE = {
         ] },
       },
       '0,1': {
+        // Escalier rendu en CAGE ÉTROITE par le meublage auto (cage_escalier + creux), comme partout.
         t: 'escalier', nom: 'Escalier de service (étage)', lbl: 'Escalier', danger: 0.1,
         desc: 'Des marches en bois ciré qui craquent dans un ordre que tu connais par cœur. Troisième, septième, neuvième : à enjamber.',
       },

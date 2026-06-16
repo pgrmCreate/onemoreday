@@ -1,6 +1,10 @@
 // ============ État global, sauvegarde, RNG, compétences ============
 export const VERSION = '0.2.0';
 const SAVE_KEY = 'onemoreday_save_v2'; // v2 : monde de Salon-de-Provence, incompatible avec les sauvegardes v1
+// Sauvegarde ACTIVE : la vraie partie par défaut. L'éditeur de cartes bascule sur une clé
+// SÉPARÉE (utiliserSauvegardeTest) le temps d'un essai, pour ne JAMAIS écraser ta partie réelle.
+let CLE_SAUVEGARDE = SAVE_KEY;
+export function utiliserSauvegardeTest() { CLE_SAUVEGARDE = 'onemoreday_test_v2'; }
 
 export let G = null; // état de la partie en cours
 
@@ -117,12 +121,12 @@ export function setFlag(k, v = true) { if (G) G.world.flags[k] = v; }
 // ---------- Sauvegarde ----------
 export function save() {
   if (!G) return false;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); return true; }
+  try { localStorage.setItem(CLE_SAUVEGARDE, JSON.stringify(G)); return true; }
   catch (e) { console.error('Sauvegarde impossible', e); return false; }
 }
 export function load() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(CLE_SAUVEGARDE);
     if (!raw) return null;
     G = JSON.parse(raw);
     if (!G.world.zmap) G.world.zmap = {};   // sauvegardes d'avant les zombies sur carte
@@ -133,8 +137,8 @@ export function load() {
     return G;
   } catch (e) { console.error('Chargement impossible', e); return null; }
 }
-export function hasSave() { return !!localStorage.getItem(SAVE_KEY); }
-export function clearSave() { localStorage.removeItem(SAVE_KEY); }
+export function hasSave() { return !!localStorage.getItem(CLE_SAUVEGARDE); }
+export function clearSave() { localStorage.removeItem(CLE_SAUVEGARDE); }
 
 // ---------- Journal narratif ----------
 export function noteJournal(texte) {

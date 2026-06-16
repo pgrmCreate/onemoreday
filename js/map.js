@@ -30,6 +30,7 @@ import {
 } from './ui.js';
 import { ico } from './icons.js';
 import { svgScene } from './illustrations.js';
+import { dessinerDecor, dessinerCloisons, dessinerCreux, autoDecor } from './art/prefabs.js';
 import {
   addItem, hasItem, removeItem, poidsTotal, poidsMax, placePour,
   espaceUtilise, espaceMax, defItem, countItem,
@@ -293,14 +294,21 @@ function mobilier(cd, x, y, px, py, s) {
   return fn ? `<g class="mob">${fn(px, py, s, graine(x, y))}</g>` : '';
 }
 
+// (Meublage automatique générique — autoDecor/FURNISH — déplacé dans js/art/prefabs.js,
+//  partagé entre le moteur et l'éditeur de cartes.)
+
 // ---------- Dessin du sol des intérieurs ----------
-function dessinInterieur(cd, x, y, px, py, s) {
+function dessinInterieur(cd, x, y, px, py, s, autoF) {
+  // Une case qui porte un calque de dessin (cd.decor) reprend la main COMPLÈTE sur son art :
+  // on saute le sol/mobilier automatique et on laisse decor + creux + cloisons tout définir.
+  if (cd.decor) return '';
   const id = G.world.carte;
   const circu = (dx, dy) => {
     const n = caseDef(id, x + dx, y + dy);
     return !!n && ['couloir', 'escalier', 'porte'].includes(n.t);
   };
   if (cd.t === 'escalier') {
+    if (autoF) return ''; // la cage étroite est fournie par le meublage auto (cage_escalier + creux)
     const horiz = circu(1, 0) || circu(-1, 0); // les marches filent dans l'axe de la circulation
     let l = '';
     for (let i = 1; i <= 4; i++) {
@@ -321,7 +329,7 @@ function dessinInterieur(cd, x, y, px, py, s) {
     // le sas d'entrée : un paillasson
     return `<g class="mob"><rect x="${px + s / 2 - 9}" y="${py + s / 2 - 5}" width="18" height="10" rx="1" stroke-dasharray="3 2"/></g>`;
   }
-  return mobilier(cd, x, y, px, py, s);
+  return autoF ? '' : mobilier(cd, x, y, px, py, s);
 }
 
 // ---------- Murs et portes du plan (façon plan d'évacuation) ----------
@@ -814,7 +822,7 @@ function svgCarte(reach, vis) {
   const dansHalo = (x, y) =>
     (lampe && Math.abs(x - G.world.x) <= rLampe && Math.abs(y - G.world.y) <= rLampe)
     || (pairLampe && Math.abs(x - pair.x) <= rPair && Math.abs(y - pair.y) <= rPair);
-  let cells = '', murs = '';
+  let cells = '', murs = '', parois = '';
   for (const [pos, cd] of Object.entries(C.cases)) {
     const [x, y] = pos.split(',').map(Number);
     if (!connue(x, y)) continue;
@@ -832,7 +840,17 @@ function svgCarte(reach, vis) {
     const secur = estSecurisee(k);
     const niv = niveauSombre(cd);
     // le dessin de l'environnement, par-dessus le fond
-    let inner = interieur ? dessinInterieur(cd, x, y, dx, dy, cs) : dessinExterieur(cd, x, y, dx, dy, cs);
+    // Calque de DESSIN : explicite (cd.decor/creux/cloisons) sinon meublage AUTOMATIQUE par type/nom.
+    const auto = interieur ? autoDecor(cd) : null;
+    const decorSrc = cd.decor || (auto && auto.decor) || null;
+    const creuxSrc = cd.creux || (auto && auto.creux) || null;
+    let inner = interieur ? dessinInterieur(cd, x, y, dx, dy, cs, !!(auto && auto.decor)) : dessinExterieur(cd, x, y, dx, dy, cs);
+    // creux d'abord (zones rendues en mur), puis prefabs posés. En coordonnées CELLULE (cellW/cellH),
+    // pas le carré inscrit : un prefab épouse la cellule réelle.
+    if (interieur) {
+      if (creuxSrc) inner += dessinerCreux(creuxSrc, cellX, cellY, cellW, cellH);
+      if (decorSrc) inner += dessinerDecor(decorSrc, cellX, cellY, cellW, cellH);
+    }
     // une entrée (bâtiment, sortie d'intérieur) : le petit rectangle de porte
     if (cd.vers) {
       const basY = ['batiment', 'village', 'ville', 'site'].includes(cd.t) ? dy + cs - 20 : dy + 7;
@@ -895,9 +913,13 @@ function svgCarte(reach, vis) {
     cells += `<g class="case ${atteign ? 'atteignable' : ''} ${sel ? 'selection' : ''}" data-case="${pos}">
       <rect class="fond" x="${cellX}" y="${cellY}" width="${cellW}" height="${cellH}" rx="${interieur ? 0 : 2}" fill="${t.fill}" ${interieur ? '' : `stroke="${t.stroke}"`}/>
       ${inner}<rect class="hl" x="${cellX + 1.5}" y="${cellY + 1.5}" width="${cellW - 3}" height="${cellH - 3}" rx="2"/></g>`;
-    if (interieur) murs += mursDeCase(cd, x, y, cellX, cellY, cellW, cellH, connue);
+    if (interieur) {
+      murs += mursDeCase(cd, x, y, cellX, cellY, cellW, cellH, connue);
+      const cloiSrc = cd.cloisons || (auto && auto.cloisons) || null;
+      if (cloiSrc) parois += dessinerCloisons(cloiSrc, cellX, cellY, cellW, cellH);
+    }
   }
-  return `<svg class="carte-grille" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${cells}${murs ? `<g fill="none" stroke="${MUR_TRAIT}" stroke-width="3" stroke-linecap="square">${murs}</g>` : ''}</svg>`;
+  return `<svg class="carte-grille" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${cells}${murs ? `<g fill="none" stroke="${MUR_TRAIT}" stroke-width="3" stroke-linecap="square">${murs}</g>` : ''}${parois}</svg>`;
 }
 
 // ============ Rendu « plan » : carte quartier à nœuds libres ============
@@ -2508,6 +2530,23 @@ function assignerEvenements(carteId) {
   if (!c) return;
   if (!G.world.eventsPlaces) G.world.eventsPlaces = {};
   if (G.world.eventsPlaces[carteId]) return; // déjà dispatché
+  // ---------- Mode ÉDITEUR : événements 100 % MANUELS ----------
+  // Sur une carte `editeur:true`, on ne pioche PAS selon le danger : on ne pose que les
+  // événements déposés à la main, case par case, via `cd.evEd = [{id, p}]` (p = chance 0..1).
+  // Pour une case, on tente chaque spec dans l'ordre ; le premier qui « passe » est placé.
+  if (c.editeur) {
+    const rndE = seedRng((G.world.seed || 0) + ':eved:' + carteId);
+    const assignE = {};
+    for (const [pos, cd] of Object.entries(c.cases)) {
+      if (!Array.isArray(cd.evEd) || !cd.evEd.length) continue;
+      for (const spec of cd.evEd) {
+        const p = spec.p == null ? 1 : spec.p;
+        if (rndE() < p) { assignE[pos] = spec.id; break; }
+      }
+    }
+    G.world.eventsPlaces[carteId] = assignE;
+    return;
+  }
   const typeDe = (cd) => {
     if (c.echelle === 'interieur') return 'interieur';
     if (cd.t === 'parc' || cd.t === 'nature') return 'parc';

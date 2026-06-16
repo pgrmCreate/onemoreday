@@ -138,6 +138,31 @@ export function peuplerCarte(carteId) {
   if (ex) normaliser(ex);
   if (ex && maintenant - (ex.t || 0) < 12 * 60) return;
   const premiere = !ex; // 1re pose de cette carte : on sème de façon DÉTERMINISTE (co-op)
+  // ---------- Mode ÉDITEUR : placement 100 % MANUEL ----------
+  // Une carte marquée `editeur:true` (testée depuis l'éditeur de cartes) ne reçoit
+  // AUCUN peuplement procédural ni `zombiesFixes` : seuls comptent les zombies posés à
+  // la main, case par case, via `cd.zEd = [{id, p}]` (p = proba d'apparition 0..1).
+  // Chaque spec est tirée une fois, à la graine de partie — placement à la lettre.
+  if (c.editeur) {
+    if (!premiere) return; // un seul peuplement (le bac à sable de test repart à neuf à chaque essai)
+    const rndE = seedRng((G.world.seed || 0) + ':zed:' + carteId);
+    const zE = [];
+    for (const [pos, cd] of Object.entries(c.cases)) {
+      if (!Array.isArray(cd.zEd) || !cd.zEd.length) continue;
+      const [x, y] = pos.split(',').map(Number);
+      for (const spec of cd.zEd) {
+        const p = spec.p == null ? 1 : spec.p;
+        if (rndE() < p) {
+          zE.push({
+            x, y, id: spec.id, pas: 0, uid: uidSuivant(), dir: pick(DIRS).slice(),
+            ...(spec.faitLeMort ? { faitLeMort: true } : {}),
+          });
+        }
+      }
+    }
+    G.world.zmap[carteId] = { t: maintenant, z: zE, morts: [] };
+    return;
+  }
   const z = ex ? [...ex.z] : [];
   // À la 1re visite, le tirage suit une graine PARTAGÉE (seed + carte) : hôte et invité
   // sèment EXACTEMENT la même horde, sans avoir à se synchroniser. Au repeuplement

@@ -1,5 +1,6 @@
 // ============ Démarrage, menus, panneaux, mort & fin ============
-import { G, newGame, save, load, hasSave, clearSave, skillLevel, SKILLS, heureTxt, getFlag, setFlag, noteJournal, chance } from './state.js';
+import { G, newGame, save, load, hasSave, clearSave, skillLevel, SKILLS, heureTxt, getFlag, setFlag, noteJournal, chance, utiliserSauvegardeTest } from './state.js';
+import { CARTES } from './data/world.js';
 import { render, updateHUD, showHUD, log, logHtml, btnAct, $, toast, showPanel, closePanel, panelOuvert, evtOuvert, closeEvt, attente } from './ui.js';
 import { ico, ICONS } from './icons.js';
 import { svgScene } from './illustrations.js';
@@ -1182,6 +1183,49 @@ setInterval(() => { if (G && !enCombat() && !partieTerminee && G.player.pv > 0) 
 // ---------- Co-op : messages système (arrivée/départ du coéquipier, perte du lien) ----------
 multi.poser('onSysteme', (txt, c) => { if (G && document.querySelector('#gamelog')) log(txt, c || ''); else toast(txt); });
 
+// ---------- Mode TEST de l'éditeur de cartes ----------
+// On arrive ici via index.html?test=<carteId>. La carte éditée vit dans la surcouche
+// localStorage de l'éditeur (jamais dans les fichiers du jeu) ; on l'injecte EN MÉMOIRE
+// dans CARTES, on bascule sur une sauvegarde de test ISOLÉE (ta vraie partie est intacte),
+// et on démarre directement dessus. Le placement zombies/événements est 100 % manuel.
+const CLE_EDITEUR = 'omd_editeur_v1';
+function demarrerModeTest(testId) {
+  let cartes = {};
+  try { cartes = JSON.parse(localStorage.getItem(CLE_EDITEUR) || '{}'); } catch (e) {}
+  const carteTest = cartes[testId];
+  if (!carteTest || !carteTest.cases) { toast('Carte de test introuvable — repasse par l\'éditeur.'); ecranTitre(); return; }
+  utiliserSauvegardeTest();      // toute sauvegarde ira sur la clé de TEST, jamais sur ta vraie partie
+  carteTest.editeur = true;      // garantit le placement manuel
+  CARTES[testId] = carteTest;    // injection en mémoire : le moteur lit la copie éditée
+  clearSave();
+  newGame('Testeur');
+  // Départ : la case fixée dans l'éditeur (_depart), sinon la 1re case déclarée.
+  let dep = carteTest._depart;
+  if (!dep || carteTest.cases[`${dep.x},${dep.y}`] == null) {
+    const k = Object.keys(carteTest.cases)[0] || '0,0';
+    const [x, y] = k.split(',').map(Number); dep = { x, y };
+  }
+  G.world.carte = testId; G.world.x = dep.x; G.world.y = dep.y;
+  partieTerminee = false;
+  save();
+  showHUD(true);
+  updateHUD();
+  demarrerAlertes();
+  banniereTest();
+  renderLieu();
+}
+function banniereTest() {
+  if (document.getElementById('test-banner')) return;
+  const b = document.createElement('button');
+  b.id = 'test-banner';
+  b.textContent = '◂ Retour éditeur (mode test)';
+  b.style.cssText = 'position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:9999;background:#1a1714;color:#c9b98a;border:1px solid #4f4636;border-radius:14px;padding:4px 12px;font-size:13px;cursor:pointer;font-family:inherit;';
+  b.onclick = () => { location.href = 'editeur.html'; };
+  document.getElementById('app').appendChild(b);
+}
+
 // ---------- Démarrage ----------
 lierHUD();
-ecranTitre();
+const paramTest = new URLSearchParams(location.search).get('test');
+if (paramTest) demarrerModeTest(paramTest);
+else ecranTitre();

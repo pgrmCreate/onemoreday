@@ -88,6 +88,10 @@ const SPECIALS_OK = ['fontaine', 'siphon', 'peche', 'chasse', 'cloches', 'cellul
 const MOBS_OK = ['lit', 'lits', 'comptoir', 'rayonnages', 'etageres', 'table', 'bureau', 'bancs',
   'fauteuils', 'casiers', 'cuisine', 'etabli', 'voiture', 'barreaux', 'tiroirs', 'ratelier',
   'palettes', 'plantes', 'machines', 'debris'];
+// Calque de dessin (cd.decor) : à garder en phase avec PREFABS dans js/art/prefabs.js
+const PREFABS_OK = ['lit', 'lit_double', 'lits', 'armoire', 'commode', 'bureau', 'chaise', 'table',
+  'canape', 'tapis', 'etagere', 'plante', 'wc', 'lavabo', 'baignoire', 'douche', 'evier',
+  'cuisiniere', 'frigo', 'cage_escalier'];
 const CIRCULATION = new Set(['couloir', 'escalier', 'porte']);
 
 function checkVerrou(v, ctx) {
@@ -119,6 +123,20 @@ for (const [cid, C] of Object.entries(CARTES)) {
     }
     if (cd.mob !== undefined && cd.mob !== null && !MOBS_OK.includes(cd.mob)) {
       err.push(`${ctx} : mobilier inconnu '${cd.mob}'`);
+    }
+    // Calque de dessin : prefabs posés (cd.decor), cloisons internes (cd.cloisons), creux (cd.creux)
+    if (cd.decor !== undefined) {
+      if (!Array.isArray(cd.decor)) err.push(`${ctx} : decor doit être un tableau`);
+      else for (const d of cd.decor) {
+        if (!PREFABS_OK.includes(d.p)) err.push(`${ctx} : prefab decor inconnu '${d.p}'`);
+        if (d.x == null || d.y == null || d.w == null || d.h == null) err.push(`${ctx} : decor '${d.p}' sans boîte x/y/w/h (0→1)`);
+      }
+    }
+    for (const w of cd.cloisons || []) {
+      if (w.x1 == null || w.y1 == null || w.x2 == null || w.y2 == null) err.push(`${ctx} : cloison sans segment x1/y1/x2/y2 (0→1)`);
+    }
+    for (const r of cd.creux || []) {
+      if (r.x == null || r.y == null || r.w == null || r.h == null) err.push(`${ctx} : creux sans boîte x/y/w/h (0→1)`);
     }
     for (const z of cd.zombies || []) if (!ZOMBIES[z]) err.push(`${ctx} : zombie inconnu '${z}'`);
     if (cd.fouille) {
