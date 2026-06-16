@@ -7,8 +7,57 @@ const os = require('os');
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 8420;
+const BIND_HOST = process.env.BIND_HOST || '0.0.0.0';
 const RACINE = __dirname;
 const DOSSIER_LOG = path.join(RACINE, 'log');
+const RATE_WINDOW_MS = 60 * 1000;
+const HTTP_RATE_LIMIT = Number(process.env.HTTP_RATE_LIMIT || 600);
+const API_LOG_RATE_LIMIT = Number(process.env.API_LOG_RATE_LIMIT || 60);
+const WS_UPGRADE_RATE_LIMIT = Number(process.env.WS_UPGRADE_RATE_LIMIT || 30);
+const WS_MAX_PER_IP = Number(process.env.WS_MAX_PER_IP || 20);
+const WS_MAX_TOTAL = Number(process.env.WS_MAX_TOTAL || 200);
+const WS_MAX_BUFFER_BYTES = Number(process.env.WS_MAX_BUFFER_BYTES || 65536);
+
+const httpRates = new Map();
+const apiLogRates = new Map();
+const wsUpgradeRates = new Map();
+const activeWsByIp = new Map();
+let activeWsTotal = 0;
+
+function adresseClient(req) {
+  const realIp = String(req.headers['x-real-ip'] || '').trim();
+  if (realIp) return realIp;
+  const forwarded = String(req.headers['x-forwarded-for'] || '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return forwarded[forwarded.length - 1] || req.socket.remoteAddress || 'unknown';
+}
+
+function autoriserDebit(map, key, limit, now = Date.now()) {
+  let state = map.get(key);
+  if (!state || now - state.startedAt >= RATE_WINDOW_MS) {
+    state = { count: 0, startedAt: now, lastSeen: now };
+    map.set(key, state);
+  }
+  state.count += 1;
+  state.lastSeen = now;
+  if (map.size > 1000) {
+    for (const [entryKey, entry] of map) {
+      if (now - entry.lastSeen > RATE_WINDOW_MS * 2) map.delete(entryKey);
+    }
+  }
+  return state.count <= limit;
+}
+
+function tropDeRequetes(res) {
+  res.writeHead(429, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'Retry-After': '60',
+  });
+  res.end('Trop de requetes');
+}
 
 // ---- Journaux de session (un fichier texte par partie, solo ou co-op) ----
 // Le navigateur POST /api/log { session, lines:[...] } : on écrit/complète
@@ -54,6 +103,12 @@ function adressesLan() {
 }
 
 const serveur = http.createServer((req, res) => {
+  const ip = adresseClient(req);
+  if (!autoriserDebit(httpRates, ip, HTTP_RATE_LIMIT)) {
+    tropDeRequetes(res);
+    return;
+  }
+
   let url = decodeURIComponent(req.url.split('?')[0]);
   if (url === '/') url = '/index.html';
   if (url === '/api/lan') {
@@ -79,6 +134,10 @@ const serveur = http.createServer((req, res) => {
   }
   // Journal de session : le navigateur dépose ses lignes ici (POST), on les écrit dans log/.
   if (url === '/api/log') {
+    if (!autoriserDebit(apiLogRates, ip, API_LOG_RATE_LIMIT)) {
+      tropDeRequetes(res);
+      return;
+    }
     if (req.method === 'OPTIONS') {
       res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' });
       res.end(); return;
@@ -145,6 +204,7 @@ function lireFrame(buf) {
   let off = 2;
   if (len === 126) { if (buf.length < off + 2) return null; len = buf.readUInt16BE(off); off += 2; }
   else if (len === 127) { if (buf.length < off + 8) return null; len = buf.readUInt32BE(off) * 4294967296 + buf.readUInt32BE(off + 4); off += 8; }
+  if (len > WS_MAX_BUFFER_BYTES) return { tooLarge: true, taille: buf.length };
   let mask = null;
   if (masked) { if (buf.length < off + 4) return null; mask = buf.slice(off, off + 4); off += 4; }
   if (buf.length < off + len) return null;
@@ -155,8 +215,10 @@ function lireFrame(buf) {
 function onWsData(socket, data) {
   const st = socket.wsState;
   st.buf = Buffer.concat([st.buf, data]);
+  if (st.buf.length > WS_MAX_BUFFER_BYTES) { try { socket.destroy(); } catch (e) {} return; }
   let frame;
   while ((frame = lireFrame(st.buf))) {
+    if (frame.tooLarge) { try { socket.destroy(); } catch (e) {} return; }
     st.buf = st.buf.slice(frame.taille);
     if (frame.opcode === 0x8) { quitterSalon(socket); try { socket.end(); } catch (e) {} return; } // close
     if (frame.opcode === 0x9) { try { socket.write(encoderFrame(frame.payload, 0xA)); } catch (e) {} continue; } // ping→pong
@@ -232,10 +294,46 @@ function quitterSalon(socket) {
     salons.delete(code);
   }
 }
+
+function refuserWs(socket, status, message) {
+  try {
+    socket.write(`HTTP/1.1 ${status} ${message}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
+  } catch (e) {}
+  try { socket.destroy(); } catch (e) {}
+}
+
+function compterWs(socket, ip) {
+  const current = activeWsByIp.get(ip) || 0;
+  if (activeWsTotal >= WS_MAX_TOTAL || current >= WS_MAX_PER_IP) return false;
+  activeWsByIp.set(ip, current + 1);
+  activeWsTotal += 1;
+  socket.wsIp = ip;
+  return true;
+}
+
+function libererWs(socket) {
+  if (socket.wsReleased) return;
+  socket.wsReleased = true;
+  activeWsTotal = Math.max(0, activeWsTotal - 1);
+  if (!socket.wsIp) return;
+  const current = activeWsByIp.get(socket.wsIp) || 0;
+  if (current <= 1) activeWsByIp.delete(socket.wsIp);
+  else activeWsByIp.set(socket.wsIp, current - 1);
+}
+
 serveur.on('upgrade', (req, socket) => {
   if ((req.url.split('?')[0]) !== '/ws') { socket.destroy(); return; }
+  const ip = adresseClient(req);
+  if (!autoriserDebit(wsUpgradeRates, ip, WS_UPGRADE_RATE_LIMIT)) {
+    refuserWs(socket, 429, 'Too Many Requests');
+    return;
+  }
+  if (!compterWs(socket, ip)) {
+    refuserWs(socket, 503, 'Service Unavailable');
+    return;
+  }
   const key = req.headers['sec-websocket-key'];
-  if (!key) { socket.destroy(); return; }
+  if (!key) { libererWs(socket); socket.destroy(); return; }
   socket.write([
     'HTTP/1.1 101 Switching Protocols', 'Upgrade: websocket', 'Connection: Upgrade',
     'Sec-WebSocket-Accept: ' + wsAccept(key), '\r\n',
@@ -243,8 +341,8 @@ serveur.on('upgrade', (req, socket) => {
   socket.setNoDelay(true);
   socket.wsState = { buf: Buffer.alloc(0), salon: null, role: null, nom: null, frag: null };
   socket.on('data', (d) => { try { onWsData(socket, d); } catch (e) { try { socket.destroy(); } catch (e2) {} } });
-  socket.on('close', () => quitterSalon(socket));
-  socket.on('error', () => quitterSalon(socket));
+  socket.on('close', () => { quitterSalon(socket); libererWs(socket); });
+  socket.on('error', () => { quitterSalon(socket); libererWs(socket); });
   socket._joinTimer = setTimeout(() => { if (!socket.wsState.salon) { try { socket.destroy(); } catch (e) {} } }, 30000);
 });
 // Battement régulier : garde les connexions ouvertes (NAT/proxies, utile en ligne).
@@ -263,20 +361,24 @@ serveur.on('error', (err) => {
   throw err;
 });
 
-serveur.listen(PORT, '0.0.0.0', () => {
+serveur.listen(PORT, BIND_HOST, () => {
   console.log('');
   console.log('  ╔══════════════════════════════════════════════╗');
   console.log('  ║            ONE MORE DAY — serveur            ║');
   console.log('  ╚══════════════════════════════════════════════╝');
   console.log('');
   console.log(`  Sur ce PC      : http://localhost:${PORT}`);
-  const ifaces = os.networkInterfaces();
-  for (const nom of Object.keys(ifaces)) {
-    for (const inf of ifaces[nom]) {
-      if (inf.family === 'IPv4' && !inf.internal) {
-        console.log(`  Sur Android    : http://${inf.address}:${PORT}   (même Wi-Fi)`);
+  if (BIND_HOST === '0.0.0.0' || BIND_HOST === '::') {
+    const ifaces = os.networkInterfaces();
+    for (const nom of Object.keys(ifaces)) {
+      for (const inf of ifaces[nom]) {
+        if (inf.family === 'IPv4' && !inf.internal) {
+          console.log(`  Sur Android    : http://${inf.address}:${PORT}   (même Wi-Fi)`);
+        }
       }
     }
+  } else {
+    console.log(`  Ecoute interne : ${BIND_HOST}:${PORT}`);
   }
   console.log('');
   console.log('  Android : ouvre l\'adresse dans Chrome, puis menu ⋮ → « Ajouter à l\'écran d\'accueil »');
