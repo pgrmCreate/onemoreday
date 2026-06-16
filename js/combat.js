@@ -16,6 +16,7 @@ import {
 } from './inventory.js';
 import { ajouterBlessure, mortJoueur } from './survival.js';
 import { render, updateHUD, showHUD, log, $ } from './ui.js';
+import { logLigne } from './sessionlog.js';
 import { ico } from './icons.js';
 import { svgCombatDecor, svgCombatZombie, pngZombie } from './illustrations.js';
 import { svgAmbiance, aAmbiance } from './ambiance.js';
@@ -208,6 +209,7 @@ function etatZombie() {
 function clog(html, cls = '') {
   if (!C) return; // le combat vient de se terminer : message silencieux
   C.logs.push(`<p class="${cls}">${html}</p>`);
+  logLigne('⚔ ' + String(html).replace(/<[^>]*>/g, '')); // détail du combat, coup par coup, dans le fichier de session
   if (C.logs.length > 40) C.logs.shift();
   const el = $('#cb-log-corps');
   if (el) { el.innerHTML = C.logs.join(''); el.scrollTop = el.scrollHeight; }
@@ -636,9 +638,9 @@ function frappeMelee(c) {
   if (performance.now() < (C.contreJusqua || 0)) pTouche += 0.22; // il est au sol de son élan : frappe !
   if (G.player.sta < 15) pTouche -= 0.15;
   if (arme.def && arme.def.allonge) pTouche += 0.05;
-  pTouche *= Math.min(1, 1 - 0.28 * c + agi * 0.035);
+  pTouche *= Math.min(1, 1 - 0.16 * c + agi * 0.035); // un coup chargé se voit venir, mais la marge reste mesurée
   if (enSurpoids()) pTouche *= (1 - 0.25 * surpoidsFacteur()); // le barda gêne aussi tes coups
-  if (chance(Math.max(0.12, pTouche))) {
+  if (chance(Math.max(0.2, pTouche))) {
     if (c >= 0.7) sfx('puissance');
     const crit = chance(0.08 + skillLevel('dexterite') * 0.02 + c * 0.18 + (C.aTerre ? ATERRE.bonusCrit : 0));
     let deg = Math.round(rng(arme.dmg[0], arme.dmg[1]) * (0.55 + 1.45 * c));
@@ -649,7 +651,7 @@ function frappeMelee(c) {
     effetZombie(crit ? 'z-crit' : 'z-impact');
     flashCombat(crit ? 'Critique !' : (C.aTerre ? 'Achevé' : 'Touché'), 'coup');
     if (c >= 0.7) clog('<span class="gore">Le coup part comme un fléau, tout ton poids derrière. Ça craque.</span>', 'coup');
-    C.z.menace = Math.max(0, C.z.menace - 0.3 * c); // un coup lourd le fait reculer (en plus du recul de base)
+    C.z.menace = Math.max(0, C.z.menace - 0.45 * c); // plus le coup est chargé, plus il recule (le recul de base, lui, est minime)
     const fini = infligerDegats(deg, crit, arme);
     // usure — frapper plus fort use plus (×(1+c) en moyenne), même sur le coup fatal
     if (arme.ref) {
@@ -678,7 +680,7 @@ function frappeMelee(c) {
     flashCombat('Manqué', '');
     if (c > 0.5) {
       clog('Trop téléphoné : il se déporte et ton coup laboure le vide. Tu titubes, déséquilibré.');
-      C.z.menace = Math.min(1, C.z.menace + 0.25 * c);
+      C.z.menace = Math.min(1, C.z.menace + 0.16 * c);
     } else {
       clog(`Ton coup fend l'air. ${leZombie(C.z.def.nom, true)} avance toujours.`);
     }
@@ -739,8 +741,8 @@ function infligerDegats(deg, crit, arme) {
   } else {
     clog(`Tu touches ${leZombie(C.z.def.nom)} (${arme.nom.toLowerCase()}). Il est ${etatZombie()}.`);
   }
-  // le choc le fait reculer un peu
-  C.z.menace = Math.max(0, C.z.menace - 0.15);
+  // le choc le fait reculer un tout petit peu (le gros du recul vient de la charge, cf. frappeMelee)
+  C.z.menace = Math.max(0, C.z.menace - 0.06);
   if (C.z.hp <= 0) zombieMort();
   return !C || C.fini;
 }

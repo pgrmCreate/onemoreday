@@ -4,6 +4,7 @@ import { poidsTotal, poidsMax, surcharge, enSurpoids } from './inventory.js';
 import { froidActuel } from './survival.js';
 import { ico } from './icons.js';
 import { setChrono } from './audio.js';
+import { logLigne } from './sessionlog.js';
 
 export const $ = (sel) => document.querySelector(sel);
 
@@ -97,6 +98,7 @@ export function setLieuLabel(txt) {
 export function log(texte, cls = '') {
   if (!G) return;
   G.log.push({ t: texte, c: cls, h: heureTxt() });
+  logLigne(texte); // double dans le fichier de session (dossier log/)
   if (G.log.length > 80) G.log.splice(0, G.log.length - 80);
   const div = $('#gamelog');
   if (div) { div.innerHTML = logHtml(); }

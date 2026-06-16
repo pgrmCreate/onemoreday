@@ -66,6 +66,13 @@ html, body {
 .poids-jauge.warn > i { background: linear-gradient(90deg, #b78a30, #d8b24a); }
 .poids-jauge.over > i { background: linear-gradient(90deg, #a32020, #e0392f); }
 
+/* Petites jauges horizontales dans le menu personnage (sac / corps) : un aperçu visuel
+   du poids et de l'espace, en complément des chiffres. Réutilise .poids-jauge. */
+.cap-jauges { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 10px; margin: -4px 0 10px; }
+.cap-jauges .cj { display: flex; align-items: center; gap: 6px; }
+.cap-jauges .cj-l { font-size: .72rem; color: var(--fg-dim); min-width: 42px; }
+.cap-jauges .poids-jauge { width: 84px; height: 7px; }
+
 /* ---------- États (façon Project Zomboid) : coin HAUT GAUCHE de l'écran ---------- */
 .moodles {
   position: fixed; left: 10px; top: 44px; z-index: 30;
@@ -82,11 +89,14 @@ html, body {
 }
 @keyframes moodle-in { from { opacity: 0; transform: translateX(8px); } }
 .moodle .ico { width: 1.3em; height: 1.3em; vertical-align: middle; }
+/* États : seuls les cas SÉRIEUX (orange n2, rouge n3/n4) clignotent, et LENTEMENT.
+   Un cas léger (n1, kaki) reste fixe. Clignotement doux et plus lent à mesure que c'est grave. */
 .moodle.n1 { color: #b9a96c; border-color: #4a4426; }
-.moodle.n2 { color: #c98a3d; border-color: #5c401d; }
-.moodle.n3 { color: #c4574a; border-color: #5e2118; }
-.moodle.n4 { color: #e0392f; border-color: var(--blood2); animation: moodle-in .25s ease-out, pulse 1.6s infinite; }
+.moodle.n2 { color: #c98a3d; border-color: #5c401d; animation: moodle-in .25s ease-out, moodle-pulse 3s ease-in-out infinite; }
+.moodle.n3 { color: #c4574a; border-color: #5e2118; animation: moodle-in .25s ease-out, moodle-pulse 2.6s ease-in-out infinite; }
+.moodle.n4 { color: #e0392f; border-color: var(--blood2); animation: moodle-in .25s ease-out, moodle-pulse 2.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .5; } }
+@keyframes moodle-pulse { 50% { opacity: .55; } }
 .moodle .mlabel { display: none; }
 .moodle:hover .mlabel, .moodle:active .mlabel, .moodles.labels .moodle .mlabel { display: inline; }
 

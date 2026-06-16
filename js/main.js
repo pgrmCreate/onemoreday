@@ -31,6 +31,7 @@ import { initAudio, playAmbiance, sfx, setMuted, isMuted, getVolume, setVolume, 
 import * as multi from './multi.js';
 import { SERVEUR_EN_LIGNE } from './data/serveur.js';
 import { majDisponible, appliquerMaj, versionAffichee } from './version.js';
+import { demarrerLog, finirLog } from './sessionlog.js';
 
 // La partie est-elle terminée (mort affichée, fin de chapitre, abandon) ?
 // Tant que c'est vrai, l'autosauvegarde est coupée pour ne jamais écraser
@@ -117,6 +118,7 @@ function ecranTitre() {
   showHUD(false);
   stopCombatMusic();
   setHeartbeat(false);
+  finirLog('retour au menu'); // clôt le fichier de log/ de la partie quittée
   multi.arreter(); // on quitte toute session co-op en revenant au titre
   stopperAlertes(); // pas de voile d'infection sur l'écran titre
   render(`
@@ -138,6 +140,7 @@ function ecranTitre() {
     continuer: () => {
       if (!load()) return toast('Sauvegarde illisible.');
       partieTerminee = false;
+      demarrerLog({ mode: 'solo', nom: G.player && G.player.nom }); // reprise : nouveau fichier de log/
       showHUD(true);
       updateHUD();
       demarrerAlertes();
@@ -182,6 +185,7 @@ function ecranNouvelle() {
     if (b.dataset.d === 'coop') return ecranCoop(nom);
     clearSave();
     newGame(nom);
+    demarrerLog({ mode: 'solo', nom }); // un fichier de log/ pour cette partie solo
     initPosition();
     partieTerminee = false;
     save();
@@ -332,6 +336,7 @@ function ecranCoopHote(nom) {
       if (!r.ok) { toast('Hébergement impossible : ' + (r.raison || 'serveur injoignable.')); return; }
       clearSave();
       newGame(nom);
+      demarrerLog({ mode: 'multi', role: 'host', code, nom }); // fichier de log/ côté hôte
       initPosition();
       partieTerminee = false;
       save();
@@ -360,6 +365,7 @@ function rejoindrePartie(code, nom, statut) {
     entre = true;
     G.world = JSON.parse(JSON.stringify(world)); // copie profonde du monde de l'hôte
     partieTerminee = false;
+    demarrerLog({ mode: 'multi', role: 'guest', code, nom }); // fichier de log/ côté invité
     save();
     showHUD(true);
     updateHUD();
@@ -648,6 +654,10 @@ function remplirInventaire(entete) {
   const sacEq = eq.sac ? cloth(eq.sac) : null;
   let html = `${entete}
     <p class="cap-line">Poids : <b class="${surcharge() ? 'over' : enSurpoids() ? 'warn' : ''}">${pt.toFixed(1)} / ${pm} kg</b>${enSurpoids() ? ` <small>(surpoids — plafond ${poidsPlafond()})</small>` : ''} — Espace : <b class="${eu > em ? 'over' : ''}">${eu} / ${em}</b></p>
+    <div class="cap-jauges">
+      <span class="cj"><span class="cj-l">Poids</span><span class="poids-jauge ${surcharge() ? 'over' : enSurpoids() ? 'warn' : ''}"><i style="width:${Math.max(0, Math.min(1, pm ? pt / pm : 0)) * 100}%"></i></span></span>
+      <span class="cj"><span class="cj-l">Espace</span><span class="poids-jauge ${eu > em ? 'over' : ''}"><i style="width:${Math.max(0, Math.min(1, em ? eu / em : 0)) * 100}%"></i></span></span>
+    </div>
     <p class="cap-line">Sac : <b>${sacEq ? sacEq.nom : 'aucun'}</b>${sacEq
       ? ` — espace +${sacEq.espace}, portage +${sacEq.portage || 0} kg`
       : ' — tes poches et tes bras, c\'est tout. Trouve ou fabrique un sac : chacun donne de l\'espace et du portage.'}</p>`;
@@ -756,7 +766,10 @@ function remplirPorter(entete) {
   const slotsAR = nbSlotsAccesRapide();
   const pt = poidsTotal(), pm = poidsMax();
   let html = `${entete}
-    <p class="cap-line">Poids : <b class="${surcharge() ? 'over' : enSurpoids() ? 'warn' : ''}">${pt.toFixed(1)} / ${pm} kg</b>${enSurpoids() ? ` <small>(surpoids)</small>` : ''} — Protection : <b>${protectionTotale()}</b> — Chaleur : <b>${chaleurTotale()}</b></p>`;
+    <p class="cap-line">Poids : <b class="${surcharge() ? 'over' : enSurpoids() ? 'warn' : ''}">${pt.toFixed(1)} / ${pm} kg</b>${enSurpoids() ? ` <small>(surpoids)</small>` : ''} — Protection : <b>${protectionTotale()}</b> — Chaleur : <b>${chaleurTotale()}</b></p>
+    <div class="cap-jauges">
+      <span class="cj"><span class="cj-l">Poids</span><span class="poids-jauge ${surcharge() ? 'over' : enSurpoids() ? 'warn' : ''}"><i style="width:${Math.max(0, Math.min(1, pm ? pt / pm : 0)) * 100}%"></i></span></span>
+    </div>`;
 
   // --- En main ---
   html += `<h3>En main</h3><div class="item-list">`;
@@ -1109,6 +1122,7 @@ window.addEventListener('omd-mort', (e) => {
   setHeartbeat(false);
   sfx('mort');
   playAmbiance('sombre');
+  finirLog(`mort (${cause}) — ${G.world.jour} jour(s) survécu(s), ${G.player.morts} zombie(s) abattu(s)`); // clôt le fichier de log/
   clearSave(); // permadeath : la mort efface la partie — il ne reste rien à reprendre
   render(`
     <div class="illu">${svgScene('mort')}</div>

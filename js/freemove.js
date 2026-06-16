@@ -20,7 +20,7 @@ import { autoDecor } from './art/prefabs.js';
 export const CS_LIBRE = 104;   // taille d'une case en pixels (plus grande qu'en mode tap : on bouge DEDANS)
 const GAP_L = 0, PAD_L = 6;
 export const RAYON = 9;        // rayon du rond joueur (collisions) — petit = moins de coincement, passages plus aisés
-const VITESSE = 130;           // pixels / seconde à pleine poussée (réduit : marche posée)
+const VITESSE = 110;           // pixels / seconde à pleine poussée (réduit : marche posée, plus calme)
 const DEAD = 0.30;             // zone morte caméra : fraction centrale de la fenêtre
 const PORTE_GAP = 17;          // demi-ouverture d'une porte de pièce pour la collision
 const CLOISON_GAP = 16;        // demi-ouverture d'une porte de cloison interne (salle de bain) — assez large pour entrer

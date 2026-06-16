@@ -8,6 +8,23 @@ const crypto = require('crypto');
 
 const PORT = process.env.PORT || 8420;
 const RACINE = __dirname;
+const DOSSIER_LOG = path.join(RACINE, 'log');
+
+// ---- Journaux de session (un fichier texte par partie, solo ou co-op) ----
+// Le navigateur POST /api/log { session, lines:[...] } : on écrit/complète
+// log/<session>.txt. `session` (nom du fichier) est assaini contre la traversée
+// de dossier. Best-effort : un souci d'écriture ne casse JAMAIS le serveur.
+function sainNom(s) { return String(s || '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 80); }
+function ecrireLog(session, lines) {
+  const nom = sainNom(session);
+  if (!nom || !Array.isArray(lines) || !lines.length) return;
+  try {
+    if (!fs.existsSync(DOSSIER_LOG)) fs.mkdirSync(DOSSIER_LOG, { recursive: true });
+    const fichier = path.join(DOSSIER_LOG, nom + '.txt');
+    if (!fichier.startsWith(DOSSIER_LOG)) return; // anti-traversée de dossier
+    fs.appendFile(fichier, lines.join('\n') + '\n', () => {});
+  } catch (e) { /* journaux best-effort */ }
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -58,6 +75,21 @@ const serveur = http.createServer((req, res) => {
     }
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ salons: liste }));
+    return;
+  }
+  // Journal de session : le navigateur dépose ses lignes ici (POST), on les écrit dans log/.
+  if (url === '/api/log') {
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' });
+      res.end(); return;
+    }
+    if (req.method !== 'POST') { res.writeHead(405, { 'Access-Control-Allow-Origin': '*' }); res.end(); return; }
+    let corps = '';
+    req.on('data', (d) => { corps += d; if (corps.length > 2e6) { corps = ''; req.destroy(); } }); // borne le corps
+    req.on('end', () => {
+      try { const o = JSON.parse(corps || '{}'); ecrireLog(o.session, o.lines); } catch (e) {}
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' }); res.end();
+    });
     return;
   }
   const fichier = path.normalize(path.join(RACINE, url));

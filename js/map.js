@@ -879,6 +879,31 @@ function contenuInterieurLibre(C, vis) {
     if (z.zfx == null || isNaN(z.zfx)) { const cc = centreCellule(C, z.x, z.y); z.zfx = cc.fx; z.zfy = cc.fy; }
     acteurs += `<g id="fm-z-${z.uid}" class="fm-z" transform="translate(${z.zfx},${z.zfy})">${pionZombie(-14, -14, 28, 1, z.dir, false)}</g>`;
   }
+  // OUÏE à travers une porte (même NON découverte) : tu entends le mort cogner avant de le voir.
+  // Un point rouge estompé, posé JUSTE derrière le battant (côté du mort), sans révéler le décor.
+  if (vivante) for (const z of zombies) {
+    if (z.faitLeMort) continue;
+    const zk = `${z.x},${z.y}`;
+    if (vis.has(zk) || connue(z.x, z.y)) continue; // visible, ou case déjà connue (point déjà géré dans la boucle)
+    if (distOuie(champOuie, z.x, z.y) > OUIE_JOUEUR) continue; // trop loin pour l'entendre
+    const x0 = L.colX[z.x], y0 = L.rowY[z.y], w = L.cwA[z.x], h = L.chA[z.y];
+    if (x0 == null || y0 == null) continue;
+    // Porte fermée entre le mort et toi : on vise le voisin (à travers la porte) le plus proche de toi.
+    let dir = null, meilleur = Infinity;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const li = liaison(G.world.carte, z.x, z.y, z.x + dx, z.y + dy);
+      if (li !== 'porte' && li !== 'porte_fer') continue;
+      const d = distOuie(champOuie, z.x + dx, z.y + dy);
+      if (d < meilleur) { meilleur = d; dir = [dx, dy]; }
+    }
+    let cx = x0 + w / 2, cy = y0 + h / 2;
+    if (dir) {
+      const [dx, dy] = dir, recul = Math.min(w, h) * 0.30;
+      if (dx === 1) cx = x0 + w; else if (dx === -1) cx = x0; else if (dy === 1) cy = y0 + h; else if (dy === -1) cy = y0;
+      cx -= dx * recul; cy -= dy * recul; // ramené dans la case du mort : juste derrière la porte
+    }
+    acteurs += `<circle class="zouie" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="#a83226"/>`;
+  }
   // Le rond joueur, à sa position continue — déplacé chaque frame par freemove.js.
   const joueur = `<g id="fm-joueur" class="joueur" transform="translate(${G.world.fx},${G.world.fy})">
     <circle r="9.5" fill="#c9b98a" stroke="#0b0b0c" stroke-width="2.2"/>
@@ -1820,8 +1845,8 @@ const APPROCHE_PX = 135;                  // distance à laquelle un mort en cha
 function vitesseZombiePx(z) {
   const def = zombieDef(z.id) || {};
   // « lent » (la majorité) traîne, « vif » (coureur/enragé/chien) presse — tous BIEN sous le joueur
-  // (130 px/s), pour qu'on puisse toujours les distancer et les esquiver.
-  return (def.vitesse || 9999) >= 6000 ? 40 : 66;
+  // (110 px/s), pour qu'on puisse toujours les distancer et les esquiver.
+  return (def.vitesse || 9999) >= 6000 ? 34 : 56;
 }
 function deplacerMortVers(z, tx, ty, dist, carteId, C) {
   let dx = tx - z.zfx, dy = ty - z.zfy; const n = Math.hypot(dx, dy);
@@ -2186,15 +2211,17 @@ function consequencesFouille(k, cd, aTatons) {
 
 // ---------- Puiser : remplir bouteilles et contenants à une source d'eau ----------
 // Sources reconnues : la case spéciale 'fontaine' (la Fontaine Moussue !), la
-// citerne SNCF du triage (lbl 'CITERNE'), ou la berge d'une case de terrain 'eau'
-// adjacente (canal, lavoir...). L'eau puisée est toujours CROUPIE : à bouillir.
+// citerne SNCF du triage (lbl 'CITERNE'), une case de terrain 'eau' (canal, lavoir...),
+// ou un POINT D'EAU intérieur (cellule marquée `eau: true` : salle de bain, lavabo,
+// cuisine...). Dans TOUS les cas on puise en étant DESSUS *ou* sur une case voisine
+// (utile quand le lavabo/les WC sont dans un coin de la chambre). L'eau est CROUPIE : à bouillir.
+function estSourceEau(c) {
+  return !!c && (c.special === 'fontaine' || c.lbl === 'CITERNE' || c.t === 'eau' || c.eau === true);
+}
 function accesEau(cd) {
-  if (!cd) return false;
-  if (cd.special === 'fontaine') return true;
-  if (cd.lbl === 'CITERNE') return true; // le château d'eau du triage (chapitre 2)
-  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-    const n = caseDef(G.world.carte, G.world.x + dx, G.world.y + dy);
-    if (n && n.t === 'eau') return true;
+  if (estSourceEau(cd)) return true;
+  for (const [nx, ny] of voisinsCandidats(G.world.carte, G.world.x, G.world.y)) {
+    if (estSourceEau(caseDef(G.world.carte, nx, ny))) return true;
   }
   return false;
 }

@@ -143,9 +143,14 @@ export function hasSave() { return !!localStorage.getItem(CLE_SAUVEGARDE); }
 export function clearSave() { localStorage.removeItem(CLE_SAUVEGARDE); }
 
 // ---------- Journal narratif ----------
+// Puits optionnel : le journal de session (js/sessionlog.js) s'y branche pour aussi
+// écrire les jalons narratifs dans le fichier de log, sans que state.js dépende de lui.
+let _journalSink = null;
+export function setJournalSink(fn) { _journalSink = fn; }
 export function noteJournal(texte) {
   if (!G) return;
   G.journal.push({ jour: G.world.jour, heure: G.world.heure, texte });
+  if (_journalSink) { try { _journalSink(texte); } catch (e) {} }
 }
 
 export function heureTxt() {

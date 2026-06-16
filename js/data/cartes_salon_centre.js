@@ -80,8 +80,9 @@ export const CARTES_SALON_CENTRE = {
     cases: {
       // ----- 2e étage -----
       '1,0': {
-        t: 'piece', nom: 'Chambre 201', lbl: '201', danger: 0.2,
+        t: 'piece', nom: 'Chambre 201', lbl: '201', danger: 0.2, eau: true,
         // Salle de bain dessinée DANS la chambre (coin haut-droit) : cloison + porte, sans case dédiée.
+        // `eau: true` : on peut puiser de l'eau (croupie) au lavabo/WC, depuis la chambre ou une case voisine.
         decor: [
           { p: 'lit', x: 0.1, y: 0.46, w: 0.4, h: 0.46 },
           { p: 'armoire', x: 0.1, y: 0.08, w: 0.32, h: 0.13 },
@@ -101,7 +102,7 @@ export const CARTES_SALON_CENTRE = {
         ] },
       },
       '2,0': {
-        t: 'piece', nom: 'Chambre 202', lbl: '202', danger: 0.15,
+        t: 'piece', nom: 'Chambre 202', lbl: '202', danger: 0.15, eau: true,
         // La chambre du couple : un lit DOUBLE, une commode, et sa salle de bain.
         decor: [
           { p: 'lit_double', x: 0.08, y: 0.46, w: 0.46, h: 0.46 },
@@ -121,7 +122,7 @@ export const CARTES_SALON_CENTRE = {
         ] },
       },
       '3,0': {
-        t: 'piece', nom: 'Ta chambre — la 203', lbl: 'Ta ch.', refuge: true, danger: 0,
+        t: 'piece', nom: 'Ta chambre — la 203', lbl: 'Ta ch.', refuge: true, danger: 0, eau: true,
         // Ton terrier : matelas au sol (contre la porte), un tapis, ta salle de bain.
         decor: [
           { p: 'lit', x: 0.1, y: 0.5, w: 0.4, h: 0.42 },
@@ -140,7 +141,7 @@ export const CARTES_SALON_CENTRE = {
         ] },
       },
       '4,0': {
-        t: 'piece', nom: 'Chambre 204', lbl: '204', danger: 0.3, sombre: 1,
+        t: 'piece', nom: 'Chambre 204', lbl: '204', danger: 0.3, sombre: 1, eau: true,
         decor: [
           { p: 'lit', x: 0.1, y: 0.46, w: 0.4, h: 0.46 },
           { p: 'armoire', x: 0.1, y: 0.08, w: 0.32, h: 0.13 },
@@ -228,7 +229,7 @@ export const CARTES_SALON_CENTRE = {
         ] },
       },
       '3,3': {
-        t: 'piece', nom: 'Cuisine de l\'hôtel', lbl: 'Cuisine', danger: 0.15,
+        t: 'piece', nom: 'Cuisine de l\'hôtel', lbl: 'Cuisine', danger: 0.15, eau: true,
         desc: 'Les fourneaux froids, la chambre froide entrouverte — tu as appris à ne plus l\'ouvrir. C\'est ici que tes vingt-trois jours de réserve ont fondu.',
         fouille: { max: 4, table: [
           { id: 'couteau_cuisine', q: [1, 1], p: 0.9 }, { id: 'casserole', q: [1, 1], p: 0.8 },

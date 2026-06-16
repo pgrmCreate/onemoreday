@@ -1,0 +1,4 @@
+# Journaux de session générés par le serveur local (un fichier .txt par partie).
+# Le dossier log/ et son README sont suivis ; les journaux eux-mêmes restent locaux.
+/log/*.txt
+!/log/README.txt
