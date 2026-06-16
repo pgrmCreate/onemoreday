@@ -3,4 +3,4 @@
 // tant que le jeu n'est pas déployé. BUILD_VERSION = numéro lisible (0.1, 0.2…),
 // incrémenté à chaque déploiement ; affiché sur l'écran titre.
 export const BUILD_SHA = 'dev';
-export const BUILD_VERSION = '0.2';
+export const BUILD_VERSION = '0.3';

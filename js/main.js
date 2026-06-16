@@ -100,6 +100,11 @@ function majBoutonsPleinEcran() {
   }
   const opt = $('[data-o="plein-ecran"]');
   if (opt) opt.firstChild.textContent = plein ? 'Quitter le plein écran' : 'Plein écran';
+  const fsJeu = $('#btn-fs-jeu');
+  if (fsJeu) {
+    fsJeu.innerHTML = ico(plein ? 'reduire_ecran' : 'plein_ecran');
+    fsJeu.title = plein ? 'Quitter le plein écran' : 'Plein écran';
+  }
 }
 document.addEventListener('fullscreenchange', majBoutonsPleinEcran);
 document.addEventListener('webkitfullscreenchange', majBoutonsPleinEcran);
@@ -419,6 +424,13 @@ function lierHUD() {
       fn();
     };
   }
+  // Plein écran depuis l'écran de jeu (topbar) : utilisable à tout moment, même en combat.
+  const fs = $('#btn-fs-jeu');
+  if (fs) {
+    if (!pleinEcranDispo()) fs.classList.add('hidden');
+    else { fs.onclick = () => { sfx('clic'); basculerPleinEcran(); }; }
+  }
+  majBoutonsPleinEcran();
 }
 
 // ---------- Inventaire PLEIN ÉCRAN : onglets Sac / Porter / Fabrication ----------

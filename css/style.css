@@ -48,9 +48,18 @@ html, body {
   font-size: .82rem; color: var(--fg-dim);
   text-transform: uppercase; letter-spacing: 1.5px;
 }
-.topbar .lieu { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar .lieu { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .topbar .heure { white-space: nowrap; color: var(--fg); }
 .tb-gauche { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tb-droite { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* Bouton plein écran intégré à la barre du jeu (en plus de celui de l'écran titre). */
+.tb-fs {
+  flex: none; width: 30px; height: 30px; border-radius: 8px; padding: 0;
+  background: rgba(255,255,255,.06); border: 1px solid var(--border); color: var(--fg-dim);
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+.tb-fs:hover { color: var(--fg); border-color: var(--rust); }
+.tb-fs .ico, .tb-fs svg { width: 18px; height: 18px; }
 /* Jauge de charge : fine barre horizontale, discrète, à côté de l'heure.
    Verte tant qu'on est sous la capacité, ambre en surpoids, rouge en surcharge. */
 .poids-jauge {
