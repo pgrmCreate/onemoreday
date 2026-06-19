@@ -1,6 +1,8 @@
 // ============ Icônes SVG ============
 // Trait monochrome, 24×24, style brut. Aucun émoji dans l'interface :
 // le monde est mort, pas mignon.
+import { ITEMS } from './data/items.js';
+
 const P = (d, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${extra}<path d="${d}"/></svg>`;
 
 export const ICONS = {
@@ -71,8 +73,107 @@ export const ICONS = {
   // Plein écran : entrer / sortir (flèches vers les coins, puis vers le centre)
   plein_ecran: P('M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5'),
   reduire_ecran: P('M9 4v5H4m16 0h-5V4M4 15h5v5m6 0v-5h5'),
+  // Chevron : ouvrir/fermer une ligne d'inventaire (pivote en CSS quand .open).
+  chevron: P('M7 10l5 5 5-5'),
+
+  // ---------- ARMES (un dessin par type tenu en main) ----------
+  // Main ouverte, doigts levés : se battre à mains nues.
+  mains_nues: P('M8 12V6.6a1.1 1.1 0 0 1 2.2 0V11M10.2 11V5.4a1.1 1.1 0 0 1 2.2 0V11M12.4 11V5.7a1.1 1.1 0 0 1 2.2 0V11.6M14.6 11.6V8.2a1.1 1.1 0 0 1 2.2 0v5.4a6 6 0 0 1-6 6 5.7 5.7 0 0 1-4.4-2.1L5 15.2a1.2 1.2 0 0 1 1.9-1.6L8 14.8'),
+  // Batte / club : un fût trapu, gros bout en haut, pommeau en bas.
+  batte: P('M5.3 18.7a1 1 0 0 1 0-1.4l1.7-1.7c3.3-3.3 4.5-4.7 6.8-5.3 1.4-.3 2.6 0 3.2.6s.9 1.8.6 3.2c-.6 2.3-2 3.5-5.3 6.8l-1.7 1.7a1 1 0 0 1-1.4 0z'),
+  // Masse de chantier : long manche + tête carrée.
+  masse: P('M4.6 19.4 12.5 11.5', '<rect x="11" y="3.8" width="8.6" height="5" rx="1" transform="rotate(45 15.3 6.3)"/>'),
+  // Lame longue (machette / sabre) : un grand fil incliné, garde et pommeau.
+  lame_longue: P('M4.5 19.5 16 8m0 0 2.5-2.5a1.4 1.4 0 0 0-2-2L14 6m2 2-2-2M6 18l-2 2m9.5-9.5 2 2'),
+  // Hache : manche + un fer en éventail au bout.
+  hache: P('M6 19 13.5 11.5c1.3-3.4 3.6-5 6.5-4.6.4 2.9-1.2 5.2-4.6 6.5L13.5 11.5M5 19l1.5 1.5'),
+  // Pied-de-biche : une barre coudée à crochet recourbé.
+  pied_biche: P('M7 4c-2 0-3.5 1.5-3.5 3.5S5 11 7 11m-1.2-1L17 21.2m1.8-1.8L7.5 8'),
+  // Clé à molette : mâchoires ouvertes, manche.
+  cle_molette: P('M16.5 4.2a4 4 0 0 0-5 5L4 16.7 7.3 20l7.5-7.5a4 4 0 0 0 5-5l-2.6 2.6-2.5-.4-.4-2.5 2.6-2.5z'),
+  // Lance : hampe + fer pointu.
+  lance: P('M5 19 13.5 10.5m0 0-1-3.8L16 3.5l1 3.5-3.2 3.2.7 0.3m0 0L20 6M5 19l1.5 1.5'),
+  // Marteau : manche + tête.
+  marteau: P('M6 19 12.5 12.5', '<path d="M9.2 9.3 13.6 4.9a1.4 1.4 0 0 1 2 0l2.4 2.4a1.4 1.4 0 0 1 0 2l-4.4 4.4-1.5-1.5"/>'),
+  // Tournevis : lame plate + manche.
+  tournevis: P('M4 20l1.6-4.6 7.4-7.4 3 3-7.4 7.4L4 20zm10.6-12.4 3-3a1.8 1.8 0 0 1 2.5 2.5l-3 3'),
+  // Fusil : crosse, fût et canon.
+  fusil: P('M3 8h13l4-1v3l-4 0v2h-3l-1 2h-2l1-2H6a3 3 0 0 1-3-3zm9 0v3'),
+  // Arbalète : arc, fût vertical et carreau.
+  arbalete: P('M12 4v12m0-12-3 2.5m3-2.5 3 2.5M5 9a6 6 0 0 0 14 0M12 16l-2 4h4z'),
+  // Brique : un parpaing au trait, joints de mortier.
+  brique: P('M4 8h16v8H4zM4 12h16M9 8v4m6-4v4m-3 4v-4'),
+  // Cocktail Molotov : bouteille + chiffon enflammé.
+  molotov: P('M10 3h4l-.4 2.4 1.9 4A5 5 0 0 1 17 12.4V16a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3v-3.6a5 5 0 0 1 1.5-3l1.9-4zM7.5 14h9M14 3l3-1'),
+
+  // ---------- catégories d'objets (pour la liste d'inventaire) ----------
+  // Goutte : un contenant d'eau.
+  goutte: P('M12 3.5s6 6.7 6 11.3a6 6 0 0 1-12 0C6 10.2 12 3.5 12 3.5zm-2.5 11.5a2.5 2.5 0 0 0 2.5 2.5'),
+  // Outil générique : clé + tournevis croisés (réutilise le motif du craft).
+  outil: P('M14.5 6.5a4 4 0 0 0-5.2 5.1l-5 5L7 19l5-5a4 4 0 0 0 5.1-5.2l-2.4 2.4-2.1-.6-.6-2.1zM4.2 20.3l1.5-1.5'),
+  // Matériau : des plaques empilées.
+  materiau: P('M4 7h16v4H4zM4 13h16v4H4zM7 7v4m6-4v4m-3 6v-4'),
+  // Munition : une balle (ogive + étui).
+  munition: P('M9.5 8.5 12 4l2.5 4.5v8.5a2.5 2.5 0 0 1-5 0zM9.5 11h5'),
+  // Clé : objet de quête (anneau + panneton).
+  cle: P('M12.8 12.8 19.5 19.5m-2-2-1.5 1.5m-1.5-4.5 1.5 1.5', '<circle cx="9" cy="9" r="4.5"/>'),
 };
 
 export function ico(name, cls = '') {
   return `<span class="ico ${cls}">${ICONS[name] || ICONS.oeil}</span>`;
+}
+
+// ---------- Icône d'une ARME tenue en main ----------
+// Chaque id d'arme pointe vers un dessin. Des armes proches partagent le même
+// (les couteaux → la lame ; battes/tuyau → le club…). Les mains nues ont la leur.
+const ARME_ICONES = {
+  couteau_cuisine: 'arme_blanche', couteau_artisanal: 'arme_blanche', couteau_lancer: 'arme_blanche',
+  batte_baseball: 'batte', batte_cloutee: 'batte', tuyau_acier: 'batte',
+  masse_chantier: 'masse',
+  machette: 'lame_longue', machette_aiguisee: 'lame_longue', sabre_cavalerie: 'lame_longue',
+  hache_pompier: 'hache',
+  pied_de_biche: 'pied_biche',
+  cle_molette: 'cle_molette',
+  lance_artisanale: 'lance', lance_renforcee: 'lance',
+  marteau: 'marteau', tournevis: 'tournevis',
+  pistolet_9mm: 'pistolet', fusil_chasse: 'fusil', arbalete_fortune: 'arbalete',
+  brique: 'brique', cocktail_molotov: 'molotov',
+  lampe_torche: 'lumiere', lampe_frontale: 'lumiere', torche: 'feu',
+};
+// Le NOM d'icône d'une arme (ou un repli si on ne la connaît pas). null → mains nues.
+export function iconeArme(id, repli = 'attaque') {
+  if (!id) return 'mains_nues';
+  return ARME_ICONES[id] || repli;
+}
+
+// ---------- Icône de catégorie d'un objet (liste d'inventaire) ----------
+const ICONE_TYPE = {
+  munition: 'munition', nourriture: 'manger', boisson: 'boire', soin: 'soin',
+  outil: 'outil', materiau: 'materiau', quete: 'cle', lore: 'journal', recipient: 'goutte',
+};
+// d : la définition de l'objet (peut venir d'ITEMS ou d'un vêtement). Tout ce qui frappe
+// (d.dmg) prend l'icône de son arme ; sinon on choisit par type / usage.
+export function iconeObjet(id, d) {
+  d = d || ITEMS[id];
+  if (!d) return 'sac';
+  if (d.dmg) return iconeArme(id, d.feu ? 'pistolet' : 'attaque');
+  if (d.slot) return 'porter';                                  // vêtement
+  if (id === 'radio_portable') return 'radio';
+  if (d.usage && d.usage.includes('lumiere')) return 'lumiere';
+  if (d.usage && d.usage.includes('feu')) return 'feu';
+  return ICONE_TYPE[d.type] || 'sac';
+}
+
+// Catégorie « couleur » d'un objet, pour la pastille de la liste (cf. CSS .cat-*).
+export function categorieObjet(id, d) {
+  d = d || ITEMS[id];
+  if (!d) return 'autre';
+  if (d.slot) return 'vetement';
+  if (d.dmg || d.type === 'arme' || d.type === 'munition') return 'arme';
+  if (d.type === 'nourriture') return 'nourriture';
+  if (d.type === 'boisson' || d.type === 'recipient') return 'eau';
+  if (d.type === 'soin') return 'soin';
+  if (d.type === 'outil') return 'outil';
+  if (d.type === 'quete') return 'quete';
+  return 'autre';
 }

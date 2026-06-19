@@ -2,7 +2,7 @@
 import { G, newGame, save, load, hasSave, clearSave, skillLevel, SKILLS, heureTxt, getFlag, setFlag, noteJournal, chance, utiliserSauvegardeTest } from './state.js';
 import { CARTES } from './data/world.js';
 import { render, updateHUD, showHUD, log, logHtml, btnAct, $, toast, showPanel, closePanel, panelOuvert, evtOuvert, closeEvt, attente } from './ui.js';
-import { ico, ICONS } from './icons.js';
+import { ico, ICONS, iconeObjet, categorieObjet } from './icons.js';
 import { svgScene } from './illustrations.js';
 import { item } from './data/items.js';
 import { cloth, CLOTHES, SLOTS } from './data/clothing.js';
@@ -657,6 +657,55 @@ function lierLampes(box) {
   });
 }
 
+// La « description rapide » d'un objet : une ligne d'infos tirées des DONNÉES (type,
+// dégâts, faim/soif, litres, état d'usure…), toujours visible dans la liste. La
+// description longue (narration) reste dans le repli, au tap. Voir invRow ci-dessous.
+function descCourte(d, it = {}) {
+  const p = [];
+  if (d.dmg) {
+    p.push(d.feu ? 'Arme à feu' : d.jetSeul ? 'Arme de jet' : d.allonge ? 'Arme d\'hast' : 'Arme');
+    p.push(`${d.dmg[0]}–${d.dmg[1]} dég`);
+    if (d.ammo) p.push(`${countItem(d.ammo)} mun.`);
+  } else if (d.slot) {
+    p.push('Vêtement');
+    if (d.protection) p.push(`prot. ${d.protection}`);
+  } else {
+    const L = { munition: 'Munition', nourriture: 'Nourriture', boisson: 'Boisson', soin: 'Soin', outil: 'Outil', materiau: 'Matériau', quete: 'Quête', lore: 'Objet', recipient: 'Contenant' };
+    p.push(L[d.type] || 'Objet');
+  }
+  if (d.faim) p.push(`+${d.faim} faim`);
+  if (d.soif) p.push(`${d.soif > 0 ? '+' : ''}${d.soif} soif`);
+  if (d.soin) p.push('soigne');
+  if (it.eau) p.push(descEau(it));
+  else if (d.contenance) p.push(`${fmtL(d.contenance)} L max`);
+  if (it.dur !== undefined && d.dur) p.push(`état ${Math.round(it.dur / d.dur * 100)}%`);
+  return p.join(' · ');
+}
+
+// Une LIGNE d'inventaire repliable : pastille d'icône colorée par catégorie + nom +
+// description rapide + poids (toujours visibles), et un repli (détail = description
+// longue + jauges + boutons) qui s'ouvre au tap. Sans `detail`, c'est une ligne plate.
+function invRow({ id, d, nom, court, droite, detail, cls = '', icone, cat }) {
+  cat = cat || categorieObjet(id, d);
+  icone = icone || iconeObjet(id, d);
+  const head = `<div class="inv-head"${detail ? ' data-toggle role="button" tabindex="0"' : ''}>
+      <span class="inv-ic cat-${cat}">${ico(icone)}</span>
+      <span class="inv-main"><span class="inv-nom">${nom}</span>${court ? `<span class="inv-court">${court}</span>` : ''}</span>
+      ${droite ? `<span class="inv-wt">${droite}</span>` : ''}
+      ${detail ? `<span class="inv-chev">${ico('chevron')}</span>` : ''}
+    </div>`;
+  return `<div class="inv-row ${cls}${detail ? '' : ' inv-flat'}">${head}${detail ? `<div class="inv-detail">${detail}</div>` : ''}</div>`;
+}
+
+// Branche le pli/dépli des lignes (un tap sur l'en-tête bascule .open ; pas de re-rendu).
+function lierLignes(box) {
+  box.querySelectorAll('.inv-head[data-toggle]').forEach(h => {
+    const bascule = () => { sfx('clic'); h.closest('.inv-row').classList.toggle('open'); };
+    h.onclick = bascule;
+    h.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bascule(); } };
+  });
+}
+
 // ---------- Onglet SAC : la liste des objets et la jauge poids/espace ----------
 function remplirInventaire(entete) {
   const inv = G.player.inventaire;
@@ -674,12 +723,11 @@ function remplirInventaire(entete) {
       ? ` — espace +${sacEq.espace}, portage +${sacEq.portage || 0} kg`
       : ' — tes poches et tes bras, c\'est tout. Trouve ou fabrique un sac : chacun donne de l\'espace et du portage.'}</p>`;
 
-  html += `<h3>Dans le sac</h3><div class="item-list">`;
+  html += `<h3>Dans le sac</h3><div class="inv-list">`;
   if (!inv.length) html += `<p class="cap-line">Ton sac est vide.</p>`;
   inv.forEach((it, i) => {
     const d = item(it.id) || cloth(it.id);
     if (!d) return;
-    const meta = `${it.eau ? descEau(it) + ' · ' : ''}${((d.poids || 0) * it.qty + (it.eau ? it.eau.L : 0)).toFixed(1)} kg · ${(d.espace || 0) * it.qty} esp.`;
     const estUneLampe = estLampe(it.id);
     let boutons = '';
     if (estUneLampe) boutons += boutonsLampe('sac:' + i, it, 'sac');
@@ -696,16 +744,19 @@ function remplirInventaire(entete) {
     boutons += `<button data-act="jeter" data-i="${i}">Jeter</button>`;
     const durBar = it.dur !== undefined && d.dur
       ? `<div class="dur-bar"><div class="dur-fill" style="width:${(it.dur / d.dur) * 100}%"></div></div>` : '';
-    html += `<div class="item-card">
-      <div class="item-line"><span class="item-nom">${d.nom}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}</span><span class="item-meta">${meta}</span></div>
-      <div class="item-desc">${d.desc}</div>${estUneLampe ? lampeInfo(it) : ''}${durBar}
-      <div class="item-btns">${boutons}</div>
-    </div>`;
+    const poids = ((d.poids || 0) * it.qty + (it.eau ? it.eau.L : 0)).toFixed(1);
+    const detail = `<p class="inv-desc">${d.desc}</p>${durBar}${estUneLampe ? lampeInfo(it) : ''}<div class="item-btns">${boutons}</div>`;
+    html += invRow({
+      id: it.id, d,
+      nom: `${d.nom}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}`,
+      court: descCourte(d, it), droite: `${poids} kg`, detail,
+    });
   });
   html += '</div>';
   const box = showPanel(html, { plein: true });
   lierContenants(box);
   lierLampes(box);
+  lierLignes(box);
   box.querySelectorAll('[data-act]').forEach(b => {
     b.onclick = () => {
       const i = parseInt(b.dataset.i, 10);
@@ -784,64 +835,65 @@ function remplirPorter(entete) {
     </div>`;
 
   // --- En main ---
-  html += `<h3>En main</h3><div class="item-list">`;
+  html += `<h3>En main</h3><div class="inv-list">`;
   if (eq.arme) {
     const d = item(eq.arme.id);
     const cont = estContenant(eq.arme.id);
-    const meta = eq.arme.eau ? descEau(eq.arme)
-      : d.dmg ? `${d.dmg[0]}–${d.dmg[1]} dégâts`
-      : cont ? `vide — ${fmtL(contenance(eq.arme.id))} L` : '';
     const lampeEnMain = estLampe(eq.arme.id);
-    html += `<div class="item-card equipped">
-      <div class="item-line"><span class="item-nom">${d.nom}</span><span class="item-meta">${meta}</span></div>
-      ${d.dur && eq.arme.dur !== undefined ? `<div class="dur-bar"><div class="dur-fill" style="width:${(eq.arme.dur / d.dur) * 100}%"></div></div>` : ''}
-      ${lampeEnMain ? lampeInfo(eq.arme) : ''}
-      <div class="item-btns">
-        ${lampeEnMain ? boutonsLampe('main', eq.arme, 'main') : ''}
-        ${cont ? boutonsContenant('main', eq.arme) : ''}
-        ${cont && eq.arme.eau && recipientOuvert(eq.arme.id) ? `<button data-poser-main="1">Poser au sol</button>` : ''}
-        <button data-deq="arme">Ranger dans le sac</button>
-      </div></div>`;
+    let boutons = '';
+    if (lampeEnMain) boutons += boutonsLampe('main', eq.arme, 'main');
+    if (cont) boutons += boutonsContenant('main', eq.arme);
+    if (cont && eq.arme.eau && recipientOuvert(eq.arme.id)) boutons += `<button data-poser-main="1">Poser au sol</button>`;
+    boutons += `<button data-deq="arme">Ranger dans le sac</button>`;
+    const durBar = d.dur && eq.arme.dur !== undefined
+      ? `<div class="dur-bar"><div class="dur-fill" style="width:${(eq.arme.dur / d.dur) * 100}%"></div></div>` : '';
+    const poids = ((d.poids || 0) + (eq.arme.eau ? eq.arme.eau.L : 0)).toFixed(1);
+    const detail = `<p class="inv-desc">${d.desc}</p>${durBar}${lampeEnMain ? lampeInfo(eq.arme) : ''}<div class="item-btns">${boutons}</div>`;
+    html += invRow({ id: eq.arme.id, d, nom: d.nom, court: descCourte(d, eq.arme), droite: `${poids} kg`, detail, cls: 'equipped' });
   } else {
-    html += `<div class="item-card"><div class="item-line"><span class="item-nom">Rien</span></div>
-      <div class="item-desc">Équipe une arme depuis le sac — ou porte un récipient ouvert plein d'eau, à deux mains, en priant pour ne croiser personne.</div></div>`;
+    html += invRow({
+      icone: 'mains_nues', cat: 'arme', nom: 'Mains nues', court: 'Rien en main — tu frappes à mains nues',
+      detail: `<p class="inv-desc">Équipe une arme depuis le sac — ou porte un récipient ouvert plein d'eau, à deux mains, en priant pour ne croiser personne.</p>`,
+    });
   }
   html += `</div>`;
 
   // --- Vêtements portés ---
-  html += `<h3>Sur toi</h3><div class="item-list">`;
+  html += `<h3>Sur toi</h3><div class="inv-list">`;
   for (const [slot, nomSlot] of Object.entries(SLOTS)) {
     const id = eq[slot];
     if (id) {
       const c = cloth(id);
-      html += `<div class="item-card equipped">
-        <div class="item-line"><span class="item-nom">${nomSlot} : ${c.nom}</span>
-        <span class="item-meta">${c.poids} kg · prot. ${c.protection}${c.espace ? ' · espace +' + c.espace : ''}${c.portage ? ' · portage +' + c.portage + ' kg' : ''}${c.accesRapide ? ' · accès rapide +' + c.accesRapide : ''}</span></div>
-        <div class="item-btns"><button data-deq="${slot}">Retirer</button>${c.tissu ? `<button data-dech-eq="${slot}">Déchirer (${c.tissu} chiffon${c.tissu > 1 ? 's' : ''})</button>` : ''}</div></div>`;
+      let boutons = `<button data-deq="${slot}">Retirer</button>`;
+      if (c.tissu) boutons += `<button data-dech-eq="${slot}">Déchirer (${c.tissu} chiffon${c.tissu > 1 ? 's' : ''})</button>`;
+      const court = `${c.poids} kg · prot. ${c.protection}${c.espace ? ' · espace +' + c.espace : ''}${c.portage ? ' · portage +' + c.portage + ' kg' : ''}${c.accesRapide ? ' · accès +' + c.accesRapide : ''}`;
+      const detail = `${c.desc ? `<p class="inv-desc">${c.desc}</p>` : ''}<div class="item-btns">${boutons}</div>`;
+      html += invRow({ id, d: c, nom: `${nomSlot} : ${c.nom}`, court, detail, cls: 'equipped' });
     } else {
-      html += `<div class="item-card"><div class="item-line"><span class="item-nom">${nomSlot} : —</span></div></div>`;
+      html += invRow({ icone: 'porter', cat: 'vetement', nom: `${nomSlot} : —`, court: 'rien' });
     }
   }
   html += `</div>`;
 
   // --- Accès rapide ---
-  html += `<h3>Accès rapide — ${ar.length}/${slotsAR} emplacement${slotsAR > 1 ? 's' : ''}</h3><div class="item-list">`;
+  html += `<h3>Accès rapide — ${ar.length}/${slotsAR} emplacement${slotsAR > 1 ? 's' : ''}</h3><div class="inv-list">`;
   if (!slotsAR) html += `<p class="cap-line">Aucun emplacement : trouve une <b>ceinture</b>, un holster ou un gilet. Sans ça, en combat, tu te bats avec ce que tu as en main.</p>`;
   else if (!ar.length) html += `<p class="cap-line">Vide. Seuls les objets d'accès rapide sont utilisables en combat.</p>`;
   ar.forEach((it, i) => {
     const d = defItem(it.id);
     if (!d) return;
     const lampeAR = estLampe(it.id);
-    html += `<div class="item-card acces-rapide">
-      <div class="item-line"><span class="item-nom">${d.nom}</span><span class="item-meta">${it.eau ? descEau(it) : d.dmg ? `${d.dmg[0]}–${d.dmg[1]} dégâts` : (d.type || '')}</span></div>
-      ${lampeAR ? lampeInfo(it) : ''}
-      <div class="item-btns">${lampeAR ? boutonsLampe('ar:' + i, it, 'ar') : ''}<button data-ar-retire="${i}">Remettre dans le sac</button></div></div>`;
+    let boutons = lampeAR ? boutonsLampe('ar:' + i, it, 'ar') : '';
+    boutons += `<button data-ar-retire="${i}">Remettre dans le sac</button>`;
+    const detail = `${d.desc ? `<p class="inv-desc">${d.desc}</p>` : ''}${lampeAR ? lampeInfo(it) : ''}<div class="item-btns">${boutons}</div>`;
+    html += invRow({ id: it.id, d, nom: d.nom, court: descCourte(d, it), detail, cls: 'acces-rapide' });
   });
   html += `</div>`;
 
   const box = showPanel(html, { plein: true });
   lierContenants(box);
   lierLampes(box);
+  lierLignes(box);
   box.querySelectorAll('[data-deq]').forEach(b => {
     b.onclick = () => {
       const slot = b.dataset.deq;

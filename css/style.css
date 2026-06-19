@@ -466,6 +466,46 @@ b.code, .code {
 .dur-bar { height: 3px; background: #000; border-radius: 1px; overflow: hidden; margin-top: 2px; }
 .dur-fill { height: 100%; background: var(--olive); }
 
+/* ---------- Inventaire en LISTE repliable (pensé mobile d'abord) ---------- */
+/* Lignes UNIFORMES : pastille d'icône (couleur = catégorie) + nom + description
+   rapide + poids, toujours visibles → on voit tous les objets d'un coup. Un tap
+   déplie le détail (description longue + jauges + boutons). Plus de cartes inégales. */
+.inv-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 4px; }
+.inv-row { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.inv-row.equipped { border-left: 3px solid var(--rust); }
+.inv-row.acces-rapide { border-left: 3px solid var(--steel); }
+.inv-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; min-height: 54px; }
+.inv-row:not(.inv-flat) .inv-head { cursor: pointer; }
+.inv-row:not(.inv-flat) .inv-head:hover { background: rgba(255,255,255,.03); }
+.inv-flat { opacity: .65; }
+.inv-ic {
+  flex: none; width: 38px; height: 38px; border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.05); color: var(--fg-dim);
+}
+.inv-ic .ico { width: 22px; height: 22px; }
+.inv-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.inv-nom { font-size: .95rem; color: var(--fg); }
+.inv-nom .qty { color: #c9b98a; font-size: .8rem; }
+.inv-court { font-size: .74rem; color: var(--fg-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inv-wt { flex: none; font-size: .74rem; color: var(--fg-dim); white-space: nowrap; }
+.inv-chev { flex: none; color: var(--fg-dim); display: flex; transition: transform .18s ease; }
+.inv-chev .ico { width: 18px; height: 18px; }
+.inv-row.open .inv-chev { transform: rotate(180deg); }
+.inv-detail { display: none; padding: 0 10px 10px 12px; }
+.inv-row.open .inv-detail { display: block; }
+.inv-desc { font-size: .8rem; color: var(--fg-dim); font-style: italic; line-height: 1.5; margin: 0 0 8px; }
+.inv-detail .item-btns { margin-top: 0; }
+/* Pastilles de catégorie : une couleur = un type (en accord avec la légende). */
+.cat-arme       { background: rgba(163,32,32,.16);   color: #d06a60; }
+.cat-nourriture { background: rgba(86,88,63,.24);    color: #9fae6e; }
+.cat-eau        { background: rgba(68,80,90,.30);    color: #8fb0c4; }
+.cat-soin       { background: rgba(38,110,90,.20);   color: #5fbf9e; }
+.cat-outil      { background: rgba(138,90,40,.22);   color: #c79256; }
+.cat-quete      { background: rgba(201,162,39,.16);  color: #d8bf63; }
+.cat-vetement   { background: rgba(120,116,106,.20); color: #b4ab97; }
+.cat-autre      { background: rgba(255,255,255,.05); color: var(--fg-dim); }
+
 /* ---------- Corps / compétences ---------- */
 .skill-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
 .skill-nom { flex: 1; font-size: .9rem; }
@@ -610,6 +650,40 @@ b.code, .code {
 .cb-esquive { width: 56px; height: 56px; }
 .cb-esquive .ico { width: 26px; height: 26px; }
 .cb-defense.actif { border-color: var(--steel); background: rgba(20,30,38,.5); box-shadow: 0 0 16px rgba(68,80,90,.5); }
+/* Repère lisible de la GARDE : plus elle est haute, plus les dégâts baissent. */
+.cb-def-info {
+  min-height: 14px; font-size: .72rem; color: #aeb6c0; text-align: center;
+  font-family: 'Arial Narrow', sans-serif; letter-spacing: .3px;
+  text-shadow: 0 1px 3px #000; pointer-events: none;
+}
+
+/* --- HUD haut-gauche : ARME EN MAIN + ALLIÉ présent (co-op) --- */
+.cb-hud-tl {
+  position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; z-index: 6;
+  display: flex; flex-direction: column; gap: 8px; max-width: 46%; pointer-events: none;
+}
+.cb-arme-main, .cb-allie {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(10,10,12,.5); border: 1px solid rgba(200,194,180,.3); border-radius: 6px;
+  padding: 5px 9px 5px 6px; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.cb-arme-main:empty, .cb-allie-wrap:empty { display: none; }
+.cb-arme-ic, .cb-allie-ic {
+  flex: none; width: 30px; height: 30px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.06); color: var(--fg);
+}
+.cb-arme-ic .ico, .cb-allie-ic .ico { width: 20px; height: 20px; }
+.cb-arme-txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.cb-arme-txt b { font-size: .82rem; color: var(--fg); font-weight: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cb-arme-txt small { font-size: .68rem; color: var(--fg-dim); }
+.cb-allie { border-color: rgba(90,150,90,.5); }
+.cb-allie-txt { font-size: .76rem; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cb-allie.tier-ok .cb-allie-ic { color: #7fb069; }
+.cb-allie.tier-amoche { border-color: rgba(184,138,48,.55); }
+.cb-allie.tier-amoche .cb-allie-ic { color: #d8b24a; }
+.cb-allie.tier-critique { border-color: rgba(163,32,32,.6); animation: pulse 1s infinite; }
+.cb-allie.tier-critique .cb-allie-ic { color: #d06a60; }
 .cb-acces {
   position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
   display: flex; gap: 10px; z-index: 6; max-width: 70%; flex-wrap: wrap; justify-content: center;

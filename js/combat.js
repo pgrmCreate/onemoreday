@@ -17,7 +17,7 @@ import {
 import { ajouterBlessure, mortJoueur } from './survival.js';
 import { render, updateHUD, showHUD, log, $ } from './ui.js';
 import { logLigne } from './sessionlog.js';
-import { ico } from './icons.js';
+import { ico, iconeArme } from './icons.js';
 import { svgCombatDecor, svgCombatZombie, pngZombie } from './illustrations.js';
 import { svgAmbiance, aAmbiance } from './ambiance.js';
 import { startCombatMusic, stopCombatMusic, sfx, setHeartbeat } from './audio.js';
@@ -92,6 +92,9 @@ export function demarrerCombat(zombieIds, opts = {}) {
   if (multi.estMulti()) {
     if (!C.enc) C.enc = 'e' + Math.floor(Math.random() * 1e9);
     multi.diffuserPosition({ enCombat: true, combat: { ids: [C.z.id, ...C.queue], enc: C.enc } });
+    // J'arrive en renfort sur la rencontre du coéquipier : je le préviens (il verra
+    // « X t'a rejoint »). Le signal 'rejoint' n'était jamais émis jusqu'ici.
+    if (opts.rejointPair) multi.diffuserCombat({ sub: 'rejoint', enc: C.enc, nom: G.player.nom });
   }
 }
 
@@ -307,6 +310,8 @@ function majBarres() {
     zhp.style.width = (rz * 100) + '%';
     zhp.classList.toggle('bas', rz < 0.3);
   }
+  majArmeMain();   // l'arme en main (peut changer si on dégaine la ceinture)
+  majAllie();      // le coéquipier qui se bat avec toi (co-op, état live)
   updateHUD();
   // État des boutons ronds selon l'endurance — pendant une charge, une frappe en vol
   // ou un autre bouton maintenu, on n'arme rien d'autre.
@@ -847,6 +852,9 @@ function majAnneauDefense() {
   if (!btn) return;
   const prog = btn.querySelector('.cb-ring-prog');
   const d = C && C.def;
+  // Repère lisible : plus la garde est haute, plus les dégâts encaissés baissent.
+  const info = $('#cb-def-info');
+  if (info) info.textContent = !d ? '' : d.collapsed ? 'Garde rompue !' : `Garde ${Math.round(d.c * 100)}% · −${Math.round(DEFENSE.reducMax * d.c * 100)}% dégâts`;
   if (!d) {
     if (prog) prog.style.strokeDashoffset = ANNEAU_CIRC;
     btn.classList.remove('chg-active', 'chg-pleine', 'chg-plafond', 'actif');
@@ -1098,7 +1106,7 @@ function accesHTML() {
   let h = '';
   armesDisponibles().forEach(a => {
     const cout = a.jet ? COUTS.jeter : COUTS.changer;
-    const ic = a.jet ? 'jeter' : (a.def.feu ? 'pistolet' : 'attaque');
+    const ic = a.jet ? 'jeter' : iconeArme(a.id, a.def.feu ? 'pistolet' : 'attaque');
     const mun = a.def.ammo ? `<span class="cb-acc-n">${countItem(a.def.ammo)}</span>` : '';
     h += `<button class="cbtn cb-acc" data-act="acces" data-idx="${a.idx}" data-cout="${cout}" title="${a.jet ? 'Lancer' : 'Dégainer'} : ${a.def.nom}">${ringMarkup()}<span class="cb-ic">${ico(ic)}</span>${mun}</button>`;
   });
@@ -1108,10 +1116,43 @@ function accesHTML() {
   return h;
 }
 
+// ---------- Repère « arme en main » (coin haut-gauche) ----------
+// Dessin de l'arme tenue (ou une MAIN si l'on se bat à mains nues) + nom + état/munitions.
+function contenuArmeMain() {
+  const a = infoArme();
+  const icone = a.mains ? 'mains_nues' : iconeArme(a.ref ? a.ref.id : null, a.feu ? 'pistolet' : 'attaque');
+  let sous = `${a.dmg[0]}–${a.dmg[1]} dég`;
+  if (a.feu && a.ref) sous += ` · ${munitionsPour(a.ref.id)} mun.`;
+  else if (!a.mains && a.def && a.def.dur && a.ref && a.ref.dur !== undefined) sous += ` · état ${Math.round(a.ref.dur / a.def.dur * 100)}%`;
+  return `<span class="cb-arme-ic">${ico(icone)}</span><span class="cb-arme-txt"><b>${a.nom}</b><small>${sous}</small></span>`;
+}
+function majArmeMain() {
+  const el = $('#cb-arme-main'); if (!el) return;
+  const h = contenuArmeMain();
+  if (el._h !== h) { el.innerHTML = h; el._h = h; }
+}
+
+// ---------- Repère « allié présent » (co-op) ----------
+// Quand le coéquipier se bat aussi : un bandeau vert/ambre/rouge selon son état.
+function contenuAllie() {
+  if (!multi.estMulti()) return '';
+  const p = multi.pairEtat();
+  if (!p || !p.enCombat) return '';
+  const meme = !!(p.combat && C && p.combat.enc === C.enc);
+  const tier = p.pvTier || 'ok';
+  const nom = p.nom || multi.nomPair() || 'Ton allié';
+  return `<div class="cb-allie tier-${tier}"><span class="cb-allie-ic">${ico('corps')}</span><span class="cb-allie-txt">${nom} ${meme ? 'se bat à tes côtés' : 'se bat aussi'}</span></div>`;
+}
+function majAllie() {
+  const el = $('#cb-allie-wrap'); if (!el) return;
+  const h = contenuAllie();
+  if (el._h !== h) { el.innerHTML = h; el._h = h; }
+}
+
 function renderCombat() {
   showHUD(false); // le combat est une page à part : aucun bouton du mode déplacement
   const arme = infoArme();
-  const armeIco = arme.feu ? 'pistolet' : 'attaque';
+  const armeIco = arme.mains ? 'attaque' : iconeArme(arme.ref ? arme.ref.id : null, arme.feu ? 'pistolet' : 'attaque');
   const fuitePossible = C.opts.fuitePossible !== false;
   const html = `
   <div class="cb">
@@ -1124,6 +1165,12 @@ function renderCombat() {
     </div>
     <div class="cb-sta-wrap"><div class="cb-sta-fill" id="cb-sta"></div></div>
 
+    <!-- Coin haut-gauche : ce que tu tiens en main + le coéquipier qui se bat avec toi -->
+    <div class="cb-hud-tl">
+      <div class="cb-arme-main" id="cb-arme-main"></div>
+      <div class="cb-allie-wrap" id="cb-allie-wrap"></div>
+    </div>
+
     <!-- Santé du zombie : barre horizontale en bas, au centre -->
     <div class="cb-zhp-wrap" id="cb-zhp-wrap" aria-label="Santé de l'adversaire">
       <div class="cb-zhp-fill" id="cb-zhp"></div>
@@ -1134,6 +1181,7 @@ function renderCombat() {
 
     <div class="cb-defense-col">
       ${fuitePossible ? `<button class="cbtn small cb-fuir" data-act="fuir" data-cout="${COUTS.fuir}" title="Fuir (maintenir)">${ringMarkup()}<span class="cb-ic">${ico('fuir')}</span></button>` : ''}
+      <div class="cb-def-info" id="cb-def-info" aria-live="polite"></div>
       <div class="cb-def-row">
         <button class="cbtn big cb-defense chg-btn" data-act="defense" data-cout="0" title="Se défendre — maintenir pour charger la garde">${ringMarkup()}<span class="cb-ic">${ico('defense')}</span></button>
         <button class="cbtn cb-esquive" data-act="esquiver" data-cout="${COUTS.esquive}" title="Esquiver — un pas de côté quand il se jette sur toi">${ico('esquiver')}</button>

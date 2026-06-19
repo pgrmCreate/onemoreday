@@ -263,12 +263,24 @@ function frame(now) {
     etat.last = now;
     if (etat.actif()) {
       const ax = G.world.x, ay = G.world.y;
-      if (avancer(dt)) {
+      const bougea = avancer(dt);
+      if (bougea) {
         const C = carteCourante();
         const cell = celluleEn(C, G.world.fx, G.world.fy);
         if (cell.x !== ax || cell.y !== ay) {
           G.world.x = cell.x; G.world.y = cell.y;
           if (etat.onCellChange) etat.onCellChange(cell.x, cell.y, ax, ay);
+        }
+      }
+      // Co-op : je diffuse ma position FINE pendant le glissement (~8×/s), plus une dernière
+      // fois quand je m'arrête. Sans ça, le coéquipier me voit figé puis « téléporter » d'un coup.
+      if (etat.onPos) {
+        if (bougea) {
+          etat.bougeait = true;
+          etat.posAcc += dt;
+          if (etat.posAcc >= 0.12) { etat.posAcc = 0; etat.onPos(); }
+        } else if (etat.bougeait) {
+          etat.bougeait = false; etat.posAcc = 0; etat.onPos();
         }
       }
       // Le monde « continu » respire chaque frame : déplacement fluide des morts, contact des ronds…
@@ -284,7 +296,7 @@ function frame(now) {
 }
 
 // ---------- Démarrage / arrêt ----------
-// opts = { dessiner:()=>string (contenu de #fm-cam), onCellChange:(x,y,ax,ay), actif:()=>bool }
+// opts = { dessiner:()=>string (contenu de #fm-cam), onCellChange:(x,y,ax,ay), onFrame:(dt), onPos:(), actif:()=>bool }
 export function demarrerFreemove(opts) {
   arreterFreemove();
   const C = carteCourante();
@@ -309,7 +321,8 @@ export function demarrerFreemove(opts) {
 
   etat = {
     wrap, svg, joyEl,
-    dessiner: opts.dessiner, onCellChange: opts.onCellChange, onFrame: opts.onFrame, actif: opts.actif || (() => true),
+    dessiner: opts.dessiner, onCellChange: opts.onCellChange, onFrame: opts.onFrame, onPos: opts.onPos, actif: opts.actif || (() => true),
+    posAcc: 0, bougeait: false,
     camX: 0, camY: 0, vw: 0, vh: 0, last: 0,
     joy: { actif: false, id: null, ox: 0, oy: 0, dx: 0, dy: 0, mag: 0 },
   };

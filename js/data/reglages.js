@@ -51,6 +51,19 @@ export const REGLAGES = {
   },
 
   // ===========================================================================
+  //  LES ÉVÉNEMENTS ALÉATOIRES  (js/data/events*.js, posés par js/map.js)
+  // ===========================================================================
+  // Les événements « surgissent » en marchant sur une case dangereuse (grattement
+  // derrière une cloison, voix dans l'escalier…). Tant qu'on n'a pas de repère
+  // spatial clair (QUELLE porte ?), ils tombent au hasard et désorientent : on les
+  // met EN PAUSE. Les événements posés À LA MAIN dans l'éditeur (cd.evEd) continuent
+  // de fonctionner — eux sont placés exprès. Repasse AUTO à true pour réactiver le
+  // semis automatique selon le danger des cases.
+  events: {
+    AUTO: false,          // false = AUCUN événement aléatoire (semis auto désactivé) ; true = comme avant.
+  },
+
+  // ===========================================================================
   //  LES MORTS EN TEMPS RÉEL SUR LA CARTE  (js/zombies_map.js)
   // ===========================================================================
   // Les morts errent, te repèrent (cône de vue / ouïe), te poursuivent et, au

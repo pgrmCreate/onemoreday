@@ -69,7 +69,7 @@ function envoyerMonde() { net.envoyer({ t: 'monde', world: G.world, nom: G.playe
 export function diffuserPosition(extra = {}) {
   if (!actif) return;
   net.envoyer({
-    t: 'pos', carte: G.world.carte, x: G.world.x, y: G.world.y, nom: G.player.nom, pvTier: pvTier(),
+    t: 'pos', carte: G.world.carte, x: G.world.x, y: G.world.y, fx: G.world.fx, fy: G.world.fy, nom: G.player.nom, pvTier: pvTier(),
     lampe: lumiereActive(), rayonLampe: rayonLumiere(), ...extra,
   });
 }
@@ -161,7 +161,7 @@ function recevoir(m) {
       break;
     case 'pos':
       pair = {
-        nom: m.nom, carte: m.carte, x: m.x, y: m.y, pvTier: m.pvTier,
+        nom: m.nom, carte: m.carte, x: m.x, y: m.y, fx: m.fx, fy: m.fy, pvTier: m.pvTier,
         enCombat: !!m.enCombat, combat: m.combat || null,
         lampe: !!m.lampe, rayonLampe: m.rayonLampe || 0,
       };

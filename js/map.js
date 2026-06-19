@@ -579,6 +579,30 @@ function pionAllie(px, py, CS, pr, off = 0) {
   return s + '</g>';
 }
 
+// ---------- Co-op : le coéquipier en DÉPLACEMENT LIBRE (position continue, lissée) ----------
+// Comme les morts (zfx/zfy), l'allié glisse vers sa dernière position réseau au lieu de sauter
+// de case en case. `pairDraw` garde la position DESSINÉE entre deux frames (état de lissage) ;
+// il vit ici, PAS sur l'objet pair (multi.js le remplace à chaque message → lissage perdu).
+let pairDraw = null; // { carte, fx, fy } | null
+// Position CIBLE (réseau) du coéquipier, en coordonnées continues de SA carte (= la nôtre quand
+// on l'affiche) : sa position fine si transmise, sinon le centre de sa case logique.
+function cibleAllie(C, pr) {
+  if (pr.fx != null && !isNaN(pr.fx) && pr.fy != null && !isNaN(pr.fy)) return { fx: pr.fx, fy: pr.fy };
+  const cc = centreCellule(C, pr.x, pr.y);
+  return { fx: cc.fx, fy: cc.fy };
+}
+// Repère co-op : quand l'allié est dans une AUTRE pièce, on signale la porte/escalier qui y mène
+// (anneau bleu pulsé + son nom) pour ne jamais le « perdre » en changeant de salle.
+function repereVersAllie(cellX, cellY, cellW, cellH, pr) {
+  const cx = cellX + cellW / 2, cy = cellY + cellH / 2;
+  const nom = (pr.nom || 'Coéquipier').slice(0, 12);
+  return `<g class="fm-vers-allie">
+    <circle class="zspin" cx="${cx}" cy="${cy}" r="13" fill="none" stroke="#5ab0c9" stroke-width="2" opacity=".9"/>
+    <circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="#5ab0c9" stroke-width="1.6"/>
+    <text x="${cx}" y="${(cy + cellH / 2 - 4).toFixed(1)}" text-anchor="middle" font-size="10" fill="#9fd3e0" stroke="#0a0a0b" stroke-width="2.5" paint-order="stroke">${nom}</text>
+  </g>`;
+}
+
 function manhattanPair(pr) { return Math.abs(pr.x - G.world.x) + Math.abs(pr.y - G.world.y); }
 
 // La ligne d'état du coéquipier sous le nom du lieu (où il est, son état, en combat).
@@ -588,7 +612,7 @@ function pairBarre(vis) {
   let txt;
   if (!multi.pairPresent()) txt = multi.estHote() ? 'Co-op · en attente d\'un joueur' : 'coéquipier hors ligne';
   else if (!pr) txt = 'coéquipier connecté…';
-  else if (pr.carte !== G.world.carte) { const c = carte(pr.carte); txt = `${pr.nom || 'Coéquipier'} : à ${c ? c.nom : 'un autre lieu'}`; }
+  else if (pr.carte !== G.world.carte) { const c = carte(pr.carte); txt = `📍 ${pr.nom || 'Coéquipier'} · ${c ? c.nom : 'un autre lieu'}`; }
   else {
     const ou = vis.has(`${pr.x},${pr.y}`) ? 'dans ta ligne de mire' : 'dans ce secteur';
     const etat = pr.enCombat ? ' — EN COMBAT' : pr.pvTier === 'critique' ? ' — mal en point' : pr.pvTier === 'amoche' ? ' — entamé' : '';
@@ -673,6 +697,7 @@ function planifierRafraichirCarte() {
 
 // Câblage co-op : posé une fois, dort tant qu'on n'est pas en multi.
 let pairCombatPrec = false;
+let pairCartePrec = null; // dernière carte connue du coéquipier (pour (dis)paraître proprement)
 function brancherMulti() {
   // Monde partagé : on adopte l'état de case reçu (butin/fouille communs, dernier écrivain).
   multi.poser('onEvenement', (m) => {
@@ -710,8 +735,18 @@ function brancherMulti() {
     const combatNow = !!(pr && pr.enCombat);
     const flip = combatNow !== pairCombatPrec;
     pairCombatPrec = combatNow;
-    if (flip) renderLieu();              // (dis)parition de la tuile « Rejoindre »
-    else { rafraichirCarteSeule(); majBarrePair(); } // simple déplacement du pion
+    const carteNow = pr ? pr.carte : null;
+    const carteFlip = carteNow !== pairCartePrec;
+    pairCartePrec = carteNow;
+    if (flip) { renderLieu(); return; } // (dis)parition de la tuile « Rejoindre »
+    if (freemoveActif()) {
+      // En déplacement libre, fmFrame fait GLISSER le pion #fm-pair tout seul chaque frame :
+      // on ne reconstruit la pièce QUE si l'allié vient d'entrer/sortir (apparition/disparition).
+      if (carteFlip) redessinerFreemove();
+      majBarrePair();
+    } else {
+      rafraichirCarteSeule(); majBarrePair(); // grille : simple déplacement du pion
+    }
   });
   multi.poser('onCombat', (m) => {
     if (m.sub === 'demande-rejoindre') {
@@ -842,6 +877,8 @@ function contenuInterieurLibre(C, vis) {
       inner += `<rect x="${dx + cs / 2 - 5.5}" y="${basY}" width="11" height="14" rx="1" fill="#16130e" stroke="${cd.verrou && !G.world.verrous[k] ? '#8a5a28' : '#6d5d42'}" stroke-width="1.3"/>
         <circle cx="${dx + cs / 2 + 2.5}" cy="${basY + 7.5}" r="1" fill="#6d5d42"/>`;
     }
+    // Co-op : cette porte mène à la pièce où se trouve l'allié → on la signale (anti « je le perds »).
+    if (pair && pair.carte !== G.world.carte && cd.vers && cd.vers.carte === pair.carte) inner += repereVersAllie(cellX, cellY, cellW, cellH, pair);
     if (solVisible(k).length) inner += `<circle cx="${cellX + cellW - 8}" cy="${cellY + cellH - 8}" r="3" fill="${CODES.sol}"/>`;
     // Repère DISCRET de zone fouillable (petite loupe ocre) — tant qu'il reste à fouiller.
     if (cd.fouille && !fouilleFinie(fouilleEtat(k), cd)) {
@@ -864,7 +901,6 @@ function contenuInterieurLibre(C, vis) {
       const dist = distOuie(champOuie, x, y);
       if (dist <= OUIE_JOUEUR && zombies.some(z => !z.faitLeMort && z.x === x && z.y === y)) inner += pointOuie(dx, dy, cs);
     }
-    if (pair && aVue && pair.carte === G.world.carte && pair.x === x && pair.y === y) inner += pionAllie(dx, dy, cs, pair, 0);
     cells += `<g>
       <rect class="fond" x="${cellX}" y="${cellY}" width="${cellW}" height="${cellH}" fill="${t.fill}"/>${inner}</g>`;
     murs += mursDeCase(cd, x, y, cellX, cellY, cellW, cellH, connue);
@@ -878,6 +914,13 @@ function contenuInterieurLibre(C, vis) {
     if (z.faitLeMort || !vis.has(`${z.x},${z.y}`)) continue;
     if (z.zfx == null || isNaN(z.zfx)) { const cc = centreCellule(C, z.x, z.y); z.zfx = cc.fx; z.zfy = cc.fy; }
     acteurs += `<g id="fm-z-${z.uid}" class="fm-z" transform="translate(${z.zfx},${z.zfy})">${pionZombie(-14, -14, 28, 1, z.dir, false)}</g>`;
+  }
+  // Le coéquipier, à sa position CONTINUE (repositionné chaque frame par fmFrame, comme les morts) :
+  // toujours visible dans la même pièce — on lève le brouillard pour l'allié (cf. décision « les deux »).
+  if (pair && pair.carte === G.world.carte) {
+    const cib = cibleAllie(C, pair);
+    if (!pairDraw || pairDraw.carte !== pair.carte) pairDraw = { carte: pair.carte, fx: cib.fx, fy: cib.fy };
+    acteurs += `<g id="fm-pair" class="allie" transform="translate(${pairDraw.fx.toFixed(2)},${pairDraw.fy.toFixed(2)})">${pionAllie(0, 0, 0, pair, 0)}</g>`;
   }
   // OUÏE à travers une porte (même NON découverte) : tu entends le mort cogner avant de le voir.
   // Un point rouge estompé, posé JUSTE derrière le battant (côté du mort), sans révéler le décor.
@@ -1027,9 +1070,9 @@ function svgCarte(reach, vis) {
         inner += pointOuie(dx, dy, cs);
       }
     }
-    // Le coéquipier (co-op) : on ne le voit QUE dans sa ligne de mire, comme eux.
+    // Le coéquipier (co-op) : toujours visible sur la même carte (on lève le brouillard pour lui).
     // Sur la même case que toi, on le décale pour que les deux ronds restent lisibles.
-    if (pair && aVue && pair.carte === G.world.carte && pair.x === x && pair.y === y) {
+    if (pair && pair.carte === G.world.carte && pair.x === x && pair.y === y) {
       inner += pionAllie(dx, dy, cs, pair, ici ? 3 : 0);
     }
     if (ici) {
@@ -1176,7 +1219,7 @@ function svgCartePlan(reach, vis) {
       // comme sur la grille, pour que chaque mort compté par le badge ait son repère.
       if (distOuie(champOuie, x, y) <= OUIE_JOUEUR && zombies.some(z => !z.faitLeMort && z.x === x && z.y === y)) inner += pointOuie(box[0], box[1], box[2]);
     }
-    if (pair && aVue && pair.carte === G.world.carte && pair.x === x && pair.y === y) inner += pionAllie(box[0], box[1], box[2], pair, ici ? 4 : 0);
+    if (pair && pair.carte === G.world.carte && pair.x === x && pair.y === y) inner += pionAllie(box[0], box[1], box[2], pair, ici ? 4 : 0); // co-op : toujours visible sur la même carte
     if (ici) {
       const off = (pair && pair.carte === G.world.carte && pair.x === x && pair.y === y) ? -4 : 0;
       inner += `<g class="joueur"><circle cx="${cx + off}" cy="${cy + off}" r="6" fill="#c9b98a" stroke="#0b0b0c" stroke-width="1.8"/>
@@ -1530,6 +1573,7 @@ export function renderLieu() {
       dessiner: () => contenuInterieurLibre(carteCourante(), casesVisibles(G.world.carte, G.world.x, G.world.y)),
       onCellChange: fmCellChange,
       onFrame: fmFrame,
+      onPos: () => { if (multi.estMulti()) multi.diffuserPosition(); }, // co-op : position fine en continu
       actif: () => !modaleBloque(),
     });
   } else {
@@ -1890,6 +1934,19 @@ function fmFrame(dt) {
       node.classList.toggle('z-contact', d < CONTACT_RONDS);
       node.classList.toggle('z-approche', d >= CONTACT_RONDS && d < APPROCHE_PX && !!z.ag);
     }
+  }
+  // Coéquipier : glisse vers sa dernière position réseau (lissage), exactement comme les morts.
+  const pair = multi.estMulti() ? multi.pairEtat() : null;
+  if (pair && pair.carte === carteId) {
+    const cib = cibleAllie(C, pair);
+    if (!pairDraw || pairDraw.carte !== carteId) pairDraw = { carte: carteId, fx: cib.fx, fy: cib.fy };
+    const k = Math.min(1, dt * 10);
+    pairDraw.fx += (cib.fx - pairDraw.fx) * k;
+    pairDraw.fy += (cib.fy - pairDraw.fy) * k;
+    const pnode = document.getElementById('fm-pair');
+    if (pnode) pnode.setAttribute('transform', `translate(${pairDraw.fx.toFixed(2)},${pairDraw.fy.toFixed(2)})`);
+  } else if (pairDraw) {
+    pairDraw = null;
   }
   if (combatZ) lancerCombatContact(combatZ);
 }
@@ -2824,6 +2881,11 @@ function assignerEvenements(carteId) {
     G.world.eventsPlaces[carteId] = assignE;
     return;
   }
+  // ---------- Événements aléatoires EN PAUSE ----------
+  // Sauf cartes éditeur (ci-dessus, événements 100 % manuels), on ne sème PLUS
+  // d'événement au hasard tant que REGLAGES.events.AUTO est false : la carte reste
+  // « propre » (plus de « quelque chose derrière la porte » sans repère). Réversible.
+  if (!REGLAGES.events.AUTO) { G.world.eventsPlaces[carteId] = {}; return; }
   const typeDe = (cd) => {
     if (c.echelle === 'interieur') return 'interieur';
     if (cd.t === 'parc' || cd.t === 'nature') return 'parc';
@@ -3027,6 +3089,7 @@ function battementMonde() {
   majIndicateurLumiere(); // les piles s'usent en continu : on le voit à l'écran sans agir
   if (r.mort) return; // l'écran de mort (omd-mort) prend le relais
   if (multi.estHote()) multi.diffuserHeure(); // l'hôte fait foi et diffuse l'heure
+  if (multi.estMulti()) multi.diffuserPosition(); // filet : l'allié garde ma position/état frais même à l'arrêt
   if (++battementsDepuisSave >= 20) { battementsDepuisSave = 0; save(); }
 }
 if (typeof window !== 'undefined') setInterval(battementMonde, BATTEMENT_MS);
