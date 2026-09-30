@@ -21,6 +21,18 @@
   <div id="stage"></div>
   <div id="ecran" class="ecran"></div>
   <noscript>One More Day a besoin de JavaScript.</noscript>
-  <script type="module" src="js/main.js"></script>
+  <script>
+    // Secours : si une ancienne version en cache empêche le jeu de démarrer, on vide le cache et on recharge une fois.
+    window.__omdSecours = function () {
+      try { if (sessionStorage.getItem('omd_secours')) return; sessionStorage.setItem('omd_secours', '1'); } catch (e) { return; }
+      var fin = function () { location.reload(); };
+      var p = [];
+      if (navigator.serviceWorker) p.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+      if (window.caches) p.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+      Promise.all(p).then(fin, fin);
+    };
+    setTimeout(function () { if (!window.__omd) window.__omdSecours(); }, 9000);
+  </script>
+  <script type="module" src="js/main.js" onerror="window.__omdSecours()"></script>
 </body>
 </html>

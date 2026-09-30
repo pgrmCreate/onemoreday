@@ -8,7 +8,7 @@ echo.
 
 where node >nul 2>nul
 if errorlevel 1 goto :python
-start "" http://localhost:8420
+start "" /b cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8420"
 node server.js
 goto :fin
 

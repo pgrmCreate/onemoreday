@@ -238,5 +238,6 @@ document.body.append(el('div', { class: 'tourner' }, el('div', {}, 'Tourne ton t
 
 demarrerToasts();
 window.__omd = { get G() { return G; }, flow, clock, emit };
+try { sessionStorage.removeItem('omd_secours'); } catch (e) {}
 const q = new URLSearchParams(location.search);
 if (q.get('continuer')) continuer('solo'); else ecranTitre();
