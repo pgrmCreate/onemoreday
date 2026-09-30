@@ -1,0 +1,20 @@
+// ============ TEXTES DE MORT (écran de mort, selon la cause) ============
+// Le personnage est un « revenu » : il connaît déjà le chemin. Clés attendues par le moteur : combat, hemorragie,
+// infection, faim, soif, maladie ; les autres sont des causes proposées (voir HISTOIRE.md, « Besoins pour le gameplay »).
+export const MORTS = {
+  combat: 'Les dents trouvent ta gorge. Le froid monte vite, plus vite que la douleur. Au-dessus de toi, entre leurs épaules penchées, un bout de ciel gris.\n\nTu connais ce ciel. Tu l’as déjà vu, le 6 septembre, dans la montée du Puech.\n\nCette fois, personne ne viendra te passer une perche autour du cou.',
+  hemorragie: 'Tu laisses derrière toi une traînée sombre, de plus en plus large. Tu t’assois une minute, juste une, pour reprendre des forces. La minute s’allonge. Le sol est étrangement confortable.\n\nTon cœur ralentit. Il a déjà su s’arrêter une fois. Il retrouve le chemin tout seul.',
+  infection: 'La fièvre revient. Tu la reconnais : elle a le même goût que la première fois, du fer et du sucre. Tes pensées fondent comme de la cire. Quelque part, une cloche sonne, et ta bouche se remplit.\n\nTu repars avec eux. Tu connais le chemin.\n\nCette fois, personne ne te nourrira. Cette fois, tu ne reviendras pas.',
+  rechute: 'Le mal a gagné. Tu sens ton corps se lever sans toi, doucement, poliment, comme un invité qui prend congé.\n\nIl ira devant une porte, quelque part. Il y retournera tous les jours, à la même heure. Quelqu’un le dessinera peut-être.',
+  faim: 'Ton corps a tout brûlé : la graisse, le muscle, l’espoir. Tu t’allonges dans un coin tranquille, trop faible pour avoir peur.\n\nLa faim qui reste, à la fin, n’est pas celle d’un repas. Tu la reconnais. Tu fermes les yeux avant qu’elle te relève.',
+  soif: 'Ta langue est un morceau de carton. Vers la fin, les hallucinations sont presque belles : la Fontaine Moussue qui coule dans ta tête, par ses quatre bouches, une eau froide et infinie que tu es {seul|seule} à voir.',
+  maladie: 'Plié en deux par les crampes, vidé par la fièvre, tu n’as plus la force de tenir une arme. Quand ils te trouvent, tu n’es déjà plus qu’à moitié là.\n\nL’autre moitié, ils la prennent.',
+  froid: 'Le mistral t’a {trouvé|trouvée} dehors, sans abri, la nuit. Il souffle depuis la vallée du Rhône, sec, patient, et il t’enlève la chaleur couche par couche, comme on épluche un fruit.\n\nMaud disait que le froid prolonge la dormance. Tu as le temps d’y penser. Tu n’as pas le temps d’en rire.',
+  feu: 'Le feu court sur la colline plus vite qu’un cheval. La chaleur arrive d’abord : elle te sèche les yeux, puis les lèvres, puis la voix.\n\nCautère. Un fer rouge sur une plaie. Tu étais la plaie.',
+  balle: 'Tu n’entends pas le coup de feu. Tu le reçois. Les planches du pont montent à ta rencontre, et la Durance, en dessous, roule son eau grise vers la mer sans te regarder.\n\nSur la rive nord, quelqu’un note l’heure dans un carnet.',
+  chute: 'Le safre s’effrite sous ta main. Une seconde, tu flottes au-dessus de la plaine, de Lamanon, des grottes, de tout.\n\nPuis la falaise se souvient de toi.',
+  noyade: 'L’eau de la Durance est froide comme le fond d’un tiroir de morgue. Elle t’emporte, te roule, te remplit.\n\nDans le courant, tu croises d’autres corps. Ils ne se débattent pas. Ils ont appris avant toi.',
+  execution: 'Ils t’emmènent au sommet de la falaise, à l’aube, près du chêne kermès qui pousse de travers. Personne ne dit de prière. Quelqu’un pleure — Lou, peut-être.\n\nUn pour un, dit quelqu’un. Tu trouves que c’est juste. C’est ça, le pire.',
+  fauve: 'Le lion ne te hait pas. Il a faim, c’est tout, et il sait exactement ce qu’il mange.\n\nC’est presque un soulagement : pour une fois, quelqu’un te mange sans rien espérer en retour.',
+  epuisement: 'Tes jambes lâchent au milieu de la route. Tu t’allonges sur le bitume encore tiède, juste une minute. Au loin, des cloches.\n\nElles se rapprochent. Tu n’as plus la force d’avoir peur. Tu as encore la force d’avoir faim.',
+};

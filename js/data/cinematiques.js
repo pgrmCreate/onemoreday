@@ -1,242 +1,250 @@
-// ============ Cinématiques — plans caméra sur les panoramas ============
-// SCHÉMA :
-// id: {
-//   musique: scène sonore jouée pendant la cinématique,
-//   plans: [{
-//     pano: id du panorama (js/art/panoramas/),
-//     de:   { x: 0..1, zoom },   // position de départ de la caméra (x = balayage horizontal)
-//     vers: { x: 0..1, zoom },   // position d'arrivée
-//     duree: ms du travelling,
-//     texte: légende affichée pendant le plan (optionnel),
-//     attendre: true             // plan « important » : on appuie sur Continuer pour la suite
-//   }, ...]
-// }
-// Un plan sans `attendre` enchaîne tout seul à la fin du travelling.
+// ============ CINÉMATIQUES — scripts (REFONTE §4.11) ============
+// Écrit par le scénariste, mis en images par l'agent cinématiques (js/cine/). Chaque `decor` est un id de scène en
+// parallaxe (js/cine/scenes/<id>.js) décrit dans docs/HISTOIRE.md, section « Briefs des décors ».
+//
+// Plan : { decor, camera: { de: {x, y?, zoom}, vers: {x, y?, zoom} }, duree (ms), effets: [...], anim: [...],
+//          texte (sous-titre), attendre (bool : bouton « Continuer » à la fin du plan), titre? (carton de titre, optionnel) }
+//   x, y : 0..1 (position du centre de la caméra dans le décor) ; zoom : 1 = décor entier.
+// Effets globaux (communs à tous les décors) : grain, vignette_pulse, flash_rouge, fondu_noir, fondu_blanc, fumee,
+//   braises, cendres, poussiere, mistral, chaleur, lueur_lampe, brouillard_bas, etoiles, secousse.
+// Animations : propres à chaque décor (liste dans HISTOIRE.md). Musique : titre | calme | sombre | tension | combat | mort | refuge.
+// Les anciennes cinématiques (panoramas js/art/panoramas/) sont remplacées.
+
+export const DECORS = [
+  // cinématiques
+  'salon_marche', 'salon_mercredi', 'couloir_hopital', 'salon_mistral_vide', 'housse_noir',
+  'place_crousillat_nuit', 'horloge_sommet', 'salon_aube_toits', 'salle_quatre', 'cours_troupeau',
+  'emperi_siege', 'emperi_remparts_aube', 'route_jean_moulin', 'cales_falaises', 'vernegues_ruines',
+  'ba701_tarmac', 'crau_mistral', 'durance_pont', 'ligne_de_feu', 'camp_refugies', 'gymnase_froid',
+  'troupeau_feu', 'estive_ventoux',
+  // vignettes de scènes (plans fixes, moins de couches)
+  'cimetiere_caveau', 'saint_roch_nuit', 'cours_nuit', 'nostradamus_cabinet', 'emperi_cour', 'montee_puech',
+  'collegiale_nef', 'hopital_parvis', 'hopital_sous_sol', 'cales_grande_salle', 'senas_station', 'plaine_route',
+  'nuit_campagne',
+];
 
 export const CINEMATIQUES = {
 
-  // Grande introduction, 1er volet : Salon paisible au crépuscule, un mois avant.
-  intro_avant: {
-    musique: 'calme',
-    plans: [
-      {
-        pano: 'salon_avant', de: { x: 0.02, zoom: 1.3 }, vers: { x: 0.5, zoom: 1.08 }, duree: 9000,
-        texte: 'Il y a un mois à peine. Le soir tombe sur Salon-de-Provence, et les fenêtres s\'allument une à une.',
-      },
-      {
-        pano: 'salon_avant', de: { x: 0.5, zoom: 1.08 }, vers: { x: 0.96, zoom: 1.3 }, duree: 8500,
-        texte: 'Les terrasses, les phares sur le cours, l\'eau de la Fontaine Moussue. Une ville tranquille, sûre de le rester.',
-        attendre: true,
-      },
-    ],
-  },
+  // ─────────── Nouvelle partie ───────────
+  intro: { musique: 'titre', plans: [
+    { decor: 'salon_marche', camera: { de: { x: 0.08, zoom: 1.35 }, vers: { x: 0.55, zoom: 1.1 } }, duree: 9000,
+      effets: ['grain'], anim: ['foule_marche', 'platanes_brise', 'pigeons_envol', 'fontaine_coule'],
+      texte: 'Salon-de-Provence. Mercredi 2 septembre. Jour de grand marché sur les cours.' },
+    { decor: 'salon_mercredi', camera: { de: { x: 0.3, zoom: 1.2 }, vers: { x: 0.7, zoom: 1.4 } }, duree: 8000,
+      effets: ['grain', 'secousse'], anim: ['foule_court', 'etals_renverses', 'silhouette_penchee'],
+      texte: 'À dix heures quarante, devant l’étal du fromager, une femme a mordu son mari. Il a fallu onze minutes pour que le cours Carnot se mette à hurler.' },
+    { decor: 'couloir_hopital', camera: { de: { x: 0.2, zoom: 1.5 }, vers: { x: 0.6, zoom: 1.2 } }, duree: 8000,
+      effets: ['grain', 'vignette_pulse'], anim: ['neon_clignote', 'clochette_tremble', 'main_billet'],
+      texte: 'Une clochette sur un chariot. Une main qui glisse un billet plié en quatre dans une poche. Quelqu’un, déjà, préparait la suite.' },
+    { decor: 'salon_mistral_vide', camera: { de: { x: 0.1, zoom: 1.1 }, vers: { x: 0.9, zoom: 1.15 } }, duree: 9000,
+      effets: ['grain', 'poussiere'], anim: ['platanes_vent', 'journal_vole', 'drone_passe'],
+      texte: 'Trois semaines plus tard. Plus de marché, plus d’hôpital, plus de ville. Au nord, derrière la Durance, l’armée attend le vent.' },
+    { decor: 'housse_noir', camera: { de: { x: 0.5, zoom: 1.0 }, vers: { x: 0.5, zoom: 1.25 } }, duree: 7000,
+      effets: ['vignette_pulse'], anim: ['fermeture_eclair', 'souffle_plastique'],
+      texte: 'Et quelque part, sous une housse blanche, un cœur qui n’avait plus rien à faire là se remet à battre.', attendre: true },
+    { decor: 'housse_noir', camera: { de: { x: 0.5, zoom: 1.25 }, vers: { x: 0.5, zoom: 1.25 } }, duree: 4000,
+      effets: ['fondu_noir'], anim: [], titre: 'One More Day', texte: '', attendre: true },
+  ] },
 
-  // Grande introduction, 2e volet : les mêmes toits en feu, et la rue de l'exode.
-  intro_chaos: {
-    musique: 'sombre', ambiance: 'feu',
-    plans: [
-      {
-        pano: 'salon_chaos', de: { x: 0.02, zoom: 1.35 }, vers: { x: 0.42, zoom: 1.1 }, duree: 8000,
-        texte: 'Quatre jours ont suffi. Les mêmes toits — en feu. Et personne au bout du fil.',
-      },
-      {
-        pano: 'salon_chaos', de: { x: 0.42, zoom: 1.1 }, vers: { x: 0.78, zoom: 1.14 }, duree: 8000,
-        texte: 'Les sirènes se sont tues une à une. L\'armée a tenu un carrefour, puis plus rien.',
-      },
-      {
-        pano: 'salon_chaos', de: { x: 0.78, zoom: 1.14 }, vers: { x: 0.97, zoom: 1.45 }, duree: 7000,
-        texte: 'Le cours, ce mercredi-là : ceux qui couraient — et ce qui ne courait plus comme un vivant.',
-        attendre: true,
-      },
-    ],
-  },
+  // ─────────── Prologue ───────────
+  pro_cloches: { musique: 'tension', plans: [
+    { decor: 'place_crousillat_nuit', camera: { de: { x: 0.5, y: 0.8, zoom: 1.5 }, vers: { x: 0.5, y: 0.25, zoom: 1.2 } }, duree: 6000,
+      effets: ['lueur_lampe'], anim: ['cloches_balancent', 'fontaine_coule'],
+      texte: 'La première cloche sonne si fort que tu la sens dans tes dents.' },
+    { decor: 'place_crousillat_nuit', camera: { de: { x: 0.2, zoom: 1.1 }, vers: { x: 0.8, zoom: 1.05 } }, duree: 7000,
+      effets: ['grain'], anim: ['cloches_balancent', 'silhouettes_convergent'],
+      texte: 'Puis la deuxième. Puis la troisième. Deux mille cinq cents kilos de bronze qui appellent tout Salon.' },
+    { decor: 'place_crousillat_nuit', camera: { de: { x: 0.5, zoom: 1.05 }, vers: { x: 0.5, y: 0.6, zoom: 1.5 } }, duree: 6000,
+      effets: ['vignette_pulse'], anim: ['silhouettes_convergent', 'porte_entrouverte'],
+      texte: 'Des rues, des porches, des terrasses, ils arrivent.', attendre: true },
+  ] },
 
-  // Grande introduction, 3e volet : la fuite à pied, puis le terrier qu'on barricade.
-  // (Joué par jouerIntro entre intro_chaos et le réveil — peu de texte, la caméra raconte.)
-  intro_fuite: {
-    musique: 'sombre', ambiance: 'feu',
-    plans: [
-      {
-        pano: 'salon_chaos', de: { x: 0.96, zoom: 1.5 }, vers: { x: 0.48, zoom: 1.18 }, duree: 7000,
-        texte: 'Tu es parti à pied, à contre-courant des klaxons. Puis il n\'y a plus eu de klaxons.',
-      },
-      {
-        pano: 'sortie_hotel', de: { x: 0.22, zoom: 1.5 }, vers: { x: 0.0, zoom: 1.34 }, duree: 6500,
-        texte: 'Le Grand Hôtel de la Poste. Porte entrouverte, hall vide. Il te fallait un dedans.',
-      },
-      {
-        pano: 'sortie_hotel', de: { x: 0.02, zoom: 1.7 }, vers: { x: 0.07, zoom: 1.95 }, duree: 5500,
-        texte: 'Tu as tout poussé contre la porte. Chambre 203. Le petit verrou doré a claqué — et le noir t\'a pris.',
-        attendre: true,
-      },
-    ],
-  },
+  pro_sommet: { musique: 'sombre', plans: [
+    { decor: 'horloge_sommet', camera: { de: { x: 0.1, zoom: 1.3 }, vers: { x: 0.5, zoom: 1.1 } }, duree: 8000,
+      effets: ['etoiles'], anim: ['foule_immobile', 'cloches_immobiles'],
+      texte: 'Sous la tour, la foule ne repart pas. Des centaines de visages levés vers les cloches qui se sont tues.' },
+    { decor: 'horloge_sommet', camera: { de: { x: 0.5, zoom: 1.1 }, vers: { x: 0.85, zoom: 1.25 } }, duree: 8000,
+      effets: ['etoiles', 'fumee'], anim: ['incendie_lointain'],
+      texte: 'Plus loin, sur son rocher, l’Empéri. Une seule fenêtre éclairée : des vivants.' },
+    { decor: 'horloge_sommet', camera: { de: { x: 0.85, zoom: 1.25 }, vers: { x: 0.98, zoom: 1.45 } }, duree: 6000,
+      effets: ['etoiles'], anim: ['cadran_21h10'],
+      texte: 'Il est neuf heures dix. Il est toujours neuf heures dix, à Salon.', attendre: true },
+  ] },
 
-  // La première sortie de l'hôtel : la ville ravagée se découvre, lentement.
-  sortie_hotel: {
-    musique: 'rue',
-    plans: [
-      {
-        pano: 'sortie_hotel', de: { x: 0.02, zoom: 1.45 }, vers: { x: 0.04, zoom: 1.18 }, duree: 4200,
-        texte: 'Vingt-trois jours derrière une porte barricadée. Tu pousses le battant du porche.',
-      },
-      {
-        pano: 'sortie_hotel', de: { x: 0.04, zoom: 1.15 }, vers: { x: 0.55, zoom: 1.08 }, duree: 9000,
-        texte: 'La place Crousillat. La Fontaine Moussue coule toujours, pour personne.',
-      },
-      {
-        pano: 'sortie_hotel', de: { x: 0.55, zoom: 1.08 }, vers: { x: 0.97, zoom: 1.32 }, duree: 9000,
-        texte: 'Salon est morte. Et ce qui marche encore dans ses rues n\'a plus de nom.',
-        attendre: true,
-      },
-    ],
-  },
+  // ─────────── Chapitre 1 ───────────
+  ch1_intro: { musique: 'calme', plans: [
+    { decor: 'salon_aube_toits', camera: { de: { x: 0.05, zoom: 1.3 }, vers: { x: 0.45, zoom: 1.1 } }, duree: 8000,
+      effets: ['brouillard_bas'], anim: ['martinets', 'fumees_droites'], titre: 'Chapitre 1 — Les vivants',
+      texte: 'Mercredi 23 septembre. Trois semaines, jour pour jour, après le Mercredi.' },
+    { decor: 'salon_aube_toits', camera: { de: { x: 0.45, zoom: 1.1 }, vers: { x: 0.8, zoom: 1.2 } }, duree: 8000,
+      effets: ['brouillard_bas'], anim: ['martinets', 'linge_emperi'],
+      texte: 'Il reste à Salon une trentaine de vivants, tous dans le même château.' },
+    { decor: 'salon_aube_toits', camera: { de: { x: 0.8, zoom: 1.2 }, vers: { x: 0.97, zoom: 1.4 } }, duree: 7000,
+      effets: [], anim: ['platanes_immobiles'],
+      texte: 'Et le vent, pour l’instant, ne souffle pas.', attendre: true },
+  ] },
 
-  // Les quais de la gare : la machine apparaît au bout du travelling.
-  quais_gare: {
-    musique: 'gare',
-    plans: [
-      {
-        pano: 'gare', de: { x: 0.02, zoom: 1.2 }, vers: { x: 0.6, zoom: 1.08 }, duree: 8500,
-        texte: 'La halle sent le gasoil froid, la poussière et le silence.',
-      },
-      {
-        pano: 'gare', de: { x: 0.6, zoom: 1.1 }, vers: { x: 0.96, zoom: 1.5 }, duree: 6500,
-        texte: 'Et au bout de la voie de service : lui. Le locotracteur. L\'espoir, en orange délavé.',
-        attendre: true,
-      },
-    ],
-  },
+  souvenir_cloche: { musique: 'mort', plans: [
+    { decor: 'salle_quatre', camera: { de: { x: 0.5, zoom: 1.6 }, vers: { x: 0.5, zoom: 1.5 } }, duree: 2500,
+      effets: ['flash_rouge', 'grain'], anim: ['clochette_agitee'], texte: 'Ding.' },
+    { decor: 'salle_quatre', camera: { de: { x: 0.3, zoom: 1.3 }, vers: { x: 0.4, zoom: 1.2 } }, duree: 5000,
+      effets: ['vignette_pulse', 'grain'], anim: ['sangles_tirent'],
+      texte: 'Le froid. Des sangles. Une faim si grande qu’elle a des dents.' },
+    { decor: 'salle_quatre', camera: { de: { x: 0.7, zoom: 1.2 }, vers: { x: 0.6, zoom: 1.4 } }, duree: 6000,
+      effets: ['vignette_pulse', 'grain'], anim: ['brancard_approche'],
+      texte: 'Un brancard qu’on pousse vers toi. Un homme dessus, une jambe dans une attelle. Il ne crie pas.' },
+    { decor: 'salle_quatre', camera: { de: { x: 0.6, zoom: 1.4 }, vers: { x: 0.6, zoom: 1.8 } }, duree: 6000,
+      effets: ['fondu_noir'], anim: ['visage_homme'],
+      texte: 'Il te regarde. Il dit un seul mot, doucement, comme on s’excuse : « Jo. »', attendre: true },
+  ] },
 
-  // Du haut de la Tour de l'Horloge : toute la ville morte d'un seul regard.
-  clocher: {
-    musique: 'rue',
-    plans: [
-      {
-        pano: 'clocher', de: { x: 0.0, zoom: 1.3 }, vers: { x: 0.45, zoom: 1.1 }, duree: 8500,
-        texte: 'Du haut de la Tour de l\'Horloge — le seul endroit d\'où l\'on voit tout. Salon, en contrebas, n\'est plus qu\'une mer de toits.',
-      },
-      {
-        pano: 'clocher', de: { x: 0.45, zoom: 1.1 }, vers: { x: 0.82, zoom: 1.22 }, duree: 8000,
-        texte: 'Des fumées que personne n\'éteint. Des ruelles où des silhouettes minuscules restent figées. Et là-bas, l\'Empéri, éteint sur son rocher.',
-      },
-      {
-        pano: 'clocher', de: { x: 0.82, zoom: 1.22 }, vers: { x: 0.99, zoom: 1.4 }, duree: 6500,
-        texte: 'Au-delà des remparts, la plaine de la Crau, vide jusqu\'aux collines. Quelque part là-dedans : une voie ferrée, et une raison de descendre.',
-        attendre: true,
-      },
-    ],
-  },
+  nuit_sonnailles: { musique: 'tension', plans: [
+    { decor: 'cours_troupeau', camera: { de: { x: 0.0, zoom: 1.3 }, vers: { x: 0.35, zoom: 1.15 } }, duree: 7000,
+      effets: ['etoiles', 'poussiere'], anim: ['troupeau_coule', 'lampes_de_tete'],
+      texte: 'Ils arrivent par le cours Victor-Hugo, sous les platanes, d’un trottoir à l’autre. Des milliers.' },
+    { decor: 'cours_troupeau', camera: { de: { x: 0.35, zoom: 1.15 }, vers: { x: 0.6, zoom: 1.45 } }, duree: 7000,
+      effets: ['poussiere'], anim: ['sonnailleurs_marchent', 'troupeau_coule'],
+      texte: 'Devant, des silhouettes droites, une cloche au cou, une lampe au poing. Elles ne marchent pas comme eux.' },
+    { decor: 'cours_troupeau', camera: { de: { x: 0.6, zoom: 1.45 }, vers: { x: 0.95, zoom: 1.2 } }, duree: 7000,
+      effets: ['vignette_pulse'], anim: ['troupeau_tourne', 'emperi_lointain'],
+      texte: 'Et toutes les dix secondes, plus grave que les autres, une seule cloche. Bong. La marée tourne vers le rocher.', attendre: true },
+  ] },
 
-  // La première nuit, derrière la vitre d'une chambre du Grand Hôtel.
-  premiere_nuit: {
-    musique: 'sombre',
-    plans: [
-      {
-        pano: 'premiere_nuit', de: { x: 0.0, zoom: 1.25 }, vers: { x: 0.5, zoom: 1.12 }, duree: 8000,
-        texte: 'La nuit tombe sur la place Crousillat. Le courant vient de mourir — plus une seule lumière dans toute la ville.',
-      },
-      {
-        pano: 'premiere_nuit', de: { x: 0.5, zoom: 1.12 }, vers: { x: 0.96, zoom: 1.3 }, duree: 8000,
-        texte: 'Derrière la vitre, tu comptes les silhouettes qui titubent entre les carcasses. Au loin, un incendie que personne n\'ira éteindre. Ta première nuit.',
-        attendre: true,
-      },
-    ],
-  },
+  aube_troupeau: { musique: 'sombre', plans: [
+    { decor: 'emperi_remparts_aube', camera: { de: { x: 0.1, zoom: 1.2 }, vers: { x: 0.5, zoom: 1.05 } }, duree: 8000,
+      effets: ['brouillard_bas', 'fumee'], anim: ['troupeau_s_eloigne'],
+      texte: 'À l’aube, la marée quitte Salon par la route d’Avignon. Elle emporte les morts de la ville avec elle.' },
+    { decor: 'emperi_remparts_aube', camera: { de: { x: 0.5, zoom: 1.05 }, vers: { x: 0.85, zoom: 1.6 } }, duree: 8000,
+      effets: ['brouillard_bas'], anim: ['berger_marche', 'chiens_tournent', 'redon_balance'],
+      texte: 'En tête, un vieil homme avec une houlette et deux chiens. À côté de lui, une petite femme qui porte une cloche énorme contre sa poitrine, comme un enfant.' },
+    { decor: 'emperi_remparts_aube', camera: { de: { x: 0.85, zoom: 1.6 }, vers: { x: 0.9, zoom: 1.2 } }, duree: 6000,
+      effets: [], anim: ['troupeau_s_eloigne'],
+      texte: 'Bong. Toutes les dix secondes. Vers le nord.', attendre: true },
+  ] },
 
-  // L'hôpital du Pays Salonais : tout converge vers le hall.
-  hopital: {
-    musique: 'sombre',
-    plans: [
-      {
-        pano: 'hopital', de: { x: 0.0, zoom: 1.2 }, vers: { x: 0.5, zoom: 1.08 }, duree: 8500,
-        texte: 'L\'hôpital du Pays Salonais. Les ambulances sont restées portes ouvertes, là où on les a abandonnées.',
-      },
-      {
-        pano: 'hopital', de: { x: 0.5, zoom: 1.08 }, vers: { x: 0.86, zoom: 1.18 }, duree: 7500,
-        texte: 'Toutes les traînées sombres remontent vers le hall. Un drap pend à une fenêtre, un mot délavé dessus.',
-      },
-      {
-        pano: 'hopital', de: { x: 0.86, zoom: 1.18 }, vers: { x: 0.99, zoom: 1.42 }, duree: 6000,
-        texte: 'La baie des urgences a été barricadée de l\'intérieur. Des mains séchées sur les vitres. Ce qu\'il y a derrière n\'attend que toi.',
-        attendre: true,
-      },
-    ],
-  },
+  // ─────────── Chapitre 2 ───────────
+  ch2_intro: { musique: 'calme', plans: [
+    { decor: 'route_jean_moulin', camera: { de: { x: 0.3, y: 0.7, zoom: 1.5 }, vers: { x: 0.5, y: 0.3, zoom: 1.15 } }, duree: 8000,
+      effets: ['poussiere'], anim: ['drap_claque'], titre: 'Chapitre 2 — La transhumance',
+      texte: 'À la sortie nord de Salon, Jean Moulin lève les bras au ciel. Quelqu’un lui a noué un drap blanc aux poignets.' },
+    { decor: 'plaine_route', camera: { de: { x: 0.1, zoom: 1.2 }, vers: { x: 0.7, zoom: 1.1 } }, duree: 8000,
+      effets: [], anim: ['file_marcheurs'],
+      texte: 'Une file de gamins et d’adultes traverse les oliveraies, loin de la route, avec des sacs, des bidons, et des sabres de musée.' },
+    { decor: 'cales_falaises', camera: { de: { x: 0.2, zoom: 1.3 }, vers: { x: 0.55, zoom: 1.1 } }, duree: 8000,
+      effets: ['fumee'], anim: ['feux_grottes', 'echelle_corde', 'linge_seche'],
+      texte: 'Au-dessus de Lamanon, deux falaises trouées de cent seize grottes. Dans les trous, des feux. Des vivants.' },
+    { decor: 'cales_falaises', camera: { de: { x: 0.55, zoom: 1.1 }, vers: { x: 0.9, zoom: 1.35 } }, duree: 6000,
+      effets: [], anim: ['feux_grottes'],
+      texte: 'Au sud, loin, contre le vent : bong.', attendre: true },
+  ] },
 
-  // Le chemin de ronde de l'Empéri, et sa cour d'honneur désertée.
-  emperi: {
-    musique: 'rue',
-    plans: [
-      {
-        pano: 'emperi', de: { x: 0.0, zoom: 1.25 }, vers: { x: 0.45, zoom: 1.1 }, duree: 8000,
-        texte: 'Le château de l\'Empéri. Du chemin de ronde, tout Salon fume à tes pieds, jusqu\'aux Alpilles.',
-      },
-      {
-        pano: 'emperi', de: { x: 0.45, zoom: 1.1 }, vers: { x: 0.8, zoom: 1.15 }, duree: 7500,
-        texte: 'La tour d\'angle pivote vers la cour d\'honneur. Le chantier de restauration, abandonné en plein élan.',
-      },
-      {
-        pano: 'emperi', de: { x: 0.8, zoom: 1.15 }, vers: { x: 0.99, zoom: 1.4 }, duree: 6500,
-        texte: 'La cour est vide. Une forme sous une bâche. Et, au-dessus, les charognards qui tournent — patients.',
-        attendre: true,
-      },
-    ],
-  },
+  vernegues: { musique: 'sombre', plans: [
+    { decor: 'vernegues_ruines', camera: { de: { x: 0.0, zoom: 1.2 }, vers: { x: 0.4, zoom: 1.05 } }, duree: 8000,
+      effets: ['etoiles'], anim: ['bougies_vacillent'],
+      texte: 'Le vieux Vernègues est mort une première fois le 11 juin 1909, à neuf heures dix du soir.' },
+    { decor: 'vernegues_ruines', camera: { de: { x: 0.4, zoom: 1.05 }, vers: { x: 0.75, zoom: 1.3 } }, duree: 8000,
+      effets: ['etoiles'], anim: ['bougies_vacillent', 'revenus_assis'],
+      texte: 'Ce soir, des centaines de bougies brûlent dans ses caves. Et des gens, entre les ruines, qui mangent et qui jouent aux cartes.' },
+    { decor: 'vernegues_ruines', camera: { de: { x: 0.75, zoom: 1.3 }, vers: { x: 0.95, zoom: 1.6 } }, duree: 6000,
+      effets: [], anim: ['inscription_chaux'],
+      texte: 'Sur le mur de l’église, à la chaux : UN POUR UN.', attendre: true },
+  ] },
 
-  // Le départ du Y 8000 : la gare s'efface, la plaine s'ouvre.
-  depart_train: {
-    musique: 'gare',
-    plans: [
-      {
-        pano: 'depart_train', de: { x: 0.0, zoom: 1.2 }, vers: { x: 0.4, zoom: 1.1 }, duree: 7500,
-        texte: 'Le locotracteur s\'arrache de la gare. Sur le quai qui défile, un dernier errant resté planté dans le ciment.',
-      },
-      {
-        pano: 'depart_train', de: { x: 0.4, zoom: 1.1 }, vers: { x: 0.72, zoom: 1.12 }, duree: 7000,
-        texte: 'Les caténaires mortes, un câble arraché qui pend. Le passage à niveau figé. Puis plus rien que la voie.',
-      },
-      {
-        pano: 'depart_train', de: { x: 0.72, zoom: 1.12 }, vers: { x: 0.99, zoom: 1.3 }, duree: 7000,
-        texte: 'Devant : la plaine de la Crau, les Alpilles posées au loin comme un décor. Derrière : Salon, qui fume. Tu ne te retournes pas.',
-        attendre: true,
-      },
-    ],
-  },
+  ba701: { musique: 'tension', plans: [
+    { decor: 'ba701_tarmac', camera: { de: { x: 0.0, zoom: 1.4 }, vers: { x: 0.3, zoom: 1.15 } }, duree: 7000,
+      effets: ['chaleur'], anim: ['fouga_mat', 'corps_balance'],
+      texte: 'Au rond-point de l’École de l’air, le Fouga Magister pointe le nez vers un ciel qu’il ne reverra pas.' },
+    { decor: 'ba701_tarmac', camera: { de: { x: 0.3, zoom: 1.15 }, vers: { x: 0.75, zoom: 1.1 } }, duree: 8000,
+      effets: ['chaleur'], anim: ['manche_a_air', 'drapeau_mat'],
+      texte: 'Sur le tarmac, en rang parfait, neuf Alphajets bleu-blanc-rouge. Verrières fermées.' },
+    { decor: 'ba701_tarmac', camera: { de: { x: 0.75, zoom: 1.1 }, vers: { x: 0.95, zoom: 1.5 } }, duree: 6000,
+      effets: [], anim: ['rangers_alignees'],
+      texte: 'Sur le parking, trois cents paires de rangers cirées, alignées par pointure. Personne n’est resté pour expliquer.', attendre: true },
+  ] },
 
-  // L'intérieur de Miramas-le-Vieux : le seul endroit qui respire encore.
-  refuge_miramas: {
-    musique: 'village',
-    plans: [
-      {
-        pano: 'refuge_miramas', de: { x: 0.0, zoom: 1.22 }, vers: { x: 0.45, zoom: 1.08 }, duree: 8000,
-        texte: 'La herse retombe derrière toi, sur le monde mort. La calade monte entre les pierres chaudes.',
-      },
-      {
-        pano: 'refuge_miramas', de: { x: 0.45, zoom: 1.08 }, vers: { x: 0.82, zoom: 1.2 }, duree: 7500,
-        texte: 'Du linge propre. Une marelle à la craie. Des fenêtres où brûle un vrai feu.',
-      },
-      {
-        pano: 'refuge_miramas', de: { x: 0.82, zoom: 1.2 }, vers: { x: 0.97, zoom: 1.35 }, duree: 6500,
-        texte: 'La placette, le micocoulier, la salle commune fumante — et autour du brasero, des vivants. Le seul endroit du jeu qui respire encore.',
-        attendre: true,
-      },
-    ],
-  },
+  // ─────────── Final ───────────
+  le_mistral: { musique: 'tension', plans: [
+    { decor: 'crau_mistral', camera: { de: { x: 0.0, zoom: 1.2 }, vers: { x: 0.4, zoom: 1.1 } }, duree: 7000,
+      effets: ['mistral', 'poussiere'], anim: ['herbes_couchees', 'nuages_filent'], titre: 'Le mistral',
+      texte: 'Il arrive par la vallée du Rhône, sec et froid. Trois, six ou neuf jours, disent les vieux. L’armée n’en a besoin que d’un.' },
+    { decor: 'crau_mistral', camera: { de: { x: 0.4, zoom: 1.1 }, vers: { x: 0.8, zoom: 1.3 } }, duree: 7000,
+      effets: ['mistral'], anim: ['cypres_plient', 'colonne_marche'],
+      texte: 'Le ciel est lavé à l’eau de Javel. Les cyprès se plient. La colonne de Calès se met en marche vers le fleuve.' },
+    { decor: 'ligne_de_feu', camera: { de: { x: 0.2, zoom: 1.1 }, vers: { x: 0.8, zoom: 1.2 } }, duree: 7000,
+      effets: ['mistral', 'braises', 'fumee'], anim: ['avions_passent', 'flammes_avancent'],
+      texte: 'Au nord, sur les terrains d’Orange, des moteurs chauffent.', attendre: true },
+  ] },
 
-  // Chapitre 2 : le rocher de Miramas-le-Vieux, des murs et des vivants.
-  arrivee_miramas: {
-    musique: 'village',
-    plans: [
-      {
-        pano: 'miramas', de: { x: 0.02, zoom: 1.25 }, vers: { x: 0.55, zoom: 1.08 }, duree: 8500,
-        texte: 'Le triage s\'éloigne derrière toi. La plaine de la Touloubre, grise et muette.',
-      },
-      {
-        pano: 'miramas', de: { x: 0.55, zoom: 1.08 }, vers: { x: 0.94, zoom: 1.42 }, duree: 7500,
-        texte: 'Miramas-le-Vieux. Des murs. Des fumées de cuisine. Des vivants.',
-        attendre: true,
-      },
-    ],
-  },
+  pont_mallemort: { musique: 'tension', plans: [
+    { decor: 'durance_pont', camera: { de: { x: 0.0, zoom: 1.3 }, vers: { x: 0.4, zoom: 1.1 } }, duree: 7000,
+      effets: ['mistral'], anim: ['cables_vibrent', 'eau_ecume'],
+      texte: 'Le pont suspendu de Mallemort chante dans le vent, une note grave qui entre par les pieds.' },
+    { decor: 'durance_pont', camera: { de: { x: 0.4, zoom: 1.1 }, vers: { x: 0.8, zoom: 1.35 } }, duree: 7000,
+      effets: ['mistral'], anim: ['colonne_traverse', 'projecteurs'],
+      texte: 'Un par un, les vivants de Calès s’engagent sur les planches vers les projecteurs de la rive nord.' },
+    { decor: 'ligne_de_feu', camera: { de: { x: 0.8, zoom: 1.2 }, vers: { x: 0.3, zoom: 1.05 } }, duree: 7000,
+      effets: ['mistral', 'braises', 'fumee'], anim: ['troupeau_arrive', 'flammes_avancent'],
+      texte: 'Derrière eux, le troupeau. Et derrière le troupeau, tout le ciel brûle.', attendre: true },
+  ] },
+
+  // ─────────── Les fins ───────────
+  fin_cautere: { musique: 'sombre', plans: [
+    { decor: 'durance_pont', camera: { de: { x: 0.6, zoom: 1.2 }, vers: { x: 0.2, zoom: 1.1 } }, duree: 7000,
+      effets: ['mistral', 'fumee'], anim: ['herse_tombe', 'pont_routier_saute'],
+      texte: 'La herse tombe au bout des planches. Le pont routier saute.' },
+    { decor: 'ligne_de_feu', camera: { de: { x: 0.1, zoom: 1.1 }, vers: { x: 0.9, zoom: 1.15 } }, duree: 9000,
+      effets: ['mistral', 'braises', 'cendres', 'chaleur'], anim: ['flammes_avancent', 'troupeau_brule', 'berger_immobile'],
+      texte: 'Sur la rive sud, le Berger regarde l’eau. Puis le feu arrive.' },
+    { decor: 'camp_refugies', camera: { de: { x: 0.1, zoom: 1.2 }, vers: { x: 0.6, zoom: 1.1 } }, duree: 8000,
+      effets: ['cendres'], anim: ['tentes_vent', 'fumee_cuisine'],
+      texte: 'Six semaines plus tard, un camp de toile au bord du Rhône.' },
+    { decor: 'camp_refugies', camera: { de: { x: 0.6, zoom: 1.1 }, vers: { x: 0.85, zoom: 1.5 } }, duree: 6000,
+      effets: ['vignette_pulse'], anim: ['cloche_chapelle'],
+      texte: 'Dimanche, dix heures. La cloche sonne.', attendre: true },
+  ] },
+
+  fin_voix: { musique: 'tension', plans: [
+    { decor: 'durance_pont', camera: { de: { x: 0.5, y: 0.7, zoom: 1.8 }, vers: { x: 0.5, y: 0.7, zoom: 1.5 } }, duree: 5000,
+      effets: ['mistral'], anim: ['telephone_envoye'],
+      texte: 'Envoyé.' },
+    { decor: 'durance_pont', camera: { de: { x: 0.5, zoom: 1.5 }, vers: { x: 0.5, zoom: 1.0 } }, duree: 7000,
+      effets: ['fondu_blanc'], anim: ['ecrans_s_allument'],
+      texte: 'En une heure, cent mille. En une nuit, cent millions. En trois jours, la terre entière.' },
+    { decor: 'gymnase_froid', camera: { de: { x: 0.0, zoom: 1.3 }, vers: { x: 0.6, zoom: 1.05 } }, duree: 9000,
+      effets: ['brouillard_bas'], anim: ['file_familles', 'buee_respiration'],
+      texte: 'Trois mois plus tard, un gymnase réfrigéré. Quatre cents housses blanches entre les lignes du terrain de basket.' },
+    { decor: 'gymnase_froid', camera: { de: { x: 0.6, zoom: 1.05 }, vers: { x: 0.95, zoom: 1.45 } }, duree: 6000,
+      effets: [], anim: ['affiche_don'],
+      texte: 'LE DON, UN ACTE RESPONSABLE. Personne ne dit ce qu’on donne.', attendre: true },
+  ] },
+
+  fin_transhumance_feu: { musique: 'mort', plans: [
+    { decor: 'troupeau_feu', camera: { de: { x: 0.9, zoom: 1.3 }, vers: { x: 0.5, zoom: 1.1 } }, duree: 8000,
+      effets: ['mistral', 'braises'], anim: ['troupeau_suit', 'redon_leve'],
+      texte: 'Bong. Onze mille têtes se tournent en même temps.' },
+    { decor: 'troupeau_feu', camera: { de: { x: 0.5, zoom: 1.1 }, vers: { x: 0.2, zoom: 1.3 } }, duree: 8000,
+      effets: ['mistral', 'braises', 'chaleur'], anim: ['rose_bras', 'flammes_avancent'],
+      texte: 'Tu marches devant. Rose te tient le bras, comme une vieille dame qu’on accompagne à l’église.' },
+    { decor: 'troupeau_feu', camera: { de: { x: 0.2, zoom: 1.3 }, vers: { x: 0.05, zoom: 1.8 } }, duree: 7000,
+      effets: ['chaleur', 'fondu_blanc'], anim: ['silhouette_dans_flammes'],
+      texte: 'Tu connais le chemin.' },
+    { decor: 'troupeau_feu', camera: { de: { x: 0.5, zoom: 1.0 }, vers: { x: 0.5, zoom: 1.0 } }, duree: 5000,
+      effets: ['cendres'], anim: ['cloche_au_sol'],
+      texte: 'Cette fois, tu ne reviens pas.', attendre: true },
+  ] },
+
+  fin_transhumance_estive: { musique: 'sombre', plans: [
+    { decor: 'durance_pont', camera: { de: { x: 0.2, zoom: 1.2 }, vers: { x: 0.7, zoom: 1.1 } }, duree: 7000,
+      effets: ['mistral', 'fumee'], anim: ['conteneurs_basculent', 'troupeau_traverse'],
+      texte: 'Les conteneurs tiennent une minute. Puis la marée passe le fleuve.' },
+    { decor: 'estive_ventoux', camera: { de: { x: 0.0, zoom: 1.2 }, vers: { x: 0.5, zoom: 1.05 } }, duree: 9000,
+      effets: ['brouillard_bas'], anim: ['troupeau_monte', 'redon_balance'],
+      texte: 'Onze jours plus tard, au pied du Ventoux.' },
+    { decor: 'estive_ventoux', camera: { de: { x: 0.5, zoom: 1.05 }, vers: { x: 0.7, zoom: 1.5 } }, duree: 8000,
+      effets: ['brouillard_bas'], anim: ['revenus_se_redressent'],
+      texte: 'Chaque matin, dans la foule, quelqu’un se redresse, regarde ses mains, et demande de l’eau.' },
+    { decor: 'estive_ventoux', camera: { de: { x: 0.7, zoom: 1.5 }, vers: { x: 0.9, y: 0.2, zoom: 1.2 } }, duree: 7000,
+      effets: [], anim: ['sommet_blanc'],
+      texte: 'Là-haut, le Ventoux est blanc comme un os. Un jour de plus.', attendre: true },
+  ] },
 };

@@ -9,7 +9,9 @@
 // remplacent la synthèse pour les thèmes/ambiances concernés (repli synthèse).
 // Interface stable : playAmbiance, startCombatMusic, stopCombatMusic, sfx,
 // setMuted, setHeartbeat — et setTension(0..1) pour la nappe « zombie proche ».
-import { G, estNuit } from './state.js';
+import { G } from './core/state.js';
+import { estNuit } from './core/clock.js';
+import { LIEUX_GAMEPLAY } from './data/lieux_gameplay.js';
 import { CARTE_SCENE, SCENES_LEGACY, SCENES_SONORES } from './data/soundscapes.js';
 import { THEMES } from './data/musiques.js';
 
@@ -239,7 +241,8 @@ function stopAmbiance() {
 // Accepte un id de carte (int_hotel…), un type hérité (calme/rue/sombre/train)
 // ou directement un id de scène sonore.
 function resoudreScene(id) {
-  const sid = CARTE_SCENE[id] || SCENES_LEGACY[id] || (SCENES_SONORES[id] ? id : 'interieur');
+  const lg = LIEUX_GAMEPLAY[id];
+  const sid = (SCENES_SONORES[id] ? id : null) || (lg && SCENES_SONORES[lg.ambiance] ? lg.ambiance : null) || CARTE_SCENE[id] || SCENES_LEGACY[id] || 'interieur';
   return sid;
 }
 

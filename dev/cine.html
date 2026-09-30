@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Banc d'essai — Cinématiques</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../css/cine.css">
+<style>
+  html, body { margin: 0; min-height: 100%; background: #0b0b0c; color: #e6dfcc; font-family: Oswald, sans-serif; }
+  main { padding: 18px; max-width: 1100px; margin: 0 auto; }
+  h1 { font-weight: 400; letter-spacing: .2em; text-transform: uppercase; font-size: 20px; color: #c9a227; }
+  h2 { font-weight: 400; letter-spacing: .15em; font-size: 14px; text-transform: uppercase; opacity: .7; margin-top: 26px; }
+  .liste { display: flex; flex-wrap: wrap; gap: 6px; }
+  .liste a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border: 1px solid #333; color: #e6dfcc; text-decoration: none; font-size: 13px; letter-spacing: .05em; }
+  .liste a:hover { border-color: #c9a227; }
+  p.aide { font-family: 'EB Garamond', serif; opacity: .7; }
+</style>
+</head>
+<body>
+<main id="menu" hidden>
+  <h1>Cinématiques — banc d'essai</h1>
+  <p class="aide">?id=intro joue une cinématique · ?decor=salon_marche balaye un décor (caméra de gauche à droite, toutes ses animations) ·
+    options : &amp;plan=2&amp;t=4000&amp;pause=1 (image figée), &amp;effets=pluie,braises, &amp;zoom=1.2, &amp;x=0.5 (décor figé).</p>
+  <h2>Cinématiques</h2><div class="liste" id="lc"></div>
+  <h2>Décors</h2><div class="liste" id="ld"></div>
+</main>
+<script type="module">
+  import { jouer, jouerScript } from '../js/cine/lecteur.js';
+  import { CINEMATIQUES, DECORS } from '../js/data/cinematiques.js';
+  import { chargerDecor } from '../js/cine/scenes/index.js';
+
+  const q = new URLSearchParams(location.search);
+  const num = (k, d) => (q.has(k) ? parseFloat(q.get(k)) : d);
+  const opts = { debut: { plan: num('plan', 0), t: num('t', 0) }, pause: q.get('pause') === '1', musique: q.get('son') !== '0' };
+  // Le son ne peut démarrer qu'après un geste : premier clic → initAudio.
+  addEventListener('pointerdown', () => import('../js/audio.js').then(m => m.initAudio && m.initAudio()).catch(() => {}), { once: true });
+
+  async function lancer() {
+    if (q.has('id')) {
+      const r = await jouer(q.get('id'), opts);
+      window.__cineFin = r; montrerMenu();
+    } else if (q.has('decor')) {
+      const id = q.get('decor');
+      const d = await chargerDecor(id);
+      const anims = [...Object.keys(d.anims || {})].filter(n => !(q.get('sans') || '').split(',').includes(n));
+      const zoom = num('zoom', 1.12);
+      const fixe = q.has('x');
+      const plan = {
+        decor: id, duree: num('duree', 16000), attendre: true, texte: q.get('texte') || '',
+        effets: (q.get('effets') || 'grain').split(',').filter(Boolean), anim: q.has('anim') ? q.get('anim').split(',') : anims,
+        camera: fixe ? { de: { x: num('x', 0.5), y: num('y', 0.5), zoom }, vers: { x: num('x', 0.5), y: num('y', 0.5), zoom } }
+                     : { de: { x: 0, zoom }, vers: { x: 1, zoom } },
+      };
+      const r = await jouerScript({ plans: [plan] }, opts);
+      window.__cineFin = r; montrerMenu();
+    } else montrerMenu();
+  }
+  function montrerMenu() {
+    document.getElementById('menu').hidden = false;
+    document.getElementById('lc').innerHTML = Object.keys(CINEMATIQUES).map(k => `<a href="?id=${k}">${k}</a>`).join('');
+    document.getElementById('ld').innerHTML = DECORS.map(k => `<a href="?decor=${k}">${k}</a>`).join('');
+  }
+  lancer();
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+// ============ OBJETS DE QUÊTE ET DE LORE (fusionnés dans ITEMS au chargement — REFONTE §11) ============
+// Même format que js/data/items.js. type : 'quete' (sert à l'histoire, ne se jette pas) | 'lore' (souvenir, lisible).
+// poids en kg, espace en cases. Les ids ne doivent pas entrer en collision avec items.js (vérifié par tools/verifier_histoire.mjs).
+export const OBJETS_QUETE = {
+  // ─── Prologue ───
+  etiquette_orteil: { nom: 'Étiquette d’orteil', type: 'lore', poids: 0.01, espace: 0,
+    desc: 'Un carton attaché par un fil de fer. Ton nom, en capitales. DÉCÈS CONSTATÉ LE 06/09. Tu ne sais pas pourquoi tu la gardes. Si : pour ne pas oublier.' },
+  bracelet_p4: { nom: 'Bracelet jaune « P4 »', type: 'lore', poids: 0, espace: 0,
+    desc: 'Un bracelet d’hôpital en plastique jaune. URG — P4. Tu n’arrives pas à l’enlever. Tu n’essaies plus.' },
+  telephone_perso: { nom: 'Ton téléphone', type: 'quete', poids: 0.18, espace: 0,
+    desc: 'Écran fendu en étoile. Tes pouces connaissent le code mieux que toi. Il lui faut du courant — et, pour envoyer quoi que ce soit, du réseau.' },
+  portefeuille_perso: { nom: 'Ton portefeuille', type: 'lore', poids: 0.1, espace: 0,
+    desc: 'Une carte d’identité à ton nom, un billet de vingt euros, une carte de fidélité d’une boulangerie de Marseille. La photo de la carte d’identité te ressemble. À peu près.' },
+  trousseau_inconnu: { nom: 'Trousseau de trois clés', type: 'lore', poids: 0.05, espace: 0,
+    desc: 'Trois clés que tu ne reconnais pas. Une porte d’appartement, une boîte aux lettres, un cadenas de vélo. Quelque part, une porte t’attend.' },
+  cle_grille_saint_roch: { nom: 'Clé de la grille principale', type: 'quete', poids: 0.1, espace: 0,
+    desc: 'Grosse clé de laiton à anneau rouge, prise au tableau de la loge du gardien du cimetière Saint-Roch.' },
+
+  // ─── Chapitre 1 ───
+  cle_sacristie: { nom: 'Clé de la sacristie', type: 'quete', poids: 0.1, espace: 0,
+    desc: 'Une longue clé de fer ouvragée, étiquette de carton : SACRISTIE. Elle était à la ceinture d’un prêtre mort qui sonnait sa clochette.' },
+  livre_colline: { nom: 'Colline, de Giono', type: 'lore', poids: 0.15, espace: 0,
+    desc: 'Un livre de poche gonflé d’humidité. En marque-page, un billet de train Marseille–Salon du 30 août. Un village de Provence, une source qui se tarit, des hommes qui ont peur de la colline. Tu l’avais presque fini.' },
+  batterie_externe: { nom: 'Batterie externe', type: 'quete', poids: 0.2, espace: 0,
+    desc: 'Trouvée dans ton sac rouge. Elle a gardé un tiers de sa charge : assez pour faire revivre ton téléphone une fois. Pas deux.' },
+  gants_vendange: { nom: 'Gants de vendange neufs', type: 'lore', poids: 0.1, espace: 0,
+    desc: 'L’étiquette est encore attachée. Tu étais {venu|venue} cueillir du raisin. Tu les enfileras peut-être un jour, pour autre chose.' },
+  cloche_maud: { nom: 'Clochette de la salle 4', type: 'lore', poids: 0.3, espace: 1,
+    desc: 'Une petite cloche de bronze à manche de bois, comme sur le bureau des instituteurs. Chaque fois qu’elle tinte, ta bouche se remplit. Tu la gardes quand même, enveloppée dans un chiffon, le battant bloqué.' },
+  badge_morgue: { nom: 'Badge « Accès morgue »', type: 'quete', poids: 0.01, espace: 0,
+    desc: 'Badge magnétique pris sur Karim, le brancardier. Ouvre la chambre froide du sous-sol de l’hôpital — les serrures tiennent sur batterie de secours.' },
+  registre_protocole: { nom: 'Registre « PROTOCOLE — M. S. »', type: 'quete', poids: 0.9, espace: 1,
+    desc: 'Un grand registre noir à dos toilé, dans un sac de congélation. Les dates, les doses, les donneurs. Un pour un. La page quatorze manque. C’est la preuve — de quoi, exactement, ça dépend de qui la lit.' },
+  lettre_luc: { nom: 'Enveloppe « Pour Jo »', type: 'quete', poids: 0.02, espace: 0,
+    desc: 'Une grosse écriture appliquée : POUR JO. Joëlle Arnaud, Lamanon — les grottes. Tu sais ce qu’il y a dedans.' },
+  photo_luc: { nom: 'Photo pliée en deux', type: 'lore', poids: 0, espace: 0,
+    desc: 'Un homme de cinquante ans, moustache, coup de soleil, une petite fille édentée sur les épaules. Derrière eux, une falaise trouée de grottes. Au dos : « Clem et moi, Calès, avril. »' },
+  insuline_luc: { nom: 'Insuline « ARNAUD — À RENDRE »', type: 'quete', poids: 0.2, espace: 0,
+    desc: 'Quatre stylos d’insuline dans une boîte blanche, marquée au feutre par Maud. Luc Arnaud est venu à Salon pour ça. Hors du froid, ils tiendront encore quelques semaines.' },
+  perche_fourriere: { nom: 'Perche de fourrière', type: 'lore', poids: 1.6, espace: 3,
+    desc: 'Une longue perche d’aluminium terminée par un nœud coulant de câble gainé, prise dans l’ambulance de Maud. C’est avec ça qu’elle t’a {attrapé|attrapée}, le 8 septembre, comme un chien.' },
+
+  // ─── Chapitre 2 ───
+  page_14: { nom: 'Page quatorze', type: 'lore', poids: 0, espace: 0,
+    desc: 'Une feuille arrachée à un registre, douce comme un vieux billet à force d’avoir été touchée. ARNAUD Luc. DONNEUR POUR P4.' },
+  sonnaille: { nom: 'Sonnaille de laiton', type: 'lore', poids: 0.6, espace: 1,
+    desc: 'Une petite cloche de troupeau bosselée, sur son collier de cuir. Le Berger te l’a offerte. Ceux qui la portent marchent devant les morts. Bourrée de chiffon, elle se tait.' },
+  dessin_lou: { nom: 'Dessin de Lou', type: 'lore', poids: 0, espace: 0,
+    desc: 'Toi, de dos, au bord de la falaise de Calès, face à la plaine. En bas, très loin, des centaines de silhouettes minuscules. « Si un jour tu oublies à quoi tu ressembles. »' },
+  cle_armoire_forte: { nom: 'Clé « A.F. — Armoire forte »', type: 'quete', poids: 0.05, espace: 0,
+    desc: 'Au bout d’une chaînette, prise au cou du lieutenant de permanence de l’escadron de protection de la BA 701.' },
+  valise_radio: { nom: 'Valise radio tactique', type: 'quete', poids: 8.5, espace: 4,
+    desc: 'Un poste radio militaire vert olive, son combiné, sa batterie de rechange. Lourd comme une valise de pierres. Avec une antenne en hauteur, il porte jusqu’à la Durance.' },
+  carnet_authentification: { nom: 'Classeur d’authentification', type: 'quete', poids: 0.6, espace: 1,
+    desc: 'Classeur rouge à anneaux, DIFFUSION RESTREINTE. Des grilles de lettres, une page par jour. La seule façon de parler à l’armée sans se faire couper.' },
+  redon: { nom: 'Le redon de Rose', type: 'quete', poids: 4, espace: 3,
+    desc: 'La grosse cloche du troupeau. Du bronze bosselé, verdi, un collier de cuir épais comme une ceinture, un battant gros comme un poing. La voix de la mère. Là où elle va, ils vont.' },
+};

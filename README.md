@@ -1,125 +1,44 @@
-# One More Day
+# One More Day — v3 « Un pour un »
 
-Jeu de survie post-apocalyptique en français, pour adultes (descriptions violentes et gore),
-qui se déroule dans des lieux **réels** : **Salon-de-Provence** et le pays salonais
-(château de l'Empéri, Fontaine Moussue, BA 701, Leclerc des Viougues, la Crau, Miramas...).
-Cartes cliquables à quatre échelles (pièce → quartier → ville → région), inventaire, craft,
-combats en temps réel, faim/soif, blessures et états façon Project Zomboid.
-Technologie 100 % web (HTML/CSS/JS, sans framework ni build), jouable sur **PC** et **Android** (PWA).
+Survival-horror **adulte** (violent, gore) en français, dans le **vrai Salon-de-Provence** et le pays salonais.
+Jouable sur **PC** et **Android** (PWA, hors-ligne), **seul ou à deux**. Web pur (HTML/CSS/JS, sans build).
 
-## Lancer le jeu
+> Salon, trois semaines après « le Mercredi », le jour de marché où la ville s'est mise à mordre.
+> Tu te réveilles dans une housse mortuaire, au cimetière Saint-Roch. Ton étiquette dit : « décès constaté le 6 septembre ».
 
-### Sur PC
-Double-clique sur **`Lancer le jeu.bat`** : le serveur démarre (Node.js, ou Python en secours)
-et le jeu s'ouvre dans ton navigateur sur `http://localhost:8420`.
+## Les trois temps
 
-### Sur Android (même Wi-Fi que le PC)
-Double-clique sur **`Jouer sur Android.bat`** : une page d'installation s'ouvre avec l'adresse
-à taper dans Chrome sur le téléphone et les étapes illustrées. Une fois « Ajouter à l'écran
-d'accueil » validé, le jeu s'installe comme une application (icône de l'horloge arrêtée),
-jouable ensuite **hors-ligne** grâce au service worker.
+| Temps | Ce qu'on fait |
+|---|---|
+| **1. Exploration** | Dans un lieu (cimetière, Tour de l'Horloge, Empéri, hôpital…) : déplacement libre vue de dessus, lampe torche, obscurité réelle, morts qui voient et entendent, fouille des meubles en temps réel, documents, personnages. |
+| **2. La carte** | Carte illustrée « plan abîmé » de Salon et du pays salonais, **positions et distances réelles** (OpenStreetMap). On choisit une destination (distance, durée, risque, allure) ; l'écran de voyage affiche **« il te reste 640 m »** et les **rencontres** surgissent en chemin. Pas de déplacement libre sur la carte. |
+| **3. Le combat** | Temps réel lisible : jauge de menace → télégraphie (rouge = coup, ambre = empoignade) → ruée. Esquive (parfaite = contre), garde, coup rapide ou chargé, poussée, tir, fuite. À deux : chacun son front, on peut aider l'autre. |
 
-## Comment jouer
+Plus : cinématiques en parallaxe animée, scènes à choix, quêtes, 72 documents, fabrication repensée, survie (faim, soif,
+fatigue, blessures localisées, « le mal »), 3 difficultés (Récit, Survie, Cauchemar = mort définitive), plusieurs fins.
 
-- **Objectif du chapitre 1** : quitter le Grand Hôtel de la Poste, traverser Salon, faire démarrer
-  le locotracteur de la gare et rejoindre le Refuge de **Miramas-le-Vieux** par la voie ferrée.
-  Il faudra une clé, une batterie (garage de la Gandonne), du gasoil... et survivre.
-- **La carte** : touche une case pour la repérer, touche-la encore pour t'y rendre — une ou deux
-  cases par déplacement selon ta forme, ta charge et tes blessures. Quatre échelles : pièces,
-  quartier, ville, région. Les intérieurs fouillés deviennent *sécurisés* ; les rues, **jamais**.
-  En intérieur, **on ne traverse pas les murs** : on circule par les couloirs, escaliers et portes
-  (ou par les pièces qui communiquent vraiment — champ `passages` des cartes).
-- **La fouille** : répétable jusqu'à une limite par zone ; chaque passage coûte plus de temps
-  mais rapporte plus. Les trouvailles tombent *au sol* — on ramasse à la main.
-- **États (pas de barres)** : douleur, fatigue, faim, soif, saignement, froid... s'affichent
-  en haut à droite, façon Project Zomboid. Écoute ton corps.
-- **Inventaire à double limite** : chaque objet a un *poids* (kg) et un *encombrement* (cases).
-  Le poids est une limite **souple** : au-delà du confort tu passes **« en surpoids »** (tu bouges
-  encore mais plus lentement, et tu te bats moins bien) ; un *plafond* dur finit par te clouer sur
-  place. Sacs et vêtements à poches augmentent l'espace **et** le portage. Un sac ou une ceinture
-  posé au sol s'**enfile directement** (bouton *Porter*), même s'il est trop grand pour ton sac — et
-  toute action qui te ferait trop porter **jette l'excédent au sol** plutôt que de te bloquer.
-- **Accès rapide** : sans **ceinture** (puis holster, gilet...), impossible d'ouvrir le sac en
-  combat — on se bat avec ce qu'on a en main. Les objets glissés à la ceinture, eux, se dégainent.
-- **Combat en temps réel** : la jauge de **menace** du zombie se remplit — pleine, il attaque.
-  Chaque action coûte de l'**endurance**. Épuisé ? *Se défendre* pour récupérer (mais sans bouger).
-  Une arme jetée se retrouve en **fouillant** la zone après le combat (sauf si le jet a raté :
-  elle peut être perdue). Tirer fait du bruit, et le bruit attire.
-- **Blessures** (façon Project Zomboid) : égratignure → entaille → blessure profonde → plaie ouverte.
-  Bander ce qui saigne, désinfecter, suturer les plaies profondes, antibiotiques contre l'infection.
-  Chaque blessure tombe **là où le coup a porté** : un rampant mord les chevilles, un chien les
-  mollets, une chute ouvre les genoux — et une jambe blessée non bandée ralentit le déplacement.
-- **Le temps des gestes** : fouiller, se déplacer, se soigner, manger, dormir, fabriquer...
-  chaque action affiche un court spinner, d'autant plus long que l'action mange de minutes de jeu.
-- **Survie** : manger, boire (l'eau croupie se fait bouillir), dormir (en lieu sûr ou barricadé),
-  se couvrir contre le froid.
-- **Compétences** : force, dextérité, agilité, mains nues, visée, construction, mécanique,
-  entretien, pêche/chasse — progressent à l'usage.
+## Lancer
 
-## Jouer à deux (co-op, même Wi-Fi)
+- **PC** : double-clic sur `Lancer le jeu.bat` (Node.js), puis http://localhost:8420.
+- **En ligne** : https://pgrmcreate.github.io/onemoreday/ (redéployé à chaque push sur `master`).
+- **Android** : ouvrir l'adresse dans Chrome → « Ajouter à l'écran d'accueil ». Se joue en paysage.
+- **Publier** : double-clic sur `Publier la mise a jour.bat` (fait un `git push origin master`).
 
-Deux survivants peuvent partager le **même** Salon. Au lancement d'une nouvelle partie,
-choisis **« Jouer à deux → »** :
+## Jouer à deux
 
-1. **L'hôte** choisit *Héberger une partie* : l'écran affiche son **adresse réseau**
-   (`http://<ip>:8420`) et un **code de salon** à 4 lettres. Il commence à jouer tout de suite.
-2. **Le second joueur** ouvre cette adresse dans son navigateur (même Wi-Fi, comme pour Android),
-   choisit *Rejoindre une partie* et saisit le code. Il atterrit dans le monde de l'hôte, là où il en est.
+« Jouer à deux » → En ligne (serveur `js/data/serveur.js`) ou Même Wi-Fi. L'un **héberge** : sa machine tient le monde
+(horloge, morts, portes, conteneurs, combats — *hôte-autoritaire*, plus de désynchro). L'autre **rejoint** avec son propre
+personnage. Chacun se déplace librement ; quand l'un se bat dans le même lieu, l'autre voit « Rejoindre le combat ».
 
-Ensuite : vous vous **voyez sur la carte quand vous êtes dans le champ de vision** l'un de l'autre
-(pion bleu), une ligne d'état indique où est votre coéquipier, et lorsqu'il se bat tout près un bouton
-**« Rejoindre le combat »** apparaît pour lui prêter main-forte.
+## Pour les développeurs
 
-Côté technique, le serveur Node n'est qu'un **relais WebSocket** (rendez-vous par code) : toute la
-logique reste dans le navigateur de l'hôte, qui fait autorité. Le même protocole pourra viser un hôte
-**en ligne** plus tard sans rien changer au jeu. *(Premier jet : le monde de chacun tourne ensuite
-localement — la synchronisation continue des zombies/butin est la prochaine étape.)*
+- Spécification et contrats entre modules : **`docs/REFONTE.md`**
+- Histoire (bible, personnages, fins, briefs des décors) : **`docs/HISTOIRE.md`** · besoins des niveaux : `docs/NIVEAUX_BESOINS.md`
+- Game design chiffré : **`docs/GAMEPLAY.md`** · tous les réglages : `js/data/reglages.js`
+- Format des plans d'exploration (ASCII) : **`docs/NIVEAUX.md`** · plans : `js/data/niveaux/*.js`
+- Agents Claude du projet : `.claude/agents/scenariste.md`, `.claude/agents/game-designer.md`
+- Bancs d'essai : `dev/explore.html`, `dev/combat.html`, `dev/carte.html`, `dev/cine.html`, `dev/ui.html`
+- Vérifications : `node tools/valider_niveaux.mjs`, `node tools/verifier_gameplay.mjs`, `node tools/verifier_histoire.mjs`
+- Après ajout de fichiers : `node tools/generer_sw.mjs` (liste hors-ligne du service worker)
 
-## Structure du code
-
-```
-index.html                 coquille de l'app
-css/style.css              styles (sombre, mobile-first)
-js/main.js                 démarrage, menus, panneaux (inventaire, craft, corps...)
-js/state.js                état global, sauvegarde (localStorage), RNG, compétences
-js/icons.js                icônes SVG de l'interface (aucun émoji)
-js/world.js                accès au monde : cartes, cases, sol, fouilles
-js/map.js                  cartes multi-échelles : déplacement, fouille, verrous, événements
-js/combat.js               combat temps réel (jauge de menace + endurance)
-js/survival.js             temps, faim/soif, blessures, maladies, sommeil, froid
-js/inventory.js            inventaire (poids + espace), équipement, vêtements
-js/crafting.js             fabrication
-js/scenes.js               lecteur de scènes scriptées (prologue, train, fin)
-js/effects.js              résolveur d'effets déclaratifs (événements & scènes)
-js/audio.js                sons et musiques générés en Web Audio (remplaçables par des fichiers)
-js/net.js                  couche transport co-op (WebSocket, LAN ou en ligne)
-js/multi.js                session co-op hôte-autoritaire (présence, monde partagé, rejoindre un combat)
-js/illustrations.js        illustrations SVG d'ambiance et de combat
-js/data/reglages.js        TOUS les nombres qui se règlent (temps, vitesse des morts, combat...)
-js/data/*.js               contenu : objets, vêtements, recettes, zombies, lieux, événements, histoire
-audio/MUSIQUE_LIBRE.md     sources de musique/ambiances libres de droit + manifeste d'exemple
-server.js                  mini serveur statique Node + relais WebSocket co-op (aucune dépendance)
-sw.js + manifest.webmanifest   PWA (hors-ligne + installation Android)
-```
-
-Pour **comprendre les rouages** (les trois horloges du temps réel, l'effet de l'échelle sur
-la vitesse des morts, le modèle de combat, le pipeline de dessin) et surtout **où régler quoi**,
-voir **`ARCHITECTURE.md`** — et le tableau de bord commenté **`js/data/reglages.js`**.
-
-### Ajouter du contenu
-- **Cartes et lieux** : schéma documenté en tête de `js/data/cartes_salon_centre.js`
-  (fichiers `cartes_salon_*.js`, `cartes_region.js`, registre dans `js/data/world.js`).
-- **Événements** : suivre le schéma documenté en tête de `js/data/events.js`
-  (fichiers `events_rue.js`, `events_interieur.js`, `events_parc.js`).
-- **Scènes du train** : schéma en tête de `js/data/story.js` (fichier `story_train.js`).
-- **Objets / zombies** : ajouter une entrée dans le fichier de données correspondant.
-- **Validation** : `node --input-type=module -e "import('file:///<chemin>/tools/validate_data.js')"`
-  vérifie tout (liens entre cartes, connexité, ids, graphe des scènes).
-
-## Feuille de route
-- **Co-op 2 joueurs** : premier jet jouable (LAN) — présence en ligne de mire + rejoindre un combat.
-  À venir : synchronisation continue du monde (zombies/butin/temps partagés), puis jeu **en ligne**.
-- Chapitre 2 (commencé) : la vie au Refuge de Miramas-le-Vieux — la citerne à remplir au triage,
-  les fauves échappés du zoo de La Barben, la BA 701 silencieuse.
-- Remplacement optionnel des sons synthétiques par de vrais enregistrements
-  (voir `audio/MUSIQUE_LIBRE.md`).
+Carte : © contributeurs OpenStreetMap (ODbL). Polices : Oswald, EB Garamond, Special Elite, Caveat (OFL).

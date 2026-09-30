@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Banc d'essai — Exploration</title>
+<link rel="stylesheet" href="../css/explore.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #e6dfcc; font-family: Oswald, system-ui, sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  #banc { position: fixed; top: 8px; left: 8px; z-index: 50; font-size: 12px; background: rgba(0,0,0,.6); padding: 6px 10px; border: 1px solid #333; pointer-events: none; line-height: 1.5; }
+  .banc-modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.72); }
+  .banc-modal > div { max-width: min(560px, 90vw); max-height: 80vh; overflow: auto; background: #111; border: 1px solid #c9a227; padding: 18px 22px; font-family: 'EB Garamond', Georgia, serif; font-size: 17px; line-height: 1.45; }
+  .banc-modal h3 { margin: 0 0 8px; font-family: Oswald, sans-serif; color: #c9a227; letter-spacing: .05em; }
+  .banc-modal button { margin-top: 14px; min-height: 44px; padding: 0 18px; background: #222; color: #e6dfcc; border: 1px solid #c9a227; font: inherit; cursor: pointer; }
+  #toasts { position: fixed; top: 10px; right: 10px; z-index: 55; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+  #toasts div { background: rgba(0,0,0,.8); border-left: 3px solid #c9a227; padding: 6px 10px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="banc">Banc d'essai — exploration</div>
+<div id="toasts"></div>
+<script type="module">
+  // Paramètres : ?lieu=_test (plan js/data/niveaux/<id>.js) · ?heure=22 · ?combat=faux (victoire après 1 s) · ?entree=cour
+  import { nouvellePartie, G, setFlag } from '../js/core/state.js';
+  import * as clock from '../js/core/clock.js';
+  import { on } from '../js/core/bus.js';
+  import * as flow from '../js/game/flow.js';
+  import * as vue from '../js/explore/vue.js';
+  import { SCENES } from '../js/game/donnees.js';
+  import { DOCUMENTS } from '../js/data/histoire/documents.js';
+
+  const q = new URLSearchParams(location.search);
+  const lieu = q.get('lieu') || '_test';
+  nouvellePartie({ nom: 'Sam', mode: 'solo', seed: +(q.get('seed') || 1234) });
+  if (q.get('heure')) G.world.minutes = 1440 * 0 + Math.round(parseFloat(q.get('heure')) * 60);
+  // équipement de test : lampe torche chargée, pied-de-biche, couteau, piles
+  G.player.equip.lampe = 'lampe_torche';
+  G.player.equipEtat = { ...(G.player.equipEtat || {}), lampe: { charge: 600, allumee: false } };
+  G.player.equip.arme = 'couteau_cuisine';
+  G.player.inventaire.push({ id: 'pied_de_biche', qty: 1 }, { id: 'piles', qty: 2 });
+  try { (await import('../js/game/survival.js')).demarrerSurvie(); } catch (e) { console.warn('survie absente', e); }
+  clock.demarrer();
+
+  const modal = (titre, texte, bouton = 'Continuer') => new Promise((ok) => {
+    const m = document.createElement('div'); m.className = 'banc-modal';
+    const d = document.createElement('div');
+    const h = document.createElement('h3'); h.textContent = titre;
+    const p = document.createElement('div'); p.style.whiteSpace = 'pre-wrap'; p.textContent = texte;
+    const b = document.createElement('button'); b.textContent = bouton; b.onclick = () => { m.remove(); ok(); };
+    d.append(h, p, b); m.append(d); document.body.append(m); b.focus();
+  });
+  // Scènes : lecteur minimal si js/ui/dialogue.js n'existe pas encore
+  let dialogue = null; if (q.get('dialogue')) { try { dialogue = await import('../js/ui/dialogue.js'); } catch (e) {} }
+  const crochets = {};
+  if (!dialogue) crochets.scene = async (id) => { const s = SCENES[id]; await modal(`Scène : ${id}`, s ? String(s.texte || '').slice(0, 600) : '(scène inconnue)'); return { fin: '#fin' }; };
+  if (q.get('combat') === 'faux') crochets.combattre = async (spec) => { window.__dernierCombat = spec; await new Promise(r => setTimeout(r, 1000)); return { issue: 'victoire', tues: spec.zombies.map(z => z.uid), fuis: [] }; };
+  vue.definirCrochets(crochets);
+  on('document', ({ id }) => { const d = DOCUMENTS[id]; modal(d ? d.titre : id, d ? d.texte : ''); });
+  on('toast', ({ texte }) => { const t = document.createElement('div'); t.textContent = texte; document.getElementById('toasts').append(t); setTimeout(() => t.remove(), 3000); });
+  window.__omd = { G, vue, flow, clock, setFlag };
+  await flow.explorer(lieu, { entree: q.get('entree') || undefined });
+  const info = document.getElementById('banc');
+  setInterval(() => { const V = vue.etatDebug(); if (!V) return; info.textContent = `${clock.texteHeure()} · ${V.E.nom} · (${V.j.x.toFixed(1)}, ${V.j.y.toFixed(1)}) · morts ${V.zListe.length} · lumière ${V.j.lumiere.toFixed(2)}`; }, 250);
+</script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Banc d'essai — Interface</title>
+<link rel="stylesheet" href="../css/ui.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0b0c; color: #e6dfcc; overflow: hidden; font-family: Oswald, sans-serif; }
+  /* Faux décor d'exploration : sol, murs, halo de lampe */
+  #decor { position: fixed; inset: 0; background:
+      radial-gradient(circle at 46% 58%, rgba(201,162,39,.18), transparent 22%),
+      radial-gradient(circle at 46% 58%, rgba(40,36,30,.9), #050506 55%),
+      repeating-linear-gradient(90deg, #15130f 0 38px, #110f0c 38px 40px); }
+  #decor::after { content: ''; position: absolute; left: 44%; top: 54%; width: 22px; height: 22px; border-radius: 50%; background: #c9a227; box-shadow: 0 0 20px #c9a227; }
+  #banc { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 30; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 96vw; }
+  #banc button { min-height: 36px; padding: 0 10px; border: 1px solid #444; background: rgba(20,19,22,.9); color: #e6dfcc; font: 13px Oswald, sans-serif; letter-spacing: .05em; cursor: pointer; }
+  #banc button:hover { border-color: #c9a227; }
+  body.capture #banc { display: none; }
+</style>
+</head>
+<body>
+<div id="decor"></div>
+<div id="banc"></div>
+<script type="module">
+  // Paramètres : ?p=inventaire|corps|fabrication|journal|options · &onglet=… · &sel=<index sac> · &capture=1 (cache la barre du banc)
+  import { nouvellePartie, G, noteJournal } from '../js/core/state.js';
+  import * as clock from '../js/core/clock.js';
+  import { emit } from '../js/core/bus.js';
+  import * as player from '../js/game/player.js';
+  import * as surv from '../js/game/survival.js';
+  import * as inv from '../js/game/inventory.js';
+  import * as craft from '../js/game/crafting.js';
+  import { montrerHUD, majHUD } from '../js/ui/hud.js';
+  import { demarrerToasts } from '../js/ui/toast.js';
+  import { ouvrirPanneau, fermerPanneau } from '../js/ui/panels/index.js';
+  import { nombreIcones } from '../js/ui/icons.js';
+
+  const q = new URLSearchParams(location.search);
+  nouvellePartie({ nom: 'Sam', genre: 'm', mode: 'solo', seed: 1909 });
+  G.world.minutes = 2 * 1440 + 21 * 60 + 40;               // Jour 3 — 21:40
+  const p = player.normaliserJoueur(G.player);
+  p.position = { mode: 'lieu', lieu: 'hotel_poste' };
+  p.faim = 34; p.soif = 58; p.fatigue = 30; p.pv = 71;
+  Object.assign(p.skillXp, { force: 60, dexterite: 130, agilite: 45, medecine: 20, construction: 115, entretien: 10, chasse: 5 });
+  // Équipement
+  const ajouter = (id, n = 1, inst = {}) => inv.addItem(id, n, inst);
+  for (const id of ['sac_randonnee', 'ceinture_cuir', 'sweat_capuche', 'pantalon_cargo', 'bottes_cuir']) { ajouter(id); inv.equiper(p.inventaire.findIndex(x => x.id === id)); }
+  ajouter('batte_baseball'); inv.equiper(p.inventaire.findIndex(x => x.id === 'batte_baseball')); p.equipEtat.arme.dur = 29;
+  ajouter('lampe_frontale', 1, { charge: 350 }); inv.equiper(p.inventaire.findIndex(x => x.id === 'lampe_frontale')); inv.allumerLampe(true);
+  // Sac varié
+  ajouter('couteau_cuisine', 1, { dur: 7, durMax: 40 });
+  [['conserve_haricots', 2], ['barre_cereales', 3], ['pates_seches', 1], ['bouteille_eau', 1], ['eau_croupie', 1], ['bandage', 2], ['bandage_fortune', 1], ['desinfectant', 1],
+   ['antidouleur', 2], ['kit_suture', 1], ['briquet', 1], ['piles', 2], ['chiffon', 5], ['scotch', 2], ['fil_de_fer', 3], ['clous', 8], ['planche', 1], ['journal_papier', 4],
+   ['guide_survie', 1], ['munitions_9mm', 12], ['bouteille_vide', 1], ['casserole', 1], ['ouvre_boite', 1], ['cocktail_molotov', 1], ['pull_laine', 1]].forEach(([id, n]) => ajouter(id, n));
+  ajouter('gourde'); inv.remplir(p.inventaire.findIndex(x => x.id === 'gourde'), 'croupie', 0.6);
+  inv.mettreAccesRapide('bandage'); inv.mettreAccesRapide('couteau_cuisine');
+  // Au sol
+  ajouter('manche_balai'); inv.poser(p.inventaire.findIndex(x => x.id === 'manche_balai'));
+  ajouter('drap'); inv.poser(p.inventaire.findIndex(x => x.id === 'drap'));
+  // Blessures
+  G.world.minutes -= 4;
+  surv.infligerBlessure(p, { type: 'entaille', zone: 'à l\'avant-bras', saigne: true, zombie: 'errant' });
+  G.world.minutes += 4;
+  const w2 = surv.infligerBlessure(p, { type: 'egratignure', zone: 'au mollet', saigne: false, zombie: 'rampant' }); w2.infecte = true; w2.cree -= 600; w2.mal = 0;
+  const w3 = surv.infligerBlessure(p, { type: 'contusion', zone: 'au flanc' }); w3.guerison = .55;
+  const w4 = surv.infligerBlessure(p, { type: 'profonde', zone: 'à la cuisse', saigne: false }); w4.bandee = true; w4.bandage = 'propre'; w4.cree -= 900;
+  p.mal = 38; p.maladies.fievre = { reste: 200 };
+  // Quêtes, journal, documents, morts
+  G.world.quetes = { q_prologue: { etape: 'fin', faite: true }, q_protocole: { etape: 'emperi' }, q_sac_rouge: { etape: 'debut' } };
+  G.documents = ['doc_mot_maud', 'doc_registre_saint_roch', 'doc_etiquette', 'doc_sms_telephone', 'doc_carnet_lou'];
+  const jm = G.world.minutes;
+  [['Tu t\'es réveillé{|e} dans une housse. Le zip a cédé sous tes ongles.', -2800], ['La Tour de l\'Horloge sonne encore. Personne ne la remonte, pourtant.', -2500],
+   ['Maud t\'a regardé{|e} comme on regarde un chien qui revient de la fourrière.', -1300], ['Tu as dormi chez Nostradamus. Rien n\'a gratté à la porte.', -900],
+   ['L\'hôtel de la Poste sent le moisi et le parfum bon marché.', -40]].forEach(([t, d]) => { G.world.minutes = jm + d; noteJournal(t); });
+  G.world.minutes = jm;
+  Object.assign(p.stats, { morts: 23, distance: 6400, fouilles: 57, tuesParType: { errant: 17, rampant: 4, putrefie: 1, coureur: 1 } });
+  craft.setContexteFabrication({ etabli: true });
+
+  demarrerToasts(); surv.demarrerSurvie(); montrerHUD(true);
+  window.G = G; window.omd = { player, surv, inv, craft, clock, ouvrirPanneau, fermerPanneau };
+  console.log('icônes :', nombreIcones());
+
+  const B = [
+    ['Sac', () => ouvrirPanneau('inventaire')], ['Équipement', () => ouvrirPanneau('inventaire', { onglet: 'equip' })],
+    ['Corps', () => ouvrirPanneau('corps')], ['Compétences', () => ouvrirPanneau('corps', { onglet: 'competences' })],
+    ['Fabriquer', () => ouvrirPanneau('fabrication')], ['Journal', () => ouvrirPanneau('journal')], ['Documents', () => ouvrirPanneau('journal', { onglet: 'documents' })],
+    ['Menu', () => ouvrirPanneau('options')],
+    ['Griffure', () => surv.infligerBlessure(G.player, { type: 'entaille', zone: 'au bras', zombie: 'errant' })],
+    ['Morsure', () => surv.infligerBlessure(G.player, { type: 'morsure', zone: 'au cou', zombie: 'errant' })],
+    ['+1 h', () => clock.avancer(60)], ['Dormir 8 h', () => surv.dormir(8, { sur: true, force: true })],
+    ['Toast', () => emit('toast', { texte: 'Ta plaie à l\'avant-bras s\'est infectée.', type: 'mauvais' })],
+    ['Objectif suivant', () => { G.world.quetes.q_protocole.etape = 'saint_laurent'; emit('quete', { id: 'q_protocole', etape: 'saint_laurent' }); }],
+  ];
+  const banc = document.getElementById('banc');
+  for (const [t, f] of B) { const b = document.createElement('button'); b.textContent = t; b.onclick = f; banc.append(b); }
+  if (q.get('capture')) document.body.classList.add('capture');
+  if (q.get('p')) ouvrirPanneau(q.get('p'), { onglet: q.get('onglet') || undefined });
+  majHUD();
+</script>
+</body>
+</html>

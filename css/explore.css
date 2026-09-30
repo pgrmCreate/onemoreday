@@ -1,0 +1,120 @@
+/* ============ Temps 1 — Exploration ============
+   Sobre : noir, crème #e6dfcc, ambre #c9a227, sang #8e1b24. Cibles tactiles ≥ 44 px. */
+.explore {
+  --ex-noir: #0b0b0c; --ex-creme: #e6dfcc; --ex-ambre: #c9a227; --ex-sang: #8e1b24;
+  position: absolute; inset: 0; overflow: hidden; background: #000; color: var(--ex-creme);
+  font-family: Oswald, 'Arial Narrow', system-ui, sans-serif; user-select: none; -webkit-user-select: none;
+  touch-action: none; -webkit-tap-highlight-color: transparent;
+}
+.ex-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+
+/* Nom de pièce / d'étage */
+.ex-lieu {
+  position: absolute; top: 12%; left: 50%; transform: translateX(-50%); pointer-events: none;
+  font-size: 22px; letter-spacing: .12em; text-transform: uppercase; color: var(--ex-creme);
+  text-shadow: 0 2px 8px #000, 0 0 2px #000; opacity: 0; white-space: nowrap;
+}
+.ex-lieu.on { animation: ex-lieu 2.8s ease-out forwards; }
+@keyframes ex-lieu { 0% { opacity: 0; transform: translate(-50%, 6px); } 15% { opacity: .9; transform: translate(-50%, 0); } 70% { opacity: .9; } 100% { opacity: 0; } }
+
+/* Message court */
+.ex-msg {
+  position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); max-width: min(560px, 80vw);
+  padding: 8px 14px; background: rgba(11,11,12,.82); border-left: 3px solid var(--ex-ambre);
+  font-family: 'EB Garamond', Georgia, serif; font-size: 17px; line-height: 1.3; pointer-events: none;
+  opacity: 0; transition: opacity .25s;
+}
+.ex-msg.on { opacity: 1; }
+
+/* Invite d'interaction (clavier) */
+.ex-invite {
+  position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); pointer-events: none;
+  padding: 6px 14px; background: rgba(11,11,12,.78); border: 1px solid rgba(201,162,39,.45);
+  font-size: 16px; letter-spacing: .04em; white-space: nowrap; opacity: 0; transition: opacity .15s;
+}
+.ex-invite.on { opacity: 1; }
+.ex-invite kbd {
+  display: inline-block; min-width: 1.4em; padding: 0 5px; margin-right: 4px; text-align: center;
+  border: 1px solid var(--ex-ambre); color: var(--ex-ambre); font-family: inherit; font-size: 14px; border-radius: 3px;
+}
+
+/* Endurance + lampe (bas gauche) */
+.ex-etat { position: absolute; left: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.ex-sta { width: 140px; height: 5px; background: rgba(230,223,204,.14); transition: opacity .6s; }
+.ex-sta i { display: block; height: 100%; width: 100%; background: var(--ex-creme); }
+.ex-sta.plein { opacity: 0; }
+.ex-sta.bas i { background: var(--ex-sang); }
+.ex-lampe { display: none; align-items: center; gap: 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ex-ambre); }
+.ex-lampe.on { display: flex; }
+.ex-lampe b { width: 60px; height: 4px; background: rgba(201,162,39,.2); }
+.ex-lampe b i { display: block; height: 100%; background: var(--ex-ambre); }
+
+/* Barre d'action (forcer, crocheter…) */
+.ex-action { position: absolute; left: 50%; bottom: 140px; transform: translateX(-50%); width: min(320px, 70vw); pointer-events: none; text-align: center; }
+.ex-action-l { font-size: 15px; margin-bottom: 6px; text-shadow: 0 1px 4px #000; }
+.ex-action-b { height: 6px; background: rgba(0,0,0,.7); border: 1px solid rgba(201,162,39,.4); }
+.ex-action-b i { display: block; height: 100%; width: 0; background: var(--ex-ambre); }
+.cache { display: none !important; }
+
+/* Fenêtre de butin */
+.ex-butin {
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%); width: min(320px, 44vw); max-height: 76vh;
+  display: flex; flex-direction: column; background: rgba(11,11,12,.93); border: 1px solid rgba(230,223,204,.18);
+  box-shadow: 0 10px 40px rgba(0,0,0,.7); padding: 12px; z-index: 5;
+}
+.ex-butin-t { font-size: 17px; letter-spacing: .06em; text-transform: uppercase; color: var(--ex-ambre); margin-bottom: 8px; }
+.ex-butin-t span { color: rgba(230,223,204,.55); text-transform: none; letter-spacing: 0; font-size: 14px; }
+.ex-butin-l { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+.ex-butin-l li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; border-bottom: 1px solid rgba(230,223,204,.08); font-size: 16px; animation: ex-apparait .3s ease-out; }
+.ex-butin-l li em { color: rgba(230,223,204,.6); font-style: normal; }
+.ex-butin-cache { color: rgba(230,223,204,.4); justify-content: center !important; }
+@keyframes ex-apparait { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+.ex-butin-a { display: flex; gap: 8px; margin-top: 10px; }
+.ex-b {
+  min-height: 44px; min-width: 44px; padding: 0 14px; background: rgba(230,223,204,.06); color: var(--ex-creme);
+  border: 1px solid rgba(230,223,204,.28); font: inherit; font-size: 15px; letter-spacing: .04em; cursor: pointer;
+}
+.ex-b:hover { border-color: var(--ex-ambre); }
+.ex-b:disabled { opacity: .35; cursor: default; }
+.ex-b-p { flex: 1; background: rgba(201,162,39,.16); border-color: var(--ex-ambre); color: var(--ex-ambre); }
+
+/* ---------- Tactile ---------- */
+.ex-joyzone { position: absolute; left: 0; top: 0; bottom: 0; width: 45%; display: none; touch-action: none; }
+.ex-joy {
+  position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
+  border: 2px solid rgba(230,223,204,.22); background: rgba(11,11,12,.25); opacity: 0; transition: opacity .12s; pointer-events: none;
+}
+.ex-joy.on { opacity: 1; }
+.ex-joy-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(230,223,204,.35); }
+.ex-pad { position: absolute; right: 14px; bottom: 14px; display: none; flex-direction: column; align-items: flex-end; gap: 10px; }
+.ex-pad-ligne { display: flex; gap: 10px; }
+.ex-btn {
+  min-width: 56px; min-height: 56px; border-radius: 50%; border: 1px solid rgba(230,223,204,.35);
+  background: rgba(11,11,12,.62); color: var(--ex-creme); font: inherit; font-size: 12px; letter-spacing: .05em;
+  text-transform: uppercase; touch-action: none; padding: 0 6px;
+}
+.ex-btn.on { border-color: var(--ex-ambre); color: var(--ex-ambre); background: rgba(201,162,39,.16); }
+.ex-btn.appui { transform: scale(.94); background: rgba(230,223,204,.18); }
+.ex-btn-petit { min-width: 46px; min-height: 46px; }
+.ex-btn-inter {
+  border-radius: 28px; min-width: 150px; max-width: 46vw; min-height: 56px; padding: 0 18px; font-size: 15px; text-transform: none;
+  border-color: var(--ex-ambre); color: var(--ex-creme); background: rgba(40,32,10,.7);
+}
+.ex-btn-inter.inactif { opacity: .35; border-color: rgba(230,223,204,.3); }
+.ex-btn-l { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.explore.ex-tactile .ex-joyzone, .explore.ex-tactile .ex-pad { display: flex; }
+.explore.ex-tactile .ex-joyzone { display: block; }
+.explore.ex-tactile .ex-invite { display: none; }
+.explore.ex-tactile .ex-msg { bottom: 150px; }
+.explore.ex-tactile .ex-butin { top: 12px; transform: none; max-height: calc(100% - 180px); }
+@media (pointer: coarse) {
+  .explore .ex-joyzone { display: block; }
+  .explore .ex-pad { display: flex; }
+  .explore .ex-invite { display: none; }
+  .explore .ex-msg { bottom: 150px; }
+  .explore .ex-butin { top: 12px; transform: none; max-height: calc(100% - 180px); }
+}
+@media (max-height: 420px) {
+  .ex-lieu { font-size: 17px; top: 8%; }
+  .ex-msg { font-size: 15px; }
+}
