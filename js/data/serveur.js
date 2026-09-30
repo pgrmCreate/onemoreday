@@ -5,6 +5,5 @@
 // Une fois le tunnel en place, colle ici l'adresse WebSocket, suffixe « /ws » inclus :
 //   export const SERVEUR_EN_LIGNE = 'wss://onemoreday.ton-domaine.net/ws';
 //
-// Le site Satigny est servi en HTTP, donc le relais permanent utilise ws://.
-// Si le site passe en HTTPS, remplacer par wss://Satigny.giize.com/ws.
-export const SERVEUR_EN_LIGNE = 'ws://Satigny.giize.com/ws';
+// Le site (GitHub Pages et https://satigny.giize.com/omd/) est servi en HTTPS : le relais passe donc en wss://.
+export const SERVEUR_EN_LIGNE = 'wss://Satigny.giize.com/ws';
