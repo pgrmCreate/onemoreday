@@ -227,7 +227,7 @@ export function equiper(index, p) {
   if (p.equip[slot]) desequiper(slot, p, true);
   p.equip[slot] = it.id;
   if (slot === 'arme') p.equipEtat.arme = { dur: sorti.dur ?? d.dur ?? null, durMax: sorti.durMax ?? d.dur ?? null };
-  if (slot === 'lampe') p.equipEtat.lampe = { charge: sorti.charge ?? 0, allumee: false };
+  if (slot === 'lampe') { const src = REGLAGES.lumiere.SOURCES[it.id] || {}; p.equipEtat.lampe = { charge: sorti.charge ?? Math.round((src.minParCharge || 0) * 0.6), allumee: false }; }
   nettoyerAccesRapide(p);
   emit('inventaire', { equip: slot });
   return { ok: true, slot };
@@ -332,7 +332,7 @@ export function instanceDe(ref, p) {
 export function lampe(p) {
   p = joueur(p); const id = p.equip.lampe; if (!id) return null;
   const src = REGLAGES.lumiere.SOURCES[id]; const e = p.equipEtat.lampe || (p.equipEtat.lampe = { charge: 0, allumee: false });
-  return { id, nom: nomObjet(id), ...src, charge: e.charge || 0, allumee: !!e.allumee, frac: src.minParCharge ? Math.min(1, (e.charge || 0) / src.minParCharge) : 0 };
+  return { id, nom: nomObjet(id), ...src, recharge: src.charge || null, charge: e.charge || 0, allumee: !!e.allumee, frac: src.minParCharge ? Math.min(1, (e.charge || 0) / src.minParCharge) : 0 };
 }
 export function lampeAllumee(p) { const l = lampe(p); return !!(l && l.allumee && l.charge > 0); }
 export function allumerLampe(on, p) {
@@ -365,7 +365,7 @@ export function consommerLumiere(delta, p) {
   if (e.charge <= 0) {
     e.allumee = false;
     if (l.id === 'torche') { p.equip.lampe = null; delete p.equipEtat.lampe; emit('toast', { texte: 'La torche s\'éteint, consumée.', type: 'alerte' }); }
-    else emit('toast', { texte: `${l.nom} : ${l.charge === 'piles' ? 'piles mortes' : 'plus d\'huile'}.`, type: 'alerte' });
+    else emit('toast', { texte: `${l.nom} : ${l.recharge === 'piles' ? 'piles mortes. Remplace-les (il te faut des piles).' : 'plus d\'huile.'}`, type: 'alerte' });
     emit('inventaire', { lampe: false });
   }
 }

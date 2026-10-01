@@ -233,7 +233,7 @@ function actionsSac(index, it, p, racine, api) {
   else if (slot === 'lampe') a.push({ label: 'Équiper la lampe', icone: 'lampe', principal: true, f: () => res(inv.equiper(index)) });
   else if (slot) a.push({ label: 'Porter', icone: 'equiper', principal: true, f: () => res(inv.equiper(index)) });
   if (it.id === 'piles' || it.id === 'huile_olive') {
-    const l = inv.lampe(p); if (l && l.charge === it.id) a.push({ label: 'Recharger la lampe', icone: 'recharger', f: () => res(inv.rechargerLampe()) });
+    const l = inv.lampe(p); if (l && l.recharge === it.id) a.push({ label: 'Recharger la lampe', icone: 'recharger', f: () => res(inv.rechargerLampe()) });
   }
   if (['arme', 'soin', 'munition', 'jet'].includes(d.type) || d.jet) {
     if (p.accesRapide.includes(it.id)) a.push({ label: 'Retirer de la ceinture', icone: 'ceinture', f: () => { inv.retirerAccesRapide(it.id); apres(); } });
@@ -252,7 +252,7 @@ function actionsSlot(slot, p, racine, api) {
   if (slot === 'lampe') {
     const l = inv.lampe(p);
     a.push({ label: l.allumee ? 'Éteindre' : 'Allumer', icone: l.allumee ? 'eteindre' : 'allumer', principal: true, f: () => res(inv.allumerLampe(!l.allumee)) });
-    if (l.charge && l.frac < 1 && REGLAGES.lumiere.SOURCES[id].charge) a.push({ label: `Recharger (${inv.nomObjet(l.charge === 'piles' ? 'piles' : REGLAGES.lumiere.SOURCES[id].charge)} : ${inv.countItem(REGLAGES.lumiere.SOURCES[id].charge)})`, icone: 'recharger', disabled: !inv.hasItem(REGLAGES.lumiere.SOURCES[id].charge), f: () => res(inv.rechargerLampe()) });
+    if (l.recharge && l.frac < 1) a.push({ label: `${l.recharge === 'piles' ? 'Changer les piles' : 'Recharger'} (${inv.nomObjet(l.recharge)} : ${inv.countItem(REGLAGES.lumiere.SOURCES[id].charge)})`, icone: 'recharger', disabled: !inv.hasItem(REGLAGES.lumiere.SOURCES[id].charge), f: () => res(inv.rechargerLampe()) });
   }
   a.push({ label: slot === 'arme' ? 'Ranger dans le sac' : 'Retirer', icone: 'retirer', principal: slot !== 'lampe', f: () => { inv.desequiper(slot); apres(); } });
   return a;

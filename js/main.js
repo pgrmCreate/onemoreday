@@ -9,6 +9,7 @@ import * as quetes from './game/quetes.js';
 import { normaliserJoueur } from './game/player.js';
 import { demarrerSurvie, arreterSurvie } from './game/survival.js';
 import { demarrerDeclencheurs, arreterDeclencheurs } from './game/declencheurs.js';
+import { demarrerMeteo, arreterMeteo } from './game/meteo.js';
 import { montrerHUD, majHUD } from './ui/hud.js';
 import { demarrerToasts } from './ui/toast.js';
 import { fermerPanneau } from './ui/panels/index.js';
@@ -115,6 +116,7 @@ function demarrerSystemes({ invite = false } = {}) {
   clock.viderPauses();
   clock.demarrer({ invite });
   demarrerSurvie();
+  demarrerMeteo();
   if (!invite) demarrerDeclencheurs();
   montrerHUD(true); majHUD();
 }
@@ -122,7 +124,7 @@ function arreterPartie() {
   if (!partieEnCours) return;
   partieEnCours = false;
   try { fermerPanneau(); } catch (e) {}
-  clock.arreter(); arreterSurvie(); arreterDeclencheurs();
+  clock.arreter(); arreterSurvie(); arreterDeclencheurs(); arreterMeteo();
   montrerHUD(false);
   flow.quitter && flow.quitter();
   try { coop.arreter(); } catch (e) {}

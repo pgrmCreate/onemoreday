@@ -42,6 +42,7 @@ function ambiance(id) { import('../audio.js').then(a => { try { a.playAmbiance(i
 export async function ouvrirCarte(opts = {}) {
   clock.setVitesse(vitesseSolo('exploration'));
   ambiance(opts.echelle === 'region' ? 'region' : 'rue');
+  import('../audio.js').then(a => a.setPluieInterieur && a.setPluieInterieur(false)).catch(() => {});
   await basculer('carte', '../travel/carte.js', opts);
 }
 export async function voyager(opts) {

@@ -195,6 +195,21 @@ export async function entrer({ lieuId, entree } = {}) {
     G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: V.j.etage, x: +V.j.x.toFixed(2), y: +V.j.y.toFixed(2) };
   }));
 
+  // Météo : la pluie se voit dehors (et s'entend étouffée sous un toit)
+  import('../game/meteo.js').then(m => { if (V) V.pluie = m.pluie(); }).catch(() => {});
+  V.off.push(on('meteo', (e) => { if (V) V.pluie = e.pluie || 0; }));
+  V.dehorsSon = null;
+
+  // Bouton lampe visible seulement si on en a une (portée ou dans le sac)
+  const majBoutonLampe = () => {
+    if (!V) return;
+    const a = !!(G.player.equip && G.player.equip.lampe) || G.player.inventaire.some(it => RL.SOURCES[it.id]);
+    V.entrees.setVisible && V.entrees.setVisible('lampe', a);
+    V.entrees.setBouton('lampe', { actif: !!lampeActive() });
+  };
+  majBoutonLampe();
+  V.off.push(on('inventaire', majBoutonLampe));
+
   // sol ↔ inventaire (poser / ramasser depuis le panneau)
   if (inv && inv.setSol) inv.setSol(fournisseurSol());
 
@@ -379,6 +394,9 @@ function image(t, dt) {
   V.rendu.suivre(j.x, j.y, dt, Math.cos(j.dir) * av * (vReelle > 0.2 || I.viseeSouris ? 1 : 0.5), Math.sin(j.dir) * av * (vReelle > 0.2 || I.viseeSouris ? 1 : 0.5));
   const snap = V.snap, Sc = V.scene || (V.scene = { joueur: {}, fouille: { x: 0, y: 0, frac: 0, n: 0 } });
   Sc.E = E; Sc.C = C; Sc.jour = jour; Sc.t = t;
+  { const pi = E.piece[Math.floor(V.j.y) * E.w + Math.floor(V.j.x)]; const P = pi >= 0 ? V.niveau.pieces[pi] : null; Sc.dehors = P ? !!P.exterieur : !!V.niveau.exterieur; }
+  Sc.pluie = V.pluie || 0;
+  if (V.dehorsSon !== Sc.dehors) { V.dehorsSon = Sc.dehors; try { audio && audio.setPluieInterieur && audio.setPluieInterieur(!Sc.dehors); } catch (e) {} }
   Sc.joueur.x = j.x; Sc.joueur.y = j.y; Sc.joueur.dir = j.dir; Sc.joueur.marche = j.marche; Sc.joueur.lampe = !!la; Sc.joueur.allure = j.allure;
   Sc.pairs = pairs; Sc.zombies = V.zListe; Sc.portes = snap.portes; Sc.sol = snap.sol; Sc.cadavres = snap.cadavres; Sc.pnj = V.pnj;
   Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.carte = V.carte;

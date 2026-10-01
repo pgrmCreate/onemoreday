@@ -121,3 +121,16 @@
 .ex-butin-l li.plein > span { opacity: .6; }
 .ex-butin-l li .ex-b + .ex-b { margin-left: 4px; }
 .ex-butin-place { font-size: 13px; color: rgba(230,223,204,.6); padding: 6px 0 2px; font-family: 'EB Garamond', Georgia, serif; font-style: italic; }
+
+/* ---- Contrôles tactiles v2 : joystick flottant n'importe où (gauche OU droite), icônes discrètes ---- */
+.ex-joyzone { width: 100% !important; z-index: 1; }
+.ex-pad { z-index: 3; }
+.ex-btn-ico { min-width: 44px !important; min-height: 44px !important; width: 44px; height: 44px; padding: 0 !important; display: grid; place-items: center;
+  background: rgba(11,11,12,.38) !important; border-color: rgba(230,223,204,.18) !important; opacity: .72; }
+.ex-btn-ico svg { width: 22px; height: 22px; }
+.ex-btn-ico.on { opacity: 1; color: var(--ex-ambre); border-color: var(--ex-ambre) !important; background: rgba(201,162,39,.14) !important; }
+.ex-butin { z-index: 30 !important; }
+@media (pointer: coarse) {
+  .explore .ex-butin { top: 64px !important; bottom: 12px; right: 50%; transform: translateX(50%) !important; width: min(420px, 70vw); max-height: none !important; }
+  .explore .ex-butin .ex-b { min-height: 44px; }
+}

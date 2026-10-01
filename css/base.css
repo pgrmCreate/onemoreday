@@ -112,8 +112,12 @@ input.saisie:focus { border-color: var(--ambre); }
 @keyframes pulse-rej { 50% { box-shadow: 0 0 0 6px rgba(201,162,39,.25); } }
 
 /* ---------- HUD selon le temps ---------- */
-body[data-temps="carte"] .ui-hud .hud-haut-g { display: none; }
+body[data-temps="carte"] .ui-hud .hud-carte, body[data-temps="carte"] .ui-hud .hud-moodles { display: none; }
+body[data-temps="carte"] .ui-hud .hud-haut-g { top: 58px; }
 body[data-temps="carte"] .carte-barre { padding-right: calc(220px + var(--safe-r)) !important; }
 body[data-temps="carte"] .carte-fiche { top: 62px; }
 /* Pas d'invite de rotation pendant une cinématique : elle s'adapte au portrait. */
 body.en-jeu:has(.cine-racine) .tourner { display: none !important; }
+
+/* Cinématiques sur mobile : pas de couches GPU géantes (au-delà de la taille de texture, Android les affiche noires). */
+@media (pointer: coarse) { .cine-couche { will-change: auto !important; } }

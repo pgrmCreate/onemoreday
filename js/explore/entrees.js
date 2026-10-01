@@ -57,11 +57,18 @@ export function creerEntrees({ racine, canvas, actions }) {
   const joyBase = el('div', { class: 'ex-joy' }, el('div', { class: 'ex-joy-knob' }));
   zoneJoy.append(joyBase);
   const bInter = el('button', { class: 'ex-btn ex-btn-inter', type: 'button' }, el('span', { class: 'ex-btn-l' }, 'Interagir'));
-  const bCourse = el('button', { class: 'ex-btn ex-btn-rond', type: 'button', 'aria-label': 'Courir' }, 'Courir');
-  const bAccr = el('button', { class: 'ex-btn ex-btn-rond', type: 'button', 'aria-label': 'Accroupi' }, 'Accroupi');
-  const bLampe = el('button', { class: 'ex-btn ex-btn-rond', type: 'button', 'aria-label': 'Lampe' }, 'Lampe');
-  const bInv = el('button', { class: 'ex-btn ex-btn-rond ex-btn-petit', type: 'button', 'aria-label': 'Sac' }, 'Sac');
-  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe), el('div', { class: 'ex-pad-ligne' }, bAccr, bCourse), bInter);
+  // Petites icônes discrètes (pas de texte) : courir, accroupi, lampe (cachée sans lampe).
+  const SVG = {
+    courir: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="4.2" r="1.9" fill="currentColor" stroke="none"/><path d="M8.5 9.5 12 7.6l3 1.6 1.4 3 2.6.8"/><path d="M12 7.6 10.6 13l3.4 2.6-1 5.2"/><path d="M10.6 13 7.4 15.4 4.4 15"/></svg>',
+    accroupi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="6.2" r="1.9" fill="currentColor" stroke="none"/><path d="M12.4 8.8 9 12.2l4.4 2.4-1.6 5"/><path d="M9 12.2 7.6 16.4 4.6 17"/><path d="M12 10.6l4 1.4"/><path d="M3 20.5h18" opacity=".45"/></svg>',
+    lampe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="10" width="8" height="4.5" rx="1.2"/><path d="M10.5 9.2 13.5 8v8.5l-3-1.2z"/><path d="M15.5 9.5 21 7.5M15.5 12.2H21.5M15.5 15l5.5 2" opacity=".7"/></svg>',
+  };
+  const icone = (nom, label) => el('button', { class: 'ex-btn ex-btn-ico', type: 'button', 'aria-label': label, title: label, html: SVG[nom] });
+  const bCourse = icone('courir', 'Courir (maintenir)');
+  const bAccr = icone('accroupi', 'S\'accroupir');
+  const bLampe = icone('lampe', 'Lampe');
+  const bInv = el('button', { class: 'cache', type: 'button' });
+  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bAccr, bCourse), bInter);
   racine.append(zoneJoy, pad);
 
   const joy = { id: null, ox: 0, oy: 0, R: 56 };
@@ -132,8 +139,9 @@ export function creerEntrees({ racine, canvas, actions }) {
     setBouton(nom, { actif: a, libelle } = {}) {
       const b = { lampe: bLampe, course: bCourse, accroupi: bAccr, sac: bInv }[nom]; if (!b) return;
       if (a != null) b.classList.toggle('on', !!a);
-      if (libelle && b.textContent !== libelle) b.textContent = libelle;
+      if (libelle && b !== bLampe && b !== bCourse && b !== bAccr && b.textContent !== libelle) b.textContent = libelle;
     },
+    setVisible(nom, v) { const b = { lampe: bLampe, course: bCourse, accroupi: bAccr }[nom]; if (b) b.classList.toggle('cache', !v); },
     setAccroupi(v) { etat.accroupi = !!v; majBoutons(); },
     actif(v) { actif = !!v; if (!actif) { bas.clear(); etat.mx = etat.my = 0; etat.course = false; boutonCourse = false; joy.id = null; joyBase.classList.remove('on'); } },
     fermer() { for (const f of off) f(); zoneJoy.remove(); pad.remove(); },

@@ -197,6 +197,7 @@ export function initAudio() {
     // Banque de sons fichier (audio/) + manifest optionnel : ils remplacent la
     // synthèse pour les sons concernés. Tout échec retombe en silence sur la synthèse.
     chargerSons();
+    if (pluieType) demarrerPluie(pluieType); // la météo était déjà à la pluie avant le premier geste
     // Le séquenceur se met en pause quand l'onglet est caché : on le réveille au retour.
     document.addEventListener('visibilitychange', () => { if (!document.hidden) reprendreSeq(); });
   } catch (e) { console.warn('Audio indisponible', e); }
@@ -321,42 +322,43 @@ export function playAmbiance(id) {
   // Et parfois, la musique du lieu se lève : thème composé ou motif génératif.
   planifierMusique(sc, cle, nuit);
   // Couche météo : sur les scènes à découvert, une averse occasionnelle (fichiers).
-  if (SCENES_EXTERIEURES.has(sid)) planifierPluie(cle); else arreterPluie();
+  // (la pluie suit désormais la MÉTÉO du monde : voir setPluie, piloté par js/game/meteo.js)
 }
 
-// ---------- Couche météo : averses occasionnelles (fichiers environnement/) ----------
-function planifierPluie(cle) {
-  if (pluieTimer) clearTimeout(pluieTimer);
-  const delai = (60 + Math.random() * 180) * 1000; // 1 à 4 min de répit avant l'averse
-  pluieTimer = setTimeout(() => {
-    if (ambianceCourante !== cle || !ctx) return;
-    demarrerPluie(Math.random() < 0.4 ? 'forte' : 'legere', cle);
-  }, delai);
+// ---------- Couche météo : la pluie suit la météo du monde (js/game/meteo.js) ----------
+// setPluie('legere'|'forte'|null) : démarre/arrête la pluie en fondu. setPluieInterieur(true) : sous un toit,
+// on l'entend étouffée (passe-bas, plus bas) ; dehors, pleine.
+let pluieType = null, pluieInterieur = false, pluieFiltre = null;
+export function setPluie(type) {
+  if (type === pluieType) return;
+  pluieType = type || null;
+  arreterPluie();
+  if (pluieType && ctx) demarrerPluie(pluieType);
 }
-function demarrerPluie(type, cle) {
-  const ent = pluieBuf[type] || pluieBuf.legere;
-  if (!ent) { planifierPluie(cle); return; }
-  arreterPluie(true);
-  const src = ctx.createBufferSource(); src.buffer = ent.buffer; src.loop = true;
-  const g = ctx.createGain(); g.gain.value = 0.0001;
-  const cible = (type === 'forte' ? 0.22 : 0.13) * ent.norm; // normalisé (la pluie est faible)
-  g.gain.linearRampToValueAtTime(cible, ctx.currentTime + 6); // l'averse arrive en fondu
-  src.connect(g); g.connect(master); src.start();
-  pluieNode = { src, g };
-  const duree = (90 + Math.random() * 150) * 1000; // elle dure 1,5 à 4 min
-  pluieTimer = setTimeout(() => {
-    if (!ctx) return;
+export function setPluieInterieur(b) {
+  pluieInterieur = !!b;
+  if (pluieNode && pluieFiltre && ctx) {
     const t = ctx.currentTime;
-    try { g.gain.cancelScheduledValues(t); g.gain.linearRampToValueAtTime(0.0001, t + 6); src.stop(t + 6.3); } catch (e) {}
-    pluieNode = null;
-    if (ambianceCourante === cle) planifierPluie(cle);
-  }, duree);
+    pluieFiltre.frequency.setTargetAtTime(pluieInterieur ? 700 : 18000, t, 0.4);
+    pluieNode.g.gain.setTargetAtTime(cibleGain() * (pluieInterieur ? 0.45 : 1), t, 0.6);
+  }
 }
-function arreterPluie(douxEnchaine = false) {
-  if (pluieTimer && !douxEnchaine) { clearTimeout(pluieTimer); pluieTimer = null; }
+function cibleGain() { const ent = pluieBuf[pluieType] || pluieBuf.legere; return ent ? (pluieType === 'forte' ? 0.22 : 0.13) * ent.norm : 0; }
+function demarrerPluie(type) {
+  const ent = pluieBuf[type] || pluieBuf.legere;
+  if (!ent) { pluieTimer = setTimeout(() => { if (pluieType) demarrerPluie(pluieType); }, 3000); return; } // pas encore décodée
+  const src = ctx.createBufferSource(); src.buffer = ent.buffer; src.loop = true;
+  pluieFiltre = ctx.createBiquadFilter(); pluieFiltre.type = 'lowpass'; pluieFiltre.frequency.value = pluieInterieur ? 700 : 18000;
+  const g = ctx.createGain(); g.gain.value = 0.0001;
+  g.gain.linearRampToValueAtTime(cibleGain() * (pluieInterieur ? 0.45 : 1), ctx.currentTime + 6); // l'averse arrive en fondu
+  src.connect(pluieFiltre); pluieFiltre.connect(g); g.connect(master); src.start();
+  pluieNode = { src, g };
+}
+function arreterPluie() {
+  if (pluieTimer) { clearTimeout(pluieTimer); pluieTimer = null; }
   if (pluieNode && ctx) {
     const t = ctx.currentTime;
-    try { pluieNode.g.gain.cancelScheduledValues(t); pluieNode.g.gain.setTargetAtTime(0.0001, t, 0.4); pluieNode.src.stop(t + 1.2); } catch (e) {}
+    try { pluieNode.g.gain.cancelScheduledValues(t); pluieNode.g.gain.setTargetAtTime(0.0001, t, 1.2); pluieNode.src.stop(t + 4); } catch (e) {}
     pluieNode = null;
   }
 }

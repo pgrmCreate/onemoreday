@@ -226,6 +226,22 @@ export function creerRendu(canvas, niveau) {
       ctx.fillStyle = 'rgba(230,223,204,0.8)';
       for (let n = 0; n < f.n; n++) { const fx = bx + bw * (n + 1) / (f.n + 1); ctx.fillRect(fx - 0.5, by - 1, 1, 7); }
     }
+    // pluie (dehors seulement) : stries obliques + voile froid
+    if (S.pluie > 0 && S.dehors) {
+      ctx.save();
+      ctx.fillStyle = `rgba(40,55,75,${0.10 * S.pluie})`; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = `rgba(190,205,220,${0.22 + 0.18 * S.pluie})`; ctx.lineWidth = 1;
+      ctx.beginPath();
+      const n = Math.round(90 * S.pluie * (W * H) / (1280 * 720)) + 20;
+      for (let k = 0; k < n; k++) {
+        const vit = 0.9 + ((k * 37) % 10) / 20;
+        const x0 = ((k * 9301 + 49297) % 233280) / 233280 * (W + 120) - 60;
+        const y = ((S.t * vit + k * 977) % (H + 80)) - 40;
+        const x = x0 + (y * 0.22);
+        ctx.moveTo(x, y); ctx.lineTo(x - 5, y - 18);
+      }
+      ctx.stroke(); ctx.restore();
+    }
     // grain + vignette
     if (!grain) preparerGrain();
     if (!vignette) preparerVignette();
