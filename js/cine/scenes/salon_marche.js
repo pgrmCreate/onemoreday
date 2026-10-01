@@ -1,7 +1,7 @@
 // Le cours Carnot, mercredi 2 septembre, 10 h — avant. Lumière dorée, marché plein, platanes.
 import { alea, etal, humain, halo, r1, mix, sombre, oiseau, radial, uid } from '../lib.js';
 import { passant, animerPassants, onduler, couler, ease } from '../anim.js';
-import { MATIN, coucheCiel, coucheFacades, couchePlatanes, coucheVoute } from './_cours.js';
+import { MATIN, coucheCiel, coucheFacades, couchePlatanes, coucheVoute } from './rue_commune.js';
 
 const P = MATIN;
 const HAUTS = ['#b8322c', '#e6d3ad', '#5e7f95', '#6f8a3e', '#d9a45b', '#2e3440', '#8a4a6a', '#f0ece0', '#c86a3a', '#3f6d7a', '#9a3a4a', '#d8c070'];

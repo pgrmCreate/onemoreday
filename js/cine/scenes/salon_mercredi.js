@@ -1,7 +1,7 @@
 // Même cours Carnot, 10 h 51 : la panique. Ciel voilé, couleurs lavées, étals renversés, gyrophare au loin.
 import { alea, etal, humain, halo, r1, mix, sombre, gisant, uid, radial } from '../lib.js';
 import { passant, animerPassants, onduler, ease } from '../anim.js';
-import { MATIN, coucheCiel, coucheFacades, couchePlatanes, coucheVoute } from './_cours.js';
+import { MATIN, coucheCiel, coucheFacades, couchePlatanes, coucheVoute } from './rue_commune.js';
 
 const P = Object.assign({}, MATIN, {
   ciel: [[0, '#8c8f8a'], [0.5, '#b3ad98'], [0.85, '#cfc4a4'], [1, '#d8caa4']],

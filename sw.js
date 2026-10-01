@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v20';
+const CACHE = 'onemoreday-v21';
 const FICHIERS = [
   './',
   './index.html',
@@ -15,7 +15,6 @@ const FICHIERS = [
   './js/cine/effets.js',
   './js/cine/lecteur.js',
   './js/cine/lib.js',
-  './js/cine/scenes/_cours.js',
   './js/cine/scenes/ba701_tarmac.js',
   './js/cine/scenes/cales_falaises.js',
   './js/cine/scenes/cales_grande_salle.js',
@@ -44,6 +43,7 @@ const FICHIERS = [
   './js/cine/scenes/place_crousillat_nuit.js',
   './js/cine/scenes/plaine_route.js',
   './js/cine/scenes/route_jean_moulin.js',
+  './js/cine/scenes/rue_commune.js',
   './js/cine/scenes/saint_roch_nuit.js',
   './js/cine/scenes/salle_quatre.js',
   './js/cine/scenes/salon_aube_toits.js',

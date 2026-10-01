@@ -2,7 +2,7 @@
 // La Tour de l'Horloge (arrêtée à 21 h 10) et l'Empéri au-dessus des toits, les platanes qui ploient.
 import { alea, r1, halo, mix, sombre, voiture, tourHorloge, gisant, uid, radial, touffe } from '../lib.js';
 import { onduler, ployer } from '../anim.js';
-import { MATIN, coucheCiel, coucheFacades, couchePlatanes, coucheVoute } from './_cours.js';
+import { MATIN, coucheCiel, coucheFacades, couchePlatanes, coucheVoute } from './rue_commune.js';
 
 const P = Object.assign({}, MATIN, {
   ciel: [[0, '#2f6aa6'], [0.45, '#5d8fb8'], [0.8, '#a9c3d6'], [1, '#d6dde0']],

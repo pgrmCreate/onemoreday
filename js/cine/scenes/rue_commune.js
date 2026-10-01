@@ -1,4 +1,5 @@
 // ============ Les cours de Salon — briques communes ============
+// (rue_commune.js — pas de « _ » en tête : GitHub Pages ignore ces fichiers.)
 // salon_marche, salon_mercredi, salon_mistral_vide, cours_troupeau et cours_nuit partagent la même rue
 // (mêmes graines : mêmes façades, mêmes platanes) sous des lumières différentes. Repère : H = 1000,
 // trottoir du fond à y = 700, alignement des platanes à y = 800, étals à y = 885, premier plan à y ≈ 1000.

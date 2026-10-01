@@ -3,7 +3,7 @@
 // et ses torches.
 import { alea, r1, foule, humain, halo, degrade, uid, voile } from '../lib.js';
 import { scintiller, onduler } from '../anim.js';
-import { MATIN, coucheCiel, coucheFacades, couchePlatanes } from './_cours.js';
+import { MATIN, coucheCiel, coucheFacades, couchePlatanes } from './rue_commune.js';
 
 const P = Object.assign({}, MATIN, {
   ciel: [[0, '#05060a'], [0.55, '#10121a'], [1, '#2e2a34']], soleil: null, nuages: null, etoiles: true,

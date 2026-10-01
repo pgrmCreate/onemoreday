@@ -44,6 +44,7 @@ jobs:
           VERSION="0.$MINOR"
           mkdir _site
           cp -r index.html android.html manifest.webmanifest version.json sw.js css js icons audio fonts zombies _site/
+          touch _site/.nojekyll
           printf '{ "sha": "%s", "version": "%s", "builtAt": "%s" }\n' "$SHA" "$VERSION" "$STAMP" > _site/version.json
           printf "// Réécrit au déploiement — ne pas éditer à la main.\nexport const BUILD_SHA = '%s';\nexport const BUILD_VERSION = '%s';\n" "$SHA" "$VERSION" > _site/js/version_build.js
           echo "Version déployée : $VERSION ($SHA)"

@@ -2,7 +2,7 @@
 // réverbères morts, lune. Même rue que le marché (mêmes graines), éteinte.
 import { alea, etal, voiture, lampadaire, r1, voile } from '../lib.js';
 import { onduler } from '../anim.js';
-import { MATIN, coucheCiel, coucheFacades, couchePlatanes } from './_cours.js';
+import { MATIN, coucheCiel, coucheFacades, couchePlatanes } from './rue_commune.js';
 
 const P = Object.assign({}, MATIN, {
   ciel: [[0, '#05070e'], [0.6, '#10141e'], [1, '#1e2230']], soleil: null, nuages: '#2a2e3a', nuagesO: 0.4, etoiles: true, lune: [0.62, 120, 30],

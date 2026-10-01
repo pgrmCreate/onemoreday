@@ -809,7 +809,7 @@ function donner(it, silencieux) {
   if (!silencieux) message(auSol ? `${nomObjet(it.id)} : plus de place, posé au sol.` : `Pris : ${nomObjet(it.id)}${it.qty > 1 ? ' ×' + it.qty : ''}.`, 1600);
 }
 async function ramasser(o) {
-  const it = await V.canal.prendre('sol:' + o.uid, 0);
+  const it = await V.canal.prendre('#sol:' + o.uid, 0);
   if (!it) return;
   if (it.doc) lireDocument(it.doc); else { donner(it); sfx('loot'); }
 }
@@ -818,7 +818,7 @@ function fournisseurSol() {
   return {
     lister: () => proches().map(o => ({ id: o.id, qty: o.qty })),
     deposer: (item) => { if (V) V.canal.deposer({ etage: V.j.etage, x: V.j.x + Math.cos(V.j.dir) * 0.4, y: V.j.y + Math.sin(V.j.dir) * 0.4 }, item).then(() => { V && (V.snap = V.canal.instantane()); }); },
-    prendre: (i) => { const o = proches()[i]; if (!o) return null; V.canal.prendre('sol:' + o.uid, 0); V.snap.sol = V.snap.sol.filter(x => x !== o); return { id: o.id, qty: o.qty }; },
+    prendre: (i) => { const o = proches()[i]; if (!o) return null; V.canal.prendre('#sol:' + o.uid, 0); V.snap.sol = V.snap.sol.filter(x => x !== o); return { id: o.id, qty: o.qty }; },
   };
 }
 

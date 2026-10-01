@@ -677,8 +677,8 @@ export function creerSimLieu(opts) {
     j.fouille = null;
   }
   function prendre(joueurId, cle, index) {
-    if (cle.startsWith('sol:')) {
-      const uid = +cle.slice(4);
+    if (cle.startsWith('#sol:')) { // objet posé par terre (« #sol:uid ») — pas un meuble de l'étage « sol »
+      const uid = +cle.slice(5);
       const k = sol.findIndex(o => o.uid === uid);
       if (k < 0) return null;
       const o = sol.splice(k, 1)[0];
