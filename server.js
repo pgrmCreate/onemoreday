@@ -92,14 +92,21 @@ const MIME = {
 
 // Adresses IPv4 locales (pour afficher l'adresse à taper sur le téléphone)
 function adressesLan() {
-  const res = [];
+  // Les cartes VIRTUELLES (Hyper-V/WSL, VirtualBox, VMware, VPN…) ne sont pas joignables
+  // depuis le téléphone : on les écarte, et on met en premier le vrai Wi-Fi / Ethernet.
+  const virtuel = /vethernet|virtual|vmware|vbox|hyper-v|wsl|docker|zerotier|tailscale|hamachi|vpn|loopback|bluetooth/i;
+  const vraies = [], autres = [];
   const ifaces = os.networkInterfaces();
   for (const nom of Object.keys(ifaces)) {
     for (const inf of ifaces[nom]) {
-      if (inf.family === 'IPv4' && !inf.internal) res.push(inf.address);
+      if (inf.family !== 'IPv4' && inf.family !== 4) continue;
+      if (inf.internal || inf.address.startsWith('169.254.')) continue;
+      (virtuel.test(nom) ? autres : vraies).push(inf.address);
     }
   }
-  return res;
+  const rang = (a) => (/^192\.168\./.test(a) ? 0 : /^10\./.test(a) ? 1 : 2);
+  vraies.sort((a, b) => rang(a) - rang(b));
+  return vraies.length ? vraies : autres;
 }
 
 const serveur = http.createServer((req, res) => {

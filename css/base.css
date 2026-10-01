@@ -112,7 +112,7 @@ input.saisie:focus { border-color: var(--ambre); }
 @keyframes pulse-rej { 50% { box-shadow: 0 0 0 6px rgba(201,162,39,.25); } }
 
 /* ---------- HUD selon le temps ---------- */
-body[data-temps="carte"] .ui-hud .hud-carte, body[data-temps="carte"] .ui-hud .hud-moodles { display: none; }
+body[data-temps="carte"] .ui-hud .hud-carte, body[data-temps="carte"] .ui-hud .hud-moodles { display: none !important; }
 body[data-temps="carte"] .ui-hud .hud-haut-g { top: 58px; }
 body[data-temps="carte"] .carte-barre { padding-right: calc(220px + var(--safe-r)) !important; }
 body[data-temps="carte"] .carte-fiche { top: 62px; }

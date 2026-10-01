@@ -2,7 +2,7 @@
 // montrerHUD(bool), majHUD(). Mis à jour par le bus ('minute', 'inventaire', 'blessure', 'quete', 'temps', 'survie', 'lieu:entre').
 // Les moodles n'apparaissent que quand ça compte ; un toucher affiche leur détail.
 import { G, genrer } from '../core/state.js';
-import { on } from '../core/bus.js';
+import { on, emit } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 import { lieu as lieuDe } from '../game/donnees.js';
 import { QUETES } from '../data/histoire/quetes.js';
@@ -44,8 +44,8 @@ function construire() {
         <div class="hud-lieu">${ico('lieu')}<span class="t"></span></div>
       </div>
       <button class="hud-objectif" type="button" aria-label="Objectif">${ico('objectif')}<span class="t"></span></button>
-      <div class="hud-moodles" role="list" aria-label="États du corps"></div>
     </div>
+    <div class="hud-moodles" role="list" aria-label="États du corps"></div>
     <div class="hud-haut-d" role="toolbar" aria-label="Menus">
       <button class="hud-btn" data-p="corps" type="button" aria-label="Corps">${ico('corps')}<span class="hud-pastille" hidden></span></button>
       <button class="hud-btn" data-p="inventaire" type="button" aria-label="Sac">${ico('sac')}</button>
@@ -89,7 +89,11 @@ export function majHUD() {
   const o = objectifCourant();
   const ot = o ? o.objectif : '';
   els.obj.hidden = !ot; els.objTxt.textContent = ot;
-  if (ot && ot !== dernierObjectif && dernierObjectif) { els.obj.classList.remove('neuf'); void els.obj.offsetWidth; els.obj.classList.add('neuf'); }
+  if (ot && ot !== dernierObjectif && dernierObjectif) {
+    els.obj.classList.remove('neuf'); void els.obj.offsetWidth; els.obj.classList.add('neuf');
+    // En exploration l'objectif n'est pas affiché en permanence : on l'annonce une fois.
+    if (document.body.dataset.temps !== 'carte') emit('toast', { texte: `Nouvel objectif : ${ot}`, duree: 4200 });
+  }
   dernierObjectif = ot;
   // Moodles (le mal a sa propre jauge)
   const p = G.player; const ms = etatsCorps(p).filter(m => m.id !== 'mal');

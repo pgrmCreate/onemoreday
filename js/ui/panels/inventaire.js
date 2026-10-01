@@ -85,7 +85,7 @@ function enteteSac(p) {
       el('strong', {}, sac ? sac.nom : 'Pas de sac'),
       el('p', {}, sac
         ? `+${sac.espace} places, +${sac.portage} kg portables. ${b.espaceMax - b.espace} place${b.espaceMax - b.espace > 1 ? 's' : ''} libre${b.espaceMax - b.espace > 1 ? 's' : ''} sur ${b.espaceMax}.`
-        : `Seulement tes poches et tes vêtements : ${b.espaceMax} places. Trouve un sac pour porter plus (cabas +3, sac à dos +6, sac de randonnée +10, sac militaire +12).`)));
+        : `Tes poches seulement : ${b.espaceMax - b.espace} place${b.espaceMax - b.espace > 1 ? 's' : ''} libre${b.espaceMax - b.espace > 1 ? 's' : ''} sur ${b.espaceMax}.`)));
 }
 function listeSac(col, p, racine, api) {
   col.append(enteteSac(p));

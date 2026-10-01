@@ -65,7 +65,9 @@
 .ex-butin-t { font-size: 17px; letter-spacing: .06em; text-transform: uppercase; color: var(--ex-ambre); margin-bottom: 8px; }
 .ex-butin-t span { color: rgba(230,223,204,.55); text-transform: none; letter-spacing: 0; font-size: 14px; }
 .ex-butin-l { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
-.ex-butin-l li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; border-bottom: 1px solid rgba(230,223,204,.08); font-size: 16px; animation: ex-apparait .3s ease-out; }
+.ex-butin-l li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; border-bottom: 1px solid rgba(230,223,204,.08); font-size: 16px; }
+.ex-butin-l li.neuf { animation: ex-apparait .3s ease-out; }
+.ex-b-nom { flex: 1; min-width: 0; min-height: 44px; text-align: left; background: none; border: 0; color: inherit; font: inherit; padding: 0; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ex-butin-l li em { color: rgba(230,223,204,.6); font-style: normal; }
 .ex-butin-cache { color: rgba(230,223,204,.4); justify-content: center !important; }
 @keyframes ex-apparait { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
@@ -118,7 +120,7 @@
   .ex-lieu { font-size: 17px; top: 8%; }
   .ex-msg { font-size: 15px; }
 }
-.ex-butin-l li.plein > span { opacity: .6; }
+.ex-butin-l li.plein > .ex-b-nom { opacity: .6; }
 .ex-butin-l li .ex-b + .ex-b { margin-left: 4px; }
 .ex-butin-place { font-size: 13px; color: rgba(230,223,204,.6); padding: 6px 0 2px; font-family: 'EB Garamond', Georgia, serif; font-style: italic; }
 

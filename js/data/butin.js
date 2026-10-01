@@ -404,6 +404,60 @@ export const BUTIN = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// SACS — chaque lieu a les siens : le joueur les découvre en fouillant.
+// (Ajoutés après coup aux tables : une catégorie absente part de la table par défaut.)
+// ---------------------------------------------------------------------------
+const SACS = {
+  defaut: { vetements: [L('sac_banane', 1, 1, 0.025), L('tote_bag', 1, 1, 0.03), L('sac_main', 1, 1, 0.025), L('sac_sport', 1, 1, 0.015), L('sac_enfant', 1, 1, 0.01)],
+    bureau: [L('sac_ordinateur', 1, 1, 0.03)], voiture: [L('sac_sport', 1, 1, 0.02), L('sac_isotherme', 1, 1, 0.02), L('sac_voyage', 1, 1, 0.01)],
+    lit: [L('sac_main', 1, 1, 0.015)], canape: [L('sac_main', 1, 1, 0.02), L('tote_bag', 1, 1, 0.02)] },
+  hotel: { vetements: [L('sac_voyage', 1, 1, 0.06), L('valise_cabine', 1, 1, 0.04), L('sac_main', 1, 1, 0.04)], lit: [L('valise_cabine', 1, 1, 0.03)] },
+  gare: { vetements: [L('valise_cabine', 1, 1, 0.06), L('sac_voyage', 1, 1, 0.06), L('sac_alpinisme', 1, 1, 0.015)], comptoir: [L('sacoche_facteur', 1, 1, 0.03)] },
+  aerodrome: { vetements: [L('valise_cabine', 1, 1, 0.07), L('sac_voyage', 1, 1, 0.05), L('sac_photo', 1, 1, 0.03)] },
+  mairie: { bureau: [L('sac_ordinateur', 1, 1, 0.05), L('cartable_cuir', 1, 1, 0.03), L('sacoche_facteur', 1, 1, 0.02)] },
+  mediatheque: { comptoir: [L('tote_bag', 1, 1, 0.15)], bureau: [L('cartable_cuir', 1, 1, 0.04), L('sac_ordinateur', 1, 1, 0.04)] },
+  lycee: { vetements: [L('sac_enfant', 1, 1, 0.04), L('sac_sport', 1, 1, 0.06), L('sac_banane', 1, 1, 0.04)], bureau: [L('cartable_cuir', 1, 1, 0.06), L('sac_ordinateur', 1, 1, 0.04)] },
+  musee: { comptoir: [L('tote_bag', 1, 1, 0.1), L('sac_photo', 1, 1, 0.03)] },
+  chateau: { etagere: [L('musette', 1, 1, 0.05)], comptoir: [L('tote_bag', 1, 1, 0.06)] },
+  hopital: { vetements: [L('sac_samu', 1, 1, 0.05), L('sac_main', 1, 1, 0.03)], etagere: [L('sac_samu', 1, 1, 0.025)] },
+  caserne: { vetements: [L('sac_samu', 1, 1, 0.06), L('sac_sport', 1, 1, 0.05)], etagere: [L('sac_samu', 1, 1, 0.03)] },
+  commissariat: { vetements: [L('sac_police', 1, 1, 0.06), L('sac_sport', 1, 1, 0.04)] },
+  gendarmerie: { vetements: [L('sac_police', 1, 1, 0.06), L('musette', 1, 1, 0.03)] },
+  base: { vetements: [L('musette', 1, 1, 0.06), L('sac_expedition', 1, 1, 0.015)], etagere: [L('musette', 1, 1, 0.04)] },
+  hypermarche: { vetements: [L('sac_sport', 1, 1, 0.06), L('sac_banane', 1, 1, 0.05), L('sac_trail', 1, 1, 0.04), L('sac_alpinisme', 1, 1, 0.02), L('sac_isotherme', 1, 1, 0.05), L('sac_enfant', 1, 1, 0.04)],
+    caisse: [L('sac_isotherme', 1, 1, 0.04)] },
+  supermarche: { caisse: [L('sac_isotherme', 1, 1, 0.05), L('tote_bag', 1, 1, 0.05)], frigo: [L('sac_isotherme', 1, 1, 0.03)] },
+  superette: { caisse: [L('tote_bag', 1, 1, 0.06)] },
+  bricolage: { etagere: [L('sac_jute', 1, 1, 0.06)], caisse: [L('sac_jute', 1, 1, 0.04)] },
+  savonnerie: { etagere: [L('sac_jute', 1, 1, 0.08)], vetements: [L('tote_bag', 1, 1, 0.05)] },
+  usine: { vetements: [L('musette', 1, 1, 0.03), L('sac_sport', 1, 1, 0.04)], etagere: [L('sac_jute', 1, 1, 0.05)] },
+  village: { vetements: [L('gibeciere', 1, 1, 0.06), L('hotte_vendange', 1, 1, 0.04), L('sac_jute', 1, 1, 0.05)], etagere: [L('hotte_vendange', 1, 1, 0.03), L('sac_jute', 1, 1, 0.04)],
+    voiture: [L('gibeciere', 1, 1, 0.03)] },
+  cite: { vetements: [L('sac_livreur', 1, 1, 0.04), L('sac_sport', 1, 1, 0.05), L('sac_banane', 1, 1, 0.04), L('sac_enfant', 1, 1, 0.03)], canape: [L('sac_livreur', 1, 1, 0.03)] },
+  place: { voiture: [L('sac_livreur', 1, 1, 0.03), L('sac_main', 1, 1, 0.03)], table: [L('sac_main', 1, 1, 0.03)] },
+  route: { voiture: [L('sac_livreur', 1, 1, 0.03), L('sac_voyage', 1, 1, 0.05), L('valise_cabine', 1, 1, 0.03), L('sac_alpinisme', 1, 1, 0.02)] },
+  nature: { table: [L('sac_trail', 1, 1, 0.05), L('sac_alpinisme', 1, 1, 0.03), L('gibeciere', 1, 1, 0.03), L('sac_expedition', 1, 1, 0.01)] },
+  grotte: { lit: [L('sac_alpinisme', 1, 1, 0.04), L('sac_expedition', 1, 1, 0.02)], table: [L('sac_trail', 1, 1, 0.03)] },
+  zoo: { vetements: [L('sac_enfant', 1, 1, 0.05), L('sac_isotherme', 1, 1, 0.04)] },
+  cinema: { comptoir: [L('sac_main', 1, 1, 0.04), L('sac_banane', 1, 1, 0.04)] },
+  voyage: { cadavre: [L('sac_trail', 1, 1, 0.02), L('sac_alpinisme', 1, 1, 0.015), L('sac_voyage', 1, 1, 0.02), L('sac_main', 1, 1, 0.02)],
+    voiture: [L('valise_cabine', 1, 1, 0.04), L('sac_voyage', 1, 1, 0.04), L('sac_isotherme', 1, 1, 0.03)], ferme: [L('hotte_vendange', 1, 1, 0.06), L('gibeciere', 1, 1, 0.04), L('sac_jute', 1, 1, 0.08)],
+    convoi: [L('musette', 1, 1, 0.06), L('sac_samu', 1, 1, 0.03)], secours: [L('sac_samu', 1, 1, 0.1)], campement: [L('sac_alpinisme', 1, 1, 0.06), L('sac_expedition', 1, 1, 0.03), L('sac_trail', 1, 1, 0.04)] },
+};
+// Le défaut d'abord (ses nouvelles lignes profitent aux lieux qui n'ont pas la catégorie),
+// en mémorisant les tables d'origine pour ne pas compter deux fois.
+{
+  const origineDefaut = { ...BUTIN.defaut };
+  for (const [type, cats] of Object.entries(SACS)) {
+    if (!BUTIN[type]) BUTIN[type] = {};
+    for (const [cat, lignes] of Object.entries(cats)) {
+      const base = type === 'defaut' ? origineDefaut[cat] : (BUTIN[type][cat] || BUTIN.defaut[cat]);
+      BUTIN[type][cat] = plus(base || [], lignes);
+    }
+  }
+}
+
 export const CATEGORIES_MEUBLE = ['vetements', 'frigo', 'cuisine', 'etagere', 'bureau', 'comptoir', 'caisse', 'lit',
   'salle_de_bain', 'voiture', 'poubelle', 'machine', 'table', 'canape'];
 

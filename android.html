@@ -45,9 +45,10 @@
       <li>Lance le jeu depuis l'icône — plein écran, hors-ligne, sauvegarde sur le téléphone.</li>
     </ol>
 
-    <p class="note">Si la page ne charge pas sur le téléphone : vérifie que le pare-feu Windows autorise
-    Node.js sur le réseau privé (une fenêtre l'a proposé au premier lancement), et que les deux appareils
-    sont bien sur le même Wi-Fi (pas le réseau « invité »).</p>
+    <p class="note">Si la page ne charge pas sur le téléphone : c'est presque toujours le <b>pare-feu Windows</b>.
+    Dans le dossier du jeu, double-clique une fois sur <b>« Autoriser le telephone.bat »</b> (accepte la demande
+    administrateur), puis relance le jeu. Utilise l'adresse en <b>192.168.…</b> en <b>http://</b>, et vérifie que
+    les deux appareils sont sur le même Wi-Fi (pas le réseau « invité », pas la 4G).</p>
   </div>
   <script>
     fetch('/api/lan').then(r => r.json()).then(({ ips, port }) => {

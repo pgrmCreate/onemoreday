@@ -726,10 +726,12 @@ function rendreButin() {
     const it = B.items[i];
     const tient = !inv || !inv.combienTient || inv.combienTient(it.id, it.qty || 1) >= (it.qty || 1);
     const portable = inv && inv.slotDe && inv.slotDe(it.id);
-    ul.append(el('li', { class: tient ? '' : 'plein' }, el('span', {}, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
+    // Toucher le NOM fait l'action la plus utile : enfiler si ça se porte, sinon prendre.
+    ul.append(el('li', { class: (tient ? '' : 'plein') + (i >= (B.dejaVus || 0) ? ' neuf' : '') }, el('button', { class: 'ex-b-nom', type: 'button', onclick: () => (portable ? porterItem(i) : prendreItem(i)) }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
       portable ? el('button', { class: 'ex-b', type: 'button', onclick: () => porterItem(i) }, 'Porter') : null,
       el('button', { class: 'ex-b', type: 'button', disabled: tient ? null : true, title: tient ? null : 'Plus de place dans ton sac', onclick: () => prendreItem(i) }, tient ? 'Prendre' : 'Sac plein')));
   }
+  B.dejaVus = Math.min(B.visibles, B.items.length); // seules les lignes nouvelles s'animent
   const reste = B.items.length - B.visibles;
   if (!B.fini && reste > 0) ul.append(el('li', { class: 'ex-butin-cache' }, '…'));
   if (B.fini && !B.items.length) ul.append(el('li', { class: 'ex-butin-cache' }, 'Vide.'));
@@ -744,7 +746,7 @@ function rendreButin() {
 }
 // Retire l'objet i de la fenêtre de butin (après une prise réussie côté monde).
 function retirerDuButin(B, i) {
-  B.items.splice(i, 1); B.visibles = Math.max(0, B.visibles - 1);
+  B.items.splice(i, 1); B.visibles = Math.max(0, B.visibles - 1); B.dejaVus = Math.max(0, (B.dejaVus || 0) - 1);
   if (V.fouille && V.fouille.cle === B.cle) { V.fouille.items = B.items; V.fouille.reveles = Math.max(0, V.fouille.reveles - 1); }
 }
 async function prendreItem(i) {

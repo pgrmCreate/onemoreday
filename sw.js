@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v19';
+const CACHE = 'onemoreday-v20';
 const FICHIERS = [
   './',
   './index.html',
@@ -183,6 +183,7 @@ const FICHIERS = [
   './js/ui/panels/inventaire.js',
   './js/ui/panels/journal.js',
   './js/ui/panels/options.js',
+  './js/ui/tap.js',
   './js/ui/toast.js',
   './js/version.js',
   './js/version_build.js',
@@ -221,8 +222,13 @@ self.addEventListener('activate', (e) => {
 // Réseau d'abord (pour récupérer les mises à jour), cache en secours (hors-ligne)
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  // Même origine : on revalide toujours auprès du serveur (sinon le cache HTTP du
+  // navigateur peut servir un mélange d'anciens et de nouveaux fichiers après une mise à jour).
+  const meme = new URL(e.request.url).origin === self.location.origin;
+  let req = e.request;
+  if (meme) { try { req = e.request.mode === 'navigate' ? new Request(e.request.url, { cache: 'no-cache', credentials: 'same-origin' }) : new Request(e.request, { cache: 'no-cache' }); } catch (er) { req = e.request; } }
   e.respondWith(
-    fetch(e.request)
+    fetch(req)
       .then(rep => {
         const copie = rep.clone();
         caches.open(CACHE).then(c => c.put(e.request, copie)).catch(() => {});

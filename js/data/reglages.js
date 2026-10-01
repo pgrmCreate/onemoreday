@@ -631,7 +631,7 @@ export const REGLAGES = {
   //  INVENTAIRE — poids (kg) + encombrement (« espace », en emplacements)
   // ===========================================================================
   inventaire: {
-    POCHES: 6,                  // emplacements de base (poches), sans sac. Un sac en ajoute (cabas +3 … sac militaire +12).
+    POCHES: 6,                  // emplacements de base (poches), sans sac. Un sac en ajoute (de +2 à +14 selon le modèle).
     POIDS_BASE: 10,             // kg portables sans sac…
     POIDS_PAR_FORCE: 2,         // … + 2 kg par niveau de Force, + portage des vêtements.
     PLAFOND: 1.5,               // au-delà de 1,5 × le max : impossible de bouger (il faut lâcher).

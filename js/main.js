@@ -12,6 +12,7 @@ import { demarrerDeclencheurs, arreterDeclencheurs } from './game/declencheurs.j
 import { demarrerMeteo, arreterMeteo } from './game/meteo.js';
 import { montrerHUD, majHUD } from './ui/hud.js';
 import { demarrerToasts } from './ui/toast.js';
+import { installerTapFiable } from './ui/tap.js';
 import { fermerPanneau } from './ui/panels/index.js';
 import { REGLAGES, presetDifficulte } from './data/reglages.js';
 import { MORTS } from './data/histoire/morts.js';
@@ -239,7 +240,12 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:' && !/^\/dev\//
 document.body.append(el('div', { class: 'tourner' }, el('div', {}, 'Tourne ton téléphone'), el('div', { style: { fontSize: '13px', color: '#7d776c' } }, 'One More Day se joue en paysage')));
 
 demarrerToasts();
+installerTapFiable();
 window.__omd = { get G() { return G; }, flow, clock, emit };
 try { sessionStorage.removeItem('omd_secours'); } catch (e) {}
 const q = new URLSearchParams(location.search);
 if (q.get('continuer')) continuer('solo'); else ecranTitre();
+// Version en ligne plus récente que celle en cache : on recharge une fois, à l'écran titre.
+import('./version.js').then(async (v) => {
+  try { if (sessionStorage.getItem('omd_maj')) return; if (await v.majDisponible() && !partieEnCours) { sessionStorage.setItem('omd_maj', '1'); v.appliquerMaj(); } } catch (e) {}
+}).catch(() => {});

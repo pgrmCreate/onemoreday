@@ -8,6 +8,8 @@ echo.
 
 where node >nul 2>nul
 if errorlevel 1 goto :python
+echo   Telephone qui ne se connecte pas ? Lance une fois "Autoriser le telephone.bat".
+echo.
 start "" /b cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8420"
 node server.js
 goto :fin
