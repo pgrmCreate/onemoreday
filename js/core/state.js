@@ -45,8 +45,12 @@ export function nouvellePartie({ nom = 'Sam', genre = 'm', mode = 'solo', seed }
   return G;
 }
 
+// Crochets appelés juste avant chaque sauvegarde (ex. l'exploration y range l'état du lieu courant).
+const avantSauver = new Set();
+export function avantSauvegarde(fn) { avantSauver.add(fn); return () => avantSauver.delete(fn); }
 export function sauver() {
   if (!G) return false;
+  for (const fn of avantSauver) { try { fn(); } catch (e) { console.warn('[sauvegarde]', e); } }
   try { localStorage.setItem(cleActive, JSON.stringify(G)); return true; }
   catch (e) { console.error('Sauvegarde impossible', e); return false; }
 }

@@ -169,11 +169,13 @@ async function chargerSons() {
   try { await chargerBanque(); } catch (e) {}
   try { await chargerManifest(); } catch (e) {}
 }
-function jouerSonFichier(entree) {
+function jouerSonFichier(entree, opts = {}) {
   if (!entree || !ctx) return;
   const src = ctx.createBufferSource(); src.buffer = entree.buffer;
-  const g = ctx.createGain(); g.gain.value = entree.gain;
-  src.connect(g); g.connect(master);
+  const g = ctx.createGain(); g.gain.value = entree.gain * (opts.volume ?? 1);
+  src.connect(g);
+  if (opts.pan && ctx.createStereoPanner) { const pn = ctx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, opts.pan)); g.connect(pn); pn.connect(master); }
+  else g.connect(master);
   src.start();
   src.onended = () => { try { src.disconnect(); g.disconnect(); } catch (e) {} };
 }
@@ -1071,12 +1073,14 @@ export function setChrono(on) {
 }
 
 // ---------- Effets sonores ----------
-export function sfx(nom) {
+// opts : { volume 0..1, pan -1..1 } — sons SPATIALISÉS (un bruit lointain s'entend moins, voire pas).
+export function sfx(nom, opts = {}) {
   if (!ctx) return;
+  if (opts.volume != null && opts.volume < 0.03) return;
   // Un fichier de la banque pour ce nom ? Il remplace la synthèse (tirage au sort
   // s'il y en a plusieurs : pas, douleur, râle…).
   const banque = sons[nom];
-  if (banque && banque.length) { jouerSonFichier(banque[Math.floor(Math.random() * banque.length)]); return; }
+  if (banque && banque.length) { jouerSonFichier(banque[Math.floor(Math.random() * banque.length)], opts); return; }
   const t = ctx.currentTime;
   const burst = (dur, fType, fFreq, peak) => burstAt(t, dur, fType, fFreq, peak);
   switch (nom) {

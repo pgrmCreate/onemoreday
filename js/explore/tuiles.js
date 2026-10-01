@@ -532,23 +532,39 @@ export function dessinerCorps(c, x, y, a, r, sang = true, peau = '#8c8a78', vet 
 }
 
 // Personnage vu de dessus (joueur, coéquipier, PNJ). t = temps (ms), marche = 0..1 (balancement).
-export function dessinerPersonnage(c, x, y, dir, style, t, marche) {
+export function dessinerPersonnage(c, x, y, dir, style, t, marche, allure = 'marche') {
   const S = TS / 32;
+  const court = allure === 'course', bas = allure === 'accroupi';
   c.save(); c.translate(x, y); c.rotate(dir);
-  const b = Math.sin(t / 110) * 3 * marche;
-  c.fillStyle = 'rgba(0,0,0,0.45)'; c.beginPath(); c.ellipse(2 * S, 3 * S, 11 * S, 12 * S, 0, 0, 7); c.fill();
+  // Allure : la course allonge la foulée et penche le buste ; accroupi, on se ramasse et on avance à pas comptés.
+  const freq = court ? 62 : bas ? 190 : 110;
+  const amp = court ? 5.5 : bas ? 1.6 : 3;
+  const b = Math.sin(t / freq) * amp * marche;
+  if (court && marche > 0.3) { // traînées de vitesse
+    c.strokeStyle = 'rgba(230,223,204,0.10)'; c.lineWidth = 1.5 * S;
+    for (const k of [-5, 0, 5]) { c.beginPath(); c.moveTo(-12 * S, k * S); c.lineTo(-22 * S - Math.abs(b) * S, k * S); c.stroke(); }
+  }
+  if (bas) { c.scale(0.84, 0.92); c.strokeStyle = 'rgba(201,162,39,0.22)'; c.setLineDash([3 * S, 4 * S]); c.lineWidth = 1; c.beginPath(); c.arc(0, 0, 15 * S, 0, 7); c.stroke(); c.setLineDash([]); }
+  const pench = court ? 3 * S : bas ? -1 * S : 0;
+  c.fillStyle = 'rgba(0,0,0,0.45)'; c.beginPath(); c.ellipse(2 * S, 3 * S, (court ? 13 : 11) * S, (bas ? 13 : 12) * S, 0, 0, 7); c.fill();
   // pieds
-  c.fillStyle = '#1b1a18'; c.beginPath(); c.ellipse(b * S, -5 * S, 4 * S, 2.6 * S, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(-b * S, 5 * S, 4 * S, 2.6 * S, 0, 0, 7); c.fill();
-  // épaules / buste
-  c.fillStyle = style.manteau; c.beginPath(); c.ellipse(-1 * S, 0, 6.5 * S, 10 * S, 0, 0, 7); c.fill();
+  c.fillStyle = '#1b1a18';
+  if (bas) { c.beginPath(); c.ellipse((b - 2) * S, -6.5 * S, 4.5 * S, 3 * S, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse((-b - 2) * S, 6.5 * S, 4.5 * S, 3 * S, 0, 0, 7); c.fill(); }
+  else { c.beginPath(); c.ellipse(b * S, -5 * S, 4 * S, 2.6 * S, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(-b * S, 5 * S, 4 * S, 2.6 * S, 0, 0, 7); c.fill(); }
+  c.translate(pench, 0);
+  // épaules / buste (accroupi : dos rond, plus large ; course : plus étroit)
+  c.fillStyle = style.manteau; c.beginPath(); c.ellipse(-1 * S, 0, (bas ? 8 : court ? 6 : 6.5) * S, (bas ? 10.5 : court ? 9.2 : 10) * S, 0, 0, 7); c.fill();
   c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 1; c.stroke();
-  // bras (un en avant tenant la lampe)
-  c.fillStyle = style.manteau; c.beginPath(); c.ellipse(6 * S, 6 * S, 5 * S, 2.6 * S, 0.2, 0, 7); c.fill();
-  c.beginPath(); c.ellipse((4 - b * 0.3) * S, -7 * S, 4.5 * S, 2.6 * S, -0.3, 0, 7); c.fill();
-  if (style.lampe) { c.fillStyle = '#2a2a2a'; c.fillRect(9 * S, 5 * S, 6 * S, 3 * S); c.fillStyle = '#f2e6b0'; c.fillRect(14 * S, 5 * S, 1.5 * S, 3 * S); }
-  // tête
-  c.fillStyle = style.cheveux; c.beginPath(); c.arc(0, 0, 5.2 * S, 0, 7); c.fill();
-  c.fillStyle = style.peau; c.beginPath(); c.arc(1.8 * S, 0, 3 * S, -1.3, 1.3); c.fill();
+  // bras : en course ils balancent fort ; accroupi, ramenés devant
+  const bb = court ? b * 0.9 : b * 0.3;
+  c.fillStyle = style.manteau;
+  if (bas) { c.beginPath(); c.ellipse(6 * S, 4 * S, 5 * S, 2.4 * S, 0.5, 0, 7); c.fill(); c.beginPath(); c.ellipse(6 * S, -4 * S, 5 * S, 2.4 * S, -0.5, 0, 7); c.fill(); }
+  else { c.beginPath(); c.ellipse((6 + (court ? -bb : 0)) * S, 6 * S, 5 * S, 2.6 * S, 0.2, 0, 7); c.fill(); c.beginPath(); c.ellipse((4 - bb) * S, -7 * S, 4.5 * S, 2.6 * S, -0.3, 0, 7); c.fill(); }
+  if (style.lampe) { c.fillStyle = '#2a2a2a'; c.fillRect(9 * S, (bas ? 3 : 5) * S, 6 * S, 3 * S); c.fillStyle = '#f2e6b0'; c.fillRect(14 * S, (bas ? 3 : 5) * S, 1.5 * S, 3 * S); }
+  // tête (accroupi : rentrée dans les épaules, en avant)
+  const hx = bas ? 2.5 * S : court ? 1.5 * S : 0;
+  c.fillStyle = style.cheveux; c.beginPath(); c.arc(hx, 0, (bas ? 4.8 : 5.2) * S, 0, 7); c.fill();
+  c.fillStyle = style.peau; c.beginPath(); c.arc(hx + 1.8 * S, 0, 3 * S, -1.3, 1.3); c.fill();
   c.restore();
 }
 

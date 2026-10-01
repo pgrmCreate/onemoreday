@@ -56,7 +56,7 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 10 } 
     finCombat() { sim.finCombat(joueurId); },
     instantane() { return sim.instantane(); },
     pairs() {
-      return sim.joueurs().filter(j => j.id !== joueurId).map(j => ({ id: j.id, nom: j.nom, x: j.x, y: j.y, etage: j.etage, dir: j.dir, enCombat: j.enCombat, lampe: j.lampe, lampeSource: j.lampeSource }));
+      return sim.joueurs().filter(j => j.id !== joueurId).map(j => ({ id: j.id, nom: j.nom, x: j.x, y: j.y, etage: j.etage, dir: j.dir, enCombat: j.enCombat, lampe: j.lampe, lampeSource: j.lampeSource, allure: j.allure }));
     },
     grilles(etage) { return sim.grilles(etage); },
     marquerJoue(i) { sim.marquerJoue(i); }, estJoue(i) { return sim.estJoue(i); },

@@ -531,3 +531,10 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border: 1px soli
   .hud-moodle { width: 38px; height: 38px; }
 }
 @media (prefers-reduced-motion: reduce) { .ui-hud *, .ui-panneau *, .ui-toast { animation: none !important; transition: none !important; } }
+
+/* Sac porté (en tête de l'onglet Sac) */
+.inv-sac-porte { display: flex; gap: 10px; align-items: center; padding: 10px 12px; margin: 4px 0 10px; border: 1px solid #3a3222; background: rgba(201,162,39,.07); }
+.inv-sac-porte.sans { border-color: #4a2226; background: rgba(142,27,36,.10); }
+.inv-sac-porte .isp-ic svg { width: 28px; height: 28px; }
+.inv-sac-porte strong { font-family: var(--f-ui); letter-spacing: .06em; text-transform: uppercase; font-weight: 500; }
+.inv-sac-porte p { margin: 2px 0 0; font-size: 14px; color: var(--creme2); }

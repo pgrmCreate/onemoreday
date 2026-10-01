@@ -2,7 +2,7 @@
 // entrer({ lieuId, entree }), sortir(), pause(), reprise().
 // Parle au monde UNIQUEMENT via un canal (obtenirCanal) : local (solo/hôte) ou distant (invité, intégrateur).
 // Crochets de test : definirCrochets({ combattre, scene, obtenirCanal }) (banc d'essai dev/explore.html).
-import { G, getFlag, noteJournal, sauver as sauverPartie } from '../core/state.js';
+import { G, getFlag, noteJournal, sauver as sauverPartie, avantSauvegarde } from '../core/state.js';
 import { emit, on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 import { el, clamp } from '../core/util.js';
@@ -41,7 +41,17 @@ async function chargerOptionnels() {
   const essai = async (p) => { try { return await import(p); } catch (e) { return null; } };
   [inv, player, audio] = await Promise.all([essai('../game/inventory.js'), essai('../game/player.js'), essai('../audio.js')]);
 }
-const sfx = (n) => { try { audio && audio.sfx && audio.sfx(n); } catch (e) {} };
+const sfx = (n, o) => { try { audio && audio.sfx && audio.sfx(n, o); } catch (e) {} };
+// Son situé dans le lieu : plus on est loin, moins on l'entend (au-delà de la portée : rien). Un étage d'écart = étouffé.
+function sfxA(nom, x, y, etage, portee = 14) {
+  if (!V) return;
+  let d = Math.hypot(x - V.j.x, y - V.j.y);
+  if (etage && etage !== V.j.etage) d = d * 1.6 + 6;
+  const f = 1 - d / portee;
+  if (f <= 0) return;
+  sfx(nom, { volume: Math.pow(f, 1.6), pan: Math.max(-0.8, Math.min(0.8, (x - V.j.x) / 10)) });
+}
+function posPorte(cle) { const p = V && V.niveau.porteParCle[cle]; return p ? [p.x + 0.5, p.y + 0.5, p.etage] : null; }
 
 // ---------- Canal ----------
 const niveauxParses = {};
@@ -168,13 +178,22 @@ export async function entrer({ lieuId, entree } = {}) {
   V.off.push(C.on('tick', () => { V.snap = C.instantane(); V.tSnap = performance.now(); majInterp(false); ecouter(); }));
   V.off.push(C.on('contact', (e) => { if (e.joueur === (C.joueurId || JOUEUR_ID)) lancerCombat(e.zombies, e.surprise); }));
   V.off.push(C.on('porte', (e) => {
-    if (e.action === 'coup') { sfx('porte_coup'); onde(e.cle, true); }
-    else if (e.action === 'casse' || e.action === 'enfoncee') { sfx('porte_casse'); onde(e.cle, true); }
-    else if (e.source !== (C.joueurId || JOUEUR_ID) && (e.action === 'ouvre' || e.action === 'ferme')) sfx('porte');
+    const pp = posPorte(e.cle);
+    if (e.action === 'coup') { if (pp) sfxA('porte_coup', ...pp, 16); onde(e.cle, true); }
+    else if (e.action === 'casse' || e.action === 'enfoncee') { if (pp) sfxA('porte_casse', ...pp, 24); onde(e.cle, true); }
+    else if (e.source !== (C.joueurId || JOUEUR_ID) && (e.action === 'ouvre' || e.action === 'ferme') && pp) sfxA('porte', ...pp, 12);
   }));
-  V.off.push(C.on('zombie', (e) => { if (e.etat === 'chasse') { const z = V.zInterp.get(e.uid); if (z && z._vu) sfx('alerte'); else sfx('zombie_loin'); } }));
-  V.off.push(C.on('hurlement', () => sfx('hurlement')));
+  V.off.push(C.on('zombie', (e) => { if (e.etat === 'chasse') { const z = V.zInterp.get(e.uid); if (z && z._vu) sfx('alerte'); else if (z) sfxA('zombie_loin', z.x, z.y, z.etage, 14); } }));
+  V.off.push(C.on('hurlement', (e) => { const z = e && V.zInterp.get(e.uid); if (z) sfxA('hurlement', z.x, z.y, z.etage, 40); else sfx('hurlement', { volume: 0.5 }); }));
   V.off.push(on('minute', () => { if (V && V.C) { /* lumière du jour : rien à recalculer, lue à chaque image */ } }));
+
+  // Chaque sauvegarde (auto, fermeture de l'onglet…) range aussi l'état du lieu : meubles vidés, objets au sol, morts.
+  V.off.push(avantSauvegarde(() => {
+    if (!V || !V.canal.sauver) return;
+    const etat = V.canal.sauver(G.world.minutes);
+    if (etat) G.world.lieux[V.lieuId] = { ...(G.world.lieux[V.lieuId] || {}), etat };
+    G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: V.j.etage, x: +V.j.x.toFixed(2), y: +V.j.y.toFixed(2) };
+  }));
 
   // sol ↔ inventaire (poser / ramasser depuis le panneau)
   if (inv && inv.setSol) inv.setSol(fournisseurSol());
@@ -360,7 +379,7 @@ function image(t, dt) {
   V.rendu.suivre(j.x, j.y, dt, Math.cos(j.dir) * av * (vReelle > 0.2 || I.viseeSouris ? 1 : 0.5), Math.sin(j.dir) * av * (vReelle > 0.2 || I.viseeSouris ? 1 : 0.5));
   const snap = V.snap, Sc = V.scene || (V.scene = { joueur: {}, fouille: { x: 0, y: 0, frac: 0, n: 0 } });
   Sc.E = E; Sc.C = C; Sc.jour = jour; Sc.t = t;
-  Sc.joueur.x = j.x; Sc.joueur.y = j.y; Sc.joueur.dir = j.dir; Sc.joueur.marche = j.marche; Sc.joueur.lampe = !!la;
+  Sc.joueur.x = j.x; Sc.joueur.y = j.y; Sc.joueur.dir = j.dir; Sc.joueur.marche = j.marche; Sc.joueur.lampe = !!la; Sc.joueur.allure = j.allure;
   Sc.pairs = pairs; Sc.zombies = V.zListe; Sc.portes = snap.portes; Sc.sol = snap.sol; Sc.cadavres = snap.cadavres; Sc.pnj = V.pnj;
   Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.carte = V.carte;
   const Fo = Sc.fouille;
@@ -687,35 +706,72 @@ function rendreButin() {
   const ul = el('ul', { class: 'ex-butin-l' });
   for (let i = 0; i < B.visibles && i < B.items.length; i++) {
     const it = B.items[i];
-    ul.append(el('li', {}, el('span', {}, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
-      el('button', { class: 'ex-b', type: 'button', onclick: () => prendreItem(i) }, 'Prendre')));
+    const tient = !inv || !inv.combienTient || inv.combienTient(it.id, it.qty || 1) >= (it.qty || 1);
+    const portable = inv && inv.slotDe && inv.slotDe(it.id);
+    ul.append(el('li', { class: tient ? '' : 'plein' }, el('span', {}, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
+      portable ? el('button', { class: 'ex-b', type: 'button', onclick: () => porterItem(i) }, 'Porter') : null,
+      el('button', { class: 'ex-b', type: 'button', disabled: tient ? null : true, title: tient ? null : 'Plus de place dans ton sac', onclick: () => prendreItem(i) }, tient ? 'Prendre' : 'Sac plein')));
   }
   const reste = B.items.length - B.visibles;
   if (!B.fini && reste > 0) ul.append(el('li', { class: 'ex-butin-cache' }, '…'));
   if (B.fini && !B.items.length) ul.append(el('li', { class: 'ex-butin-cache' }, 'Vide.'));
   h.append(ul);
+  if (inv && inv.placeLibre) {
+    const sac = inv.sacPorte();
+    h.append(el('div', { class: 'ex-butin-place' }, `Place libre : ${inv.placeLibre()} — ${sac ? sac.nom : 'pas de sac, seulement tes poches'}`));
+  }
   h.append(el('div', { class: 'ex-butin-a' },
     el('button', { class: 'ex-b ex-b-p', type: 'button', disabled: B.visibles ? null : true, onclick: prendreTout }, 'Tout prendre'),
     el('button', { class: 'ex-b', type: 'button', onclick: () => { interrompreFouille(); fermerButin(); } }, 'Fermer')));
 }
+// Retire l'objet i de la fenêtre de butin (après une prise réussie côté monde).
+function retirerDuButin(B, i) {
+  B.items.splice(i, 1); B.visibles = Math.max(0, B.visibles - 1);
+  if (V.fouille && V.fouille.cle === B.cle) { V.fouille.items = B.items; V.fouille.reveles = Math.max(0, V.fouille.reveles - 1); }
+}
 async function prendreItem(i) {
   const B = V && V.butin; if (!B || i >= B.visibles) return;
+  const prevu = B.items[i];
+  // Le sac est plein : on NE retire PAS l'objet du meuble (il reste là, rien ne se perd).
+  if (inv && inv.combienTient && inv.combienTient(prevu.id, prevu.qty || 1) < 1) {
+    message(inv.slotDe(prevu.id) ? 'Sac plein. Tu peux le porter directement (bouton Porter).' : 'Plus de place dans ton sac. Pose quelque chose ou trouve un sac plus grand.', 2600);
+    return;
+  }
   const it = await V.canal.prendre(B.cle, i);
   if (!it) return;
-  B.items.splice(i, 1); B.visibles--;
-  if (V.fouille && V.fouille.cle === B.cle) { V.fouille.items = B.items; V.fouille.reveles--; }
+  retirerDuButin(B, i);
   donner(it);
+  if (!B.items.length && B.fini) fermerButin(); else rendreButin();
+}
+async function porterItem(i) {
+  const B = V && V.butin; if (!B || i >= B.visibles || !inv || !inv.porterObjet) return;
+  const it = await V.canal.prendre(B.cle, i);
+  if (!it) return;
+  retirerDuButin(B, i);
+  const r = inv.porterObjet(it);
+  if (!r.ok) { donner(it); message(r.raison || 'Impossible de le porter.', 2200); }
+  else sfx('loot');
   if (!B.items.length && B.fini) fermerButin(); else rendreButin();
 }
 async function prendreTout() {
   const B = V && V.butin; if (!B) return;
-  for (let i = B.visibles - 1; i >= 0; i--) {
-    const it = await V.canal.prendre(B.cle, i);
-    if (it) { B.items.splice(i, 1); donner(it, true); }
+  // D'abord enfiler un sac s'il y en a un et qu'on n'en porte pas : il donne la place pour le reste.
+  if (inv && inv.sacPorte && !inv.sacPorte()) {
+    const k = B.items.slice(0, B.visibles).findIndex(x => inv.slotDe(x.id) === 'sac');
+    if (k >= 0) await porterItem(k);
+    if (!V || V.butin !== B) return;
   }
-  B.visibles = 0;
-  if (V.fouille && V.fouille.cle === B.cle) { V.fouille.items = B.items; V.fouille.reveles = 0; }
-  sfx('loot');
+  const laisses = [];
+  let pris = 0;
+  for (let i = B.visibles - 1; i >= 0; i--) {
+    const prevu = B.items[i];
+    if (inv && inv.combienTient && inv.combienTient(prevu.id, prevu.qty || 1) < (prevu.qty || 1)) { laisses.push(nomObjet(prevu.id)); continue; }
+    const it = await V.canal.prendre(B.cle, i);
+    if (it) { retirerDuButin(B, i); donner(it, true); pris++; }
+  }
+  if (pris) sfx('loot');
+  if (laisses.length) message(`Sac plein : ${laisses.slice(0, 3).join(', ')}${laisses.length > 3 ? '…' : ''} reste${laisses.length > 1 ? 'nt' : ''} ici.`, 3200);
+  else if (pris) message(`Tu prends ${pris} objet${pris > 1 ? 's' : ''}.`, 1400);
   if (B.fini && !B.items.length) fermerButin(); else rendreButin();
 }
 function fermerButin() { if (!V) return; V.butin = null; V.hud.butin.classList.add('cache'); V.hud.butin.textContent = ''; }

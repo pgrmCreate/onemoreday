@@ -61,7 +61,7 @@ export function creerEntrees({ racine, canvas, actions }) {
   const bAccr = el('button', { class: 'ex-btn ex-btn-rond', type: 'button', 'aria-label': 'Accroupi' }, 'Accroupi');
   const bLampe = el('button', { class: 'ex-btn ex-btn-rond', type: 'button', 'aria-label': 'Lampe' }, 'Lampe');
   const bInv = el('button', { class: 'ex-btn ex-btn-rond ex-btn-petit', type: 'button', 'aria-label': 'Sac' }, 'Sac');
-  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bInv, bLampe), el('div', { class: 'ex-pad-ligne' }, bAccr, bCourse), bInter);
+  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe), el('div', { class: 'ex-pad-ligne' }, bAccr, bCourse), bInter);
   racine.append(zoneJoy, pad);
 
   const joy = { id: null, ox: 0, oy: 0, R: 56 };

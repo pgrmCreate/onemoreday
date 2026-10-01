@@ -177,6 +177,34 @@ export function ramasser(indexSol, p) {
   return addItem(id, qty || 1, inst, p);
 }
 
+// ---------- Place libre, porter directement ----------
+export function placeLibre(p) { p = joueur(p); return Math.max(0, espaceMax(p) - espaceUtilise(p)); }
+// Combien d'exemplaires de `id` tiennent encore dans le sac.
+export function combienTient(id, qty = 1, p) { const e = espaceDe(id); return e === 0 ? qty : Math.min(qty, Math.floor(placeLibre(p) / e)); }
+// Le sac porté (ou null) : ce qui décide de la place disponible.
+export function sacPorte(p) { p = joueur(p); const id = p.equip.sac; const c = id && CLOTHES[id]; return c ? { id, nom: c.nom, espace: c.espace || 0, portage: c.portage || 0 } : null; }
+// Enfiler / prendre en main un objet SANS passer par le sac (marche même sac plein) :
+// vêtements, sacs, ceintures, armes, lampes. → { ok, raison?, slot? }
+export function porterObjet(item, p) {
+  p = joueur(p); if (!item || !slotDe(item.id)) return { ok: false, raison: 'Ça ne se porte pas.' };
+  const { id, qty, ...inst } = item;
+  const it = { id, qty: 1, ...inst };
+  const d = def(id); if (d && d.dur && it.dur == null && d.type === 'arme') { it.dur = d.dur; it.durMax = d.dur; }
+  p.inventaire.push(it);
+  const r = equiper(p.inventaire.length - 1, p);
+  if (!r.ok) { const i = p.inventaire.indexOf(it); if (i >= 0) p.inventaire.splice(i, 1); return r; }
+  if ((qty || 1) > 1) addItem(id, qty - 1, inst, p);
+  emit('toast', { texte: `Tu portes : ${d ? d.nom : id}.`, type: 'objet' });
+  return r;
+}
+// Porter directement un objet posé au sol (depuis le panneau « Au sol »).
+export function equiperDepuisSol(indexSol, p) {
+  p = joueur(p); const item = sol.prendre(indexSol); if (!item) return { ok: false, raison: 'Plus rien ici.' };
+  const r = porterObjet(item, p);
+  if (!r.ok) { try { sol.deposer(item); } catch (e) {} }
+  return r;
+}
+
 // ---------- Équipement ----------
 export function slotDe(id) {
   if (CLOTHES[id]) return CLOTHES[id].slot;

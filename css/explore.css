@@ -118,3 +118,6 @@
   .ex-lieu { font-size: 17px; top: 8%; }
   .ex-msg { font-size: 15px; }
 }
+.ex-butin-l li.plein > span { opacity: .6; }
+.ex-butin-l li .ex-b + .ex-b { margin-left: 4px; }
+.ex-butin-place { font-size: 13px; color: rgba(230,223,204,.6); padding: 6px 0 2px; font-family: 'EB Garamond', Georgia, serif; font-style: italic; }

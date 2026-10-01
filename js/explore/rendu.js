@@ -131,10 +131,10 @@ export function creerRendu(canvas, niveau) {
     }
     for (const p of S.pairs) {
       if (p.etage !== E.id || visCase(p.x, p.y) < 0.15) continue;
-      dessinerPersonnage(ctx, p.x * TS, p.y * TS, p.dir, p.lampe ? STYLE_PAIR_L : STYLE_PAIR, S.t, p.marche || 0);
+      dessinerPersonnage(ctx, p.x * TS, p.y * TS, p.dir, p.lampe ? STYLE_PAIR_L : STYLE_PAIR, S.t, p.marche || 0, p.allure);
     }
     const J = S.joueur;
-    dessinerPersonnage(ctx, J.x * TS, J.y * TS, J.dir, J.lampe ? STYLE_JOUEUR_L : STYLE_JOUEUR, S.t, J.marche);
+    dessinerPersonnage(ctx, J.x * TS, J.y * TS, J.dir, J.lampe ? STYLE_JOUEUR_L : STYLE_JOUEUR, S.t, J.marche, J.allure);
     ctx.restore();
 
     // 3) couche d'ombre

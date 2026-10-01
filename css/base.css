@@ -115,3 +115,5 @@ input.saisie:focus { border-color: var(--ambre); }
 body[data-temps="carte"] .ui-hud .hud-haut-g { display: none; }
 body[data-temps="carte"] .carte-barre { padding-right: calc(220px + var(--safe-r)) !important; }
 body[data-temps="carte"] .carte-fiche { top: 62px; }
+/* Pas d'invite de rotation pendant une cinématique : elle s'adapte au portrait. */
+body.en-jeu:has(.cine-racine) .tourner { display: none !important; }

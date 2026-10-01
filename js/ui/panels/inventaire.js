@@ -1,6 +1,7 @@
 // ============ Panneau Inventaire — Sac / Équipement / Au sol ============
 // Objets groupés par catégorie ; au toucher : fiche + actions contextuelles ; jauges poids / encombrement ; paper-doll.
 import { G } from '../../core/state.js';
+import { emit } from '../../core/bus.js';
 import { REGLAGES } from '../../data/reglages.js';
 import { ITEMS } from '../../data/items.js';
 import { CLOTHES, SLOTS } from '../../data/clothing.js';
@@ -75,7 +76,19 @@ function ligneObjet({ index, it, def: d }, p, actif, onclick) {
   if (p.accesRapide.includes(it.id)) b.append(el('span', { class: 'inv-tag', title: 'À la ceinture (accès rapide)' }, icoEl('ceinture')));
   return b;
 }
+function enteteSac(p) {
+  const sac = inv.sacPorte(p);
+  const b = inv.bilan(p);
+  return el('div', { class: 'inv-sac-porte' + (sac ? '' : ' sans') },
+    el('span', { class: 'isp-ic' }, icoEl('sac')),
+    el('div', {},
+      el('strong', {}, sac ? sac.nom : 'Pas de sac'),
+      el('p', {}, sac
+        ? `+${sac.espace} places, +${sac.portage} kg portables. ${b.espaceMax - b.espace} place${b.espaceMax - b.espace > 1 ? 's' : ''} libre${b.espaceMax - b.espace > 1 ? 's' : ''} sur ${b.espaceMax}.`
+        : `Seulement tes poches et tes vêtements : ${b.espaceMax} places. Trouve un sac pour porter plus (cabas +3, sac à dos +6, sac de randonnée +10, sac militaire +12).`)));
+}
 function listeSac(col, p, racine, api) {
+  col.append(enteteSac(p));
   const groupes = inv.sacParCategorie(p);
   if (!groupes.length) { col.append(vide('Ton sac est vide. Fouille les meubles, les voitures, les morts.', 'sac')); return; }
   for (const gr of groupes) {
@@ -262,7 +275,12 @@ function remplirFiche(f, p, racine, api) {
     acts = actionsSlot(s.ref, p, racine, api);
   } else {
     it = inv.objetsAuSol()[s.ref]; if (!it) { etat.sel = null; f.append(vide('—')); return; } id = it.id;
-    acts = [{ label: 'Ramasser', icone: 'ramasser', principal: true, f: () => { inv.ramasser(s.ref); etat.sel = null; dessiner(racine, api); } }];
+    acts = [];
+    if (inv.slotDe(it.id)) acts.push({ label: inv.slotDe(it.id) === 'arme' ? 'Prendre en main' : inv.slotDe(it.id) === 'lampe' ? 'Prendre la lampe' : 'Porter', icone: 'equiper', principal: true,
+      f: () => { const r = inv.equiperDepuisSol(s.ref); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
+    const tient = inv.combienTient(it.id, it.qty || 1) >= 1;
+    acts.push({ label: tient ? 'Ramasser' : 'Sac plein', icone: 'ramasser', principal: !acts.length, disabled: !tient, raison: tient ? null : 'Plus de place',
+      f: () => { if (!tient) return; inv.ramasser(s.ref); etat.sel = null; dessiner(racine, api); } });
   }
   const d = inv.def(id) || { nom: id };
   const fermer = el('button', { type: 'button', class: 'fi-fermer', 'aria-label': 'Fermer la fiche', onclick: () => { etat.sel = null; dessiner(racine, api); } }, icoEl('fermer'));
