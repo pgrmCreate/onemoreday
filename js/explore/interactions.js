@@ -13,6 +13,7 @@ import { DOCUMENTS } from '../data/histoire/documents.js';
 import { PNJ } from '../data/histoire/pnj.js';
 import { K } from './niveau.js';
 import { mod, sfx, message, afficherLieu, verifierCondition, compter, niv, nomObjet, outil, caseLibrePres } from './commun.js';
+import { ouvrirSommeil } from '../game/sommeil.js';
 import { commencerFouille, interrompreFouille, fermerButin, ramasser, lireDocument, prendreTout } from './butin.js';
 
 const RX = REGLAGES.exploration;
@@ -118,6 +119,7 @@ function libelle(c) {
     case 'meuble': {
       if (c.decl) return c.decl.libelle || `Examiner ${c.m.nom}`;
       const st = V.snap.conteneurs[c.m.cle];
+      if (estLit(c.m) && (!c.m.conteneur || (st && st.progres >= 1 && st.reste === 0))) return `Dormir dans ${c.m.nom}`;
       if (st && st.progres >= 1 && st.reste === 0) return `Fouiller ${c.m.nom} (vide)`;
       return `Fouiller ${c.m.nom}`;
     }
@@ -132,6 +134,8 @@ function libelle(c) {
   }
   return 'Interagir';
 }
+const LITS = new Set(['lit', 'lit_simple', 'lit_hopital', 'canape', 'brancard', 'fauteuil']);
+const estLit = (m) => LITS.has(m.type);
 export function majInvite() {
   const c = V.cible;
   const txt = c ? c.libelle : null;
@@ -153,7 +157,7 @@ export async function interagir(o) {
   if (!c) return;
   switch (c.type) {
     case 'porte': return actionPorte(c);
-    case 'meuble': if (c.decl) return jouerDeclencheur(c.decl); return commencerFouille(c.m.cle, c.m.nom, (c.m.x0 + c.m.x1 + 1) / 2, (c.m.y0 + c.m.y1 + 1) / 2);
+    case 'meuble': if (c.decl) return jouerDeclencheur(c.decl); if (c.libelle && c.libelle.startsWith('Dormir')) return ouvrirSommeil({ lit: true }); return commencerFouille(c.m.cle, c.m.nom, (c.m.x0 + c.m.x1 + 1) / 2, (c.m.y0 + c.m.y1 + 1) / 2);
     case 'escalier': return prendreEscalier(c.s);
     case 'sortie': return sortirDuLieu(c.s);
     case 'marqueur': return jouerDeclencheur(c.decl);

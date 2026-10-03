@@ -6,6 +6,7 @@ import * as surv from '../../game/survival.js';
 import * as player from '../../game/player.js';
 import * as inv from '../../game/inventory.js';
 import { toast } from '../toast.js';
+import { ouvrirSommeil } from '../../game/sommeil.js';
 import { el, icoEl, onglets, jauge, bouton, avecScroll, vide, g } from './commun.js';
 
 let etat = { onglet: 'etat', zone: null };
@@ -24,7 +25,8 @@ function dessiner(racine) {
   racine.append(el('div', { class: 'pn-barre' }, onglets([
     { id: 'etat', label: 'État', icone: 'corps', badge: p.blessures.length || null },
     { id: 'competences', label: 'Compétences', icone: 'competences' },
-  ], etat.onglet, (id) => { etat.onglet = id; dessiner(racine); }), resumeVital(p)));
+  ], etat.onglet, (id) => { etat.onglet = id; dessiner(racine); }), resumeVital(p),
+    el('button', { class: 'pn-btn co-dormir', type: 'button', onclick: async () => { const pn = await import('./index.js'); pn.fermerPanneau(); ouvrirSommeil(); } }, icoEl('dormir'), 'Dormir')));
   if (etat.onglet === 'competences') return competences(racine, p);
   const grille = el('div', { class: 'co-grille' });
   const gauche = el('div', { class: 'co-gauche' }, silhouette(p, racine), prisesGlobales(p, racine));

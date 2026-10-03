@@ -490,7 +490,7 @@ export function dormir(heures, opts = {}) {
     const piege = opts.piege ?? inv.hasItem(SO.PIEGE_SONORE === 'reveil' ? 'piege_sonore' : SO.PIEGE_SONORE, 1, p);
     emit('survie:intrusion', { surprise: piege ? 'normal' : 'surpris' });
     emit('toast', { texte: piege ? 'Des bouteilles s\'entrechoquent : quelque chose est entré.' : 'Un râle, tout près. Tu te réveilles trop tard.', type: 'mauvais' });
-  } else emit('toast', { texte: `Tu as dormi ${Math.round(dormi / 60)} h.`, type: 'info' });
+  } else if (!opts.silencieux) emit('toast', { texte: `Tu as dormi ${Math.round(dormi / 60)} h.`, type: 'info' });
   emit('survie', { dormi });
   return { ok: true, dormi, interrompu };
 }

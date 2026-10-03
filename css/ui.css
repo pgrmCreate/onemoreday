@@ -543,3 +543,25 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border: 1px soli
 .inv-sac-porte .isp-ic svg { width: 28px; height: 28px; }
 .inv-sac-porte strong { font-family: var(--f-ui); letter-spacing: .06em; text-transform: uppercase; font-weight: 500; }
 .inv-sac-porte p { margin: 2px 0 0; font-size: 14px; color: var(--creme2); }
+
+/* ======================================================================
+   Dormir — choix de la durée, invitation à deux, écran noir qui fait filer l'horloge
+   ====================================================================== */
+.co-dormir { margin-left: auto; }
+.som-fond { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; background: rgba(0,0,0,.6); }
+.som-boite { width: min(440px, 92vw); padding: 18px 20px 16px; background: rgba(16,15,18,.98); border: 1px solid var(--ui-bord-fort); border-radius: 10px; box-shadow: var(--ui-ombre); color: var(--ui-texte); }
+.som-boite h3 { margin: 0 0 8px; font-family: var(--ui-f-titre, Oswald, sans-serif); font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--ui-ambre); }
+.som-boite p { margin: 6px 0; font-family: var(--ui-f-recit); font-size: 16px; line-height: 1.3; }
+.som-etat { color: var(--ui-texte-2); }
+.som-sur { color: #9fcf8a; }
+.som-alerte { color: #e8a34a; }
+.som-coop { color: #9fd4ff; }
+.som-choix { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 8px; }
+.som-choix .btn:disabled { opacity: .35; }
+.som-annuler { width: 100%; }
+.som-invite { position: fixed; left: 50%; bottom: 56px; transform: translateX(-50%); z-index: 110; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+  padding: 10px 14px; background: rgba(16,34,52,.95); border: 1px solid #7cc8ff; border-radius: 10px; color: #cfe8ff; font-family: var(--ui-f-recit); font-size: 16px; }
+.som-voile { position: fixed; inset: 0; z-index: 130; display: grid; place-content: center; gap: 10px; text-align: center; background: #000; opacity: 0; transition: opacity .6s; pointer-events: all; }
+.som-voile.on { opacity: 1; }
+.som-t { font-family: 'EB Garamond', Georgia, serif; font-style: italic; font-size: 26px; color: #b8b0a0; }
+.som-h { font-family: Oswald, sans-serif; letter-spacing: .14em; font-size: 15px; color: #6e685e; }

@@ -21,6 +21,7 @@ import * as flow from '../game/flow.js';
 import * as quetes from '../game/quetes.js';
 import { lieu as lieuDe } from '../game/donnees.js';
 import { intercepterMort } from '../game/survival.js';
+import { brancherCoopSommeil, invitation as inviterSommeil, lancerApresAccord } from '../game/sommeil.js';
 import * as vueExplore from '../explore/vue.js';
 import { REGLAGES } from '../data/reglages.js';
 import { SERVEUR_EN_LIGNE } from '../data/serveur.js';
@@ -354,6 +355,9 @@ function brancherCommun() {
   offs.push(() => clearInterval(p));
   // à 0 PV : « à terre » au lieu de mourir, tant que le coéquipier est là
   intercepterMort(aTerre);
+  // dormir à deux : l'un propose, l'autre accepte, l'horloge file pour les deux
+  brancherCoopSommeil({ proposer: (h) => envoyer({ t: 'sommeil', h, nom: G && G.player.nom }), accepter: (h) => envoyer({ t: 'sommeil_go', h }), pairNom: () => nomPair || 'ton coéquipier' });
+  offs.push(() => brancherCoopSommeil(null));
   offs.push(() => intercepterMort(null));
   badge();
 }
@@ -368,6 +372,8 @@ function recuCommun(m) {
     case 'cine': if (flow.tempsCourant() === 'exploration' && !flow.overlayOuvert()) flow.cinematique(m.id, { distant: true }); return true;
     case 'scene': spectateur(m); return true;
     case 'relever': releve(m.id); return true;
+    case 'sommeil': inviterSommeil(m.nom || nomPair || 'Ton coéquipier', m.h); return true;
+    case 'sommeil_go': lancerApresAccord(m.h); return true;
     default: return false;
   }
 }
