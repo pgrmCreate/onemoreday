@@ -4,7 +4,11 @@
 // Champs :
 //   nom, slot            slot ∈ tete | torse | mains | jambes | pieds | sac | ceinture | holster
 //   poids                kg (un vêtement porté pèse mais n'occupe pas d'emplacement).
-//   espace               EMPLACEMENTS offerts (poches, sac) — c'est l'« encombrement » que tu peux porter.
+//   espace               POCHES offertes par un vêtement (1 = 1 litre de poches : jean 1, cargo 2, gilet tactique 3).
+//                        Les poches ne prennent que les PETITS objets (≤ reglages.inventaire.POCHE_MAX_L).
+//   contenance           (sacs) volume utile en LITRES (sac d'écolier 20 L, randonnée 45 L, militaire 55 L).
+//                        Une planche (14 L) remplit 70 % d'un sac d'écolier ; une pelle n'entre que dans un grand sac.
+//   volume               (optionnel) litres occupés PLIÉ dans un sac (défaut : 0,5 + 2,5 × poids, ou 15 % de la contenance).
 //   portage              kg de charge en plus (sacs, harnais).
 //   protection 0..4      protection de chaque ZONE couverte (voir `couvre`). Par point : −2 dégâts sur un coup
 //                        qui touche cette zone ; 30 % de chance que les dents ne passent pas ; ≥ 2 : une griffure
@@ -214,115 +218,115 @@ export const CLOTHES = {
   // (emplacements) et du PORTAGE (kg en plus). Le joueur les découvre en fouillant :
   // chaque type de lieu a les siens (cartable au lycée, valise à la gare, hotte au village…).
   cabas_courses: {
-    nom: 'Cabas de courses', slot: 'sac', poids: 0.2, espace: 3, protection: 0, chaleur: 0, portage: 2,
+    nom: 'Cabas de courses', slot: 'sac', poids: 0.2, espace: 3, contenance: 12, protection: 0, chaleur: 0, portage: 2,
     desc: 'Un cabas réutilisable « préservons la planète ». La planète a d\'autres soucis, mais il porte encore.',
   },
   sac_fortune: {
-    nom: 'Sac de fortune', slot: 'sac', poids: 0.3, espace: 3, protection: 0, chaleur: 0, portage: 2, tissu: 2,
+    nom: 'Sac de fortune', slot: 'sac', poids: 0.3, espace: 3, contenance: 12, protection: 0, chaleur: 0, portage: 2, tissu: 2,
     desc: 'Des chiffons cousus à la corde. Moche, fragile, mais des poches sont des poches.',
   },
   sacoche: {
-    nom: 'Sacoche en bandoulière', slot: 'sac', poids: 0.5, espace: 4, protection: 0, chaleur: 0, portage: 3,
+    nom: 'Sacoche en bandoulière', slot: 'sac', poids: 0.5, espace: 4, contenance: 10, protection: 0, chaleur: 0, portage: 3,
     desc: 'Petite mais pratique. Elle bat contre la hanche quand tu cours.',
   },
   sac_a_dos: {
-    nom: 'Sac à dos d\'écolier', slot: 'sac', poids: 0.9, espace: 6, protection: 0, chaleur: 0, portage: 5,
+    nom: 'Sac à dos d\'écolier', slot: 'sac', poids: 0.9, espace: 6, contenance: 20, protection: 0, chaleur: 0, portage: 5,
     desc: 'Un cartable à bretelles, des initiales au feutre sur le rabat. Le cartable de la fin du monde.',
   },
   sac_randonnee: {
-    nom: 'Sac de randonnée', slot: 'sac', poids: 2.0, espace: 10, protection: 0, chaleur: 0, portage: 8, agilite: -1,
+    nom: 'Sac de randonnée', slot: 'sac', poids: 2.0, espace: 10, contenance: 45, protection: 0, chaleur: 0, portage: 8, agilite: -1,
     desc: '60 litres, armatures et sangle ventrale. Tout ce que tu possèdes tiendra dedans — et tout ça te tirera en arrière quand il faudra plonger.',
   },
   sac_militaire: {
-    nom: 'Sac militaire', slot: 'sac', poids: 2.6, espace: 12, protection: 0, chaleur: 0, portage: 10, accesRapide: 1, agilite: -1,
+    nom: 'Sac militaire', slot: 'sac', poids: 2.6, espace: 12, contenance: 55, protection: 0, chaleur: 0, portage: 10, accesRapide: 1, agilite: -1,
     desc: 'Un sac de paquetage de la base aérienne 701. Sanglé serré, il porte une maison — et garde un objet à portée de main.',
   },
   sac_banane: {
-    nom: 'Sac banane', slot: 'sac', poids: 0.2, espace: 2, protection: 0, chaleur: 0, portage: 1, accesRapide: 1,
+    nom: 'Sac banane', slot: 'sac', poids: 0.2, espace: 2, contenance: 2, protection: 0, chaleur: 0, portage: 1, accesRapide: 1,
     desc: 'Ridicule il y a un mois. Aujourd\'hui, deux places de plus et un objet toujours sous la main.',
   },
   tote_bag: {
-    nom: 'Tote bag en toile', slot: 'sac', poids: 0.15, espace: 2, protection: 0, chaleur: 0, portage: 1, tissu: 1,
+    nom: 'Tote bag en toile', slot: 'sac', poids: 0.15, espace: 2, contenance: 10, protection: 0, chaleur: 0, portage: 1, tissu: 1,
     desc: '« Lire, c\'est vivre deux fois. » Imprimé sur une toile fine qui ne supportera pas grand-chose.',
   },
   sac_enfant: {
-    nom: 'Petit sac à dos d\'enfant', slot: 'sac', poids: 0.3, espace: 2, protection: 0, chaleur: 0, portage: 2,
+    nom: 'Petit sac à dos d\'enfant', slot: 'sac', poids: 0.3, espace: 2, contenance: 8, protection: 0, chaleur: 0, portage: 2,
     desc: 'Une tête de lapin en peluche, des bretelles trop courtes. Tu évites de te demander à qui il était.',
   },
   sac_main: {
-    nom: 'Sac à main', slot: 'sac', poids: 0.5, espace: 3, protection: 0, chaleur: 0, portage: 2,
+    nom: 'Sac à main', slot: 'sac', poids: 0.5, espace: 3, contenance: 6, protection: 0, chaleur: 0, portage: 2,
     desc: 'Cuir verni, fermoir doré. Il contenait un rouge à lèvres et des clés. Il contiendra des piles.',
   },
   sac_trail: {
-    nom: 'Gilet d\'hydratation de trail', slot: 'sac', poids: 0.4, espace: 3, protection: 0, chaleur: 0, portage: 3,
+    nom: 'Gilet d\'hydratation de trail', slot: 'sac', poids: 0.4, espace: 3, contenance: 8, protection: 0, chaleur: 0, portage: 3,
     desc: 'Collé au dos, il ne ballotte pas. Peu de place, mais tu cours avec comme sans.',
   },
   sac_jute: {
-    nom: 'Sac de jute', slot: 'sac', poids: 0.4, espace: 4, protection: 0, chaleur: 0, portage: 2, tissu: 2,
+    nom: 'Sac de jute', slot: 'sac', poids: 0.4, espace: 4, contenance: 30, protection: 0, chaleur: 0, portage: 2, tissu: 2,
     desc: 'Un ancien sac à pommes de terre, noué d\'une ficelle en guise de bretelle. Ça gratte, ça tient.',
   },
   musette: {
-    nom: 'Musette de l\'armée', slot: 'sac', poids: 0.6, espace: 4, protection: 0, chaleur: 0, portage: 4,
+    nom: 'Musette de l\'armée', slot: 'sac', poids: 0.6, espace: 4, contenance: 15, protection: 0, chaleur: 0, portage: 4,
     desc: 'Toile kaki, boucles en laiton, un numéro de matricule effacé. Elle a déjà fait une guerre.',
   },
   sac_isotherme: {
-    nom: 'Sac isotherme', slot: 'sac', poids: 0.6, espace: 4, protection: 0, chaleur: 0, portage: 3,
+    nom: 'Sac isotherme', slot: 'sac', poids: 0.6, espace: 4, contenance: 15, protection: 0, chaleur: 0, portage: 3,
     desc: 'Le sac des pique-niques en Camargue. Le froid ne tient plus, mais les compartiments, si.',
   },
   sac_ordinateur: {
-    nom: 'Sacoche d\'ordinateur', slot: 'sac', poids: 0.8, espace: 4, protection: 0, chaleur: 0, portage: 3,
+    nom: 'Sacoche d\'ordinateur', slot: 'sac', poids: 0.8, espace: 4, contenance: 12, protection: 0, chaleur: 0, portage: 3,
     desc: 'Rembourrée, pleine de poches pour des câbles qui ne servent plus à rien.',
   },
   sacoche_facteur: {
-    nom: 'Sacoche de facteur', slot: 'sac', poids: 0.7, espace: 5, protection: 0, chaleur: 0, portage: 4,
+    nom: 'Sacoche de facteur', slot: 'sac', poids: 0.7, espace: 5, contenance: 18, protection: 0, chaleur: 0, portage: 4,
     desc: 'Jaune et bleue, encore pleine de lettres jamais distribuées. Tu les vides. Tu en gardes une.',
   },
   gibeciere: {
-    nom: 'Gibecière de chasseur', slot: 'sac', poids: 0.9, espace: 5, protection: 0, chaleur: 0, portage: 5,
+    nom: 'Gibecière de chasseur', slot: 'sac', poids: 0.9, espace: 5, contenance: 18, protection: 0, chaleur: 0, portage: 5,
     desc: 'Cuir épais et filet à gibier. Elle sent la poudre et la garrigue.',
   },
   cartable_cuir: {
-    nom: 'Cartable en cuir', slot: 'sac', poids: 1.0, espace: 5, protection: 0, chaleur: 0, portage: 4,
+    nom: 'Cartable en cuir', slot: 'sac', poids: 1.0, espace: 5, contenance: 14, protection: 0, chaleur: 0, portage: 4,
     desc: 'Le cartable d\'un professeur, usé aux coins. Solide comme on n\'en fait plus.',
   },
   sac_photo: {
-    nom: 'Sac de photographe', slot: 'sac', poids: 0.9, espace: 5, protection: 0, chaleur: 0, portage: 4, accesRapide: 1,
+    nom: 'Sac de photographe', slot: 'sac', poids: 0.9, espace: 5, contenance: 14, protection: 0, chaleur: 0, portage: 4, accesRapide: 1,
     desc: 'Compartiments réglables et ouverture sur le côté : ce que tu ranges là sort en une seconde.',
   },
   sac_sport: {
-    nom: 'Sac de sport', slot: 'sac', poids: 0.8, espace: 7, protection: 0, chaleur: 0, portage: 5,
+    nom: 'Sac de sport', slot: 'sac', poids: 0.8, espace: 7, contenance: 35, protection: 0, chaleur: 0, portage: 5,
     desc: 'Un polochon de club de foot, porté en bandoulière. Il cogne la jambe, mais il avale tout.',
   },
   sac_voyage: {
-    nom: 'Sac de voyage', slot: 'sac', poids: 1.2, espace: 8, protection: 0, chaleur: 0, portage: 6, agilite: -1,
+    nom: 'Sac de voyage', slot: 'sac', poids: 1.2, espace: 8, contenance: 40, protection: 0, chaleur: 0, portage: 6, agilite: -1,
     desc: 'L\'étiquette d\'un vol pour Lisbonne est encore attachée à la poignée. Quelqu\'un n\'est jamais parti.',
   },
   sac_samu: {
-    nom: 'Sac d\'intervention du SAMU', slot: 'sac', poids: 1.4, espace: 8, protection: 0, chaleur: 0, portage: 6, accesRapide: 1,
+    nom: 'Sac d\'intervention du SAMU', slot: 'sac', poids: 1.4, espace: 8, contenance: 30, protection: 0, chaleur: 0, portage: 6, accesRapide: 1,
     desc: 'Rouge, rigide, compartimenté. Fait pour sauver des gens en courant.',
   },
   hotte_vendange: {
-    nom: 'Hotte de vendangeur', slot: 'sac', poids: 1.8, espace: 9, protection: 0, chaleur: 0, portage: 8, agilite: -1,
+    nom: 'Hotte de vendangeur', slot: 'sac', poids: 1.8, espace: 9, contenance: 40, protection: 0, chaleur: 0, portage: 8, agilite: -1,
     desc: 'Une hotte en plastique dur, encore tachée de raisin. Elle porte lourd et cogne les cadres de porte.',
   },
   sac_livreur: {
-    nom: 'Sac cube de livreur', slot: 'sac', poids: 1.3, espace: 9, protection: 0, chaleur: 0, portage: 6, agilite: -1,
+    nom: 'Sac cube de livreur', slot: 'sac', poids: 1.3, espace: 9, contenance: 45, protection: 0, chaleur: 0, portage: 6, agilite: -1,
     desc: 'Une grande boîte isotherme à bretelles, au logo d\'une appli de livraison. Énorme, carrée, voyante.',
   },
   sac_police: {
-    nom: 'Sac d\'intervention de la police', slot: 'sac', poids: 1.8, espace: 9, protection: 0, chaleur: 0, portage: 8, accesRapide: 1,
+    nom: 'Sac d\'intervention de la police', slot: 'sac', poids: 1.8, espace: 9, contenance: 40, protection: 0, chaleur: 0, portage: 8, accesRapide: 1,
     desc: 'Noir, renforcé, « POLICE » en lettres blanches. Plusieurs sangles pour garder l\'essentiel à portée.',
   },
   sac_alpinisme: {
-    nom: 'Sac d\'alpinisme', slot: 'sac', poids: 1.5, espace: 9, protection: 0, chaleur: 0, portage: 9,
+    nom: 'Sac d\'alpinisme', slot: 'sac', poids: 1.5, espace: 9, contenance: 50, protection: 0, chaleur: 0, portage: 9,
     desc: '45 litres, dos ventilé, bien serré au corps. Il ne gêne presque pas quand tu dois esquiver.',
   },
   valise_cabine: {
-    nom: 'Valise cabine', slot: 'sac', poids: 3.0, espace: 11, protection: 0, chaleur: 0, portage: 9, agilite: -2,
+    nom: 'Valise cabine', slot: 'sac', poids: 3.0, espace: 11, contenance: 40, protection: 0, chaleur: 0, portage: 9, agilite: -2,
     desc: 'À roulettes, poignée télescopique. Beaucoup de place, et un bruit de roulettes sur les pavés que tout le quartier entend.',
   },
   sac_expedition: {
-    nom: 'Sac d\'expédition', slot: 'sac', poids: 2.9, espace: 14, protection: 0, chaleur: 0, portage: 12, agilite: -2,
+    nom: 'Sac d\'expédition', slot: 'sac', poids: 2.9, espace: 14, contenance: 70, protection: 0, chaleur: 0, portage: 12, agilite: -2,
     desc: '80 litres. Le sac de quelqu\'un qui partait pour un mois dans les Alpes. Une maison sur le dos — et lourde.',
   },
 };

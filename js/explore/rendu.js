@@ -37,7 +37,7 @@ export function creerRendu(canvas, niveau) {
       mdata = mctx.createImageData(mw, mh);
     }
   }
-  function setZoom(z) { cam.zoom = Math.max(0.55, Math.min(2, z)); majEchelle(); }
+  function setZoom(z) { cam.zoom = Math.max(0.55, Math.min(2.5, z)); majEchelle(); }
 
   function preparerGrain() {
     const c = document.createElement('canvas'); c.width = c.height = 160;
@@ -62,8 +62,9 @@ export function creerRendu(canvas, niveau) {
     return c;
   }
 
-  const ecranX = (x) => (x - cam.x) * cam.pxc + W / 2;
-  const ecranY = (y) => (y - cam.y) * cam.pxc + H / 2;
+  let sx0 = 0, sy0 = 0;           // secousse de l'écran (coups reçus / portés)
+  const ecranX = (x) => (x - cam.x) * cam.pxc + W / 2 + sx0;
+  const ecranY = (y) => (y - cam.y) * cam.pxc + H / 2 + sy0;
   function ecranVersMonde(sx, sy) {
     const r = canvas.getBoundingClientRect();
     return { x: (sx - r.left - W / 2) / cam.pxc + cam.x, y: (sy - r.top - H / 2) / cam.pxc + cam.y };
@@ -82,6 +83,8 @@ export function creerRendu(canvas, niveau) {
     if (!W) resize();
     const t0 = performance.now();
     const E = S.E, C = S.C, pxc = cam.pxc;
+    const sec = (S.joueur.cbt && S.joueur.cbt.secousse) || 0;
+    sx0 = sec ? (Math.random() - 0.5) * 9 * sec : 0; sy0 = sec ? (Math.random() - 0.5) * 9 * sec : 0;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     ctx.imageSmoothingEnabled = true;
@@ -102,12 +105,18 @@ export function creerRendu(canvas, niveau) {
     // 2) dynamique en coordonnées monde (1 unité = TS px de tuile)
     const k = pxc / TS;
     ctx.save();
-    ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (W / 2 - cam.x * pxc), dpr * (H / 2 - cam.y * pxc));
+    ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (W / 2 + sx0 - cam.x * pxc), dpr * (H / 2 + sy0 - cam.y * pxc));
     const visCase = (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); if (cx < 0 || cy < 0 || cx >= E.w || cy >= E.h) return 0; const i = cy * E.w + cx; return C.los[i] === C.stamp ? C.vis[i] : 0; };
     const vuCase = (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); if (cx < 0 || cy < 0 || cx >= E.w || cy >= E.h) return 0; return C.vu[cy * E.w + cx]; };
     for (const cd of S.cadavres) {
       if (cd.etage !== E.id || !vuCase(cd.x, cd.y)) continue;
       dessinerCorps(ctx, cd.x * TS, cd.y * TS, cd.dir + Math.PI, rngCd(cd.uid), true, '#7d8070', '#3b3128');
+    }
+    // sang au sol (coups portés, reçus)
+    for (const g of S.sang || []) {
+      if (g.etage !== E.id || !vuCase(g.x, g.y)) continue;
+      ctx.fillStyle = `rgba(${70 + Math.round(g.s * 30)},8,12,0.72)`;
+      ctx.beginPath(); ctx.ellipse(g.x * TS, g.y * TS, g.r * TS, g.r * TS * 0.65, g.a, 0, 7); ctx.fill();
     }
     for (const o of S.sol) {
       if (o.etage !== E.id || !vuCase(o.x, o.y)) continue;
@@ -131,10 +140,18 @@ export function creerRendu(canvas, niveau) {
     }
     for (const p of S.pairs) {
       if (p.etage !== E.id || visCase(p.x, p.y) < 0.15) continue;
-      dessinerPersonnage(ctx, p.x * TS, p.y * TS, p.dir, p.lampe ? STYLE_PAIR_L : STYLE_PAIR, S.t, p.marche || 0, p.allure);
+      dessinerPersonnage(ctx, p.x * TS, p.y * TS, p.dir, p.lampe ? STYLE_PAIR_L : STYLE_PAIR, S.t, p.marche || 0, p.allure,
+        { equip: { droite: p.arme || null }, cbt: { geste: p.geste || null, charge: 0, empoigne: p.empoigne } });
     }
     const J = S.joueur;
-    dessinerPersonnage(ctx, J.x * TS, J.y * TS, J.dir, J.lampe ? STYLE_JOUEUR_L : STYLE_JOUEUR, S.t, J.marche, J.allure);
+    dessinerPersonnage(ctx, J.x * TS, J.y * TS, J.dir, J.lampe ? STYLE_JOUEUR_L : STYLE_JOUEUR, S.t, J.marche, J.allure, { equip: J.equip, cbt: J.cbt });
+    // éclats de sang (dans le monde : l'obscurité les couvre)
+    for (const f of S.fx || []) {
+      if (f.type !== 'eclat') continue;
+      const q = f.age / f.duree, d = Math.min(1, f.age / 260);
+      ctx.fillStyle = `rgba(150,14,20,${0.9 * (1 - q)})`;
+      ctx.beginPath(); ctx.arc((f.x + f.vx * d * 0.6) * TS, (f.y + f.vy * d * 0.6) * TS, f.r, 0, 7); ctx.fill();
+    }
     ctx.restore();
 
     // 3) couche d'ombre
@@ -199,10 +216,52 @@ export function creerRendu(canvas, niveau) {
       ctx.strokeRect(ecranX(c.x0) + 1, ecranY(c.y0) + 1, (c.x1 - c.x0) * pxc - 2, (c.y1 - c.y0) * pxc - 2);
       ctx.setLineDash([]);
     }
+    // PV des morts entamés (visibles)
+    for (const z of S.zombies) {
+      if (!z._vu || z.etage !== E.id || !z.hpMax || z.hp >= z.hpMax) continue;
+      const bx = ecranX(z.x) - pxc * 0.4, by = ecranY(z.y) - pxc * 0.62, bw = pxc * 0.8;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(bx - 1, by - 1, bw + 2, 5);
+      ctx.fillStyle = '#b8343e'; ctx.fillRect(bx, by, bw * Math.max(0, z.hp / z.hpMax), 3);
+    }
+    // anneaux du joueur : charge du coup, empoignade (marteler !)
+    const Jc = S.joueur.cbt;
+    if (Jc) {
+      const jx = ecranX(S.joueur.x), jy = ecranY(S.joueur.y);
+      if (Jc.charge > 0) {
+        ctx.strokeStyle = Jc.charge >= 0.9 ? 'rgba(255,214,140,0.95)' : 'rgba(230,223,204,0.75)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(jx, jy, pxc * 0.62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Jc.charge); ctx.stroke();
+      }
+      if (Jc.empoigne) {
+        const e = Jc.empoigne;
+        ctx.strokeStyle = 'rgba(201,162,39,0.35)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(jx, jy, pxc * 0.85, 0, 7); ctx.stroke();
+        ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(jx, jy, pxc * 0.85, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - e.p)); ctx.stroke();
+        ctx.fillStyle = '#c9a227';
+        for (let k = 0; k < e.requis; k++) { const a = -Math.PI / 2 + (k + 0.5) / e.requis * Math.PI * 2; ctx.globalAlpha = k < e.taps ? 1 : 0.25; ctx.beginPath(); ctx.arc(jx + Math.cos(a) * pxc * 1.08, jy + Math.sin(a) * pxc * 1.08, 3.5, 0, 7); ctx.fill(); }
+        ctx.globalAlpha = 1;
+      }
+    }
+    // traçantes, chiffres de dégâts
+    for (const f of S.fx || []) {
+      const q = f.age / f.duree;
+      if (f.type === 'trait') {
+        ctx.strokeStyle = `rgba(255,226,160,${0.85 * (1 - q)})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(ecranX(f.x), ecranY(f.y)); ctx.lineTo(ecranX(f.x2), ecranY(f.y2)); ctx.stroke();
+      } else if (f.type === 'nombre') {
+        const x = ecranX(f.x), y = ecranY(f.y) - pxc * 0.6 - q * pxc * 0.9;
+        ctx.globalAlpha = q < 0.7 ? 1 : 1 - (q - 0.7) / 0.3;
+        ctx.font = `${f.cls === 'crit' ? 700 : 600} ${f.cls === 'crit' ? 22 : f.cls === 'info' || f.cls === 'rate' ? 13 : 17}px Oswald, system-ui, sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(f.txt, x, y);
+        ctx.fillStyle = f.cls === 'moi' ? '#ff5a64' : f.cls === 'crit' ? '#ffd27a' : f.cls === 'rate' || f.cls === 'info' ? '#e6dfcc' : f.cls === 'furtif' ? '#c9a227' : '#fff2e0';
+        ctx.fillText(f.txt, x, y);
+        ctx.globalAlpha = 1;
+      }
+    }
     // repérage « ? »
     for (const z of S.zombies) {
       if (!z._vu || z.etage !== E.id) continue;
-      if (z.etat === 'chasse') { marque(ecranX(z.x), ecranY(z.y) - pxc * 0.75, 1, true); continue; }
+      if (z.etat === 'chasse') { if (Math.hypot(z.x - S.joueur.x, z.y - S.joueur.y) > 3) marque(ecranX(z.x), ecranY(z.y) - pxc * 0.75, 1, true); continue; }
       if (z.alerte > 0.02) marque(ecranX(z.x), ecranY(z.y) - pxc * 0.75, z.alerte, false);
     }
     // ondes (ce qu'on entend)

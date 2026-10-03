@@ -1,7 +1,10 @@
 // ============ Temps 1 — l'écran d'exploration (REFONTE §5, §12.3) ============
 // entrer({ lieuId, entree }), sortir(), pause(), reprise().
 // Parle au monde UNIQUEMENT via un canal (obtenirCanal) : local (solo/hôte) ou distant (invité, intégrateur).
-// Crochets de test : definirCrochets({ combattre, scene, obtenirCanal }) (banc d'essai dev/explore.html).
+// LE COMBAT SE JOUE ICI, en temps réel (plus d'écran séparé) : se déplacer, frapper, pousser (combat_vue.js).
+//   combatIci(spec) → Promise<resultat>   : des morts surgissent autour du joueur (scènes, déclencheurs).
+//   embuscade(spec) → Promise<resultat>   : un bout de route jouable (rencontres de voyage), on en sort par un bord.
+// Crochets de test : definirCrochets({ scene, obtenirCanal }) (banc d'essai dev/explore.html).
 import { G, getFlag, noteJournal, sauver as sauverPartie, avantSauvegarde } from '../core/state.js';
 import { emit, on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
@@ -22,6 +25,8 @@ import { creerChamp, calculerLOS, calculerVision, lumiereLampe } from './vision.
 import { deplacer } from './physique.js';
 import { creerRendu } from './rendu.js';
 import { creerEntrees } from './entrees.js';
+import { creerCombatVue } from './combat_vue.js';
+import { genererEmbuscade } from './embuscade.js';
 
 const RX = REGLAGES.exploration, RL = REGLAGES.lumiere;
 const RAYON = 0.3;
@@ -29,18 +34,19 @@ const JOUEUR_ID = 'local';
 
 // ---------- Crochets remplaçables ----------
 let crochets = {
-  combattre: (spec) => flow.combattre(spec),
   scene: (id) => flow.scene(id),
   obtenirCanal: null,
 };
 export function definirCrochets(c) { crochets = { ...crochets, ...c }; }
 
 // Modules optionnels (tolère leur absence)
-let inv = null, player = null, audio = null, panneaux = null;
+let inv = null, player = null, audio = null, panneaux = null, survie = null;
 async function chargerOptionnels() {
   const essai = async (p) => { try { return await import(p); } catch (e) { return null; } };
-  [inv, player, audio] = await Promise.all([essai('../game/inventory.js'), essai('../game/player.js'), essai('../audio.js')]);
+  [inv, player, audio, survie] = await Promise.all([essai('../game/inventory.js'), essai('../game/player.js'), essai('../audio.js'), essai('../game/survival.js')]);
 }
+const vib = (ms) => { try { if (pref('vibrations') !== false && navigator.vibrate) navigator.vibrate(ms); } catch (e) {} };
+const EVTS_COMBAT = ['telegraphe', 'attaque', 'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule'];
 const sfx = (n, o) => { try { audio && audio.sfx && audio.sfx(n, o); } catch (e) {} };
 // Son situé dans le lieu : plus on est loin, moins on l'entend (au-delà de la portée : rien). Un étage d'écart = étouffé.
 function sfxA(nom, x, y, etage, portee = 14) {
@@ -103,18 +109,26 @@ function compter(id) {
 // ---------- État de la vue ----------
 let V = null;
 
-export async function entrer({ lieuId, entree } = {}) {
+export async function entrer({ lieuId, entree, arene = null } = {}) {
   if (V) sortir();
   await chargerOptionnels();
   lienCss();
-  const L = lieuDe(lieuId) || { id: lieuId, nom: lieuId, echelle: 'salon' };
-  const idNiveau = L.niveau === undefined ? lieuId : (L.niveau || lieuId);
-  const def = await chargerNiveau(idNiveau);
-  if (!def) { flow.toast(`${L.nom || lieuId} : impossible d'y entrer (plan manquant).`); try { await flow.ouvrirCarte({ echelle: L.echelle || 'salon' }); } catch (e) {} return; }
-  const niveau = niveauxParses[idNiveau] || (niveauxParses[idNiveau] = parserNiveau(def));
+  let L, idNiveau, def, niveau;
+  if (arene) {
+    lieuId = '__embuscade';
+    def = genererEmbuscade({ seed: arene.seed, echelle: arene.echelle });
+    L = { id: lieuId, nom: def.nom, echelle: arene.echelle || 'region', danger: arene.danger ?? 0.4 };
+    idNiveau = lieuId; niveau = parserNiveau(def);
+  } else {
+    L = lieuDe(lieuId) || { id: lieuId, nom: lieuId, echelle: 'salon' };
+    idNiveau = L.niveau === undefined ? lieuId : (L.niveau || lieuId);
+    def = await chargerNiveau(idNiveau);
+    if (!def) { flow.toast(`${L.nom || lieuId} : impossible d'y entrer (plan manquant).`); try { await flow.ouvrirCarte({ echelle: L.echelle || 'salon' }); } catch (e) {} return; }
+    niveau = niveauxParses[idNiveau] || (niveauxParses[idNiveau] = parserNiveau(def));
+  }
   for (const a of niveau.avertissements) console.warn(`[niveau ${idNiveau}] ${a}`);
 
-  const racine = el('div', { class: 'explore' });
+  const racine = el('div', { class: 'explore' + (arene ? ' ex-arene' : '') });
   const canvas = el('canvas', { class: 'ex-canvas' });
   const hud = {
     lieu: el('div', { class: 'ex-lieu' }),
@@ -123,11 +137,16 @@ export async function entrer({ lieuId, entree } = {}) {
     etat: el('div', { class: 'ex-etat' }),
     butin: el('div', { class: 'ex-butin cache' }),
     barre: el('div', { class: 'ex-action cache' }, el('div', { class: 'ex-action-l' }), el('div', { class: 'ex-action-b' }, el('i'))),
+    mains: el('div', { class: 'ex-mains' }),
+    degage: el('div', { class: 'ex-degage cache' }),
+    sang: el('div', { class: 'ex-sang' }),
+    route: el('button', { class: 'ex-route cache', type: 'button' }, 'Reprendre la route'),
+    aide: el('div', { class: 'ex-aide-cbt' }, 'Clic gauche : frapper (maintenir = coup chargé) · Clic droit / Espace : pousser', el('br'), 'E : interagir · X : échanger les mains · B : dos · R : recharger'),
   };
   hud.sta = el('div', { class: 'ex-sta' }, el('i'));
   hud.lampe = el('div', { class: 'ex-lampe' }, el('span', {}, 'Lampe'), el('b', {}, el('i')));
   hud.etat.append(hud.sta, hud.lampe);
-  racine.append(canvas, hud.lieu, hud.msg, hud.invite, hud.etat, hud.barre, hud.butin);
+  racine.append(canvas, hud.sang, hud.lieu, hud.msg, hud.invite, hud.etat, hud.barre, hud.butin, hud.mains, hud.degage, hud.route, hud.aide);
   flow.stage().append(racine);
 
   V = {
@@ -138,9 +157,14 @@ export async function entrer({ lieuId, entree } = {}) {
     snap: null, tSnap: 0, zInterp: new Map(), zListe: [], ondes: [], dernOnde: new Map(),
     cible: null, tCible: 0, fouille: null, butin: null, action: null, carte: false,
     piece: -1, tPos: 0, tPnj: 0, pnj: [], off: [], raf: 0, tPrec: performance.now(), msgT: 0,
-    zoom: pref('zoomExplore') || 1, zonesDedans: new Set(),
+    zoom: pref('zoomExplore') || 1, zonesDedans: new Set(), arene, periode: 50, tSnapPrec: performance.now(),
   };
-  V.canal = await obtenirCanal(lieuId, niveau, L);
+  if (arene) {
+    const W = G.world;
+    const sim = creerSimLieu({ lieuId, niveau, etat: null, seed: `${W.seed}:${arene.seed}`, danger: L.danger, pool: arene.pool || ['errant'],
+      minutes: W.minutes, mortsN: [0, 0], coop: false, difficulte: presetDifficulte(W.difficulte || (G.options && G.options.difficulte)) });
+    V.canal = creerCanalLocal(sim, JOUEUR_ID);
+  } else V.canal = await obtenirCanal(lieuId, niveau, L);
   if (!V) return; // sorti entre-temps
 
   // position de départ
@@ -157,8 +181,10 @@ export async function entrer({ lieuId, entree } = {}) {
   changerEtage(pos.etage);
 
   // monde
-  G.world.lieux[lieuId] = { ...(G.world.lieux[lieuId] || {}), decouvert: true, visite: true };
-  emit('lieu:entre', { lieu: lieuId });
+  if (!arene) {
+    G.world.lieux[lieuId] = { ...(G.world.lieux[lieuId] || {}), decouvert: true, visite: true };
+    emit('lieu:entre', { lieu: lieuId });
+  }
   V.snap = V.canal.instantane(); V.tSnap = performance.now(); majInterp(true);
 
   // rendu + entrées
@@ -166,17 +192,38 @@ export async function entrer({ lieuId, entree } = {}) {
   V.rendu.setZoom(V.zoom);
   V.entrees = creerEntrees({ racine, canvas, actions: {
     interagir: (o) => interagir(o), lampe: basculerLampe, inventaire: ouvrirInventaire,
-    carte: () => { V.carte = !V.carte; }, echap, zoom: (f) => { V.zoom = clamp(V.zoom * f, 0.55, 2); V.rendu.setZoom(V.zoom); setPref('zoomExplore', V.zoom); },
+    carte: () => { V.carte = !V.carte; }, echap, zoom: (f) => { V.zoom = clamp(V.zoom * f, 0.55, 2); V.rendu.setZoom(V.zoom * (V.zoomCbt || 1)); setPref('zoomExplore', V.zoom); },
     accroupi: () => {},
+    frapper: (appui, annule) => { if (!V || !V.cbt || V.occupe) return; if (appui && (V.fouille || V.butin || V.action)) { interrompreFouille(); fermerButin(); V.action = null; V.hud.barre.classList.add('cache'); } V.cbt.frapper(appui, annule); },
+    pousser: () => { if (!V || !V.cbt || V.occupe) return; if (V.fouille || V.butin || V.action) { interrompreFouille(); fermerButin(); V.action = null; V.hud.barre.classList.add('cache'); } V.cbt.pousser(); },
+    recharger: () => V && V.cbt && V.cbt.recharger(),
+    echangerMains: () => V && V.cbt && V.cbt.echangerMains(),
+    dos: () => V && V.cbt && V.cbt.dos(),
+    rapide: (i) => V && V.cbt && V.cbt.rapide(i),
   } });
+  // Combat (côté joueur) : gestes, endurance, retours, blessures appliquées au corps.
+  V.cbt = creerCombatVue({
+    canal: V.canal, j: () => V.j, zombies: () => V.zListe, message, sfx, sfxA, vib, inv, player, survie, entrees: V.entrees,
+    tactile: () => !!(V.entrees.etat.tactile || matchMedia('(pointer: coarse)').matches), pause: () => !V || V.enPause || V.occupe,
+    bousculer: (dx, dy) => { if (!V) return; tmpPos.x = V.j.x; tmpPos.y = V.j.y; deplacer(V.E.w, V.E.h, grilleBloque(), tmpPos, dx, dy, RAYON); V.j.x = tmpPos.x; V.j.y = tmpPos.y; },
+  });
+  for (const t of EVTS_COMBAT) V.off.push(V.canal.on(t, (e) => { if (V && V.cbt) V.cbt.surEvt(e); }));
+  V.off.push(on('mort', () => { if (!V) return; V.cbt.mourir(); V.entrees.actif(false); }));
+  V.off.push(on('inventaire', () => { if (!V) return; V.cbt.majStats(); majMains(); }));
+  majMains();
+  hud.mains.addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (!b || !V) return; if (b.dataset.m === 'dos') V.cbt.dos(); else V.cbt.echangerMains(); });
+  hud.route.addEventListener('click', () => { if (V && V.arene) finArene('route'); });
+  setTimeout(() => hud.aide.classList.add('cache'), 30000);
   const onResize = () => V && V.rendu.resize();
   window.addEventListener('resize', onResize);
   V.off.push(() => window.removeEventListener('resize', onResize));
 
   // événements du monde
   const C = V.canal;
-  V.off.push(C.on('tick', () => { V.snap = C.instantane(); V.tSnap = performance.now(); majInterp(false); ecouter(); }));
-  V.off.push(C.on('contact', (e) => { if (e.joueur === (C.joueurId || JOUEUR_ID)) lancerCombat(e.zombies, e.surprise); }));
+  V.off.push(C.on('tick', () => {
+    const t = performance.now(); V.periode = Math.max(30, Math.min(200, V.periode * 0.8 + (t - V.tSnapPrec) * 0.2)); V.tSnapPrec = t;
+    V.snap = C.instantane(); V.tSnap = t; majInterp(false); ecouter();
+  }));
   V.off.push(C.on('porte', (e) => {
     const pp = posPorte(e.cle);
     if (e.action === 'coup') { if (pp) sfxA('porte_coup', ...pp, 16); onde(e.cle, true); }
@@ -189,7 +236,7 @@ export async function entrer({ lieuId, entree } = {}) {
 
   // Chaque sauvegarde (auto, fermeture de l'onglet…) range aussi l'état du lieu : meubles vidés, objets au sol, morts.
   V.off.push(avantSauvegarde(() => {
-    if (!V || !V.canal.sauver) return;
+    if (!V || !V.canal.sauver || V.arene) return;
     const etat = V.canal.sauver(G.world.minutes);
     if (etat) G.world.lieux[V.lieuId] = { ...(G.world.lieux[V.lieuId] || {}), etat };
     G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: V.j.etage, x: +V.j.x.toFixed(2), y: +V.j.y.toFixed(2) };
@@ -216,7 +263,12 @@ export async function entrer({ lieuId, entree } = {}) {
   V.raf = requestAnimationFrame(boucle);
   if (G.mode === 'solo') clock.setVitesse(((REGLAGES.temps.VITESSE_SOLO || {}).exploration) ?? 1);
   // déclencheurs d'entrée
-  setTimeout(() => { if (V && !V.enPause) declencheursEntree(); }, 350);
+  if (!arene) setTimeout(() => { if (V && !V.enPause) declencheursEntree(); }, 350);
+  else {
+    afficherLieu(def.nom);
+    const uids = await V.canal.faireApparaitre(arene.zombies || ['errant'], { surprise: arene.surprise });
+    if (V) suivreCombat(uids, { arene: true }).then((r) => finArene(r.issue === 'victoire' ? 'nettoye' : r.issue, r));
+  }
 }
 
 function ajouterJoueurSim(pos) {
@@ -232,7 +284,8 @@ export function sortir() {
   v.actif = false;
   cancelAnimationFrame(v.raf);
   try { interrompreFouille(); } catch (e) {}
-  try {
+  try { v.cbt && v.cbt.fermer(); } catch (e) {}
+  if (!v.arene) try {
     const etat = v.canal.sauver ? v.canal.sauver(G.world.minutes) : null;
     if (etat) G.world.lieux[v.lieuId] = { ...(G.world.lieux[v.lieuId] || {}), etat };
     G.player.position = { mode: 'lieu', lieu: v.lieuId, etage: v.j.etage, x: +v.j.x.toFixed(2), y: +v.j.y.toFixed(2) };
@@ -244,8 +297,9 @@ export function sortir() {
   if (inv && inv.setSol) { let pile = []; inv.setSol({ lister: () => pile, deposer: (it) => pile.push({ ...it }), prendre: (i) => pile.splice(i, 1)[0] || null }); }
   try { audio && audio.setTension && audio.setTension(0); } catch (e) {}
   v.racine.remove();
-  emit('lieu:sort', { lieu: v.lieuId });
+  if (!v.arene) emit('lieu:sort', { lieu: v.lieuId });
   V = null;
+  for (const f of v.attentes || []) { try { f(); } catch (e) {} }
 }
 export function pause() {
   if (!V || V.enPause) return;
@@ -259,7 +313,7 @@ export function reprise() {
   if (!V || !V.enPause) return;
   V.enPause = false;
   if (V.canal.reprise) V.canal.reprise();
-  if (!V.occupe && !V.enCombat) V.entrees.actif(true);
+  if (!V.occupe && !(V.cbt && V.cbt.etat.mort)) V.entrees.actif(true);
   V.tPrec = performance.now();
   V.raf = requestAnimationFrame(boucle);
 }
@@ -302,8 +356,9 @@ function image(t, dt) {
   const j = V.j, E = V.E, C = V.C, I = V.entrees.etat;
   const bloque = grilleBloque();
   // --- déplacement ---
-  const libre = !V.occupe && !V.enCombat && !V.action;
+  const libre = !V.occupe && !V.action;
   let mx = libre ? I.mx : 0, my = libre ? I.my : 0;
+  V.cbt.maj(dt);
   const pousse = Math.min(1, Math.hypot(mx, my));
   const sta = G.player.sta, staMax = G.player.staMax || 100;
   let allure = pousse < 0.05 ? 'immobile' : I.accroupi ? 'accroupi' : 'marche';
@@ -313,6 +368,7 @@ function image(t, dt) {
   let v = RX.VITESSE[allure === 'immobile' ? 'marche' : allure] || 3.2;
   if (allure === 'accroupi') v *= 1 + RX.ACCROUPI_VITESSE_AGILITE * niv('agilite');
   try { if (player && player.vitesseMarche) v *= player.vitesseMarche(G.player); } catch (e) {}
+  v *= V.cbt.vitesseMult();
   const cible = pousse > 0 ? v * pousse : 0;
   const k = 1 - Math.exp(-dt / RX.INERTIE_MS);
   const ux = pousse > 0 ? mx / Math.hypot(mx, my) : 0, uy = pousse > 0 ? my / Math.hypot(mx, my) : 0;
@@ -331,10 +387,12 @@ function image(t, dt) {
   G.player.sta = clamp(sta + dS * dt / 1000, 0, staMax);
   // orientation : souris (PC) sinon direction de marche
   let dirCible = j.dir;
+  const forcee = V.cbt.dirForcee();
   if (I.viseeSouris && !I.tactile) { const m = V.rendu.ecranVersMonde(I.sx, I.sy); dirCible = Math.atan2(m.y - j.y, m.x - j.x); }
-  else if (vReelle > 0.3) dirCible = Math.atan2(j.vy, j.vx);
+  else if (forcee != null) dirCible = forcee;
+  else if (vReelle > 0.3 && V.cbt.vitesseMult() >= 1) dirCible = Math.atan2(j.vy, j.vx);
   let da = dirCible - j.dir; da = Math.atan2(Math.sin(da), Math.cos(da));
-  j.dir += da * (1 - Math.exp(-dt / 70));
+  j.dir += da * (1 - Math.exp(-dt / (I.viseeSouris && !I.tactile ? 40 : 70)));
 
   // --- lumière et vision ---
   const jour = clock.lumiereJour();
@@ -363,7 +421,7 @@ function image(t, dt) {
   V.canal.majJoueur({ x: j.x, y: j.y, etage: j.etage, dir: j.dir, allure: j.allure, lumiere: j.lumiere, lampe: !!la, lampeSource: la ? la.id : null });
 
   // --- morts interpolés ---
-  const f = clamp((t - V.tSnap) / 100, 0, 1);
+  const f = clamp((t - V.tSnap) / V.periode, 0, 1);
   for (const z of V.zListe) {
     z.x = z.x0 + (z.x1 - z.x0) * f; z.y = z.y0 + (z.y1 - z.y0) * f;
     let dd = z.d1 - z.d0; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); z.dir = z.d0 + dd * f;
@@ -380,7 +438,8 @@ function image(t, dt) {
   if (V.action) avancerAction(dt);
   if (V.butin && Math.hypot(V.butin.x - j.x, V.butin.y - j.y) > 1.9) fermerButin();
   V.tPnj -= dt; if (V.tPnj <= 0) { V.tPnj = 800; majPnj(); }
-  V.tPos -= dt; if (V.tPos <= 0) { V.tPos = 2000; G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2) }; tension(); }
+  V.tPos -= dt; if (V.tPos <= 0) { V.tPos = 2000; if (!V.arene) G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2) }; tension(); }
+  majDegage();
   // HUD
   V.hud.sta.firstChild.style.width = (100 * G.player.sta / staMax).toFixed(1) + '%';
   V.hud.sta.classList.toggle('plein', G.player.sta >= staMax - 0.5);
@@ -389,6 +448,12 @@ function image(t, dt) {
   V.hud.lampe.classList.toggle('on', !!la);
   if (V.msgT > 0) { V.msgT -= dt; if (V.msgT <= 0) V.hud.msg.classList.remove('on'); }
 
+  // --- zoom de combat : la caméra se rapproche quand un mort te charge (retour en douceur ensuite) ---
+  let menace = false;
+  for (const z of V.zListe) if (z.etage === j.etage && z.etat === 'chasse' && z._vu && Math.hypot(z.x - j.x, z.y - j.y) < 6) { menace = true; break; }
+  const zc = menace ? 1.22 : 1;
+  V.zoomCbt = (V.zoomCbt || 1) + (zc - (V.zoomCbt || 1)) * (1 - Math.exp(-dt / 600));
+  if (Math.abs(V.rendu.zoom() - V.zoom * V.zoomCbt) > 0.005) V.rendu.setZoom(V.zoom * V.zoomCbt);
   // --- caméra + image ---
   const av = 1.2 + (la ? 0.8 : 0);
   V.rendu.suivre(j.x, j.y, dt, Math.cos(j.dir) * av * (vReelle > 0.2 || I.viseeSouris ? 1 : 0.5), Math.sin(j.dir) * av * (vReelle > 0.2 || I.viseeSouris ? 1 : 0.5));
@@ -398,6 +463,8 @@ function image(t, dt) {
   Sc.pluie = V.pluie || 0;
   if (V.dehorsSon !== Sc.dehors) { V.dehorsSon = Sc.dehors; try { audio && audio.setPluieInterieur && audio.setPluieInterieur(!Sc.dehors); } catch (e) {} }
   Sc.joueur.x = j.x; Sc.joueur.y = j.y; Sc.joueur.dir = j.dir; Sc.joueur.marche = j.marche; Sc.joueur.lampe = !!la; Sc.joueur.allure = j.allure;
+  Sc.joueur.equip = V.equipVu; Sc.joueur.cbt = V.cbt.rendu(); Sc.fx = V.cbt.fx; Sc.sang = V.cbt.sang; Sc.moi = V.canal.joueurId || JOUEUR_ID;
+  V.hud.sang.style.opacity = (Sc.joueur.cbt.flash * 0.85 + (G.player.pv < 30 ? 0.25 + 0.1 * Math.sin(t / 300) : 0)).toFixed(3);
   Sc.pairs = pairs; Sc.zombies = V.zListe; Sc.portes = snap.portes; Sc.sol = snap.sol; Sc.cadavres = snap.cadavres; Sc.pnj = V.pnj;
   Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.carte = V.carte;
   const Fo = Sc.fouille;
@@ -422,7 +489,8 @@ function majInterp(init) {
     if (!z) { z = { uid: s.uid, x: s.x, y: s.y, x0: s.x, y0: s.y, x1: s.x, y1: s.y, d0: s.dir, d1: s.dir, dir: s.dir }; V.zInterp.set(s.uid, z); }
     const saut = Math.hypot(s.x - z.x, s.y - z.y) > 2 || init || z.etage !== s.etage;
     z.x0 = saut ? s.x : z.x; z.y0 = saut ? s.y : z.y; z.x1 = s.x; z.y1 = s.y; z.d0 = saut ? s.dir : z.dir; z.d1 = s.dir;
-    z.etage = s.etage; z.type = s.type; z.etat = s.etat; z.alerte = s.alerte; z.vitesse = s.vitesse; z.enCombat = s.enCombat; z.hp = s.hp;
+    z.etage = s.etage; z.type = s.type; z.etat = s.etat; z.alerte = s.alerte; z.vitesse = s.vitesse; z.hp = s.hp; z.hpMax = s.hpMax;
+    z.sexe = s.sexe; z.atk = s.atk; z.saisit = s.saisit; z.vac = s.vac; z.terre = s.terre; if (s.touche) z.tTouche = performance.now();
     vus.add(s.uid); liste.push(z);
   }
   for (const k of V.zInterp.keys()) if (!vus.has(k)) V.zInterp.delete(k);
@@ -488,7 +556,7 @@ function basculerLampe() {
 
 // ---------- Interactions ----------
 function chercherCible() {
-  if (V.occupe || V.enCombat) return null;
+  if (V.occupe) return null;
   const j = V.j, E = V.E, C = V.C, n = V.niveau, snap = V.snap;
   const R = RX.INTERACTION_CASES;
   let best = null, bs = Infinity;
@@ -559,16 +627,6 @@ function chercherCible() {
     if (d > R) continue;
     proposer({ type: 'cadavre', cd, etage: E.id, x0: cd.x - 0.6, y0: cd.y - 0.6, x1: cd.x + 0.6, y1: cd.y + 0.6, cx: cd.x, cy: cd.y }, d);
   }
-  for (const z of V.zListe) {
-    if (z.etage !== E.id || !z._vu || z.enCombat) continue;
-    const d = Math.hypot(z.x - j.x, z.y - j.y) - 0.3;
-    if (d > R) continue;
-    const aJ = Math.atan2(j.y - z.y, j.x - z.x);
-    let a = aJ - z.dir; a = Math.abs(Math.atan2(Math.sin(a), Math.cos(a)));
-    const nonAlerte = ['dort', 'immobile', 'erre', 'fait_le_mort', 'cogne'].includes(z.etat) || (z.etat === 'alerte' && z.alerte < 0.5);
-    const furtif = nonAlerte && (a > RX.FURTIF.DOS_DEG * Math.PI / 180 || z.etat === 'dort');
-    proposer({ type: 'mort', z, furtif, etage: E.id, x0: z.x - 0.5, y0: z.y - 0.5, x1: z.x + 0.5, y1: z.y + 0.5, cx: z.x, cy: z.y }, d, furtif ? 0.6 : 0.4);
-  }
   if (best) best.libelle = libelle(best);
   return best;
 }
@@ -598,7 +656,6 @@ function libelle(c) {
     case 'pnj': return `Parler à ${c.q.nom}`;
     case 'sol': return c.o.doc ? `Lire : ${(DOCUMENTS[c.o.doc] || {}).titre || 'document'}` : `Ramasser : ${nomObjet(c.o.id)}${c.o.qty > 1 ? ' ×' + c.o.qty : ''}`;
     case 'cadavre': return 'Fouiller le corps';
-    case 'mort': return c.furtif ? 'Attaque furtive' : 'Frapper';
   }
   return 'Interagir';
 }
@@ -618,7 +675,7 @@ function majInvite() {
 function message(t, ms = 2600) { V.hud.msg.textContent = t; V.hud.msg.classList.add('on'); V.msgT = ms; }
 
 async function interagir(o) {
-  if (!V || V.occupe || V.enCombat || V.enPause) return;
+  if (!V || V.occupe || V.enPause) return;
   if (V.butin && !o) { prendreTout(); return; }
   if (V.fouille) { interrompreFouille(); return; }
   if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); return; }
@@ -634,7 +691,6 @@ async function interagir(o) {
     case 'pnj': return parler(c.q);
     case 'sol': return ramasser(c.o);
     case 'cadavre': return commencerFouille('cad:' + c.cd.uid, 'le corps', c.cd.x, c.cd.y);
-    case 'mort': return attaquer(c.z);
   }
 }
 async function actionPorte(c) {
@@ -725,11 +781,13 @@ function rendreButin() {
   for (let i = 0; i < B.visibles && i < B.items.length; i++) {
     const it = B.items[i];
     const tient = !inv || !inv.combienTient || inv.combienTient(it.id, it.qty || 1) >= (it.qty || 1);
-    const portable = inv && inv.slotDe && inv.slotDe(it.id);
+    const ou = inv && inv.ouPorter ? inv.ouPorter(it.id) : null;
+    const portable = !!ou;
+    const libPorter = { vetement: 'Porter', lampe: 'Équiper', main: 'En main', dos: 'Dans le dos' }[ou] || 'Porter';
     // Toucher le NOM fait l'action la plus utile : enfiler si ça se porte, sinon prendre.
     ul.append(el('li', { class: (tient ? '' : 'plein') + (i >= (B.dejaVus || 0) ? ' neuf' : '') }, el('button', { class: 'ex-b-nom', type: 'button', onclick: () => (portable ? porterItem(i) : prendreItem(i)) }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
-      portable ? el('button', { class: 'ex-b', type: 'button', onclick: () => porterItem(i) }, 'Porter') : null,
-      el('button', { class: 'ex-b', type: 'button', disabled: tient ? null : true, title: tient ? null : 'Plus de place dans ton sac', onclick: () => prendreItem(i) }, tient ? 'Prendre' : 'Sac plein')));
+      portable ? el('button', { class: 'ex-b', type: 'button', onclick: () => porterItem(i) }, libPorter) : null,
+      el('button', { class: 'ex-b', type: 'button', disabled: tient ? null : true, title: tient ? null : (inv.raisonPlace && inv.raisonPlace(it.id)) || 'Plus de place', onclick: () => prendreItem(i) }, tient ? 'Prendre' : (inv.estPetit && !inv.estPetit(it.id) && !G.player.equip.sac ? 'Trop gros' : 'Sac plein'))));
   }
   B.dejaVus = Math.min(B.visibles, B.items.length); // seules les lignes nouvelles s'animent
   const reste = B.items.length - B.visibles;
@@ -738,7 +796,8 @@ function rendreButin() {
   h.append(ul);
   if (inv && inv.placeLibre) {
     const sac = inv.sacPorte();
-    h.append(el('div', { class: 'ex-butin-place' }, `Place libre : ${inv.placeLibre()} — ${sac ? sac.nom : 'pas de sac, seulement tes poches'}`));
+    const b = inv.bilan();
+    h.append(el('div', { class: 'ex-butin-place' }, sac ? `${sac.nom} : ${String(b.sac.utilise).replace('.', ',')} / ${b.sac.max} L · poches ${String(b.poches.utilise).replace('.', ',')} / ${String(b.poches.max).replace('.', ',')} L` : `Pas de sac : tes poches seulement (${String(b.poches.utilise).replace('.', ',')} / ${String(b.poches.max).replace('.', ',')} L, petits objets).`));
   }
   h.append(el('div', { class: 'ex-butin-a' },
     el('button', { class: 'ex-b ex-b-p', type: 'button', disabled: B.visibles ? null : true, onclick: prendreTout }, 'Tout prendre'),
@@ -754,7 +813,7 @@ async function prendreItem(i) {
   const prevu = B.items[i];
   // Le sac est plein : on NE retire PAS l'objet du meuble (il reste là, rien ne se perd).
   if (inv && inv.combienTient && inv.combienTient(prevu.id, prevu.qty || 1) < 1) {
-    message(inv.slotDe(prevu.id) ? 'Sac plein. Tu peux le porter directement (bouton Porter).' : 'Plus de place dans ton sac. Pose quelque chose ou trouve un sac plus grand.', 2600);
+    message(`${inv.raisonPlace(prevu.id) || 'Plus de place.'}${inv.ouPorter(prevu.id) ? ' Tu peux le porter directement.' : ''}`, 2600);
     return;
   }
   const it = await V.canal.prendre(B.cle, i);
@@ -769,6 +828,7 @@ async function porterItem(i) {
   if (!it) return;
   retirerDuButin(B, i);
   const r = inv.porterObjet(it);
+  if (r.ok && V.cbt) V.cbt.majStats();
   if (!r.ok) { donner(it); message(r.raison || 'Impossible de le porter.', 2200); }
   else sfx('loot');
   if (!B.items.length && B.fini) fermerButin(); else rendreButin();
@@ -902,10 +962,7 @@ async function jouerScene(id) {
   if (!V) return;
   V.occupe = false;
   if (!V.enPause) V.entrees.actif(true);
-  if (res && res.fin === '#combat' && res.combat) {
-    const zs = (res.combat.zombies || []).map((z, i) => typeof z === 'string' ? { uid: `sc${Date.now()}_${i}`, type: z } : z);
-    await lancerCombat(zs, res.combat.surprise || 'normal', { scene: true });
-  }
+  if (res && res.fin === '#combat' && res.combat) await flow.combattre(res.combat);
 }
 
 // ---------- Escaliers, sortie ----------
@@ -920,6 +977,7 @@ function prendreEscalier(s) {
 }
 async function sortirDuLieu(s) {
   if (V.occupe) return;
+  if (V.arene) { finArene('sortie'); return; }
   V.occupe = true;
   const echelle = (s && s.echelle) || V.L.echelle || 'salon';
   const id = V.lieuId;
@@ -940,58 +998,99 @@ function afficherLieu(t) {
   const h = V.hud.lieu; h.textContent = t; h.classList.remove('on'); void h.offsetWidth; h.classList.add('on');
 }
 
-// ---------- Combat ----------
-async function attaquer(z) {
-  const r = await V.canal.attaquer(z.uid);
-  if (!r || !r.ok) return;
-  if (r.furtif) {
-    const arme = G.player.equip && G.player.equip.arme;
-    const d = (arme && objet(arme) && objet(arme).dmg) || [3, 6];
-    const rg = seedRng(`${G.world.seed}:furtif:${z.uid}:${G.world.minutes}`);
-    const degats = Math.round((d[0] + rg() * (d[1] - d[0])) * RX.FURTIF.MULT);
-    if (RX.FURTIF.SILENCIEUX && degats >= (r.zombie.hp || 30)) {
-      await V.canal.retirerZombies([z.uid], { tues: true });
-      V.canal.finCombat();
-      V.canal.bruit({ etage: V.j.etage, x: z.x, y: z.y, rayon: 1 });
-      try { player && player.gagnerXp && player.gagnerXp('discretion', RX.FURTIF.XP_DISCRETION); } catch (e) {}
-      G.player.stats.morts = (G.player.stats.morts || 0) + 1;
-      sfx('coup_critique');
-      message('Mise à mort silencieuse.');
-      return;
-    }
-    return lancerCombat(r.groupe, 'engage', { furtif: { uid: z.uid, degats } });
+// ---------- Combat dans le lieu (scènes) et embuscades (voyage) ----------
+export function actif() { return !!V && !V.arene; }
+export function enArene() { return !!(V && V.arene); }
+// Des morts surgissent autour du joueur, déjà en chasse. Résolu quand ils sont tous tombés, que le joueur
+// leur a échappé (loin d'eux assez longtemps, ou sorti du lieu), ou qu'il est mort.
+export async function combatIci(spec = {}) {
+  if (!V) return { issue: 'fuite', tues: [], fuis: [] };
+  const v = V;
+  const occupe = v.occupe; v.occupe = false; v.entrees.actif(true);   // une scène en cours a figé le joueur : il doit pouvoir se battre
+  try {
+    const uids = await v.canal.faireApparaitre(spec.zombies || ['errant'], { surprise: spec.surprise, scene: true });
+    if (V !== v) return { issue: 'fuite', tues: [], fuis: [] };
+    sfx('alerte_contact');
+    return await suivreCombat(uids);
+  } finally {
+    if (V === v && occupe) { v.occupe = true; v.entrees.actif(false); }
   }
-  return lancerCombat(r.groupe, r.nonAlerte ? 'normal' : 'engage');
 }
-async function lancerCombat(zombies, surprise, extra = {}) {
-  if (!V || V.enCombat) return;
-  V.enCombat = true;
-  interrompreFouille(); fermerButin(); V.action = null; V.hud.barre.classList.add('cache');
-  V.entrees.actif(false);
-  V.j.vx = V.j.vy = 0;
-  sfx('alerte_contact');
-  const L = V.L, lieuId = V.lieuId;
-  const spec = { zombies: zombies.map(z => ({ uid: z.uid, type: z.type, hp: z.hp })), lieuId, decor: L.illustration || L.type || lieuId, surprise, ...extra };
-  let r = null;
-  try { r = await crochets.combattre(spec); }
-  catch (e) { console.warn('[explore] combat indisponible', e); r = { issue: 'fuite', tues: [], fuis: spec.zombies.map(z => z.uid) }; }
-  if (!V || V.lieuId !== lieuId) return;
-  r = r || { issue: 'fuite', tues: [] };
-  const tous = spec.zombies.map(z => z.uid);
-  const tues = (r.tues || []).filter(u => tous.includes(u) || true);
-  if (r.issue === 'victoire') {
-    const set = new Set(tues); for (const u of tous) set.add(u);
-    await V.canal.retirerZombies([...set], { tues: true });
-    G.player.stats.morts = (G.player.stats.morts || 0) + set.size;
-  } else {
-    if (tues.length) await V.canal.retirerZombies(tues, { tues: true });
-    if (r.issue === 'fuite') await V.canal.repousserZombies((r.fuis && r.fuis.length ? r.fuis : tous.filter(u => !tues.includes(u))), { x: V.j.x, y: V.j.y });
+function suivreCombat(uids, { arene = false } = {}) {
+  return new Promise((ok) => {
+    const v = V; if (!v) return ok({ issue: 'fuite', tues: [], fuis: uids });
+    const set = new Set(uids);
+    let loinDepuis = 0, fini = false;
+    const finir = (issue) => {
+      if (fini) return; fini = true; clearInterval(iv);
+      const vivants = v.snap ? v.snap.zombies.filter(z => set.has(z.uid)).map(z => z.uid) : [];
+      ok({ issue, tues: uids.filter(u => !vivants.includes(u)), fuis: issue === 'fuite' ? vivants : [], xp: {}, bruit: 0 });
+    };
+    v.attentes = (v.attentes || []).concat(() => finir(v.cbt && v.cbt.etat.mort ? 'mort' : 'fuite'));
+    const iv = setInterval(() => {
+      if (V !== v) { finir('fuite'); return; }
+      if (v.cbt.etat.mort || (G.player.pv ?? 1) <= 0) { finir('mort'); return; }
+      const vivants = v.snap.zombies.filter(z => set.has(z.uid));
+      if (!vivants.length) { finir('victoire'); return; }
+      if (arene) return;
+      const F = REGLAGES.combat.FIN_FUITE;
+      const loin = vivants.every(z => z.etage !== v.j.etage || Math.hypot(z.x - v.j.x, z.y - v.j.y) > F.DISTANCE);
+      loinDepuis = loin ? loinDepuis + 250 : 0;
+      if (loinDepuis >= F.MS) finir('fuite');
+    }, 250);
+  });
+}
+// Embuscade : un bout de route généré, on s'en sort en tuant ou par un bord.
+let areneFin = null;
+export function embuscade(spec = {}) {
+  return new Promise(async (ok) => {
+    areneFin = ok;
+    const W = G.world;
+    const seed = `${W.minutes}:${(spec.zombies || []).join(',')}:${Math.floor(Math.random() * 1e6)}`;
+    try {
+      await entrer({ arene: { ...spec, seed, echelle: spec.echelle || 'region' } });
+    } catch (e) { console.warn('[explore] embuscade', e); areneFin = null; ok({ issue: 'fuite', tues: [], fuis: [] }); }
+  });
+}
+function finArene(raison, r = null) {
+  if (!V || !V.arene) return;
+  if (raison === 'nettoye') { // tous à terre : on peut fouiller les corps puis reprendre la route
+    V.hud.route.classList.remove('cache');
+    message('Plus rien ne bouge. Fouille les corps si tu veux, puis reprends la route (ou sors par un bord).', 4200);
+    V.areneVictoire = true;
+    return;
   }
-  if (r.bruit) V.canal.bruit({ etage: V.j.etage, x: V.j.x, y: V.j.y, rayon: r.bruit });
-  V.canal.finCombat();
-  V.snap = V.canal.instantane(); majInterp(true);
-  V.enCombat = false;
-  if (r.issue !== 'mort' && !V.enPause && !V.occupe) V.entrees.actif(true);
+  const vivants = V.snap ? V.snap.zombies.map(z => z.uid) : [];
+  const res = { issue: raison === 'mort' ? 'mort' : V.areneVictoire || !vivants.length ? 'victoire' : 'fuite', tues: [], fuis: vivants, xp: {}, bruit: 0 };
+  const ok = areneFin; areneFin = null;
+  sortir();
+  if (ok) ok(res);
+}
+function majMains() {
+  if (!V || !inv || !inv.mains) return;
+  const m = inv.mains(G.player), p = G.player;
+  V.equipVu = { droite: m.droite, gauche: m.gauche, deux: m.deux, dos: p.equip.dos || null };
+  const nom = (id) => (id ? nomObjet(id) : 'Main nue');
+  const usure = (slot) => { const e = p.equipEtat && p.equipEtat[slot]; return e && e.durMax ? Math.max(0, Math.min(1, e.dur / e.durMax)) : null; };
+  const h = V.hud.mains; h.textContent = '';
+  const ligne = (cls, data, titre, txt, u, extra) => {
+    const b = el('button', { class: 'ex-main ' + cls, type: 'button', 'data-m': data, title: titre }, el('small', {}, titre), el('span', {}, txt));
+    if (u != null) b.append(el('i', { class: 'ex-usure' + (u < 0.2 ? ' bas' : '') }, el('b', { style: { width: Math.round(u * 100) + '%' } })));
+    if (extra) b.append(extra);
+    return b;
+  };
+  const d = m.droite ? objet(m.droite) : null;
+  const balles = d && d.tir ? el('em', {}, `${(p.equipEtat.arme && p.equipEtat.arme.balles) || 0}/${d.tir.capacite}`) : null;
+  h.append(ligne('droite', 'mains', m.deux ? 'Deux mains' : 'Main droite', nom(m.droite) + (m.uneMainPenalite ? ' (1 main)' : ''), usure('arme'), balles));
+  if (!m.deux && m.gauche) h.append(ligne('gauche', 'mains', 'Main gauche', nom(m.gauche), p.equip.mainG ? usure('mainG') : null));
+  if (p.equip.dos) h.append(ligne('dos', 'dos', 'Dans le dos', nom(p.equip.dos), null));
+}
+function majDegage() {
+  const r = V.cbt.etat.empoigne, h = V.hud.degage;
+  if (!r) { if (!h.classList.contains('cache')) h.classList.add('cache'); return; }
+  h.classList.remove('cache');
+  const txt = `Dégage-toi ! ${Math.floor(r.taps)} / ${r.requis}`;
+  if (h.textContent !== txt) h.textContent = txt;
 }
 
 // ---------- Divers ----------
@@ -1001,6 +1100,7 @@ async function ouvrirInventaire() {
 }
 function echap() {
   if (V.carte) { V.carte = false; return; }
+  if (V.cbt && V.cbt.etat.charge) { V.cbt.frapper(false, true); return; }
   if (V.butin || V.fouille) { interrompreFouille(); fermerButin(); return; }
   if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); return; }
   emit('echap', { temps: 'exploration' });

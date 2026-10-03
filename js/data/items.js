@@ -46,55 +46,55 @@ export const ITEMS = {
   // =========================== ARMES DE MÊLÉE ===========================
   // --- Lames (dextérité) : rapides, critiques, s'usent ---
   couteau_cuisine: {
-    nom: 'Couteau de cuisine', type: 'arme', poids: 0.3, espace: 1,
+    nom: 'Couteau de cuisine', type: 'arme', poids: 0.3, espace: 1, volume: 0.4,
     dmg: [7, 11], vitesse: 400, sta: 5, allonge: 0, charge: 1.4, stagger: 0.05, crit: 0.15,
     dur: 40, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper', 'ouvrir'],
     desc: 'La lame est encore propre. Ça ne durera pas — mais bien aiguisée, elle tient plus longtemps qu\'on ne croit.',
   },
   couteau_artisanal: {
-    nom: 'Couteau artisanal', type: 'arme', poids: 0.3, espace: 1,
+    nom: 'Couteau artisanal', type: 'arme', poids: 0.3, espace: 1, volume: 0.4,
     dmg: [5, 9], vitesse: 420, sta: 5, allonge: 0, charge: 1.3, stagger: 0.03, crit: 0.12,
     dur: 18, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper'],
     desc: 'Un éclat de verre, un chiffon, du scotch. Ça coupe la chair — et parfois la main qui le tient.',
   },
   couteau_combat: {
-    nom: 'Couteau de combat', type: 'arme', poids: 0.35, espace: 1,
+    nom: 'Couteau de combat', type: 'arme', poids: 0.35, espace: 1, volume: 0.4,
     dmg: [10, 15], vitesse: 380, sta: 5, allonge: 0, charge: 1.5, stagger: 0.08, crit: 0.2,
     dur: 90, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper', 'ouvrir'],
     desc: 'Lame noire, dos dentelé, garde en croix. Fait pour ça. Il glisse entre deux vertèbres comme une clé dans sa serrure.',
   },
   tournevis: {
-    nom: 'Tournevis', type: 'arme', poids: 0.15, espace: 0,
+    nom: 'Tournevis', type: 'arme', poids: 0.15, espace: 0, volume: 0.2,
     dmg: [4, 8], vitesse: 380, sta: 4, allonge: 0, charge: 1.4, stagger: 0.02, crit: 0.2,
     dur: 25, bruit: 0, skill: 'dexterite', reparation: 'metal', usage: ['visser'],
     desc: 'Dans l\'œil, jusqu\'au manche, ça marche aussi. Sinon, ça visse.',
   },
   machette: {
-    nom: 'Machette', type: 'arme', poids: 0.8, espace: 2,
+    nom: 'Machette', type: 'arme', poids: 0.8, espace: 2, volume: 3, long: true,
     dmg: [13, 20], vitesse: 560, sta: 9, allonge: 1, charge: 1.6, stagger: 0.2, crit: 0.15,
     dur: 50, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper'],
     desc: 'Tranche net. Les moignons ne saignent même plus chez eux.',
   },
   machette_aiguisee: {
-    nom: 'Machette aiguisée', type: 'arme', poids: 0.8, espace: 2,
+    nom: 'Machette aiguisée', type: 'arme', poids: 0.8, espace: 2, volume: 3, long: true,
     dmg: [15, 22], vitesse: 560, sta: 9, allonge: 1, charge: 1.6, stagger: 0.2, crit: 0.22,
     dur: 42, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper'],
     desc: 'Le fil repris à la pierre, affûté à raser. Il tranche les vertèbres — et s\'use plus vite.',
   },
   sabre_cavalerie: {
-    nom: 'Sabre de cavalerie', type: 'arme', poids: 1.1, espace: 2,
+    nom: 'Sabre de cavalerie', type: 'arme', poids: 1.1, espace: 2, volume: 5, long: true,
     dmg: [15, 23], vitesse: 520, sta: 8, allonge: 1, charge: 1.6, stagger: 0.2, crit: 0.2,
     dur: 35, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper'],
     desc: 'Sorti d\'une vitrine du musée de l\'Empéri. Cent cinquante ans qu\'il attendait de resservir.',
   },
   lance_artisanale: {
-    nom: 'Lance artisanale', type: 'arme', poids: 1.3, espace: 3,
+    nom: 'Lance artisanale', type: 'arme', poids: 1.3, espace: 3, volume: 12, long: true,
     dmg: [10, 16], vitesse: 560, sta: 8, allonge: 2, charge: 1.5, stagger: 0.15, crit: 0.12,
     dur: 20, bruit: 0, skill: 'dexterite', deux_mains: true, reparation: 'bois',
     desc: 'Un couteau ligaturé sur un manche à balai. Tient les dents à distance — et les gonflés aussi.',
   },
   lance_renforcee: {
-    nom: 'Lance renforcée', type: 'arme', poids: 1.5, espace: 3,
+    nom: 'Lance renforcée', type: 'arme', poids: 1.5, espace: 3, volume: 12, long: true,
     dmg: [12, 18], vitesse: 560, sta: 8, allonge: 2, charge: 1.5, stagger: 0.18, crit: 0.14,
     dur: 40, bruit: 0, skill: 'dexterite', deux_mains: true, reparation: 'bois',
     desc: 'Ligatures de fil de fer, pointe resserrée. Elle ne bougera plus, même plantée dans un sternum.',
@@ -102,61 +102,61 @@ export const ITEMS = {
 
   // --- Contondants (force) : font vaciller, durent ---
   marteau: {
-    nom: 'Marteau', type: 'arme', poids: 0.6, espace: 1,
+    nom: 'Marteau', type: 'arme', poids: 0.6, espace: 1, volume: 0.8,
     dmg: [7, 12], vitesse: 520, sta: 7, allonge: 0, charge: 1.6, stagger: 0.25, crit: 0.1,
     dur: 60, bruit: 1, skill: 'force', reparation: 'bois', usage: ['marteler'],
     desc: 'Plante les clous. Dépanne en combat, et pas qu\'un peu : un crâne, c\'est une planche comme une autre.',
   },
   cle_molette: {
-    nom: 'Clé à molette', type: 'arme', poids: 0.9, espace: 1,
+    nom: 'Clé à molette', type: 'arme', poids: 0.9, espace: 1, volume: 0.7,
     dmg: [8, 13], vitesse: 560, sta: 8, allonge: 0, charge: 1.6, stagger: 0.25, crit: 0.08,
     dur: 80, bruit: 1, skill: 'force', reparation: 'metal', usage: ['visser'],
     desc: 'Un outil honnête. Casse les mâchoires et démonte les boulons.',
   },
   matraque: {
-    nom: 'Tonfa', type: 'arme', poids: 0.6, espace: 1,
+    nom: 'Tonfa', type: 'arme', poids: 0.6, espace: 1, volume: 1,
     dmg: [8, 13], vitesse: 460, sta: 6, allonge: 0, charge: 1.6, stagger: 0.35, crit: 0.05,
     dur: 150, bruit: 1, skill: 'force', reparation: 'metal',
     desc: 'Le bâton à poignée latérale de la police nationale. Increvable. Il ne tue pas vite, mais il fait reculer, et il ne casse jamais.',
   },
   batte_baseball: {
-    nom: 'Batte de baseball', type: 'arme', poids: 1.1, espace: 2,
+    nom: 'Batte de baseball', type: 'arme', poids: 1.1, espace: 2, volume: 6, long: true,
     dmg: [11, 17], vitesse: 620, sta: 9, allonge: 1, charge: 1.8, stagger: 0.35, crit: 0.08,
     dur: 45, bruit: 1, skill: 'force', reparation: 'bois',
     desc: 'Le bois est fendu sur le manche. Quelqu\'un s\'en est déjà servi pour autre chose que du sport.',
   },
   batte_cloutee: {
-    nom: 'Batte cloutée', type: 'arme', poids: 1.4, espace: 2,
+    nom: 'Batte cloutée', type: 'arme', poids: 1.4, espace: 2, volume: 7, long: true,
     dmg: [14, 21], vitesse: 660, sta: 10, allonge: 1, charge: 1.8, stagger: 0.35, crit: 0.14,
     dur: 38, bruit: 1, skill: 'force', reparation: 'bois',
     desc: 'Les clous accrochent l\'os et arrachent des lambeaux à chaque coup.',
   },
   tuyau_acier: {
-    nom: 'Tuyau d\'acier', type: 'arme', poids: 1.6, espace: 2,
+    nom: 'Tuyau d\'acier', type: 'arme', poids: 1.6, espace: 2, volume: 5, long: true,
     dmg: [10, 16], vitesse: 640, sta: 9, allonge: 1, charge: 1.8, stagger: 0.35, crit: 0.06,
     dur: 90, bruit: 2, skill: 'force', reparation: 'metal',
     desc: 'Résonne comme une cloche à chaque impact. Pas discret. Presque indestructible.',
   },
   pied_de_biche: {
-    nom: 'Pied-de-biche', type: 'arme', poids: 2.2, espace: 2,
+    nom: 'Pied-de-biche', type: 'arme', poids: 2.2, espace: 2, volume: 4, long: true,
     dmg: [11, 17], vitesse: 600, sta: 9, allonge: 1, charge: 1.9, stagger: 0.4, crit: 0.1,
     dur: 120, bruit: 1, skill: 'force', reparation: 'metal', usage: ['forcer'],
     desc: 'Ouvre les portes comme les crânes. L\'outil ultime de la fin du monde.',
   },
   pelle: {
-    nom: 'Pelle', type: 'arme', poids: 2.0, espace: 3,
+    nom: 'Pelle', type: 'arme', poids: 2.0, espace: 3, volume: 15, long: true,
     dmg: [10, 16], vitesse: 720, sta: 11, allonge: 2, charge: 1.8, stagger: 0.4, crit: 0.06,
     dur: 80, bruit: 2, skill: 'force', deux_mains: true, reparation: 'bois', usage: ['creuser'],
     desc: 'La pelle du fossoyeur de Saint-Roch, le fer poli par des milliers de pelletées. Le tranchant sur la nuque, à bout de bras, et ils ne se relèvent plus.',
   },
   hache_pompier: {
-    nom: 'Hache de pompier', type: 'arme', poids: 3.2, espace: 3,
+    nom: 'Hache de pompier', type: 'arme', poids: 3.2, espace: 3, volume: 10, long: true,
     dmg: [18, 27], vitesse: 880, sta: 14, allonge: 1, charge: 2.2, stagger: 0.55, crit: 0.12,
     dur: 70, bruit: 1, skill: 'force', deux_mains: true, reparation: 'bois', usage: ['forcer', 'couper'],
     desc: 'Lourde, lente, définitive. Un seul bon coup suffit souvent.',
   },
   masse_chantier: {
-    nom: 'Masse de fortune', type: 'arme', poids: 3.4, espace: 3,
+    nom: 'Masse de fortune', type: 'arme', poids: 3.4, espace: 3, volume: 10, long: true,
     dmg: [16, 25], vitesse: 1000, sta: 16, allonge: 1, charge: 2.3, stagger: 0.7, crit: 0.08,
     dur: 55, bruit: 2, skill: 'force', deux_mains: true, reparation: 'bois', usage: ['marteler', 'forcer'],
     desc: 'Une brique scotchée au bout d\'un tuyau d\'acier. Chaque impact sonne comme un accident de chantier. Rien ne reste debout.',
@@ -164,28 +164,28 @@ export const ITEMS = {
 
   // =========================== ARMES À FEU & TRAIT ===========================
   pistolet_9mm: {
-    nom: 'Pistolet 9 mm', type: 'arme', poids: 0.9, espace: 1,
+    nom: 'Pistolet 9 mm', type: 'arme', poids: 0.9, espace: 1, volume: 0.8,
     dmg: [22, 34], vitesse: 450, sta: 3, allonge: 2, charge: 1, stagger: 0.5, crit: 0.2,
     dur: 200, bruit: 3, skill: 'visee', reparation: 'arme_feu', crosse: [4, 8],
     tir: { munition: 'munitions_9mm', capacite: 15, precision: 0.75, recharge: 1600, portee: 2 },
     desc: 'Le métal est froid et rassurant. Chaque détonation est une invitation au dîner.',
   },
   fusil_chasse: {
-    nom: 'Fusil de chasse', type: 'arme', poids: 3.4, espace: 3,
+    nom: 'Fusil de chasse', type: 'arme', poids: 3.4, espace: 3, volume: 12, long: true,
     dmg: [38, 56], vitesse: 900, sta: 4, allonge: 2, charge: 1, stagger: 0.9, crit: 0.25,
     dur: 150, bruit: 3, skill: 'visee', deux_mains: true, reparation: 'arme_feu', crosse: [6, 11],
     tir: { munition: 'cartouches', capacite: 2, precision: 0.88, recharge: 2600, portee: 1 },
     desc: 'Un superposé de chasseur de la Crau, crosse en noyer. À bout portant, il ne reste plus grand-chose au-dessus des épaules.',
   },
   fusil_assaut: {
-    nom: 'Fusil d\'assaut', type: 'arme', poids: 3.6, espace: 3,
+    nom: 'Fusil d\'assaut', type: 'arme', poids: 3.6, espace: 3, volume: 12, long: true,
     dmg: [26, 36], vitesse: 350, sta: 3, allonge: 2, charge: 1, stagger: 0.6, crit: 0.2,
     dur: 250, bruit: 3, skill: 'visee', deux_mains: true, reparation: 'arme_feu', crosse: [6, 10],
     tir: { munition: 'munitions_556', capacite: 25, precision: 0.82, recharge: 2200, portee: 2 },
     desc: 'Arraché aux mains d\'un soldat de la 701 qui ne le lâchait pas. Chaque rafale réveille la moitié de la plaine.',
   },
   arbalete_fortune: {
-    nom: 'Arbalète de fortune', type: 'arme', poids: 2.6, espace: 3,
+    nom: 'Arbalète de fortune', type: 'arme', poids: 2.6, espace: 3, volume: 14, long: true,
     dmg: [22, 32], vitesse: 1200, sta: 5, allonge: 2, charge: 1, stagger: 0.5, crit: 0.25,
     dur: 30, bruit: 0, skill: 'visee', deux_mains: true, reparation: 'bois', crosse: [3, 6],
     tir: { munition: 'carreau_fortune', capacite: 1, precision: 0.7, recharge: 3200, portee: 2, recuperable: 0.6 },
@@ -212,12 +212,12 @@ export const ITEMS = {
 
   // =========================== LANCERS & LEURRES ===========================
   brique: {
-    nom: 'Brique', type: 'jet', poids: 1.8, espace: 1,
+    nom: 'Brique', type: 'jet', poids: 1.8, espace: 1, volume: 1.5,
     jet: { portee: 6, bruit: 6, dmg: [7, 13], stagger: 0.4, combat: true },
     desc: 'L\'arme la plus vieille du monde. Vise la tête — ou la vitrine d\'en face, pour qu\'ils regardent ailleurs.',
   },
   cocktail_molotov: {
-    nom: 'Cocktail Molotov', type: 'jet', poids: 0.8, espace: 1,
+    nom: 'Cocktail Molotov', type: 'jet', poids: 0.8, espace: 1, volume: 1,
     jet: { portee: 7, bruit: 8, dmg: [28, 40], feu: { ms: 4000, dps: 5, suivant: true }, lumiere: 5, duree_s: 60, combat: true },
     desc: 'L\'odeur d\'alcool et d\'essence. En combat, il embrase le mort actif et le suivant de la file. La chair brûlée pue pendant des heures.',
   },
@@ -232,12 +232,12 @@ export const ITEMS = {
     desc: 'Un chapelet de pétards chinois oublié depuis le 14 Juillet. Six secondes de fusillade : tous les morts du quartier vont voir.',
   },
   fusee_detresse: {
-    nom: 'Fusée de détresse', type: 'jet', poids: 0.3, espace: 1,
+    nom: 'Fusée de détresse', type: 'jet', poids: 0.3, espace: 1, volume: 0.5,
     jet: { portee: 10, bruit: 4, lumiere: 8, duree_s: 120, combat: false },
     desc: 'Une torche de signalisation rouge. Elle brûle deux minutes d\'une lumière de fin du monde, et les morts marchent vers elle comme des papillons.',
   },
   leurre_sonore: {
-    nom: 'Réveil piégé', type: 'jet', poids: 0.3, espace: 1,
+    nom: 'Réveil piégé', type: 'jet', poids: 0.3, espace: 1, volume: 0.6,
     jet: { portee: 8, bruit: 12, duree_s: 10, delai_s: 3, recuperable: 0.8, combat: false },
     desc: 'Un réveil à piles scotché en boule, sonnerie réglée sur trois secondes. Tu le lances, tu comptes, et tu passes pendant qu\'ils regardent ailleurs.',
   },
@@ -319,7 +319,7 @@ export const ITEMS = {
     desc: 'Olives écrasées à l\'huile, au couteau, dans un bol ébréché. Un goût de dimanche, d\'avant.',
   },
   croquettes: {
-    nom: 'Sac de croquettes', type: 'nourriture', poids: 0.8, espace: 2,
+    nom: 'Sac de croquettes', type: 'nourriture', poids: 0.8, espace: 2, volume: 5,
     faim: 14, soif: -6,
     desc: '« Adulte, au poulet ». Tu te dis que c\'est pareil que des biscuits. Ça ne l\'est pas.',
   },
@@ -381,17 +381,17 @@ export const ITEMS = {
 
   // =========================== BOISSONS ===========================
   bouteille_eau: {
-    nom: 'Bouteille d\'eau', type: 'boisson', poids: 0.55, espace: 1,
+    nom: 'Bouteille d\'eau', type: 'boisson', poids: 0.55, espace: 1, volume: 0.6,
     soif: 40, rend: 'bouteille_vide',
     desc: 'Claire. Propre. Précieuse.',
   },
   eau_croupie: {
-    nom: 'Eau croupie', type: 'boisson', poids: 0.55, espace: 1,
+    nom: 'Eau croupie', type: 'boisson', poids: 0.55, espace: 1, volume: 0.6,
     soif: 30, risque: { type: 'intoxication', p: 0.4 }, rend: 'bouteille_vide',
     desc: 'Trouble, avec des choses qui flottent. À faire bouillir, ou à filtrer.',
   },
   eau_purifiee: {
-    nom: 'Eau bouillie', type: 'boisson', poids: 0.55, espace: 1,
+    nom: 'Eau bouillie', type: 'boisson', poids: 0.55, espace: 1, volume: 0.6,
     soif: 40, rend: 'bouteille_vide',
     desc: 'Un goût de casserole, mais elle ne te tuera pas.',
   },
@@ -406,30 +406,30 @@ export const ITEMS = {
     desc: 'Orange « sans sucres ajoutés ». La paille est encore collée sur le côté.',
   },
   alcool_fort: {
-    nom: 'Bouteille d\'alcool fort', type: 'boisson', poids: 0.9, espace: 1,
+    nom: 'Bouteille d\'alcool fort', type: 'boisson', poids: 0.9, espace: 1, volume: 0.8,
     soif: -8, special: 'alcool', usage: ['desinfecter', 'combustible'],
     desc: 'Pastis, marc ou eau-de-vie. Désinfecte les plaies, calme la douleur, ou brûle les morts. Polyvalent.',
   },
 
   // =========================== CONTENANTS D'EAU ===========================
   gourde: {
-    nom: 'Gourde', type: 'recipient', poids: 0.15, espace: 1,
+    nom: 'Gourde', type: 'recipient', poids: 0.15, espace: 1, volume: 0.8,
     contenance: 1, recipient: 'ferme',
     desc: 'Un litre, bouchon à vis, mousqueton au col. Légère, étanche — l\'amie du marcheur, l\'assurance-vie du survivant.',
   },
   thermos: {
-    nom: 'Thermos', type: 'recipient', poids: 0.35, espace: 1,
+    nom: 'Thermos', type: 'recipient', poids: 0.35, espace: 1, volume: 0.8,
     contenance: 0.5, recipient: 'ferme',
     desc: 'Un demi-litre sous double paroi d\'acier brossé. Le café qu\'il a connu manque à tout le monde.',
   },
   bouteille_vide: {
-    nom: 'Bouteille vide', type: 'recipient', poids: 0.1, espace: 1,
+    nom: 'Bouteille vide', type: 'recipient', poids: 0.1, espace: 1, volume: 0.6,
     contenance: 1.5, recipient: 'ferme',
     jet: { portee: 8, bruit: 9, combat: false },
     desc: 'À remplir — d\'eau ou de quelque chose qui brûle. Lancée au loin, elle éclate et ils vont voir.',
   },
   bidon_vide: {
-    nom: 'Jerrican', type: 'recipient', poids: 0.6, espace: 2,
+    nom: 'Jerrican', type: 'recipient', poids: 0.6, espace: 2, volume: 5,
     contenance: 10, recipient: 'ferme',
     desc: 'Un jerrican de 10 litres, bouchon à baïonnette. Dix kilos d\'eau à ras bord — remplis-le à la mesure de ton dos.',
   },
@@ -536,12 +536,13 @@ export const ITEMS = {
     desc: 'Une paire. Encore du jus dedans. Lampes et radio en mangent : garde-en en réserve.',
   },
   casserole: {
-    nom: 'Casserole', type: 'outil', poids: 0.7, espace: 2, usage: ['cuisson'],
+    nom: 'Casserole', type: 'outil', poids: 0.7, espace: 2, volume: 4, usage: ['cuisson'],
+    melee: { dmg: [3, 6], vitesse: 480, sta: 6, allonge: 0, charge: 1.5, stagger: 0.25, crit: 0.04, skill: 'force', bruit: 2 },
     contenance: 1.5, recipient: 'ouvert',
     desc: 'Pour faire bouillir l\'eau ou cuire ce que tu attrapes. Pleine, elle se porte à deux mains — pas dans le sac.',
   },
   rechaud_camping: {
-    nom: 'Réchaud de camping', type: 'outil', poids: 1.1, espace: 2, usage: ['cuisson'], carburant: 'cartouche_gaz',
+    nom: 'Réchaud de camping', type: 'outil', poids: 1.1, espace: 2, volume: 4, usage: ['cuisson'], carburant: 'cartouche_gaz',
     desc: 'Avec une cartouche de gaz, un vrai feu qu\'on transporte : on cuisine partout, sans fumée, sans bois.',
   },
   cartouche_gaz: {
@@ -553,7 +554,7 @@ export const ITEMS = {
     desc: 'Coupe chaînes et cadenas. La clé universelle.',
   },
   trousse_outils: {
-    nom: 'Trousse à outils', type: 'outil', poids: 2.5, espace: 3, usage: ['visser', 'marteler', 'affuter'],
+    nom: 'Trousse à outils', type: 'outil', poids: 2.5, espace: 3, volume: 7, usage: ['visser', 'marteler', 'affuter'],
     desc: 'Clés, pinces, douilles, une lime. Le nécessaire du mécano — et un établi qui tient dans un sac.',
   },
   pierre_aiguiser: {
@@ -573,11 +574,11 @@ export const ITEMS = {
     desc: 'Un mètre de tuyau souple. Pour siphonner les réservoirs — le goût de l\'essence reste deux jours.',
   },
   canne_peche: {
-    nom: 'Canne à pêche', type: 'outil', poids: 0.8, espace: 2, usage: ['peche'],
+    nom: 'Canne à pêche', type: 'outil', poids: 0.8, espace: 2, volume: 8, long: true, usage: ['peche'],
     desc: 'Le fil est encore bon. Les étangs et le canal regorgent de poissons que plus personne ne pêche.',
   },
   nasse: {
-    nom: 'Nasse', type: 'outil', poids: 0.6, espace: 2, usage: ['peche'],
+    nom: 'Nasse', type: 'outil', poids: 0.6, espace: 2, volume: 8, usage: ['peche'],
     desc: 'Deux bouteilles emboîtées en entonnoir, armées de fil de fer. Posée près de la berge, elle piège ce que ta ligne rate.',
   },
   collet: {
@@ -585,7 +586,7 @@ export const ITEMS = {
     desc: 'Un nœud coulant en fil de fer. À poser près des terriers.',
   },
   corde: {
-    nom: 'Corde', type: 'materiau', poids: 0.8, espace: 1, usage: ['escalade'],
+    nom: 'Corde', type: 'materiau', poids: 0.8, espace: 1, volume: 2, usage: ['escalade'],
     desc: 'Dix mètres de corde solide. Mille usages.',
   },
   piege_sonore: {
@@ -597,11 +598,11 @@ export const ITEMS = {
     desc: 'Une bouteille coupée, bourrée de chiffon et gainée de plastique. L\'eau ressort claire — sans feu, sans bruit.',
   },
   jumelles: {
-    nom: 'Jumelles', type: 'outil', poids: 0.6, espace: 1, usage: ['observer'],
+    nom: 'Jumelles', type: 'outil', poids: 0.6, espace: 1, volume: 0.8, usage: ['observer'],
     desc: 'Des 10×50 de chasseur. Avant de partir, tu balaies la route : ce que tu vois de loin ne te surprend pas de près.',
   },
   radio_portable: {
-    nom: 'Radio portable', type: 'outil', poids: 0.4, espace: 1, usage: ['radio'], carburant: 'piles',
+    nom: 'Radio portable', type: 'outil', poids: 0.4, espace: 1, volume: 1, usage: ['radio'], carburant: 'piles',
     desc: 'Une petite radio à molette. Du souffle, surtout. Parfois une voix.',
   },
   kit_nettoyage: {
@@ -649,11 +650,12 @@ export const ITEMS = {
     desc: 'Du tissu déchiré. Bandage, mèche, filtre.',
   },
   drap: {
-    nom: 'Drap', type: 'materiau', poids: 0.5, espace: 1,
+    nom: 'Drap', type: 'materiau', poids: 0.5, espace: 1, volume: 3,
     desc: 'Un drap de lit roulé en boule. Déchiré en bandes, il fait quatre chiffons propres.',
   },
   planche: {
-    nom: 'Planche', type: 'materiau', poids: 1.8, espace: 2,
+    nom: 'Planche', type: 'materiau', poids: 1.8, espace: 2, volume: 14, long: true,
+    melee: { dmg: [5, 9], vitesse: 640, sta: 8, allonge: 1, charge: 1.6, stagger: 0.3, crit: 0.05, skill: 'force', bruit: 1 },
     desc: 'Du bois brut. Pour barricader, construire, ou faire du feu.',
   },
   clous: {
@@ -673,11 +675,12 @@ export const ITEMS = {
     desc: 'Long comme la main, coupant comme un rasoir.',
   },
   manche_balai: {
-    nom: 'Manche à balai', type: 'materiau', poids: 0.5, espace: 2,
+    nom: 'Manche à balai', type: 'materiau', poids: 0.5, espace: 2, volume: 6, long: true,
+    melee: { dmg: [3, 6], vitesse: 520, sta: 6, allonge: 2, charge: 1.4, stagger: 0.15, crit: 0.04, skill: 'dexterite', bruit: 0 },
     desc: 'Un bon manche en bois dur.',
   },
   bache_plastique: {
-    nom: 'Bâche plastique', type: 'materiau', poids: 0.6, espace: 1,
+    nom: 'Bâche plastique', type: 'materiau', poids: 0.6, espace: 1, volume: 2.5,
     desc: 'Une bâche de chantier raide de poussière. Toit, sol, linceul — au choix.',
   },
   sac_plastique: {
@@ -717,11 +720,11 @@ export const ITEMS = {
     desc: 'Sauge, thym, millepertuis — cueillis au jardin des Simples de l\'Empéri ou dans la garrigue. Les vieux remèdes n\'ont pas de date de péremption.',
   },
   huile_olive: {
-    nom: 'Bouteille d\'huile d\'olive', type: 'materiau', poids: 0.8, espace: 1, usage: ['combustible'],
+    nom: 'Bouteille d\'huile d\'olive', type: 'materiau', poids: 0.8, espace: 1, volume: 1, usage: ['combustible'],
     desc: 'Un litre d\'huile de la vallée des Baux. Pour cuisiner, soigner, ou brûler dans une lampe : cinq heures de lumière par fond de bouteille.',
   },
   essence: {
-    nom: 'Bouteille d\'essence', type: 'materiau', poids: 0.8, espace: 1, usage: ['combustible'],
+    nom: 'Bouteille d\'essence', type: 'materiau', poids: 0.8, espace: 1, volume: 1.2, usage: ['combustible'],
     desc: 'Un litre de sans-plomb siphonné, dans une bouteille d\'eau minérale. Ne pas confondre.',
   },
   appat: {

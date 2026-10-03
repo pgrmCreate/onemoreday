@@ -12,7 +12,7 @@
   #toasts { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 55; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
   #toasts div { background: rgba(0,0,0,.85); border-left: 3px solid #c9a227; padding: 6px 10px; font: 14px Georgia, serif; color: #e6dfcc; }
 </style>
-<!-- Simulations : scènes (dialogue.js absent), combat (?combat=faux), exploration (?explore=faux, par défaut).
+<!-- Simulations : scènes (dialogue.js absent), exploration et embuscades (?explore=vrai pour les vraies).
      Les modules simulés remplacent les vrais via une carte d'import (URL résolues). -->
 <script>
   const q = new URLSearchParams(location.search);
@@ -30,21 +30,21 @@
       if (v === 'demi') return { fin: '#fin', demiTour: true };
       return { fin: '#fin' };
     }`;
-  const combat = modal() + `
-    export async function ouvrir({ spec }) {
-      const v = await modal('Combat simulé', 'Contre : ' + (spec.zombies || []).map(z => z.type || z).join(', ') + ' (' + (spec.surprise || 'normal') + ')', [['Victoire', 'victoire'], ['Fuite', 'fuite']]);
-      return { issue: v, tues: [], fuis: [], xp: {} };
-    }`;
   const explore = modal() + `
     export async function entrer({ lieuId }) {
       const flow = await import('` + location.origin + `/js/game/flow.js');
       await modal('Arrivée', 'Tu es arrivé(e) : <b>' + lieuId + '</b> (exploration simulée).', [['Rouvrir la carte', 1]]);
       flow.ouvrirCarte({ depuis: lieuId });
     }
-    export function sortir() {} export function pause() {} export function reprise() {}`;
+    export function sortir() {} export function pause() {} export function reprise() {}
+    export function actif() { return false; }
+    export async function combatIci(spec) { return embuscade(spec); }
+    export async function embuscade(spec) {
+      const v = await modal('Embuscade simulée', 'Contre : ' + (spec.zombies || []).map(z => z.type || z).join(', ') + ' (' + (spec.surprise || 'normal') + ')', [['Victoire', 'victoire'], ['Fuite', 'fuite']]);
+      return { issue: v, tues: [], fuis: [], xp: {} };
+    }`;
   const effects = `export async function appliquerEffets(e) { console.log('[banc] effets', e); }`;
   const imports = { '/js/ui/dialogue.js': 'data:text/javascript,' + encodeURIComponent(dialogue) };
-  if (q.get('combat') !== 'vrai') imports['/js/combat/vue.js'] = 'data:text/javascript,' + encodeURIComponent(combat);
   if (q.get('explore') !== 'vrai') imports['/js/explore/vue.js'] = 'data:text/javascript,' + encodeURIComponent(explore);
   imports['/js/game/effects.js'] = 'data:text/javascript,' + encodeURIComponent(effects);
   const s = document.createElement('script'); s.type = 'importmap'; s.textContent = JSON.stringify({ imports });
@@ -56,7 +56,7 @@
 <div id="toasts"></div>
 <script type="module">
   // Paramètres : ?depuis=cimetiere · ?echelle=region · ?heure=22 · ?jour=3 · ?vers=tour_horloge (part tout de suite)
-  //              ?allure=rapide · ?jumelles=1 · ?tout=1 (tous les lieux découverts) · ?prologue=1 · ?combat=vrai · ?explore=vrai
+  //              ?allure=rapide · ?jumelles=1 · ?tout=1 (tous les lieux découverts) · ?prologue=1 · ?explore=vrai (embuscades jouables)
   import { nouvellePartie, G } from '../js/core/state.js';
   import * as clock from '../js/core/clock.js';
   import { on } from '../js/core/bus.js';

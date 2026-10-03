@@ -5,6 +5,7 @@ import { G } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { REGLAGES, niveauDepuisXp, presetDifficulte } from '../data/reglages.js';
 import { CLOTHES, ZONES_JAMBE, ZONES_BRAS } from '../data/clothing.js';
+import { ITEMS } from '../data/items.js';
 import { poidsPorte, chargeMax as chargeMaxInv, surpoids } from './inventory.js';
 import { douleur, deficitFroid } from './survival.js';
 
@@ -21,8 +22,9 @@ export function normaliserJoueur(p) {
   p.skillXp = p.skillXp || {};
   for (const [s, xp] of Object.entries(C().DEPART || {})) if (p.skillXp[s] == null) p.skillXp[s] = xp;
   p.inventaire = p.inventaire || [];
-  p.equip = Object.assign({ arme: null, tete: null, torse: null, mains: null, jambes: null, pieds: null, sac: null, ceinture: null, holster: null, lampe: null }, p.equip || {});
-  p.equipEtat = p.equipEtat || {};          // { arme: { dur, durMax }, lampe: { charge, allumee } }
+  p.equip = Object.assign({ arme: null, mainG: null, dos: null, tete: null, torse: null, mains: null, jambes: null, pieds: null, sac: null, ceinture: null, holster: null, lampe: null }, p.equip || {});
+  p.equipEtat = p.equipEtat || {};          // { arme|mainG|dos: instance (dur, durMax, balles…), lampe: { charge, allumee } }
+  if (p.deuxMains == null) p.deuxMains = !!(p.equip.arme && ((ITEMS[p.equip.arme] || {}).deux_mains));
   p.accesRapide = p.accesRapide || [];      // ids d'objets du sac accrochés (ceinture, holster, gilet)
   p.blessures = p.blessures || [];
   p.recettesApprises = p.recettesApprises || [];

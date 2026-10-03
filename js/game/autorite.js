@@ -3,13 +3,12 @@
 //   - une sim par lieu OCCUPÉ, qui tourne à 10 Hz tant qu'au moins un joueur (hôte ou invité) y est ;
 //   - chaque joueur a son canal (non propriétaire) sur la sim : l'hôte le sien, l'invité un canal « proxy »
 //     piloté par les messages réseau (js/net/coop.js) ;
-//   - les COMBATS sont simulés ici aussi (combat partagé, un seul pas de temps, N participants).
+//   - les COMBATS se jouent DANS ces sims de lieu (temps réel, plus d'écran séparé) : partagés d'office.
 import { G } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { getFlag } from '../core/state.js';
 import { creerSimLieu } from '../explore/sim.js';
 import { creerCanalLocal } from '../explore/canal_local.js';
-import { creerCombat } from '../combat/sim.js';
 import { presetDifficulte } from '../data/reglages.js';
 import { lieu as lieuDe } from './donnees.js';
 
@@ -35,7 +34,7 @@ export function entreeLieu(lieuId, niveau, L = lieuDe(lieuId) || {}) {
     const sim = creerSim(lieuId, niveau, L);
     e = { sim, canaux: new Map(), dernier: performance.now(), runner: null };
     // Le propriétaire est un canal fantôme : il fait tourner la sim et répartit les événements.
-    e.runner = creerCanalLocal(sim, '__autorite', { proprietaire: true, hz: 10 });
+    e.runner = creerCanalLocal(sim, '__autorite', { proprietaire: true, hz: 20 });
     sims.set(lieuId, e);
   }
   return e;
@@ -75,61 +74,4 @@ export function simDe(lieuId) { const e = sims.get(lieuId); return e ? e.sim : n
 export function lieuxActifs() { return [...sims.keys()]; }
 export function toutFermer() {
   for (const [id, e] of sims) { for (const c of e.canaux.values()) { try { c.fermer(); } catch (err) {} } try { e.runner.fermer(); } catch (err) {} sims.delete(id); }
-  for (const c of combats.values()) c.arreter();
-  combats.clear();
 }
-
-// ---------- Combats partagés ----------
-// Un seul pas de temps (50 ms) pour tout le monde ; chaque participant a une « vue canal » :
-//   { joueurId, action(a), etat(), resultat(), on('evt'|'fin'), demarrer(), arreter(), pause() }
-const combats = new Map(); // id → combat
-
-export function creerCombatPartage({ id, spec, participants, lieuId }) {
-  const L = lieuId ? lieuDe(lieuId) : null;
-  const zombies = (spec.zombies || ['errant']).map((z, i) => (typeof z === 'string' ? { uid: `${id}:${i}`, type: z } : { uid: z.uid || `${id}:${i}`, type: z.type, hp: z.hp }));
-  const sim = creerCombat({
-    id, lieuId: lieuId || null, seed: `${G.world.seed}:${id}`, participants, zombies,
-    danger: spec.danger ?? (L ? L.danger : undefined), surprise: spec.surprise || 'normal',
-    difficulte: presetDifficulte(G.world.difficulte), pool: spec.pool || null, tuto: !!spec.tuto,
-  });
-  const abonnes = new Map(); // joueurId → { evt:Set, fin:Set }
-  const vus = new Set();
-  let timer = null, fini = false, dernier = performance.now();
-  const C = {
-    id, sim, spec, lieuId, zombies,
-    participants: () => sim.etat().joueurs ? sim.etat().joueurs.map(j => j.id) : participants.map(p => p.id),
-    vue(joueurId) {
-      const ab = abonnes.get(joueurId) || { evt: new Set(), fin: new Set() };
-      abonnes.set(joueurId, ab);
-      return {
-        joueurId,
-        action(a) { const r = sim.action(joueurId, a); pas(0); return r; },
-        etat: () => sim.etat(),
-        resultat: () => sim.resultat(joueurId),
-        on(evt, fn) { (ab[evt] || (ab[evt] = new Set())).add(fn); return () => ab[evt].delete(fn); },
-        demarrer() {}, arreter() {}, pause() {},
-      };
-    },
-    ajouter(p) { sim.ajouterParticipant(p); pas(0); },
-    arreter() { if (timer) clearInterval(timer); timer = null; combats.delete(id); },
-    estFini: () => fini,
-  };
-  function diffuser(evts) {
-    const frais = [];
-    for (const e of evts) { if (e.n != null) { if (vus.has(e.n)) continue; vus.add(e.n); } frais.push(e); }
-    if (frais.length) for (const ab of abonnes.values()) for (const e of frais) for (const fn of [...ab.evt]) { try { fn(e); } catch (err) { console.error(err); } }
-    if (frais.length) emit('coop:combat:evts', { id, evts: frais });
-    if (sim.fini() && !fini) {
-      fini = true;
-      for (const [jid, ab] of abonnes) { const r = sim.resultat(jid); for (const fn of [...ab.fin]) { try { fn(r); } catch (err) { console.error(err); } } }
-      emit('coop:combat:fin', { id });
-      C.arreter();
-    }
-  }
-  function pas(dt) { diffuser(sim.tick(dt)); }
-  timer = setInterval(() => { const t = performance.now(); const dt = Math.min(250, t - dernier); dernier = t; pas(dt); }, 50);
-  combats.set(id, C);
-  return C;
-}
-export function combatDe(id) { return combats.get(id) || null; }
-export function combatsActifs() { return [...combats.values()]; }

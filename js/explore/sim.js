@@ -3,18 +3,24 @@
 // les portes (PV, verrous, drapeaux), les conteneurs (butin tiré une seule fois, graine du lieu),
 // le sol, les cadavres, les bruits, la persistance (sauver()) et le repeuplement.
 //
+// COMBAT : il se joue ICI, en temps réel (plus d'écran séparé). Les morts en chasse télégraphient puis frappent ;
+// les joueurs agissent par sim.action(joueurId, { type: 'frapper'|'pousser'|'tirer'|'marteler', … }).
+// Événements de combat : telegraphe, attaque, blessure, saisie, degage, coup, rate, coup_vide, mort_zombie,
+//   poussee, tir, bouscule. (Pas d'esquive : on recule, on pousse, on frappe.) Les blessures sont APPLIQUÉES par le client du joueur visé (son corps).
+//
 // creerSimLieu({ lieuId, niveau, etat, seed, danger, pool, …options }) → sim
 // Options en plus du contrat (toutes facultatives) : minutes (horloge de jeu), typeButin, mortsN [min,max],
 // repeuplement (morts/jour), coop (bool), difficulte (preset reglages.difficulte), jour, mult (× butin),
 // getFlag(k) (drapeaux du monde : portes à drapeau), rng (graine des tirages non persistants).
 import { REGLAGES, paramsJour } from '../data/reglages.js';
-import { ZOMBIES } from '../data/zombies.js';
+import { ZOMBIES, typeMort, sexeMort } from '../data/zombies.js';
 import { tirerButin, tirerButinTable, tirerLignes } from '../data/butin.js';
 import { seedRng } from '../core/rng.js';
 import { K, parserNiveau, cleCase, MATIERES } from './niveau.js';
 import { deplacer, ligneLibre, obstaclesSon } from './physique.js';
+import { profilMelee, geometrie, resoudreCoup, resoudreAttaque, tapsEmpoignade, bruitCoup } from './combat.js';
 
-const RX = REGLAGES.exploration, RP = RX.PERCEPTION, RF = REGLAGES.fouille;
+const RX = REGLAGES.exploration, RP = RX.PERCEPTION, RF = REGLAGES.fouille, RC = REGLAGES.combat;
 const RAYON_JOUEUR = 0.3, RAYON_MORT = 0.3;
 const DEG = Math.PI / 180;
 const angDiff = (a, b) => { let d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; };
@@ -48,6 +54,8 @@ export function creerSimLieu(opts) {
   const bruits = [];                 // file de bruits à traiter au prochain tick
   let evts = [];
   let tFlag = 0;
+  let T = 0;                         // temps de simulation (ms) : horloge des télégraphies, esquives, empoignades
+  let rngCbt = seedRng(`${seed}:combat:${lieuId}:${minutes}`);
 
   for (const p of niveau.portes) {
     const pvMax = p.exterieure ? RX.PORTES.PV_EXTERIEURE : RX.PORTES.PV;
@@ -64,6 +72,7 @@ export function creerSimLieu(opts) {
     cadavres = (etat.cadavres || []).slice();
     joues = (etat.joues || []).slice();
     for (const z of etat.zombies || []) { const zz = nouveauMort(z.type, z.etage, z.x, z.y, z.etat, z); if (zz) zombies.push(zz); }
+    // (les anciens types rangés sont convertis par nouveauMort → typeMort)
     repeupler(etat.minutes);
   } else {
     // 1re visite : morts du plan + procéduraux, objets posés
@@ -85,17 +94,22 @@ export function creerSimLieu(opts) {
     let v = r(); for (const k in e) { v -= e[k]; if (v <= 0) return k; }
     return 'erre';
   }
-  function nouveauMort(type, etage, x, y, et, extra = {}) {
+  function nouveauMort(type0, etage, x, y, et, extra = {}) {
+    if (!ZOMBIES[type0]) console.warn(`[explore] mort inconnu « ${type0} » : errant`);
+    const type = typeMort(type0);
     const def = ZOMBIES[type];
-    if (!def || EI(etage) == null) { if (!def) console.warn(`[explore] mort inconnu « ${type} »`); return null; }
+    if (!def || EI(etage) == null) return null;
     const hpMax = Math.round((def.hp || 30) * (diff.pvMorts || 1));
     const base = et === 'alerte' || et === 'chasse' ? 'erre' : (et || 'erre');
+    const uid = extra.uid || `z${uidSeq++}`;
     return {
-      uid: extra.uid || `z${uidSeq++}`, type, def, etage, ei: EI(etage), x, y, dir: extra.dir || 0,
+      uid, type, def, etage, ei: EI(etage), x, y, dir: extra.dir || 0, sexe: extra.sexe || sexeMort(type, `${seed}:${lieuId}:${uid}`),
       etat: et || 'erre', base: extra.base || base, hp: extra.hp || hpMax, hpMax,
       alerte: 0, cible: null, chemin: [], ci: 0, tChemin: 0, tEtat: 0, joueur: null, derniere: null, memoire: 0,
-      enCombat: null, etourdi: 0, tCogne: 0, porte: null, bloqueT: 0, lx: x, ly: y, charge: 0, tCharge: 0, cri: false,
+      enCombat: null, etourdi: 0, tCogne: 0, porte: null, bloqueT: 0, lx: x, ly: y, charge: 0, tCharge: 0, cri: false, tCri: 0,
       proc: !!extra.proc, vitesse: 0,
+      // combat
+      atk: null, recupJusqu: 0, contact: false, vacille: 0, aTerre: 0, kb: null, tTouche: -1e9, saisit: null, scene: extra.scene || null,
     };
   }
   // Cases candidates pour un mort procédural : marchables, loin des entrées, pièces sombres d'abord.
@@ -181,7 +195,7 @@ export function creerSimLieu(opts) {
       evts.push({ type: 'bruit', etage: b.etage, x: b.x, y: b.y, rayon: b.rayon, source: b.source });
       const E = niveau.etages[EI(b.etage)], D = dyn[E.idx];
       for (const z of zombies) {
-        if (z.etage !== b.etage || z.enCombat || z.etat === 'fait_le_mort') continue;
+        if (z.etage !== b.etage || z.etat === 'fait_le_mort') continue;
         if (b.source === z.uid) continue;
         const d = Math.hypot(z.x - b.x, z.y - b.y);
         const ouie = z.def.ouie || 1;
@@ -209,7 +223,7 @@ export function creerSimLieu(opts) {
     const ancien = z.etat; z.etat = e;
     evts.push({ type: 'zombie', uid: z.uid, etat: e, ancien });
     if (e === 'chasse' && z.def.special === 'hurle' && !z.cri) {
-      z.cri = true;
+      z.cri = true; z.tCri = (z.def.params && z.def.params.relanceMs) || 9000;
       bruit({ etage: z.etage, x: z.x, y: z.y, rayon: 30, source: z.uid });
       evts.push({ type: 'hurlement', uid: z.uid, etage: z.etage, x: z.x, y: z.y });
     }
@@ -233,11 +247,11 @@ export function creerSimLieu(opts) {
     return dansCone ? R : 0;
   }
   function percevoir(z, dt) {
-    if (z.etat === 'dort' || z.enCombat || z.etourdi > 0) return null;
+    if (z.etat === 'dort' || z.etourdi > 0) return null;
     const E = niveau.etages[z.ei], D = dyn[z.ei];
     let vu = null, dVu = Infinity, Rvu = 0;
     for (const j of joueurs.values()) {
-      if (j.etage !== z.etage || j.enCombat || j.aTerre) continue;
+      if (j.etage !== z.etage || j.mort || j.aTerre) continue;
       const d = Math.hypot(j.x - z.x, j.y - z.y);
       if (z.etat === 'fait_le_mort') { if (d <= 1.5) { vu = j; dVu = d; Rvu = 2; } continue; }
       if (d > 30) continue;
@@ -356,11 +370,21 @@ export function creerSimLieu(opts) {
     else evts.push({ type: 'porte', cle: z.porte, etat: s.etat, pv: s.pv, pvMax: s.pvMax, action: 'coup', source: z.uid });
   }
   function majMort(z, dt) {
-    if (z.enCombat) return;
+    z.vitesse = 0;
+    if (z.kb) { // recul d'un coup / d'une poussée
+      const E = niveau.etages[z.ei], D = dyn[z.ei];
+      const f = Math.min(dt, z.kb.t) / RC.RECUL_MS;
+      posTmp.x = z.x; posTmp.y = z.y;
+      deplacer(E.w, E.h, D.bloque, posTmp, z.kb.dx * f, z.kb.dy * f, RAYON_MORT);
+      z.x = posTmp.x; z.y = posTmp.y;
+      z.kb.t -= dt; if (z.kb.t <= 0) z.kb = null;
+    }
+    if (z.aTerre > 0) { z.aTerre -= dt; z.atk = null; return; }
+    if (z.vacille > 0) { z.vacille -= dt; z.atk = null; return; }
     if (z.etourdi > 0) { z.etourdi -= dt; return; }
     const vu = percevoir(z, dt);
     const def = z.def;
-    z.vitesse = 0;
+    if ((z.etat === 'chasse' || z.saisit) && corpsACorps(z, dt)) return;
     switch (z.etat) {
       case 'dort': case 'fait_le_mort': return;
       case 'immobile': {
@@ -431,6 +455,16 @@ export function creerSimLieu(opts) {
             posTmp.x = z.x; posTmp.y = z.y;
             deplacer(E.w, E.h, D.bloque, posTmp, Math.cos(z.dir) * pas, Math.sin(z.dir) * pas, RAYON_MORT);
             z.x = posTmp.x; z.y = posTmp.y; z.vitesse = P.vitesse;
+            // la charge percute un joueur : coup + il est projeté
+            for (const o of joueurs.values()) {
+              if (o.mort || o.etage !== z.etage || Math.hypot(o.x - z.x, o.y - z.y) > 0.8) continue;
+              z.charge = 0;
+              const r = resoudreAttaque({ def, type: z.type, stats: o.stats, rnd: rngCbt, diff });
+              evts.push({ type: 'blessure', joueur: o.id, uid: z.uid, typeMort: z.type, sexe: z.sexe, ...r });
+              evts.push({ type: 'bouscule', joueur: o.id, uid: z.uid, dx: Math.cos(z.dir) * RC.BOUSCULE.CASES, dy: Math.sin(z.dir) * RC.BOUSCULE.CASES });
+              z.recupJusqu = T + (def.cadence || 1500);
+              break;
+            }
             return;
           }
           if (vu && j && z.tCharge <= 0 && Math.hypot(j.x - z.x, j.y - z.y) <= (P.declenche || 5)) {
@@ -443,10 +477,20 @@ export function creerSimLieu(opts) {
           z.memoire -= dt;
           if (z.memoire <= 0 || !z.derniere) { changerEtat(z, 'alerte'); z.cible = z.derniere ? { x: z.derniere.x + (rngSim() - 0.5) * 4, y: z.derniere.y + (rngSim() - 0.5) * 4 } : null; z.tEtat = RP.ALERTE_MS * 0.5; z.alerte = 0.5; z.chemin = []; return; }
         }
+        // hurleur : il crie de nouveau tant qu'il te voit (un coup qui le fait vaciller lui coupe le souffle)
+        if (vu && def.special === 'hurle' && z.cri) {
+          z.tCri -= dt;
+          if (z.tCri <= 0) { z.tCri = (def.params && def.params.relanceMs) || 9000; bruit({ etage: z.etage, x: z.x, y: z.y, rayon: (def.params && def.params.bruitExploration) || 30, source: z.uid }); evts.push({ type: 'hurlement', uid: z.uid, etage: z.etage, x: z.x, y: z.y }); }
+        }
         const cx = vu && j ? j.x : z.derniere.x, cy = vu && j ? j.y : z.derniere.y;
         z.tChemin -= dt;
         const dCible = Math.hypot(cx - z.x, cy - z.y);
-        if (dCible < 1.2 && vu) { avancerVers(z, cx, cy, vC, dt); z.vitesse = vC; return; }
+        if (dCible < 1.6 && vu) { // au contact : il s'arrête à bout de bras, face à toi
+          const arret = RC.ARRET_CASES;
+          if (dCible > arret + 0.02) { const k = (dCible - arret) / dCible; avancerVers(z, z.x + (cx - z.x) * k, z.y + (cy - z.y) * k, vC, dt); z.vitesse = vC; }
+          else tourner(z, Math.atan2(cy - z.y, cx - z.x), dt, 6);
+          return;
+        }
         if (z.tChemin <= 0 || z.ci >= z.chemin.length) {
           z.tChemin = 400;
           const c = chemin(z, Math.floor(cx), Math.floor(cy), 70);
@@ -466,6 +510,24 @@ export function creerSimLieu(opts) {
     const b = z.base === 'dort' || z.base === 'fait_le_mort' || z.base === 'cogne' ? 'immobile' : z.base;
     changerEtat(z, b || 'erre'); z.tEtat = 1500;
   }
+  // Les morts ne traversent pas les joueurs : on les écarte à ARRET_CASES (les joueurs, eux, ne sont pas poussés).
+  function separerJoueurs() {
+    const m = RC.ARRET_CASES * 0.92;
+    for (const j of joueurs.values()) {
+      if (j.mort) continue;
+      for (const z of zombies) {
+        if (z.etage !== j.etage) continue;
+        const dx = z.x - j.x, dy = z.y - j.y, d = Math.hypot(dx, dy);
+        // se cogner à un mort endormi / immobile le réveille
+        if (d < 0.8 && (z.etat === 'dort' || z.etat === 'immobile' || z.etat === 'erre') && !j.aTerre) reveiller(z, j);
+        if (d >= m || d < 1e-4) continue;
+        const E = niveau.etages[z.ei], D = dyn[z.ei];
+        posTmp.x = z.x; posTmp.y = z.y;
+        deplacer(E.w, E.h, D.bloque, posTmp, dx / d * (m - d), dy / d * (m - d), RAYON_MORT);
+        z.x = posTmp.x; z.y = posTmp.y;
+      }
+    }
+  }
   function separer(dt) {
     for (let a = 0; a < zombies.length; a++) {
       const A = zombies[a];
@@ -476,45 +538,253 @@ export function creerSimLieu(opts) {
         if (d2 >= 0.36 || d2 < 1e-6) continue;
         const d = Math.sqrt(d2), p = (0.6 - d) * 0.5;
         const E = niveau.etages[A.ei], D = dyn[A.ei];
-        if (!A.enCombat && A.etat !== 'dort') { posTmp.x = A.x; posTmp.y = A.y; deplacer(E.w, E.h, D.bloque, posTmp, -dx / d * p, -dy / d * p, RAYON_MORT); A.x = posTmp.x; A.y = posTmp.y; }
-        if (!B.enCombat && B.etat !== 'dort') { posTmp.x = B.x; posTmp.y = B.y; deplacer(E.w, E.h, D.bloque, posTmp, dx / d * p, dy / d * p, RAYON_MORT); B.x = posTmp.x; B.y = posTmp.y; }
+        if (A.etat !== 'dort') { posTmp.x = A.x; posTmp.y = A.y; deplacer(E.w, E.h, D.bloque, posTmp, -dx / d * p, -dy / d * p, RAYON_MORT); A.x = posTmp.x; A.y = posTmp.y; }
+        if (B.etat !== 'dort') { posTmp.x = B.x; posTmp.y = B.y; deplacer(E.w, E.h, D.bloque, posTmp, dx / d * p, dy / d * p, RAYON_MORT); B.x = posTmp.x; B.y = posTmp.y; }
       }
     }
   }
 
-  // ---------- Contacts ----------
-  function contacts() {
-    for (const j of joueurs.values()) {
-      if (j.aTerre) continue;
-      let proche = null, dp = Infinity;
-      for (const z of zombies) {
-        if (z.etage !== j.etage || z.enCombat || z.etourdi > 0) continue;
-        const d = Math.hypot(z.x - j.x, z.y - j.y);
-        // se cogner à un mort endormi le réveille
-        if ((z.etat === 'dort' || z.etat === 'immobile' || z.etat === 'erre') && d < 0.8) { changerEtat(z, 'chasse'); z.alerte = 1; z.joueur = j.id; z.derniere = { x: j.x, y: j.y }; z.memoire = RP.MEMOIRE_MS; }
-        if (z.etat !== 'chasse' && z.etat !== 'alerte') continue;
-        if (z.etat === 'alerte' && z.alerte < 0.5) continue;
-        if (d <= RP.CONTACT_CASES + 0.02 && d < dp) { dp = d; proche = z; }
+  // ---------- Corps à corps : les morts ----------
+  const E_ = RC.EMPOIGNADE;
+  // Un mort en chasse au contact : télégraphie, attaque, empoignade. true = il ne bouge pas ce pas-ci.
+  function corpsACorps(z, dt) {
+    const def = z.def;
+    if (z.saisit) {
+      const s = joueurs.get(z.saisit);
+      if (!s || s.mort || !s.empoigne || s.empoigne.uid !== z.uid) { z.saisit = null; z.recupJusqu = T + (def.cadence || 1300); return false; }
+      tourner(z, Math.atan2(s.y - z.y, s.x - z.x), dt, 6);
+      if (T >= s.empoigne.fin) { // raté : il mord
+        s.empoigne = null; z.saisit = null; z.recupJusqu = T + (def.cadence || 1300);
+        const r = resoudreAttaque({ def, type: z.type, stats: s.stats, morsure: true, rnd: rngCbt, diff });
+        evts.push({ type: 'blessure', joueur: s.id, uid: z.uid, typeMort: z.type, sexe: z.sexe, morsure: true, ...r });
       }
-      if (!proche) continue;
-      if (j.enCombat) { // renfort : le combat attire
-        if (RP.RENFORT_PENDANT_COMBAT) { proche.enCombat = j.id; evts.push({ type: 'renfort', joueur: j.id, zombies: [descMort(proche)] }); }
-        continue;
+      return true;
+    }
+    const j = z.joueur && joueurs.get(z.joueur);
+    if (!j || j.mort || j.etage !== z.etage) { z.atk = null; return false; }
+    const d = Math.hypot(j.x - z.x, j.y - z.y);
+    if (z.atk) {
+      tourner(z, Math.atan2(j.y - z.y, j.x - z.x), dt, RC.PIVOT_TELEGRAPHE);
+      if (T >= z.atk.fin) resoudreAttaqueMort(z);
+      return true;
+    }
+    const portee = def.portee || 0.95;
+    if (d > portee + 0.6) { z.contact = false; return false; }
+    if (d <= portee) {
+      if (!z.contact) {
+        z.contact = true;
+        const surpris = Math.abs(angDiff(Math.atan2(z.y - j.y, z.x - j.x), j.dir)) > 100 * DEG;
+        const P = RC.PREMIERE_ATTAQUE_MS;
+        z.recupJusqu = Math.max(z.recupJusqu, T + (surpris ? RC.SURPRIS_MS : P[0] + rngCbt() * (P[1] - P[0])));
       }
-      const groupe = [proche];
-      for (const z of zombies) {
-        if (z === proche || z.etage !== j.etage || z.enCombat || z.etat !== 'chasse') continue;
-        if (Math.hypot(z.x - j.x, z.y - j.y) <= RP.REJOINDRE_CASES) groupe.push(z);
-      }
-      const a = Math.atan2(proche.y - j.y, proche.x - j.x);
-      const surprise = Math.abs(angDiff(a, j.dir)) > 100 * DEG ? 'surpris' : 'normal';
-      engager(j, groupe);
-      evts.push({ type: 'contact', joueur: j.id, zombies: groupe.map(descMort), surprise, lieuId });
+      const occupe = j.empoigne && E_.AUTRES_ATTENDENT;
+      if (T >= z.recupJusqu && !occupe) { debuterTelegraphe(z, j); return true; }
+    }
+    return false;
+  }
+  function debuterTelegraphe(z, j) {
+    const def = z.def;
+    const type = def.saisie > 0 && !j.empoigne && rngCbt() < def.saisie ? 'saisie' : 'coup';
+    const duree = Math.max(RC.TELEGRAPHE_MIN_MS, (def.telegraphe || 800) * (diff.telegraphe || 1));
+    z.atk = { type, t0: T, fin: T + duree, duree, cible: j.id };
+    evts.push({ type: 'telegraphe', uid: z.uid, joueur: j.id, attaque: type, duree });
+  }
+  function resoudreAttaqueMort(z) {
+    const def = z.def, at = z.atk;
+    z.atk = null; z.recupJusqu = T + (def.cadence || 1300);
+    const j = joueurs.get(at.cible);
+    if (!j || j.mort || j.etage !== z.etage) return;
+    const d = Math.hypot(j.x - z.x, j.y - z.y);
+    const a = Math.abs(angDiff(Math.atan2(j.y - z.y, j.x - z.x), z.dir));
+    if (d > (def.portee || 0.95) + RC.TOLERANCE_PORTEE || a > RC.CONE_ATTAQUE_DEG * DEG / 2) {
+      evts.push({ type: 'attaque', uid: z.uid, joueur: j.id, issue: 'vide', attaque: at.type }); return;
+    }
+    if (j.empoigne && j.empoigne.uid !== z.uid && E_.AUTRES_ATTENDENT) { // un autre le tient déjà : il attend son tour
+      evts.push({ type: 'attaque', uid: z.uid, joueur: j.id, issue: 'retenue', attaque: at.type }); z.recupJusqu = T + 400; return;
+    }
+    if (at.type === 'saisie' && !j.empoigne) {
+      const requis = tapsEmpoignade(def, j.stats);
+      const duree = E_.MS + (j.stats && j.stats.tactile ? E_.MARGE_TACTILE_MS : 0);
+      j.empoigne = { uid: z.uid, debut: T, fin: T + duree, duree, requis, taps: 0 };
+      z.saisit = j.id;
+      evts.push({ type: 'saisie', joueur: j.id, uid: z.uid, typeMort: z.type, sexe: z.sexe, requis, duree });
+      return;
+    }
+    const r = resoudreAttaque({ def, type: z.type, stats: j.stats, rnd: rngCbt, diff });
+    evts.push({ type: 'attaque', uid: z.uid, joueur: j.id, issue: 'touche', attaque: at.type });
+    evts.push({ type: 'blessure', joueur: j.id, uid: z.uid, typeMort: z.type, sexe: z.sexe, ...r });
+  }
+
+  // ---------- Corps à corps : les joueurs ----------
+  const nonAlerte = (z) => z.etat === 'dort' || z.etat === 'immobile' || z.etat === 'erre' || z.etat === 'fait_le_mort' || z.etat === 'cogne' || (z.etat === 'alerte' && z.alerte < 0.5);
+  function reveiller(z, j) {
+    if (z.etat !== 'chasse') changerEtat(z, 'chasse');
+    z.alerte = 1; z.joueur = j.id; z.derniere = { x: j.x, y: j.y }; z.memoire = RP.MEMOIRE_MS; z.chemin = []; z.tChemin = 0;
+  }
+  function reculer(z, depuisX, depuisY, cases) {
+    if (cases <= 0) return;
+    let a = Math.atan2(z.y - depuisY, z.x - depuisX); if (!isFinite(a)) a = rngCbt() * Math.PI * 2;
+    z.kb = { dx: Math.cos(a) * cases, dy: Math.sin(a) * cases, t: RC.RECUL_MS };
+  }
+  function lacher(z) { // il lâche le joueur qu'il tenait
+    if (!z.saisit) return;
+    const s = joueurs.get(z.saisit);
+    if (s && s.empoigne && s.empoigne.uid === z.uid) { s.empoigne = null; evts.push({ type: 'degage', joueur: s.id, uid: z.uid, lache: true }); }
+    z.saisit = null;
+  }
+  // Morts touchables devant le joueur : [{ z, d }] triés (ceux qui le menacent d'abord, puis le plus proche).
+  function devant(j, portee, arc) {
+    const D = dyn[j.ei], E = niveau.etages[j.ei], out = [];
+    for (const z of zombies) {
+      if (z.etage !== j.etage) continue;
+      const d = Math.hypot(z.x - j.x, z.y - j.y);
+      if (d > portee + RAYON_MORT) continue;
+      const a = Math.abs(angDiff(Math.atan2(z.y - j.y, z.x - j.x), j.dir));
+      if (a > arc / 2 && d > 0.55) continue;
+      if (!ligneLibre(E.w, E.h, D.bloque, j.x, j.y, z.x, z.y)) continue;
+      const menace = (z.atk && z.atk.cible === j.id) || z.saisit === j.id ? -0.6 : 0;
+      out.push({ z, d, score: d + a * 0.3 + menace });
+    }
+    return out.sort((p, q) => p.score - q.score);
+  }
+  function tuerMort(z, j, o = {}) {
+    lacher(z);
+    zombies = zombies.filter(q => q !== z);
+    cadavres.push({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: z.x, y: z.y, dir: z.dir });
+    evts.push({ type: 'mort_zombie', joueur: j.id, uid: z.uid, typeMort: z.type, sexe: z.sexe, x: z.x, y: z.y, etage: z.etage, furtif: !!o.furtif, tir: !!o.tir });
+  }
+  // Applique un coup résolu à un mort.
+  function encaisser(z, j, r, prof, c, o = {}) {
+    z.hp -= r.degats; z.tTouche = T;
+    const res = z.def.resistance || 0;
+    const lourd = c >= RC.CHARGE.SEUIL_LOURD;
+    if (!o.tir) reculer(z, j.x, j.y, (lourd ? RC.RECUL.lourd : RC.RECUL.rapide * (1 + c)) * (1 - res));
+    if (r.vacille || r.interrompt) { z.atk = null; z.vacille = RC.VACILLER.MS; lacher(z); if (z.def.special === 'hurle') z.tCri = (z.def.params && z.def.params.relanceMs) || 9000; }
+    const tue = z.hp <= 0;
+    evts.push({ type: 'coup', joueur: j.id, uid: z.uid, typeMort: z.type, degats: r.degats, crit: r.crit, charge: Math.round(c * 100) / 100,
+      vacille: !!r.vacille, interrompt: !!r.interrompt, furtif: !!o.furtif, tir: !!o.tir, x: z.x, y: z.y, etage: z.etage, pv: Math.max(0, z.hp), pvMax: z.hpMax, tue, arme: prof.id || null, lourd });
+    if (tue) tuerMort(z, j, o);
+    else reveiller(z, j);
+    return tue;
+  }
+  function frapper(j, a) {
+    const st = j.stats || {};
+    const prof = profilMelee(st.arme);
+    const geo = geometrie(prof);
+    const c = Math.max(0, Math.min(1, a.charge || 0));
+    const cibles = devant(j, geo.portee, geo.arc).slice(0, geo.cibles);
+    j.geste = { type: c >= RC.CHARGE.SEUIL_LOURD ? 'lourd' : 'rapide', t: T, duree: prof.vitesse || 450 };
+    let touches = 0, tues = 0, silencieux = true;
+    for (const { z } of cibles) {
+      const dos = Math.abs(angDiff(Math.atan2(j.y - z.y, j.x - z.x), z.dir)) > RX.FURTIF.DOS_DEG * DEG;
+      const furtif = nonAlerte(z) && (dos || z.etat === 'dort' || z.etat === 'fait_le_mort');
+      const r = resoudreCoup({ stats: st, prof, def: z.def, c, aTerre: z.aTerre > 0, vacille: z.vacille > 0, telegraphie: !!z.atk, furtif, ess: !!a.ess, rnd: rngCbt });
+      if (!r.touche) { evts.push({ type: 'rate', joueur: j.id, uid: z.uid, raison: r.raison, x: z.x, y: z.y }); reveiller(z, j); silencieux = false; continue; }
+      touches++;
+      const tue = encaisser(z, j, r, prof, c, { furtif });
+      if (tue) tues++;
+      if (!(furtif && tue)) silencieux = false;
+    }
+    if (!cibles.length) evts.push({ type: 'coup_vide', joueur: j.id, lourd: c >= RC.CHARGE.SEUIL_LOURD });
+    if (touches) bruit({ etage: j.etage, x: j.x, y: j.y, rayon: silencieux ? 1 : bruitCoup(prof), source: j.id });
+    return { ok: true, touches, tues, cibles: cibles.length };
+  }
+  function pousser(j) {
+    const P = RC.POUSSEE, st = j.stats || {};
+    j.geste = { type: 'poussee', t: T, duree: P.GESTE_MS };
+    let n = 0, terre = 0, immobile = 0;
+    for (const { z } of devant(j, P.PORTEE, P.ARC_DEG * DEG)) {
+      const res = z.def.resistance || 0;
+      reveiller(z, j);
+      if (res >= P.RESISTANCE_BLOQUE) { immobile++; continue; }
+      n++;
+      reculer(z, j.x, j.y, P.RECUL * (1 - res));
+      z.atk = null; lacher(z);
+      const pt = P.TERRE_BASE + P.TERRE_PAR_FORCE * (((st.niveaux || {}).force) || 0) - 0.5 * res;
+      if (z.def.special !== 'rampe' && rngCbt() < pt) { z.aTerre = RC.A_TERRE.MS; z.vacille = 0; terre++; }
+      else z.vacille = P.VACILLE_MS;
+    }
+    evts.push({ type: 'poussee', joueur: j.id, n, terre, immobile });
+    if (n || immobile) bruit({ etage: j.etage, x: j.x, y: j.y, rayon: 2, source: j.id });
+    return { ok: true, n, terre, immobile };
+  }
+  function marteler(j, a) {
+    const e = j.empoigne; if (!e) return { ok: false };
+    e.taps += a.ess ? 0.5 : 1;
+    evts.push({ type: 'martele', joueur: j.id, uid: e.uid, taps: e.taps, requis: e.requis });
+    if (e.taps >= e.requis) {
+      const z = zombies.find(q => q.uid === e.uid);
+      j.empoigne = null;
+      if (z) { z.saisit = null; z.aTerre = RC.A_TERRE.MS; z.atk = null; z.recupJusqu = T + (z.def.cadence || 1300); reculer(z, j.x, j.y, 0.5); }
+      evts.push({ type: 'degage', joueur: j.id, uid: e.uid });
+    }
+    return { ok: true };
+  }
+  function tirer(j, a) {
+    const st = j.stats || {}, prof = st.arme;
+    if (!prof || !prof.tir) return { ok: false, raison: 'pas_arme_tir' };
+    const TI = RC.TIR;
+    const portee = TI.PORTEE[Math.max(0, Math.min(2, prof.tir.portee || 0))];
+    const cible = devant(j, portee, TI.CONE_DEG * DEG)[0];
+    j.geste = { type: 'tir', t: T, duree: 250 };
+    let touche = false;
+    if (cible) {
+      const r = resoudreCoup({ stats: st, prof, def: cible.z.def, tir: true, visee: a.visee || 0, aTerre: cible.z.aTerre > 0, vacille: cible.z.vacille > 0, rnd: rngCbt });
+      if (r.touche) { touche = true; encaisser(cible.z, j, r, prof, 0, { tir: true }); }
+      else evts.push({ type: 'rate', joueur: j.id, uid: cible.z.uid, raison: r.raison, tir: true, x: cible.z.x, y: cible.z.y });
+    }
+    const fin = cible ? { x: cible.z.x, y: cible.z.y } : { x: j.x + Math.cos(j.dir) * portee, y: j.y + Math.sin(j.dir) * portee };
+    evts.push({ type: 'tir', joueur: j.id, arme: prof.id, x: j.x, y: j.y, x2: fin.x, y2: fin.y, touche });
+    bruit({ etage: j.etage, x: j.x, y: j.y, rayon: (prof.bruit || 0) >= 3 ? RX.BRUIT.tir : bruitCoup(prof), source: j.id });
+    return { ok: true, touche };
+  }
+  // Une action de combat d'un joueur (le client a déjà payé l'endurance et joue l'animation).
+  //   a = { type: 'frapper' { charge } | 'pousser' | 'tirer' { visee } | 'marteler', x, y, dir, ess (essoufflé), stats? }
+  function action(joueurId, a) {
+    const j = joueurs.get(joueurId);
+    if (!j || !a || j.mort) return { ok: false, raison: 'absent' };
+    cache = null;
+    if (a.x != null && a.y != null) { j.x = a.x; j.y = a.y; }
+    if (a.dir != null) j.dir = a.dir;
+    if (a.stats) j.stats = a.stats;
+    switch (a.type) {
+      case 'marteler': return marteler(j, a);
+      case 'frapper': return j.empoigne ? marteler(j, a) : frapper(j, a);
+      case 'pousser': return j.empoigne ? marteler(j, a) : pousser(j, a);
+      case 'tirer': return j.empoigne ? marteler(j, a) : tirer(j, a);
+      default: return { ok: false, raison: 'inconnue' };
     }
   }
-  function engager(j, groupe) {
-    j.enCombat = true;
-    for (const z of groupe) { z.enCombat = j.id; z.chemin = []; z.charge = 0; if (z.etat !== 'chasse') changerEtat(z, 'chasse'); z.joueur = j.id; }
+  // Fait apparaître des morts autour d'un joueur, déjà en chasse (combat de scène, embuscade). → [uids]
+  //   o = { joueurId, surprise: 'normal'|'surpris'|'engage', scene }
+  function faireApparaitre(liste, o = {}) {
+    const j = (o.joueurId && joueurs.get(o.joueurId)) || [...joueurs.values()][0];
+    const etage = j ? j.etage : niveau.entrees.defaut.etage;
+    const ei = EI(etage), E = niveau.etages[ei], D = dyn[ei];
+    const jx = j ? j.x : niveau.entrees.defaut.x + 0.5, jy = j ? j.y : niveau.entrees.defaut.y + 0.5, jd = j ? j.dir : 0;
+    const surpris = o.surprise === 'surpris';
+    const uids = [];
+    const libre = (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); if (cx < 1 || cy < 1 || cx >= E.w - 1 || cy >= E.h - 1) return false; const i = cy * E.w + cx; return !D.bloque[i] && (E.code[i] === K.SOL) && !zombies.some(q => q.etage === etage && Math.hypot(q.x - x, q.y - y) < 0.8); };
+    (liste || []).forEach((sp, i) => {
+      const type = typeof sp === 'string' ? sp : sp.type;
+      let pos = null;
+      for (let k = 0; k < 60 && !pos; k++) {
+        const base = surpris ? jd + Math.PI : jd;
+        const ang = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.32 + i * 0.9;
+        const dist = (surpris ? 1.7 : 3.4) + (i % 3) * 0.7 + Math.floor(k / 12) * 0.8;
+        const x = jx + Math.cos(ang) * dist, y = jy + Math.sin(ang) * dist;
+        if (libre(x, y) && ligneLibre(E.w, E.h, D.bloque, jx, jy, x, y)) pos = { x: Math.floor(x) + 0.5, y: Math.floor(y) + 0.5 };
+      }
+      if (!pos) for (let k = 0; k < 400 && !pos; k++) { const x = jx + (rngCbt() - 0.5) * 16, y = jy + (rngCbt() - 0.5) * 16; if (libre(x, y)) pos = { x: Math.floor(x) + 0.5, y: Math.floor(y) + 0.5 }; }
+      if (!pos) return;
+      const z = nouveauMort(type, etage, pos.x, pos.y, 'chasse', { scene: o.scene || null, hp: typeof sp === 'object' ? sp.hp : undefined });
+      if (!z) return;
+      z.dir = Math.atan2(jy - z.y, jx - z.x);
+      if (j) reveiller(z, j);
+      zombies.push(z); uids.push(z.uid);
+    });
+    cache = null;
+    return uids;
   }
   const descMort = (z) => ({ uid: z.uid, type: z.type, hp: z.hp });
 
@@ -523,7 +793,8 @@ export function creerSimLieu(opts) {
     for (const j of joueurs.values()) {
       const dd = Math.hypot(j.x - j.px, j.y - j.py);
       j.px = j.x; j.py = j.y;
-      if (j.enCombat) continue;
+      if (j.mort) continue;
+      if (j.empoigne && T >= j.empoigne.fin + 2000) j.empoigne = null; // sécurité : le mort a disparu
       // pas
       if (dd > 0.02 && j.allure !== 'immobile') {
         j.tPas += dt;
@@ -561,6 +832,7 @@ export function creerSimLieu(opts) {
       id, nom: info.nom || id, etage: e, ei: EI(e), x: pos.x ?? niveau.entrees.defaut.x + 0.5, y: pos.y ?? niveau.entrees.defaut.y + 0.5,
       dir: pos.dir || 0, allure: 'immobile', lumiere: 1, lampe: false, lampeSource: null, discretion: info.discretion || 0,
       bruitPas: info.bruitPas || 1, enCombat: false, aTerre: false, fouille: null, tPas: 0, px: 0, py: 0,
+      mort: false, stats: info.stats || null, empoigne: null, geste: null,
     };
     j.px = j.x; j.py = j.y;
     joueurs.set(id, j);
@@ -579,10 +851,16 @@ export function creerSimLieu(opts) {
     if (p.bruitPas != null) j.bruitPas = p.bruitPas;
     if (p.nom) j.nom = p.nom;
     if (p.aTerre != null) j.aTerre = !!p.aTerre;
+    if (p.stats) j.stats = p.stats;
+    if (p.mort != null) { j.mort = !!p.mort; if (j.mort) { j.empoigne = null; for (const z of zombies) if (z.saisit === j.id) z.saisit = null; } }
   }
   function retirerJoueur(id) {
     joueurs.delete(id);
-    for (const z of zombies) if (z.joueur === id) { z.joueur = null; if (z.etat === 'chasse') { changerEtat(z, 'alerte'); z.tEtat = RP.ALERTE_MS * 0.5; } if (z.enCombat === id) z.enCombat = null; }
+    for (const z of zombies) {
+      if (z.saisit === id) z.saisit = null;
+      if (z.atk && z.atk.cible === id) z.atk = null;
+      if (z.joueur === id) { z.joueur = null; if (z.etat === 'chasse') { changerEtat(z, 'alerte'); z.tEtat = RP.ALERTE_MS * 0.5; } }
+    }
   }
 
   function porte(cle, action = 'basculer', joueurId = null) {
@@ -705,14 +983,15 @@ export function creerSimLieu(opts) {
     const restants = [];
     for (const z of zombies) {
       if (!set.has(z.uid)) { restants.push(z); continue; }
-      if (tues) cadavres.push({ uid: z.uid, type: z.type, etage: z.etage, x: z.x, y: z.y, dir: z.dir });
+      lacher(z);
+      if (tues) cadavres.push({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: z.x, y: z.y, dir: z.dir });
     }
     zombies = restants;
     libererJoueurs();
   }
   function repousserZombies(uids, depuis) {
     const set = new Set(uids || []);
-    const RC = REGLAGES.combat.FUITE || {};
+    const RF2 = REGLAGES.combat.FUITE || {};
     for (const z of zombies) {
       if (!set.has(z.uid)) continue;
       const E = niveau.etages[z.ei], D = dyn[z.ei];
@@ -720,36 +999,16 @@ export function creerSimLieu(opts) {
       let a = Math.atan2(z.y - oy, z.x - ox);
       if (!isFinite(a)) a = rngSim() * Math.PI * 2;
       posTmp.x = z.x; posTmp.y = z.y;
-      deplacer(E.w, E.h, D.bloque, posTmp, Math.cos(a) * (RC.REPOUSSE_CASES || 4), Math.sin(a) * (RC.REPOUSSE_CASES || 4), RAYON_MORT);
+      deplacer(E.w, E.h, D.bloque, posTmp, Math.cos(a) * (RF2.REPOUSSE_CASES || 4), Math.sin(a) * (RF2.REPOUSSE_CASES || 4), RAYON_MORT);
       z.x = posTmp.x; z.y = posTmp.y;
-      z.enCombat = null; z.etourdi = RC.ETOURDI_MS || 3000; z.chemin = []; z.alerte = 1;
+      z.etourdi = (RC.FUITE && RC.FUITE.ETOURDI_MS) || 3000; z.chemin = []; z.alerte = 1; z.atk = null; lacher(z);
       if (z.etat !== 'chasse') changerEtat(z, 'chasse');
       z.memoire = RP.MEMOIRE_MS;
     }
     libererJoueurs();
   }
-  function libererJoueurs() {
-    for (const j of joueurs.values()) if (j.enCombat && !zombies.some(z => z.enCombat === j.id)) j.enCombat = false;
-  }
-  function finCombat(joueurId) {
-    const j = joueurs.get(joueurId); if (j) j.enCombat = false;
-    for (const z of zombies) if (z.enCombat === joueurId) { z.enCombat = null; z.etourdi = 1000; }
-  }
-  // Attaque au contact (touche Interagir face à un mort) : { ok, furtif, dos, zombie, groupe }.
-  // Marque le groupe « en combat » ; l'appelant résout (mise à mort silencieuse → retirerZombies + finCombat,
-  // sinon flow.combattre avec surprise 'engage').
-  function attaquer(joueurId, uid) {
-    const j = joueurs.get(joueurId); const z = zombies.find(q => q.uid === uid);
-    if (!j || !z || z.enCombat || j.enCombat || z.etage !== j.etage) return { ok: false };
-    if (Math.hypot(z.x - j.x, z.y - j.y) > RX.INTERACTION_CASES + 0.3) return { ok: false, raison: 'loin' };
-    const nonAlerte = z.etat === 'dort' || z.etat === 'immobile' || z.etat === 'erre' || z.etat === 'fait_le_mort' || z.etat === 'cogne' || (z.etat === 'alerte' && z.alerte < 0.5);
-    const aJ = Math.atan2(j.y - z.y, j.x - z.x);
-    const dos = Math.abs(angDiff(aJ, z.dir)) > RX.FURTIF.DOS_DEG * DEG || z.etat === 'dort';
-    const groupe = [z];
-    for (const o of zombies) if (o !== z && o.etage === j.etage && !o.enCombat && o.etat === 'chasse' && Math.hypot(o.x - j.x, o.y - j.y) <= RP.REJOINDRE_CASES) groupe.push(o);
-    engager(j, groupe);
-    return { ok: true, furtif: nonAlerte && dos, dos, nonAlerte, zombie: descMort(z), groupe: groupe.map(descMort) };
-  }
+  function libererJoueurs() {}
+  function finCombat() {}            // (ancien écran de combat — conservé pour les canaux existants)
   function blesserZombie(uid, degats) { const z = zombies.find(q => q.uid === uid); if (z) z.hp = Math.max(0, z.hp - degats); return z ? z.hp : 0; }
 
   let cache = null;
@@ -760,10 +1019,17 @@ export function creerSimLieu(opts) {
     const cc = {};
     for (const k in conteneurs) cc[k] = { tire: !!conteneurs[k].items, reste: conteneurs[k].items ? conteneurs[k].items.length : null, progres: conteneurs[k].progres };
     cache = {
-      zombies: zombies.map(z => ({ uid: z.uid, type: z.type, x: z.x, y: z.y, etage: z.etage, dir: z.dir, etat: z.etat, alerte: z.alerte, hp: z.hp, enCombat: z.enCombat, vitesse: z.vitesse, etourdi: z.etourdi > 0 })),
+      zombies: zombies.map(z => ({ uid: z.uid, type: z.type, sexe: z.sexe, x: z.x, y: z.y, etage: z.etage, dir: z.dir, etat: z.etat, alerte: z.alerte,
+        hp: z.hp, hpMax: z.hpMax, vitesse: z.vitesse, etourdi: z.etourdi > 0,
+        atk: z.atk ? { type: z.atk.type, p: Math.min(1, (T - z.atk.t0) / z.atk.duree), reste: Math.max(0, z.atk.fin - T), cible: z.atk.cible } : null,
+        saisit: z.saisit, vac: z.vacille > 0, terre: z.aTerre > 0, touche: T - z.tTouche < 160 })),
       portes: pp, conteneurs: cc,
       sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })),
-      joueurs: [...joueurs.values()].map(j => ({ id: j.id, nom: j.nom, x: j.x, y: j.y, etage: j.etage, dir: j.dir, enCombat: j.enCombat, lampe: j.lampe, lampeSource: j.lampeSource, allure: j.allure })),
+      joueurs: [...joueurs.values()].map(j => ({ id: j.id, nom: j.nom, x: j.x, y: j.y, etage: j.etage, dir: j.dir, lampe: j.lampe, lampeSource: j.lampeSource, allure: j.allure, mort: j.mort,
+        geste: j.geste && T - j.geste.t < j.geste.duree ? { type: j.geste.type, p: (T - j.geste.t) / j.geste.duree } : null,
+        empoigne: j.empoigne ? { uid: j.empoigne.uid, p: (T - j.empoigne.debut) / j.empoigne.duree, taps: j.empoigne.taps, requis: j.empoigne.requis, reste: Math.max(0, j.empoigne.fin - T) } : null,
+        arme: j.stats && j.stats.arme ? j.stats.arme.id : null })),
+      t: T,
       joues: joues.slice(),
     };
     return cache;
@@ -775,14 +1041,13 @@ export function creerSimLieu(opts) {
     for (const k in conteneurs) cc[k] = { items: conteneurs[k].items, progres: conteneurs[k].progres };
     return {
       v: 1, minutes: m, uid: uidSeq,
-      zombies: zombies.map(z => ({ uid: z.uid, type: z.type, etage: z.etage, x: +z.x.toFixed(2), y: +z.y.toFixed(2), dir: +z.dir.toFixed(2),
+      zombies: zombies.map(z => ({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: +z.x.toFixed(2), y: +z.y.toFixed(2), dir: +z.dir.toFixed(2),
         etat: z.etat === 'chasse' || z.etat === 'alerte' ? 'erre' : z.etat, base: z.base, hp: z.hp, proc: z.proc })),
       portes: pp, conteneurs: cc, sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })), joues: joues.slice(),
     };
   }
 
   function tick(dtMs) {
-    evts = [];
     cache = null;
     let reste = Math.min(Math.max(0, dtMs || 0), 500);
     while (reste > 0) {
@@ -795,19 +1060,24 @@ export function creerSimLieu(opts) {
           if (s.etat === 'verrouillee' && p.verrou && p.verrou.flag && flagOk(p.verrou)) { s.etat = 'fermee'; setPorte(p.cle, 'fermee', 'flag', null); }
         }
       }
+      T += dt;
       tickJoueurs(dt);
       traiterBruits();
       for (const z of zombies) majMort(z, dt);
       separer(dt);
-      contacts();
+      separerJoueurs();
     }
-    return evts;
+    const out = evts; evts = [];
+    return out;
   }
+  // Événements produits hors du pas (actions) : livrés tout de suite par le canal.
+  function viderEvenements() { const out = evts; evts = []; return out; }
 
   return {
     lieuId, niveau, seed,
     ajouterJoueur, majJoueur, retirerJoueur, bruit, porte, fouiller, arreterFouille, prendre, deposer,
-    retirerZombies, repousserZombies, finCombat, attaquer, blesserZombie, tick, instantane, sauver,
+    retirerZombies, repousserZombies, finCombat, blesserZombie, tick, instantane, sauver,
+    action, faireApparaitre, viderEvenements, temps: () => T,
     // accès pratiques (hôte / vue locale)
     grilles: (etage) => dyn[EI(etage)],
     joueur: (id) => joueurs.get(id) || null,

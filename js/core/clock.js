@@ -23,6 +23,7 @@ export function pause(raison) { pauses.add(raison); }
 export function reprendre(raison) { pauses.delete(raison); }
 export function enPause() { return pauses.size > 0; }
 export function viderPauses() { pauses.clear(); }
+export function pausesActives() { return [...pauses]; }
 export function setVitesse(m) { vitesse = Math.max(0, m); }
 export function getVitesse() { return vitesse; }
 

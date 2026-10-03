@@ -1,7 +1,12 @@
 // ============ Entrées de l'exploration : clavier, souris, tactile (joystick + boutons) ============
 // creerEntrees({ racine, canvas, actions }) → { etat, fermer(), setInteragir(libelle|null), setBouton(nom, { actif, libelle }), actif(bool) }
 // etat : { mx, my (−1..1, vecteur de déplacement, norme = poussée), course, accroupi, viseeSouris (bool), sx, sy (souris écran) }
-// actions : { interagir(), lampe(), inventaire(), carte(), echap(), zoom(facteur), accroupi(bool) }
+// actions : { interagir(), lampe(), inventaire(), carte(), echap(), zoom(facteur), accroupi(bool),
+//             frapper(appui: bool), pousser(), recharger(), echangerMains(), dos(), rapide(i) }
+// COMBAT — trois gestes : se déplacer, FRAPPER (appui court = coup rapide, maintenir = coup chargé), POUSSER.
+//   PC : ZQSD + souris (le personnage regarde la souris) ; clic gauche = frapper, clic droit = pousser,
+//        E = interagir, R = recharger, X = échanger les mains, B = dos ↔ main, 1-4 = accès rapide.
+//   Tactile : joystick n'importe où ; gros bouton Frapper + bouton Pousser à droite (visée assistée).
 import { el } from '../core/util.js';
 
 const TOUCHES = {
@@ -32,7 +37,12 @@ export function creerEntrees({ racine, canvas, actions }) {
     if (c === 'Tab') { e.preventDefault(); if (!e.repeat) actions.carte && actions.carte(); return; }
     if (e.repeat) { if (bas.has(c)) return; }
     bas.add(c);
-    if (c === 'KeyE' || c === 'Space' || c === 'Enter') { e.preventDefault(); actions.interagir && actions.interagir(); }
+    if (c === 'KeyE' || c === 'Enter') { e.preventDefault(); actions.interagir && actions.interagir(); }
+    else if (c === 'Space') { e.preventDefault(); actions.pousser && actions.pousser(); }
+    else if (c === 'KeyR') actions.recharger && actions.recharger();
+    else if (c === 'KeyX') actions.echangerMains && actions.echangerMains();
+    else if (c === 'KeyB') actions.dos && actions.dos();
+    else if (/^Digit[1-4]$/.test(c)) actions.rapide && actions.rapide(+c.slice(5) - 1);
     else if (c === 'KeyF') actions.lampe && actions.lampe();
     else if (c === 'KeyI') actions.inventaire && actions.inventaire();
     else if (c === 'Escape') actions.echap && actions.echap();
@@ -50,7 +60,15 @@ export function creerEntrees({ racine, canvas, actions }) {
   ecoute(canvas, 'mousemove', (e) => { if (etat.tactile) return; etat.viseeSouris = true; etat.sx = e.clientX; etat.sy = e.clientY; });
   ecoute(canvas, 'mouseleave', () => { etat.viseeSouris = false; });
   ecoute(canvas, 'wheel', (e) => { e.preventDefault(); if (!actif) return; actions.zoom && actions.zoom(e.deltaY < 0 ? 1.1 : 1 / 1.1); }, { passive: false });
-  ecoute(canvas, 'mousedown', (e) => { if (e.button === 0 && !etat.tactile && actif) actions.interagir && actions.interagir({ souris: true, sx: e.clientX, sy: e.clientY }); });
+  // Souris : clic gauche = frapper (maintenir = charger), clic droit = pousser.
+  let sourisFrappe = false;
+  ecoute(canvas, 'mousedown', (e) => {
+    if (etat.tactile || !actif) return;
+    if (e.button === 0) { e.preventDefault(); sourisFrappe = true; actions.frapper && actions.frapper(true); }
+    else if (e.button === 2) { e.preventDefault(); actions.pousser && actions.pousser(); }
+  });
+  ecoute(window, 'mouseup', (e) => { if (e.button === 0 && sourisFrappe) { sourisFrappe = false; actions.frapper && actions.frapper(false); } });
+  ecoute(canvas, 'contextmenu', (e) => e.preventDefault());
 
   // ---------- Tactile ----------
   const zoneJoy = el('div', { class: 'ex-joyzone' });
@@ -68,7 +86,16 @@ export function creerEntrees({ racine, canvas, actions }) {
   const bAccr = icone('accroupi', 'S\'accroupir');
   const bLampe = icone('lampe', 'Lampe');
   const bInv = el('button', { class: 'cache', type: 'button' });
-  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bAccr, bCourse), bInter);
+  // Combat : gros bouton Frapper (maintenir = charger), Pousser à côté.
+  const SVG_F = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 15 9"/><path d="m13 7 4-4 4 4-4 4"/><path d="M6 15l3 3"/></svg>';
+  const SVG_P = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h9"/><path d="M12 6v12"/><path d="M15 7l5 5-5 5"/></svg>';
+  const bFrapper = el('button', { class: 'ex-btn ex-btn-frapper', type: 'button', 'aria-label': 'Frapper (maintenir : coup chargé)' },
+    el('span', { class: 'ex-frap-anneau' }), el('span', { class: 'ex-frap-ico', html: SVG_F }), el('span', { class: 'ex-frap-l' }, 'Frapper'));
+  const bPousser = el('button', { class: 'ex-btn ex-btn-pousser', type: 'button', 'aria-label': 'Pousser' },
+    el('span', { class: 'ex-frap-ico', html: SVG_P }), el('span', { class: 'ex-frap-l' }, 'Pousser'), el('i', { class: 'ex-cd' }));
+  const bRecharger = el('button', { class: 'ex-btn ex-btn-petit ex-btn-recharger cache', type: 'button' }, 'Recharger');
+  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bAccr, bCourse), bInter,
+    el('div', { class: 'ex-pad-combat' }, bRecharger, bPousser, bFrapper));
   racine.append(zoneJoy, pad);
 
   const joy = { id: null, ox: 0, oy: 0, R: 56 };
@@ -123,7 +150,12 @@ export function creerEntrees({ racine, canvas, actions }) {
   presser(bAccr, () => { etat.accroupi = !etat.accroupi; actions.accroupi && actions.accroupi(etat.accroupi); majBoutons(); }); relacher(bAccr);
   presser(bLampe, () => actions.lampe && actions.lampe()); relacher(bLampe);
   presser(bInv, () => actions.inventaire && actions.inventaire()); relacher(bInv);
-  for (const b of [bInter, bCourse, bAccr, bLampe, bInv]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
+  let doigtFrappe = false;
+  presser(bFrapper, () => { doigtFrappe = true; etat.tactile = true; actions.frapper && actions.frapper(true); });
+  relacher(bFrapper, () => { if (!doigtFrappe) return; doigtFrappe = false; actions.frapper && actions.frapper(false); });
+  presser(bPousser, () => { etat.tactile = true; actions.pousser && actions.pousser(); }); relacher(bPousser);
+  presser(bRecharger, () => actions.recharger && actions.recharger()); relacher(bRecharger);
+  for (const b of [bInter, bCourse, bAccr, bLampe, bInv, bFrapper, bPousser, bRecharger]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
 
   function majBoutons() {
     bAccr.classList.toggle('on', etat.accroupi);
@@ -141,9 +173,26 @@ export function creerEntrees({ racine, canvas, actions }) {
       if (a != null) b.classList.toggle('on', !!a);
       if (libelle && b !== bLampe && b !== bCourse && b !== bAccr && b.textContent !== libelle) b.textContent = libelle;
     },
-    setVisible(nom, v) { const b = { lampe: bLampe, course: bCourse, accroupi: bAccr }[nom]; if (b) b.classList.toggle('cache', !v); },
+    setVisible(nom, v) { const b = { lampe: bLampe, course: bCourse, accroupi: bAccr, recharger: bRecharger }[nom]; if (b) b.classList.toggle('cache', !v); },
+    // État du bouton Frapper : libellé (Frapper / Tirer / Dégage-toi), charge 0..1, menace proche, poussée en recharge.
+    setCombat({ libelle, charge = 0, proche = false, pousseeCd = 0, empoigne = false } = {}) {
+      const l = bFrapper.lastChild; if (libelle && l.textContent !== libelle) l.textContent = libelle;
+      bFrapper.style.setProperty('--charge', charge.toFixed(3));
+      bFrapper.classList.toggle('charge', charge > 0);
+      bFrapper.classList.toggle('proche', !!proche);
+      bFrapper.classList.toggle('empoigne', !!empoigne);
+      bPousser.classList.toggle('empoigne', !!empoigne);
+      bPousser.style.setProperty('--cd', Math.max(0, Math.min(1, pousseeCd)).toFixed(3));
+      bPousser.classList.toggle('recharge', pousseeCd > 0.01);
+    },
     setAccroupi(v) { etat.accroupi = !!v; majBoutons(); },
-    actif(v) { actif = !!v; if (!actif) { bas.clear(); etat.mx = etat.my = 0; etat.course = false; boutonCourse = false; joy.id = null; joyBase.classList.remove('on'); } },
+    actif(v) {
+      actif = !!v;
+      if (!actif) {
+        bas.clear(); etat.mx = etat.my = 0; etat.course = false; boutonCourse = false; joy.id = null; joyBase.classList.remove('on');
+        if (sourisFrappe || doigtFrappe) { sourisFrappe = doigtFrappe = false; actions.frapper && actions.frapper(false, true); }
+      }
+    },
     fermer() { for (const f of off) f(); zoneJoy.remove(); pad.remove(); },
   };
 }

@@ -1,4 +1,4 @@
-// ============ Le flow — enchaîne les trois temps (exploration, carte/voyage, combat) ============
+// ============ Le flow — enchaîne les temps (exploration — combat compris —, carte/voyage) ============
 // Version initiale : les modules des temps sont chargés à la demande (import dynamique) pour que
 // chaque agent puisse développer et tester son temps isolément.
 import { G, sauver } from '../core/state.js';
@@ -6,8 +6,7 @@ import { emit } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 
 let courant = null;
-let combatDistant = null;   // co-op : fournit un canal de combat tenu par l'hôte
-export function definirCombatCoop(fn) { combatDistant = fn || null; }        // { nom, module }
+
 const pileOverlays = [];   // combats / scènes / cinématiques ouverts par-dessus
 
 export function stage() {
@@ -54,20 +53,40 @@ export async function voyager(opts) {
 function pauserCourant() { if (courant && courant.module.pause) courant.module.pause(); }
 function reprendreCourant() { if (!pileOverlays.length && courant && courant.module.reprise) courant.module.reprise(); }
 
+// Le COMBAT n'a plus d'écran à lui : il se joue dans l'exploration.
+//   - dans un lieu (scène, déclencheur) : les morts surgissent autour du joueur (explore/vue.combatIci) ;
+//   - ailleurs (voyage) : une EMBUSCADE, petit bout de route jouable (explore/vue.embuscade), par-dessus le voyage.
+// → Promise<{ issue: 'victoire'|'fuite'|'mort', tues, fuis, xp, bruit }>
 export async function combattre(spec) {
-  pileOverlays.push('combat'); pauserCourant();
-  clock.setVitesse(vitesseSolo('combat'));
+  spec = normaliserCombat(spec);
+  emit('combat:debut', { spec });
+  const vue = await import('../explore/vue.js');
+  let r = null;
   try {
-    const m = await import('../combat/vue.js');
-    spec = normaliserCombat(spec);
-    emit('combat:debut', { spec });
-    const canal = combatDistant ? await combatDistant(spec) : null;
-    const r = await m.ouvrir({ spec, canal });
-    emit('combat:fin', { resultat: r });
-    return r;
-  } finally {
-    pileOverlays.pop(); clock.setVitesse(vitesseSolo(courant ? courant.nom : 'exploration')); reprendreCourant();
-  }
+    if (courant && courant.nom === 'exploration' && vue.actif()) {
+      // Une scène a pu mettre l'exploration (et l'horloge) en pause : le combat, lui, se joue en temps réel.
+      const pausesHorloge = clock.pausesActives();
+      clock.viderPauses();
+      if (courant.module.reprise) courant.module.reprise();
+      try { r = await vue.combatIci(spec); }
+      finally {
+        for (const raison of pausesHorloge) clock.pause(raison);
+        if (pileOverlays.length && courant && courant.module.pause) courant.module.pause();
+      }
+    } else {
+      pileOverlays.push('combat'); pauserCourant();
+      clock.setVitesse(vitesseSolo('combat'));
+      try {
+        const echelle = (G && G.player.position && G.player.position.voyage && lieuDe(G.player.position.voyage.vers) || {}).echelle;
+        r = await vue.embuscade({ ...spec, echelle: spec.echelle || echelle || 'region' });
+      } finally {
+        pileOverlays.pop(); clock.setVitesse(vitesseSolo(courant ? courant.nom : 'exploration')); reprendreCourant();
+      }
+    }
+  } catch (e) { console.warn('[flow] combat', e); r = { issue: 'fuite', tues: [], fuis: [] }; }
+  r = r || { issue: 'fuite', tues: [], fuis: [] };
+  emit('combat:fin', { resultat: r });
+  return r;
 }
 export async function scene(id, opts = {}) {
   pileOverlays.push('scene'); pauserCourant(); clock.pause('scene');

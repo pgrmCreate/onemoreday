@@ -1,5 +1,6 @@
 // ============ Panneau Inventaire — Sac / Équipement / Au sol ============
-// Objets groupés par catégorie ; au toucher : fiche + actions contextuelles ; jauges poids / encombrement ; paper-doll.
+// Objets groupés par catégorie ; au toucher : fiche + actions contextuelles ; jauges poids / VOLUME (litres) ; paper-doll
+// avec les MAINS (droite, gauche, deux mains) et le DOS (un gros objet sanglé, 25 % plus léger).
 import { G } from '../../core/state.js';
 import { emit } from '../../core/bus.js';
 import { REGLAGES } from '../../data/reglages.js';
@@ -50,7 +51,7 @@ function jaugesCharge(p) {
   const cls = b.bloque ? 'rouge' : b.f > 0 ? 'ambre' : '';
   return el('div', { class: 'inv-charge' },
     jauge({ label: 'Poids', icone: 'poids', v: vp, repere, texte: `${fmtKg(b.kg)} / ${fmtKg(b.max)}`, cls: `mini ${cls}`, titre: `Au-delà de ${fmtKg(b.max)} : surpoids. Au-delà de ${fmtKg(b.plafond)} : impossible de bouger.` }),
-    jauge({ label: 'Place', icone: 'encombrement', v: b.espaceMax ? b.espace / b.espaceMax : 1, texte: `${b.espace} / ${b.espaceMax}`, cls: `mini ${b.espace >= b.espaceMax ? 'ambre' : ''}`, titre: 'Emplacements : poches, vêtements et sac. Les petits objets ne comptent pas.' }));
+    jauge({ label: 'Volume', icone: 'encombrement', v: b.volumeMax ? b.volume / b.volumeMax : 1, texte: `${fmtL(b.volume)} / ${fmtL(b.volumeMax)}`, cls: `mini ${b.volume >= b.volumeMax - 0.3 ? 'ambre' : ''}`, titre: 'Poches (petits objets ≤ 1 L) + sac. Une planche fait 14 L : elle se porte en main ou dans le dos.' }));
 }
 
 // ---------- Onglet Sac ----------
@@ -58,8 +59,8 @@ function metaObjet(it, d) {
   const bits = [];
   const kg = (d.poids || 0) * it.qty + (it.eau ? it.eau.L : 0);
   bits.push(fmtKg(kg));
-  const e = inv.espaceDe(it.id);
-  if (e) bits.push(`${e * it.qty} pl.`);
+  const v = inv.volumeDe(it.id) * it.qty;
+  if (v >= 0.05) bits.push(fmtL(Math.round(v * 10) / 10));
   return bits.join(' · ');
 }
 function ligneObjet({ index, it, def: d }, p, actif, onclick) {
@@ -84,8 +85,8 @@ function enteteSac(p) {
     el('div', {},
       el('strong', {}, sac ? sac.nom : 'Pas de sac'),
       el('p', {}, sac
-        ? `+${sac.espace} places, +${sac.portage} kg portables. ${b.espaceMax - b.espace} place${b.espaceMax - b.espace > 1 ? 's' : ''} libre${b.espaceMax - b.espace > 1 ? 's' : ''} sur ${b.espaceMax}.`
-        : `Tes poches seulement : ${b.espaceMax - b.espace} place${b.espaceMax - b.espace > 1 ? 's' : ''} libre${b.espaceMax - b.espace > 1 ? 's' : ''} sur ${b.espaceMax}.`)));
+        ? `Sac : ${fmtL(b.sac.utilise)} / ${fmtL(b.sac.max)} · poches : ${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)} · +${sac.portage} kg portables.`
+        : `Pas de sac : tes poches seulement (${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)}), et seulement les petits objets.`)));
 }
 function listeSac(col, p, racine, api) {
   col.append(enteteSac(p));
@@ -102,17 +103,22 @@ function listeSac(col, p, racine, api) {
 
 // ---------- Onglet Équipement (paper-doll) ----------
 const GAUCHE = ['tete', 'torse', 'mains', 'jambes', 'pieds'];
-const DROITE = ['arme', 'lampe', 'sac', 'ceinture', 'holster'];
-const ICONE_SLOT = { tete: 'tete', torse: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', arme: 'main_arme', lampe: 'lampe', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
+const DROITE = ['arme', 'mainG', 'dos', 'lampe', 'sac', 'ceinture', 'holster'];
+const ICONE_SLOT = { tete: 'tete', torse: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', arme: 'main_arme', mainG: 'main_arme', dos: 'sac', lampe: 'lampe', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
 function caseSlot(slot, p, racine, api) {
-  const id = p.equip[slot]; const d = id ? inv.def(id) : null;
+  const m = inv.mains(p);
+  let id = p.equip[slot];
+  if (slot === 'mainG' && !id && inv.lampeTenue(p.equip.lampe)) id = p.equip.lampe;   // la lampe tenue occupe la main gauche
+  const d = id ? inv.def(id) : null;
   const actif = etat.sel && etat.sel.zone === 'slot' && etat.sel.ref === slot;
   const b = el('button', { type: 'button', class: `eq-slot${id ? ' plein' : ''}${actif ? ' actif' : ''}`, onclick: () => { etat.sel = { zone: 'slot', ref: slot }; dessiner(racine, api); } });
   b.append(el('span', { class: 'eq-ic' }, icoEl(id ? iconeObjet(id) : ICONE_SLOT[slot])));
-  const t = el('span', { class: 'eq-txt' }, el('small', {}, inv.NOMS_SLOTS[slot]), el('span', {}, d ? d.nom : (slot === 'arme' ? 'Mains nues' : '—')));
+  const vide = slot === 'arme' ? 'Main nue' : slot === 'mainG' && m.deux ? '(tient l\'arme à deux mains)' : '—';
+  const titre = slot === 'arme' && m.deux ? 'Deux mains' : inv.NOMS_SLOTS[slot];
+  const t = el('span', { class: 'eq-txt' }, el('small', {}, titre), el('span', {}, d ? d.nom + (slot === 'arme' && m.uneMainPenalite ? ' (une main)' : '') : vide));
   b.append(t);
-  if (slot === 'arme' && p.equipEtat.arme && p.equipEtat.arme.durMax) {
-    const u = p.equipEtat.arme.dur / p.equipEtat.arme.durMax;
+  if (inv.SLOTS_TENUS.includes(slot) && p.equipEtat[slot] && p.equipEtat[slot].durMax) {
+    const u = p.equipEtat[slot].dur / p.equipEtat[slot].durMax;
     b.append(el('span', { class: 'inv-usure' + (u < 0.2 ? ' bas' : '') }, el('i', { style: { width: pct(u) } })));
   }
   if (slot === 'lampe' && id) {
@@ -191,7 +197,8 @@ function statsObjet(id, it, p) {
     const c = CLOTHES[id];
     if (c.protection) rows.push(['Protection', `${c.protection}`]);
     if (c.chaleur) rows.push(['Chaleur', `+${c.chaleur}`]);
-    if (c.espace) rows.push(['Place offerte', `+${c.espace}`]);
+    if (c.slot === 'sac') rows.push(['Contenance', fmtL(inv.contenanceSac(id))]);
+    else if (c.espace) rows.push(['Poches', `+${fmtL(c.espace)}`]);
     if (c.portage) rows.push(['Portage', `+${fmtKg(c.portage)}`]);
     if (c.accesRapide) rows.push(['Accès rapide', `+${c.accesRapide}`]);
     if (c.agilite) rows.push(['Agilité', `${c.agilite > 0 ? '+' : ''}${c.agilite}`]);
@@ -207,7 +214,10 @@ function statsObjet(id, it, p) {
   if (REGLAGES.lumiere.SOURCES[id] && ITEMS[id]) { const s = REGLAGES.lumiere.SOURCES[id]; rows.push(['Portée', `${s.portee} cases`], ['Autonomie', `${Math.round(s.minParCharge / 60 * 10) / 10} h / ${s.charge ? inv.nomObjet(s.charge).toLowerCase() : 'charge'}`]); }
   if (d.type === 'livre') rows.push(['Lecture', `${d.lecture} min`], ['Lu', p.livresLus.includes(id) ? 'oui' : 'non']);
   rows.push(['Poids', fmtKg((d.poids || 0) + (it && it.eau ? it.eau.L : 0))]);
-  const e = inv.espaceDe(id); rows.push(['Place', e ? `${e}` : 'poche']);
+  const v = inv.volumeDe(id);
+  rows.push(['Volume', `${fmtL(v)}${inv.estPetit(id) ? ' (tient en poche)' : ''}`]);
+  if (inv.peutDos(id)) rows.push(['Dans le dos', `oui (pèse ${Math.round(REGLAGES.inventaire.DOS_POIDS * 100)} %)`]);
+  if ((inv.def(id) || {}).melee) rows.push(['En main', 'arme improvisée']);
   return rows;
 }
 function actionsSac(index, it, p, racine, api) {
@@ -229,9 +239,15 @@ function actionsSac(index, it, p, racine, api) {
   }
   if (d.type === 'livre') a.push({ label: p.livresLus.includes(it.id) ? 'Relire' : 'Lire', icone: 'lire', principal: true, f: () => res(craft.lire(index)) });
   const slot = inv.slotDe(it.id);
-  if (slot === 'arme') a.push({ label: 'Prendre en main', icone: 'main_arme', principal: !d.tir || true, f: () => res(inv.equiper(index)) });
-  else if (slot === 'lampe') a.push({ label: 'Équiper la lampe', icone: 'lampe', principal: true, f: () => res(inv.equiper(index)) });
-  else if (slot) a.push({ label: 'Porter', icone: 'equiper', principal: true, f: () => res(inv.equiper(index)) });
+  if (slot === 'lampe') a.push({ label: 'Équiper la lampe', icone: 'lampe', principal: true, f: () => res(inv.equiper(index)) });
+  else if (slot && slot !== 'arme') a.push({ label: 'Porter', icone: 'equiper', principal: true, f: () => res(inv.equiper(index)) });
+  if (!CLOTHES[it.id] && (d.type === 'arme' || d.melee || inv.peutDos(it.id) || inv.volumeDe(it.id) >= 1.5)) {
+    const arme = d.type === 'arme' || d.melee;
+    a.push({ label: d.deux_mains ? 'À deux mains' : 'Main droite', icone: 'main_arme', principal: !!arme && !slot || slot === 'arme', f: () => res(inv.tenir(index, d.deux_mains ? 'deux' : 'droite')) });
+    if (d.deux_mains) a.push({ label: 'Main droite seule', icone: 'main_arme', f: () => res(inv.tenir(index, 'droite')) });
+    a.push({ label: 'Main gauche', icone: 'main_arme', f: () => res(inv.tenir(index, 'gauche')) });
+    if (inv.peutDos(it.id)) a.push({ label: 'Dans le dos', icone: 'sac', f: () => res(inv.mettreDos(index)) });
+  }
   if (it.id === 'piles' || it.id === 'huile_olive') {
     const l = inv.lampe(p); if (l && l.recharge === it.id) a.push({ label: 'Recharger la lampe', icone: 'recharger', f: () => res(inv.rechargerLampe()) });
   }
@@ -254,7 +270,15 @@ function actionsSlot(slot, p, racine, api) {
     a.push({ label: l.allumee ? 'Éteindre' : 'Allumer', icone: l.allumee ? 'eteindre' : 'allumer', principal: true, f: () => res(inv.allumerLampe(!l.allumee)) });
     if (l.recharge && l.frac < 1) a.push({ label: `${l.recharge === 'piles' ? 'Changer les piles' : 'Recharger'} (${inv.nomObjet(l.recharge)} : ${inv.countItem(REGLAGES.lumiere.SOURCES[id].charge)})`, icone: 'recharger', disabled: !inv.hasItem(REGLAGES.lumiere.SOURCES[id].charge), f: () => res(inv.rechargerLampe()) });
   }
-  a.push({ label: slot === 'arme' ? 'Ranger dans le sac' : 'Retirer', icone: 'retirer', principal: slot !== 'lampe', f: () => { inv.desequiper(slot); apres(); } });
+  if (slot === 'arme' || slot === 'mainG') {
+    a.push({ label: 'Échanger les mains', icone: 'main_arme', f: () => res(inv.echangerMains()) });
+    if (slot === 'arme') a.push({ label: p.deuxMains ? 'Tenir d\'une main' : 'Tenir à deux mains', icone: 'main_arme', f: () => res(inv.basculerDeuxMains()) });
+    if (inv.peutDos(id)) a.push({ label: 'Mettre dans le dos', icone: 'sac', f: () => res(inv.mainVersDos(slot)) });
+  }
+  if (slot === 'dos') a.push({ label: 'Prendre en main', icone: 'main_arme', principal: true, f: () => res(inv.dosVersMain()) });
+  const tient = !inv.SLOTS_TENUS.includes(slot) || inv.combienTient(id, 1) >= 1;
+  a.push({ label: inv.SLOTS_TENUS.includes(slot) ? (tient ? 'Ranger dans le sac' : 'Poser au sol (trop gros)') : 'Retirer', icone: 'retirer', principal: slot !== 'lampe' && slot !== 'dos',
+    f: () => { inv.desequiper(slot); apres(); } });
   return a;
 }
 function remplirFiche(f, p, racine, api) {
@@ -264,22 +288,35 @@ function remplirFiche(f, p, racine, api) {
   if (s.zone === 'sac') { it = p.inventaire[s.ref]; if (!it) { etat.sel = null; f.append(vide('—')); return; } id = it.id; acts = actionsSac(s.ref, it, p, racine, api); }
   else if (s.zone === 'slot') {
     id = p.equip[s.ref];
+    if (!id && s.ref === 'mainG' && inv.lampeTenue(p.equip.lampe)) { etat.sel = { zone: 'slot', ref: 'lampe' }; return remplirFiche(f, p, racine, api); }
     if (!id) {
       f.append(el('div', { class: 'fi-tete' }, el('span', { class: 'fi-ic' }, icoEl(ICONE_SLOT[s.ref])), el('div', {}, el('h2', {}, inv.NOMS_SLOTS[s.ref]), el('p', { class: 'fi-type' }, 'Emplacement libre'))));
-      const cands = p.inventaire.map((x, i) => ({ x, i })).filter(({ x }) => inv.slotDe(x.id) === s.ref);
-      if (!cands.length) f.append(el('p', { class: 'fi-desc' }, s.ref === 'arme' ? 'Tu te bats à mains nues. Trouve de quoi frapper.' : 'Rien dans ton sac pour cet emplacement.'));
-      else { f.append(el('h3', { class: 'pn-section' }, 'Dans ton sac')); const l = el('div', { class: 'fi-actions' }); cands.forEach(({ x, i }) => l.append(bouton({ label: inv.nomObjet(x.id), icone: iconeObjet(x.id), cls: 'second', onclick: () => { inv.equiper(i); etat.sel = { zone: 'slot', ref: s.ref }; dessiner(racine, api); } }))); f.append(l); }
+      const filtre = s.ref === 'arme' || s.ref === 'mainG' ? (x) => !CLOTHES[x.id] && (inv.def(x.id) || {}).type !== 'munition' && ((inv.def(x.id) || {}).type === 'arme' || (inv.def(x.id) || {}).melee || !inv.estPetit(x.id))
+        : s.ref === 'dos' ? (x) => inv.peutDos(x.id) : (x) => inv.slotDe(x.id) === s.ref;
+      const cands = p.inventaire.map((x, i) => ({ x, i })).filter(({ x }) => filtre(x));
+      if (!cands.length) f.append(el('p', { class: 'fi-desc' }, s.ref === 'arme' ? 'Tu te bats à mains nues. Trouve de quoi frapper.' : s.ref === 'dos' ? 'Rien d\'assez long pour se sangler dans le dos (pelle, planche, fusil…).' : 'Rien dans ton sac pour cet emplacement.'));
+      else {
+        f.append(el('h3', { class: 'pn-section' }, 'Dans ton sac')); const l = el('div', { class: 'fi-actions' });
+        const prendre = (i) => s.ref === 'dos' ? inv.mettreDos(i) : s.ref === 'mainG' ? inv.tenir(i, 'gauche') : s.ref === 'arme' ? inv.tenir(i, (inv.def(p.inventaire[i].id) || {}).deux_mains ? 'deux' : 'droite') : inv.equiper(i);
+        cands.forEach(({ x, i }) => l.append(bouton({ label: inv.nomObjet(x.id), icone: iconeObjet(x.id), cls: 'second', onclick: () => { const r = prendre(i); if (r && r.ok === false && r.raison) emit('toast', { texte: r.raison }); etat.sel = { zone: 'slot', ref: s.ref }; dessiner(racine, api); } })));
+        f.append(l);
+      }
       return;
     }
-    it = s.ref === 'arme' ? { id, qty: 1, ...(p.equipEtat.arme || {}) } : { id, qty: 1 };
+    it = inv.SLOTS_TENUS.includes(s.ref) ? { id, qty: 1, ...(p.equipEtat[s.ref] || {}) } : { id, qty: 1 };
     acts = actionsSlot(s.ref, p, racine, api);
   } else {
     it = inv.objetsAuSol()[s.ref]; if (!it) { etat.sel = null; f.append(vide('—')); return; } id = it.id;
     acts = [];
-    if (inv.slotDe(it.id)) acts.push({ label: inv.slotDe(it.id) === 'arme' ? 'Prendre en main' : inv.slotDe(it.id) === 'lampe' ? 'Prendre la lampe' : 'Porter', icone: 'equiper', principal: true,
-      f: () => { const r = inv.equiperDepuisSol(s.ref); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
+    const ou = inv.ouPorter(it.id);
+    if (ou) acts.push({ label: { vetement: 'Porter', lampe: 'Prendre la lampe', main: 'Prendre en main', dos: 'Dans le dos' }[ou], icone: 'equiper', principal: true,
+      f: () => { const r = inv.equiperDepuisSol(s.ref, p, ou); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
+    if (ou === 'dos' || (ou === 'main' && inv.peutDos(it.id) && !p.equip.dos)) {
+      if (ou === 'dos') acts.push({ label: 'Prendre en main', icone: 'main_arme', f: () => { const r = inv.equiperDepuisSol(s.ref, p, 'main'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
+      else acts.push({ label: 'Dans le dos', icone: 'sac', f: () => { const r = inv.equiperDepuisSol(s.ref, p, 'dos'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
+    }
     const tient = inv.combienTient(it.id, it.qty || 1) >= 1;
-    acts.push({ label: tient ? 'Ramasser' : 'Sac plein', icone: 'ramasser', principal: !acts.length, disabled: !tient, raison: tient ? null : 'Plus de place',
+    acts.push({ label: tient ? 'Ramasser' : (inv.estPetit(it.id) ? 'Sac plein' : 'Trop gros pour le sac'), icone: 'ramasser', principal: !acts.length, disabled: !tient, raison: tient ? null : inv.raisonPlace(it.id),
       f: () => { if (!tient) return; inv.ramasser(s.ref); etat.sel = null; dessiner(racine, api); } });
   }
   const d = inv.def(id) || { nom: id };

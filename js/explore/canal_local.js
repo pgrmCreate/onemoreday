@@ -1,16 +1,18 @@
 // ============ Canal local — la vue parle au monde uniquement par ici (REFONTE §12.3) ============
 // creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 10 }) :
-//   propriétaire → fait tourner sim.tick à 10 Hz (setInterval) et diffuse les événements.
+//   propriétaire → fait tourner sim.tick à 20 Hz (setInterval) et diffuse les événements (le combat se joue ici).
 //   Plusieurs canaux peuvent partager une même sim (co-op locale / tests) : un seul propriétaire.
 // Interface (identique pour le futur canal distant de l'invité) :
 //   majJoueur(patch), bruit(b), porte(cle, action) → Promise, fouiller(cle) → Promise, prendre(cle, i) → Promise,
 //   deposer(pos, item) → Promise, instantane(), pairs(), on(evt, fn) → off
-// Extensions : ajouterJoueur(pos, info), arreterFouille(progres), attaquer(uid) → Promise, blesserZombie(uid, n), retirerZombies(uids, o),
-//   repousserZombies(uids, depuis), finCombat(), pause(), reprise(), fermer(), niveau, joueurId, grilles(etage).
-// Événements : 'contact', 'renfort', 'porte', 'bruit', 'zombie', 'hurlement', 'charge', 'sol', 'conteneur', 'tick'.
+// Combat : action(a) → Promise ({ type: 'frapper'|'pousser'|'tirer'|'marteler', … }), faireApparaitre(liste, o) → Promise<uids>.
+// Extensions : ajouterJoueur(pos, info), arreterFouille(progres), blesserZombie(uid, n), retirerZombies(uids, o),
+//   repousserZombies(uids, depuis), pause(), reprise(), fermer(), niveau, joueurId, grilles(etage).
+// Événements : 'porte', 'bruit', 'zombie', 'hurlement', 'charge', 'sol', 'conteneur', 'tick' + combat : 'telegraphe', 'attaque',
+//   'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule'.
 const canauxParSim = new WeakMap();
 
-export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 10 } = {}) {
+export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } = {}) {
   const ecouteurs = new Map();
   let timer = null, dernier = 0, enPause = false, ferme = false;
   let liste = canauxParSim.get(sim);
@@ -37,10 +39,11 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 10 } 
 
   const canal = {
     joueurId, niveau: sim.niveau, local: true,
-    _recevoir(evts) {
+    _recevoir(evts, avecTick = true) {
       for (const e of evts) diffuser(e.type, e);
-      diffuser('tick', { t: performance.now() });
+      if (avecTick) diffuser('tick', { t: performance.now() });
     },
+    hz,
     ajouterJoueur(pos, info) { if (!sim.joueur(joueurId)) sim.ajouterJoueur(joueurId, pos, info); else sim.majJoueur(joueurId, { ...pos, ...info }); },
     majJoueur(patch) { sim.majJoueur(joueurId, patch); },
     bruit(b) { sim.bruit({ source: joueurId, ...b }); },
@@ -49,14 +52,20 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 10 } 
     arreterFouille(progres) { sim.arreterFouille(joueurId, progres); },
     prendre(cle, i) { return ok(sim.prendre(joueurId, cle, i)); },
     deposer(pos, item) { return ok(sim.deposer(joueurId, pos, item)); },
-    attaquer(uid) { return ok(sim.attaquer(joueurId, uid)); },
+    action(a) {
+      const r = sim.action(joueurId, a);
+      const evts = sim.viderEvenements();     // livrés tout de suite : le coup se voit et s'entend sans attendre le pas
+      if (evts.length) for (const c of liste) c._recevoir(evts, false);
+      return ok(r);
+    },
+    faireApparaitre(l, o) { return ok(sim.faireApparaitre(l, { joueurId, ...(o || {}) })); },
     blesserZombie(uid, n) { return ok(sim.blesserZombie(uid, n)); },
     retirerZombies(uids, o) { sim.retirerZombies(uids, o); return ok(true); },
     repousserZombies(uids, depuis) { sim.repousserZombies(uids, depuis); return ok(true); },
-    finCombat() { sim.finCombat(joueurId); },
     instantane() { return sim.instantane(); },
     pairs() {
-      return sim.joueurs().filter(j => j.id !== joueurId).map(j => ({ id: j.id, nom: j.nom, x: j.x, y: j.y, etage: j.etage, dir: j.dir, enCombat: j.enCombat, lampe: j.lampe, lampeSource: j.lampeSource, allure: j.allure }));
+      const snap = sim.instantane();
+      return (snap.joueurs || []).filter(j => j.id !== joueurId);
     },
     grilles(etage) { return sim.grilles(etage); },
     marquerJoue(i) { sim.marquerJoue(i); }, estJoue(i) { return sim.estJoue(i); },

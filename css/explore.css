@@ -136,3 +136,68 @@
   .explore .ex-butin { top: 64px !important; bottom: 12px; right: 50%; transform: translateX(50%) !important; width: min(420px, 70vw); max-height: none !important; }
   .explore .ex-butin .ex-b { min-height: 44px; }
 }
+
+/* ======================= COMBAT DANS L'EXPLORATION ======================= */
+/* Voile rouge quand on encaisse (et quand les PV sont bas) */
+.ex-sang { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(120,8,14,.55) 80%, rgba(90,0,6,.85) 100%); }
+
+/* Ce que l'on tient : main droite / gauche / dos (en haut à droite ; touche = échanger les mains / reprendre le dos) */
+.ex-mains { position: absolute; top: 12px; right: 222px; display: flex; gap: 4px; z-index: 4; }
+@media (max-width: 760px) { .ex-mains { right: 214px; } .ex-main { min-width: 0 !important; max-width: 140px; } }
+.ex-main { position: relative; min-height: 38px; min-width: 120px; max-width: 34vw; padding: 3px 10px 5px; text-align: left;
+  background: rgba(11,11,12,.66); border: 1px solid rgba(230,223,204,.2); color: var(--ex-creme); font: inherit; cursor: pointer; }
+.ex-main small { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: rgba(230,223,204,.5); }
+.ex-main span { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-main em { position: absolute; right: 8px; top: 4px; font-style: normal; font-size: 11px; color: var(--ex-ambre); }
+.ex-main.droite { border-color: rgba(201,162,39,.45); }
+.ex-main.dos { border-style: dashed; }
+.ex-usure { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 2px; background: rgba(230,223,204,.12); }
+.ex-usure b { display: block; height: 100%; background: rgba(230,223,204,.6); }
+.ex-usure.bas b { background: var(--ex-sang); }
+
+/* « Dégage-toi ! » pendant une empoignade */
+.ex-degage { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); pointer-events: none; z-index: 4;
+  font-size: 26px; letter-spacing: .1em; text-transform: uppercase; color: var(--ex-ambre); text-shadow: 0 2px 10px #000, 0 0 3px #000;
+  animation: ex-pulse .5s ease-in-out infinite alternate; }
+@keyframes ex-pulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.08); } }
+
+/* Embuscade nettoyée */
+.ex-route { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 6; min-height: 48px; padding: 0 22px;
+  background: rgba(40,32,10,.85); border: 1px solid var(--ex-ambre); color: var(--ex-creme); font: inherit; font-size: 17px; letter-spacing: .06em; cursor: pointer; }
+
+/* Boutons tactiles de combat : Frapper (gros, coin bas-droit), Pousser à côté */
+.ex-pad-combat { display: flex; align-items: flex-end; gap: 12px; }
+.ex-btn-frapper, .ex-btn-pousser { position: relative; display: grid; place-items: center; padding: 0 !important; border-radius: 50%; overflow: visible; }
+.ex-btn-frapper { width: 88px; height: 88px; min-width: 88px; border: 2px solid rgba(230,223,204,.5); background: rgba(60,14,18,.55); }
+.ex-btn-pousser { width: 64px; height: 64px; min-width: 64px; margin-bottom: 6px; background: rgba(11,11,12,.6); }
+.ex-frap-ico { display: grid; place-items: center; margin-top: -8px; }
+.ex-frap-ico svg { width: 28px; height: 28px; }
+.ex-btn-pousser .ex-frap-ico svg { width: 22px; height: 22px; }
+.ex-frap-l { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 11px; letter-spacing: .08em; }
+.ex-btn-pousser .ex-frap-l { bottom: 8px; font-size: 10px; }
+.ex-btn-frapper.proche { border-color: #d6303e; box-shadow: 0 0 14px rgba(214,48,62,.45); }
+.ex-btn-frapper.empoigne, .ex-btn-pousser.empoigne { border-color: var(--ex-ambre); background: rgba(201,162,39,.25); animation: ex-tremble .12s linear infinite; }
+@keyframes ex-tremble { 0% { translate: 0 0; } 50% { translate: 1px -1px; } 100% { translate: -1px 1px; } }
+/* anneau de charge (conic) */
+.ex-frap-anneau { position: absolute; inset: -6px; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: conic-gradient(#c9a227 calc(var(--charge, 0) * 360deg), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%); mask: radial-gradient(circle, transparent 60%, #000 61%); }
+.ex-btn-frapper.charge .ex-frap-anneau { opacity: 1; }
+/* recharge de la poussée */
+.ex-btn-pousser .ex-cd { position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(rgba(0,0,0,.55) calc(var(--cd, 0) * 360deg), transparent 0); }
+.ex-btn-pousser.recharge { opacity: .7; }
+.ex-btn-recharger { align-self: flex-end; margin-bottom: 14px; font-size: 11px !important; border-radius: 26px !important; padding: 0 12px !important; }
+@media (max-height: 420px) {
+  .ex-btn-frapper { width: 76px; height: 76px; min-width: 76px; }
+  .ex-btn-pousser { width: 56px; height: 56px; min-width: 56px; }
+  .ex-pad { gap: 6px !important; }
+  .ex-btn-inter { min-height: 48px !important; }
+  .ex-main { min-width: 80px; padding: 3px 8px 5px; }
+}
+/* PC : rappel des commandes de combat sous le nom du lieu */
+.ex-aide-cbt { position: absolute; right: 12px; bottom: 12px; font-size: 12px; color: rgba(230,223,204,.45); pointer-events: none; text-align: right; line-height: 1.5; }
+.explore.ex-tactile .ex-aide-cbt { display: none; }
+@media (pointer: coarse) { .explore .ex-aide-cbt { display: none; } }
+.explore.ex-arene { z-index: 20; }

@@ -17,7 +17,7 @@ deux, articulé en **trois temps** :
 |---|---|---|---|
 | **1. Exploration** | on est DANS un lieu (hôtel, pharmacie, place…) | **déplacement libre** (joystick / clavier), vue de dessus, lumière & champ de vision façon *Darkwood*, morts en temps réel | `js/explore/` |
 | **2. La carte** | on passe d'un lieu à l'autre | **pas de déplacement en direct** : on choisit une destination sur une **carte illustrée** (distance en mètres, durée, risque), puis un écran de **voyage** fait défiler les mètres restants et déclenche des **rencontres** | `js/travel/` |
-| **3. Le combat** | un mort (ou une horde) nous tombe dessus | **temps réel** lisible : jauge de menace, télégraphie, garde, esquive, attaque chargée, poussée, tir | `js/combat/` |
+| ~~3. Le combat~~ | **supprimé comme écran à part** (refonte « combat dans l'exploration ») : on se bat SUR PLACE, en temps réel — se déplacer, frapper (rapide / chargé), pousser, tirer. Voir §7. | | `js/explore/` |
 
 Plus : **cinématiques en parallaxe animée** (`js/cine/`), **scènes narratives à choix**
 (`js/ui/dialogue.js`), **interface** inventaire / corps / fabrication / journal refaite (`js/ui/`).
@@ -396,27 +396,29 @@ export const CINEMATIQUES = {
   On peut **faire demi-tour** à tout moment. Arrivée → `flow.explorer(vers)`.
 - **Aucun déplacement libre sur la carte.**
 
-## 7. Temps 3 — Le combat (temps réel, refait proprement)
+## 7. Le combat — DANS l'exploration (refonte)
 
-- Écran plein : décor du lieu (flou, sombre), le mort **en grand** (PNG détouré de `/zombies/` si dispo, sinon
-  silhouette SVG), la **file** de la horde derrière (silhouettes plus petites, numérotées).
-- Chaque mort : **jauge de menace** qui se remplit (`menace` ms) → **télégraphie** (`telegraphe` ms : il se ramasse,
-  contour rouge, son) → **ruée**. Pendant la télégraphie : **Esquive** (réussie = il frappe dans le vide ; parfaite
-  dans les 250 dernières ms = **fenêtre de contre** 1 s, coup garanti ×1,6), **Garde** tenue (bloque, coûte de
-  l'endurance, peut céder), ou **coup chargé** qui **l'interrompt** (stagger). Sinon : touché → **blessure
-  localisée** (zone du corps décrite par l'attaque).
-- **Empoignade** (`saisie`) : il t'agrippe → marteler Frapper/Pousser avant la fin du compte à rebours, sinon morsure.
-- **Actions** : Frapper (appui court = coup rapide ; **maintenir** = charger, relâcher = coup lourd, stagger),
-  **Pousser** (repousse la jauge de 35 %, pas de dégâts, recharge), **Garde** (maintenir), **Esquive**, **Tir**
-  (maintenir pour viser → relâcher ; bruit → renforts), **accès rapide** (ceinture : changer d'arme, …), **Fuir**
-  (maintenir 1,5 s ; jet agilité/endurance/nombre).
-- **Endurance** : chaque geste coûte, récupère au repos ; épuisé = gestes lents, plus d'esquive.
-- **Un mort actif par joueur** ; quand il tombe, le suivant de la file s'avance. Renforts possibles (bruit, hurleur).
-- **À deux** : deux « fronts », chacun son mort actif ; on peut **aider** (frapper celui de l'autre : bonus de flanc).
-- Retours clairs : chiffres de dégâts, éclaboussures, secousse d'écran, flash rouge, sons, vibrations (mobile).
-- Clavier : Espace/J frapper (maintenir = charger), K garde (maintenir), L/Maj esquive, H pousser, 1-4 accès
-  rapide, R recharger, Échap (maintenir) fuir. **Zéro ambiguïté** : chaque bouton dit ce qu'il fait.
-- Résultat → `{ issue: 'victoire'|'fuite'|'mort', tues: [uids], blessures: [...], xp: {}, usure: {armeId: n}, munitions }`.
+Il n'y a plus d'écran de combat. Les morts se battent là où ils sont, dans la simulation du lieu (`js/explore/sim.js`,
+règles dans `js/explore/combat.js`, nombres dans `REGLAGES.combat`). Trois gestes seulement : **se déplacer, frapper, pousser**
+(pas d'esquive, pas de garde).
+
+- **Un mort en chasse** s'approche et s'arrête à bout de bras (0,7 case). À portée (`portee`), il **télégraphie**
+  (`telegraphe` ms) : un **arc au sol** devant lui, **rouge = coup**, **ambre = empoignade**. À la fin, il frappe : touché si tu es
+  encore à portée (+0,25) et dans son cône de 120°. Puis il récupère (`cadence` ms). On l'évite en **reculant**, on l'annule en
+  le **poussant** ou d'un **coup chargé** (≥ 50 %) qui touche.
+- **Empoignade** : il t'agrippe ; marteler Frapper / Pousser avant la fin de l'anneau (sinon **morsure** — la seule source de morsure).
+  Les autres morts attendent leur tour.
+- **Frapper** : appui court = coup rapide ; maintenir = coup chargé (anneau), relâcher = coup lourd (recul, vacillement, usure 2).
+  Portée / arc / cibles selon l'allonge de l'arme (court 1,05 case 100° 1 cible ; moyen 1,4 case 120° balayage 2 cibles ; long 1,8 case 60°).
+  Furtif (mort non alerté, de dos) : ×3, silencieux s'il tue.
+- **Pousser** : tout ce qui est devant (1,5 case, 130°) recule et vacille (télégraphie annulée), chance de mise à terre ; un colosse ne bouge pas.
+- **Tir** : maintenir = viser (immobile = précision pleine), relâcher = tirer vers ta visée ; R = recharger.
+- **Visée** : PC = la souris ; tactile = **visée assistée** vers le mort le plus menaçant devant toi.
+- **Retours** : chiffres de dégâts, sang, secousse, voile rouge, vibrations, « Dégage-toi ! » ; zoom qui se rapproche quand un mort charge.
+- **Combats scénarisés** (`flow.combattre(spec)`) : dans un lieu, les morts **surgissent autour du joueur** (`vue.combatIci`) ;
+  pendant un voyage, une **embuscade** : un bout de route généré (`explore/embuscade.js`), on s'en sort en tuant ou par un bord.
+  Résultat inchangé : `{ issue: 'victoire'|'fuite'|'mort', tues, fuis }`.
+- **Co-op** : la sim du lieu est tenue par l'hôte ; l'invité envoie ses gestes (`x:act`), l'hôte relaie les événements de combat.
 
 ## 8. Interface & direction artistique
 
@@ -535,7 +537,15 @@ s'ouvrent PAR-DESSUS l'exploration/le voyage (l'exploration se met en pause via 
   Marqueurs / entrée de lieu / zones → déclencheurs (`js/data/histoire/declencheurs.js`) → `flow.scene(id)`.
   Documents au sol → lecture (émettre `bus 'document'` + `G.documents.push(id)`).
 
-### 12.4 Combat (agent Combat)
+### 12.4 Combat (dans l'exploration — remplace l'ancien `js/combat/`)
+- `js/explore/combat.js` : règles pures (`resoudreCoup`, `resoudreAttaque`, `geometrie`, `chargeDepuisAppui`…).
+- `js/explore/sim.js` : `action(joueurId, { type: 'frapper'|'pousser'|'tirer'|'marteler', charge?, visee?, x, y, dir, ess, stats? })`,
+  `faireApparaitre(liste, { joueurId, surprise })`, événements `telegraphe`, `attaque`, `blessure` (appliquée par le client du joueur visé),
+  `saisie`, `martele`, `degage`, `coup`, `rate`, `coup_vide`, `mort_zombie`, `poussee`, `tir`, `bouscule`.
+- `js/explore/combat_vue.js` : gestes, endurance, retours, blessures appliquées au corps (`survival.infligerBlessure`).
+- `js/game/stats_combat.js` : `statsCombat(player)` (arme de la main droite, protection par zone, compétences) — envoyé via `canal.majJoueur({ stats })`.
+
+(Ancien contrat, conservé pour mémoire :)
 - `js/combat/sim.js` : `creerCombat({ id, lieuId, participants: [{ id, nom, stats }], zombies: [{ uid, type, hp? }], seed, danger, surprise })`
   → `action(joueurId, a)`, `ajouterParticipant(p)`, `ajouterZombies(liste)`, `tick(dtMs) → evenements[]`, `etat()`,
   `fini()`, `resultat(joueurId)`. Événements : `coup`, `rate`, `bloque`, `esquive`, `contre`, `saisie`, `blessure`

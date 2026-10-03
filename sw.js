@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v21';
+const CACHE = 'onemoreday-v22';
 const FICHIERS = [
   './',
   './index.html',
@@ -7,7 +7,6 @@ const FICHIERS = [
   './css/base.css',
   './css/carte.css',
   './css/cine.css',
-  './css/combat.css',
   './css/explore.css',
   './css/ui.css',
   './js/audio.js',
@@ -53,12 +52,6 @@ const FICHIERS = [
   './js/cine/scenes/senas_station.js',
   './js/cine/scenes/troupeau_feu.js',
   './js/cine/scenes/vernegues_ruines.js',
-  './js/combat/canal_local.js',
-  './js/combat/decor.js',
-  './js/combat/silhouettes.js',
-  './js/combat/sim.js',
-  './js/combat/stats.js',
-  './js/combat/vue.js',
   './js/core/bus.js',
   './js/core/clock.js',
   './js/core/prefs.js',
@@ -145,6 +138,9 @@ const FICHIERS = [
   './js/data/zombies.js',
   './js/data/zones.js',
   './js/explore/canal_local.js',
+  './js/explore/combat.js',
+  './js/explore/combat_vue.js',
+  './js/explore/embuscade.js',
   './js/explore/entrees.js',
   './js/explore/niveau.js',
   './js/explore/physique.js',
@@ -164,6 +160,7 @@ const FICHIERS = [
   './js/game/meteo.js',
   './js/game/player.js',
   './js/game/quetes.js',
+  './js/game/stats_combat.js',
   './js/game/survival.js',
   './js/main.js',
   './js/net/coop.js',

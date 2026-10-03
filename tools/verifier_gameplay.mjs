@@ -81,6 +81,7 @@ for (const [id, d] of Object.entries(ITEMS)) {
   if (d.type === 'quete') W(`${o} : type 'quete' dans items.js — les objets de quête vont dans histoire/objets_quete.js`);
   if (!num(d.poids) || d.poids < 0) E(`${o} : poids invalide`);
   if (!num(d.espace) || d.espace < 0) E(`${o} : espace invalide`);
+  if (d.volume != null && (!num(d.volume) || d.volume < 0)) E(`${o} : volume (L) invalide`);
   for (const t of d.usage || []) if (!TAGS.includes(t)) E(`${o} : tag d'usage inconnu « ${t} »`);
   if (d.rend && !existe(d.rend)) E(`${o} : rend « ${d.rend} » inexistant`);
   if (d.carburant && !existe(d.carburant)) E(`${o} : carburant « ${d.carburant} » inexistant`);
@@ -141,13 +142,16 @@ const SPECIAUX = ['hurle', 'explose', 'rampe', 'charge', null];
 const TYPES_ATT = mZ.TYPES_ATTAQUE;
 const TMIN = REGLAGES.combat.TELEGRAPHE_MIN_MS;
 const nZ = Object.keys(ZOMBIES).length;
-if (nZ < 8 || nZ > 12) W(`bestiaire : ${nZ} types (visé : 8 à 12)`);
+if (nZ < 4 || nZ > 6) W(`bestiaire : ${nZ} types (visé : 4 à 6, chacun homme ou femme)`);
 for (const [id, z] of Object.entries(ZOMBIES)) {
   const o = `mort ${id}`;
   for (const k of ['nom', 'desc', 'gore']) if (!z[k]) E(`${o} : champ ${k} manquant`);
   if (!num(z.hp) || z.hp <= 0) E(`${o} : hp invalide`);
   if (!paire(z.dmg)) E(`${o} : dmg invalide`);
-  if (!num(z.menace) || z.menace < 800) E(`${o} : menace (ms) invalide ou trop courte`);
+  if (!num(z.portee) || z.portee < 0.6 || z.portee > 1.6) E(`${o} : portee (cases) hors 0,6..1,6`);
+  if (!num(z.cadence) || z.cadence < 500) E(`${o} : cadence (ms) invalide ou trop courte`);
+  if (!z.noms || !z.noms.h || !z.noms.f) E(`${o} : noms { h, f } manquants`);
+  if (!z.sexes || Math.abs((z.sexes.h || 0) + (z.sexes.f || 0) - 1) > 0.01) E(`${o} : sexes { h, f } ne somment pas à 1`);
   if (!num(z.telegraphe) || z.telegraphe < TMIN) E(`${o} : telegraphe < TELEGRAPHE_MIN_MS (${TMIN})`);
   if (!dans(z.saisie, 0, 1)) E(`${o} : saisie hors 0..1`);
   if (z.saisie > 0 && (!num(z.saisieForce) || z.saisieForce < 1)) E(`${o} : saisie > 0 sans saisieForce`);

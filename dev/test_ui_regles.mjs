@@ -90,32 +90,37 @@ surv.ajouterMal(q, 100);
 ok(surv.causeMort(q) === 'rechute' && morts.includes('rechute'), 'mal à 100 : rechute, bus « mort »');
 
 // ---------- 4. Inventaire ----------
-titre('Inventaire : encombrement, poids, équipement, accès rapide, lampe');
+titre('Inventaire : volume, poids, mains, dos, équipement, accès rapide, lampe');
 nouvellePartie({ nom: 'Test', mode: 'solo', seed: 3 }); player.normaliserJoueur(G.player);
 const j = G.player;
-ok(inv.espaceMax(j) === 4 + 1, 'poches 4 + jean 1 = 5 emplacements');
-const res = inv.addItem('planche', 3, {}, j);
-ok(res.ajoute === 2 && res.auSol === 1 && inv.objetsAuSol().length === 1, 'planches : 2 au sac, la 3e posée au sol');
-ok(inv.addItem('sac_a_dos', 1, {}, j).auSol === 1, 'sac à dos (2 emplacements plié) : plus de place, posé au sol');
-inv.poser(j.inventaire.findIndex(x => x.id === 'planche'), 2, j);
-ok(inv.objetsAuSol().reduce((s, x) => s + (x.id === 'planche' ? x.qty : 0), 0) === 3, 'planches posées au sol (3)');
-const iSac = inv.objetsAuSol().findIndex(x => x.id === 'sac_a_dos');
-ok(inv.ramasser(iSac, j).ajoute === 1, 'sac ramassé');
-ok(inv.equiper(j.inventaire.findIndex(x => x.id === 'sac_a_dos'), j).ok && inv.espaceMax(j) === 11, 'sac à dos équipé : 11 emplacements');
-ok(inv.ramasser(inv.objetsAuSol().findIndex(x => x.id === 'planche'), j).ajoute === 3, 'les 3 planches ramassées');
-inv.addItem('brique', 8, {}, j);
+ok(inv.capacites(j).poches === REGLAGES.inventaire.POCHES_L + 1 && inv.capacites(j).sac === 0, 'poches de base + jean (1 L), pas de sac');
+const res = inv.addItem('planche', 1, {}, j);
+ok(res.ajoute === 0 && res.auSol === 1, 'une planche (14 L) ne rentre pas dans des poches : posée au sol');
+ok(inv.porterObjet({ id: 'sac_a_dos', qty: 1 }, j).ok && inv.capacites(j).sac === 20, 'sac à dos d\'écolier porté : 20 L');
+const iPl = inv.objetsAuSol().findIndex(x => x.id === 'planche');
+ok(inv.ramasser(iPl, j).ajoute === 1 && inv.bilan(j).sac.utilise === 14, 'planche au sac : 14 L sur 20 (70 %)');
+ok(inv.combienTient('planche', 3, j) === 0, 'une deuxième planche ne rentre plus');
+ok(inv.tenir(j.inventaire.findIndex(x => x.id === 'planche'), 'gauche', j).ok && j.equip.mainG === 'planche', 'planche en main gauche');
+ok(inv.porterObjet({ id: 'planche', qty: 1 }, j, 'droite').ok && j.equip.arme === 'planche', 'une autre planche en main droite (une dans chaque main)');
+const avant = inv.poidsPorte(j);
+ok(inv.mainVersDos('arme', j).ok && j.equip.dos === 'planche' && Math.abs(inv.poidsPorte(j) - (avant - 1.8 * (1 - REGLAGES.inventaire.DOS_POIDS))) < 0.01, `planche dans le dos : plus légère (${avant} → ${inv.poidsPorte(j)} kg)`);
+ok(inv.porterObjet({ id: 'pelle', qty: 1 }, j).ok && !j.deuxMains && inv.mains(j).uneMainPenalite, 'pelle en main droite, la gauche est prise : une seule main (pénalité)');
+ok(inv.basculerDeuxMains(j).ok && j.deuxMains && !j.equip.mainG, 'pelle à deux mains : la planche de la main gauche part au sac / au sol');
+ok(!inv.mainVersDos('arme', j).ok || j.equip.dos === 'pelle', 'la pelle passe dans le dos (la planche du dos revient en main)');
+inv.addItem('ceinture_cuir', 1, {}, j);
+j.inventaire.push({ id: 'brique', qty: 8 });   // poids forcé (8 briques ne rentrent pas toutes au sac)
 const sp = inv.surpoids(j);
 ok(sp.f > 0, `surpoids : ${sp.kg} kg / ${sp.max} kg, f = ${sp.f.toFixed(2)}`);
 ok(surv.etatsCorps(j).some(m => m.id === 'surcharge'), 'moodle « Surchargé »');
 inv.removeItem('brique', 8, j);
-inv.addItem('batte_baseball', 1, {}, j);
-ok(inv.equiper(j.inventaire.findIndex(x => x.id === 'batte_baseball'), j).ok && j.equip.arme === 'batte_baseball' && j.equipEtat.arme.dur === 45, 'batte en main (durabilité 45)');
+ok(inv.porterObjet({ id: 'batte_baseball', qty: 1 }, j).ok && j.equip.arme === 'batte_baseball' && j.equipEtat.arme.dur === 45, 'batte en main (durabilité 45)');
 inv.addItem('bandage', 2, {}, j);
 ok(!inv.mettreAccesRapide('bandage', j).ok, 'sans ceinture, rien en accès rapide');
-inv.addItem('ceinture_cuir', 1, {}, j); inv.equiper(j.inventaire.findIndex(x => x.id === 'ceinture_cuir'), j);
+inv.equiper(j.inventaire.findIndex(x => x.id === 'ceinture_cuir'), j);
 ok(inv.mettreAccesRapide('bandage', j).ok && inv.accesRapideMax(j) === 2, 'ceinture en cuir : bandage à la ceinture (2 places)');
 inv.addItem('lampe_torche', 1, {}, j); inv.addItem('piles', 1, {}, j);
-inv.equiper(j.inventaire.findIndex(x => x.id === 'lampe_torche'), j);
+ok(inv.equiper(j.inventaire.findIndex(x => x.id === 'lampe_torche'), j).ok && inv.mains(j).gauche === 'lampe_torche', 'lampe torche : tenue en main gauche');
+j.equipEtat.lampe.charge = 0;   // piles mortes : l'allumer consomme les piles du sac
 ok(inv.allumerLampe(true, j).ok && inv.lampe(j).charge === 600 && !inv.hasItem('piles', 1, j), 'lampe allumée : piles consommées, 600 min');
 clock.avancer(30);
 ok(inv.lampe(j).charge === 570, 'la lampe consomme une minute par minute');
@@ -127,7 +132,7 @@ ok(inv.dechirer(j.inventaire.findIndex(x => x.id === 'sweat_capuche'), j).ok && 
 // ---------- 5. Fabrication ----------
 titre('Fabrication');
 nouvellePartie({ nom: 'Test', mode: 'solo', seed: 5 }); player.normaliserJoueur(G.player);
-const k = G.player; inv.addItem('sac_randonnee', 1, {}, k); inv.equiper(0, k);
+const k = G.player; inv.porterObjet({ id: 'sac_randonnee', qty: 1 }, k);
 let e = craft.etatRecette('r_bandage_fortune', k);
 ok(e.connue && !e.faisable && e.manques[0].type === 'ingredient', `bandage sans chiffon : « ${e.manques[0].texte} »`);
 inv.addItem('chiffon', 5, {}, k);

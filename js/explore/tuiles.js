@@ -3,6 +3,8 @@
 // sorties, mobilier, décor ; tout le statique d'un étage est rendu par blocs (chunks) dans des canvas
 // hors écran, une seule fois. Dynamique (portes, personnages, morts, cadavres, objets) : fonctions séparées.
 import { K, MATIERES, DECOS } from './niveau.js';
+import { ITEMS } from '../data/items.js';
+import { ZOMBIES } from '../data/zombies.js';
 
 export const TS = 32;          // pixels par case dans les canvas hors écran
 export const CHUNK = 16;       // cases par côté de bloc
@@ -531,11 +533,70 @@ export function dessinerCorps(c, x, y, a, r, sang = true, peau = '#8c8a78', vet 
   c.restore();
 }
 
+// ---------- Objets tenus (vus de dessus) ----------
+// Forme d'un objet tenu : { forme: 'lame'|'contondant'|'long'|'feu'|'planche'|'petit', L (px), l (px) }
+const formes = {};
+export function formeObjet(id) {
+  if (!id) return null;
+  if (formes[id]) return formes[id];
+  const d = ITEMS[id] || {};
+  let f;
+  if (d.tir) f = { forme: 'feu', L: d.deux_mains ? 26 : 10, l: d.deux_mains ? 3 : 3.5 };
+  else if (id === 'planche') f = { forme: 'planche', L: 26, l: 5 };
+  else if (id === 'manche_balai') f = { forme: 'long', L: 28, l: 2, tete: 0 };
+  else if (d.type === 'arme' || d.melee) {
+    const al = (d.allonge ?? (d.melee && d.melee.allonge)) || 0;
+    const sk = d.skill || (d.melee && d.melee.skill);
+    if (sk === 'dexterite' && al >= 2) f = { forme: 'long', L: 30, l: 2.2, tete: 5, pointe: true };
+    else if (sk === 'dexterite') f = { forme: 'lame', L: al >= 1 ? 17 : 9, l: al >= 1 ? 3 : 2.2 };
+    else if (d.deux_mains) f = { forme: 'long', L: al >= 2 ? 27 : 23, l: 2.6, tete: 7, lourd: true };
+    else f = { forme: 'contondant', L: al >= 1 ? 20 : 11, l: al >= 1 ? 3.4 : 2.6 };
+  } else if (ITEMS[id] && (ITEMS[id].long || (ITEMS[id].volume || 0) >= 3)) f = { forme: 'planche', L: 22, l: 4 };
+  else f = { forme: 'petit', L: 6, l: 5 };
+  return (formes[id] = f);
+}
+// Dessine l'objet tenu, la poignée à l'origine, orienté vers +x.
+function dessinerObjet(c, f, S, lueur = 0) {
+  if (!f) return;
+  const L = f.L * S, l = f.l * S;
+  if (lueur > 0) { c.save(); c.shadowColor = `rgba(255,200,90,${0.7 * lueur})`; c.shadowBlur = 10 * lueur; }
+  switch (f.forme) {
+    case 'lame':
+      c.fillStyle = '#2b2622'; c.fillRect(0, -l / 2, L * 0.32, l);
+      c.fillStyle = '#b9bcbe'; c.beginPath(); c.moveTo(L * 0.3, -l / 2); c.lineTo(L, 0); c.lineTo(L * 0.3, l / 2); c.closePath(); c.fill();
+      break;
+    case 'contondant':
+      c.fillStyle = '#5a3f28'; c.fillRect(0, -l / 2, L, l);
+      c.fillStyle = '#6e5a46'; c.fillRect(L * 0.55, -l * 0.7, L * 0.45, l * 1.4);
+      break;
+    case 'long':
+      c.fillStyle = '#6a4e30'; c.fillRect(-L * 0.25, -l / 2, L, l);
+      if (f.tete) { c.fillStyle = f.lourd ? '#7a7e80' : '#a9acae'; if (f.pointe) { c.beginPath(); c.moveTo(L * 0.75, -l); c.lineTo(L * 0.75 + f.tete * S * 1.6, 0); c.lineTo(L * 0.75, l); c.fill(); } else c.fillRect(L * 0.72, -f.tete * S * 0.6, f.tete * S * 0.8, f.tete * S * 1.2); }
+      break;
+    case 'feu':
+      c.fillStyle = '#1e1e1e'; c.fillRect(0, -l / 2, L, l);
+      c.fillStyle = '#3a2a1c'; c.fillRect(-3 * S, -l * 0.7, 5 * S, l * 1.4);
+      break;
+    case 'planche':
+      c.fillStyle = '#8a6a44'; c.fillRect(-L * 0.2, -l / 2, L, l);
+      c.strokeStyle = 'rgba(40,25,10,.6)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-L * 0.2, 0); c.lineTo(L * 0.8, 0); c.stroke();
+      break;
+    default:
+      c.fillStyle = '#6b6a60'; c.fillRect(-l / 2, -l / 2, l, l);
+  }
+  if (lueur > 0) c.restore();
+}
+const ease = (p) => 1 - Math.pow(1 - p, 3);
+
 // Personnage vu de dessus (joueur, coéquipier, PNJ). t = temps (ms), marche = 0..1 (balancement).
-export function dessinerPersonnage(c, x, y, dir, style, t, marche, allure = 'marche') {
+// x2 (facultatif) = { equip: { droite, gauche, deux, dos }, cbt: { geste: { type, p, charge }, charge (0..1 | -1 visée), empoigne } }
+export function dessinerPersonnage(c, x, y, dir, style, t, marche, allure = 'marche', x2 = null) {
   const S = TS / 32;
   const court = allure === 'course', bas = allure === 'accroupi';
+  const eq = (x2 && x2.equip) || null, cb = (x2 && x2.cbt) || null;
+  const g = cb && cb.geste;
   c.save(); c.translate(x, y); c.rotate(dir);
+  if (cb && cb.empoigne) c.translate(Math.sin(t / 35) * 1.5 * S, Math.cos(t / 41) * 1.2 * S);
   // Allure : la course allonge la foulée et penche le buste ; accroupi, on se ramasse et on avance à pas comptés.
   const freq = court ? 62 : bas ? 190 : 110;
   const amp = court ? 5.5 : bas ? 1.6 : 3;
@@ -545,8 +606,18 @@ export function dessinerPersonnage(c, x, y, dir, style, t, marche, allure = 'mar
     for (const k of [-5, 0, 5]) { c.beginPath(); c.moveTo(-12 * S, k * S); c.lineTo(-22 * S - Math.abs(b) * S, k * S); c.stroke(); }
   }
   if (bas) { c.scale(0.84, 0.92); c.strokeStyle = 'rgba(201,162,39,0.22)'; c.setLineDash([3 * S, 4 * S]); c.lineWidth = 1; c.beginPath(); c.arc(0, 0, 15 * S, 0, 7); c.stroke(); c.setLineDash([]); }
-  const pench = court ? 3 * S : bas ? -1 * S : 0;
+  // élan du corps pendant un geste
+  let elan = 0;
+  if (g) {
+    if (g.type === 'rapide' || g.type === 'lourd') elan = Math.sin(Math.min(1, g.p / 0.55) * Math.PI) * (g.type === 'lourd' ? 4 : 2.5);
+    else if (g.type === 'poussee') elan = Math.sin(g.p * Math.PI) * 4.5;
+    else if (g.type === 'tir') elan = -2 * (1 - g.p);
+  }
+  if (cb && cb.charge > 0) elan = -2 * cb.charge;
+  const pench = (court ? 3 * S : bas ? -1 * S : 0) + elan * S;
   c.fillStyle = 'rgba(0,0,0,0.45)'; c.beginPath(); c.ellipse(2 * S, 3 * S, (court ? 13 : 11) * S, (bas ? 13 : 12) * S, 0, 0, 7); c.fill();
+  // objet dans le dos (sous le buste)
+  if (eq && eq.dos) { c.save(); c.translate(-6 * S, 0); c.rotate(2.4); dessinerObjet(c, formeObjet(eq.dos), S * 0.9); c.restore(); }
   // pieds
   c.fillStyle = '#1b1a18';
   if (bas) { c.beginPath(); c.ellipse((b - 2) * S, -6.5 * S, 4.5 * S, 3 * S, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse((-b - 2) * S, 6.5 * S, 4.5 * S, 3 * S, 0, 0, 7); c.fill(); }
@@ -555,12 +626,62 @@ export function dessinerPersonnage(c, x, y, dir, style, t, marche, allure = 'mar
   // épaules / buste (accroupi : dos rond, plus large ; course : plus étroit)
   c.fillStyle = style.manteau; c.beginPath(); c.ellipse(-1 * S, 0, (bas ? 8 : court ? 6 : 6.5) * S, (bas ? 10.5 : court ? 9.2 : 10) * S, 0, 0, 7); c.fill();
   c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 1; c.stroke();
-  // bras : en course ils balancent fort ; accroupi, ramenés devant
-  const bb = court ? b * 0.9 : b * 0.3;
+  // ---- bras et objets tenus ----
+  const fD = eq ? formeObjet(eq.droite) : null, fG = eq && !eq.deux ? formeObjet(eq.gauche) : null;
+  const deux = !!(eq && eq.deux && fD);
+  // angle de l'objet en main droite (relatif au regard) : repos, charge (armé en arrière), coup (balayage), poussée.
+  let aD = deux ? 0.35 : 0.55, avD = 0;
+  let lueur = 0;
+  if (cb && cb.charge > 0) { aD = 1.5 + 0.35 * cb.charge + Math.sin(t / 30) * 0.05 * cb.charge; lueur = cb.charge; }
+  if (cb && cb.vise) aD = 0;
+  if (g && (g.type === 'rapide' || g.type === 'lourd')) {
+    const debut = g.type === 'lourd' ? 1.9 : 1.35, fin = g.type === 'lourd' ? -1.2 : -0.95;
+    const fl = (fD && (fD.forme === 'long' && fD.tete === 5)) || (fD && fD.forme === 'lame' && fD.L < 12);
+    if (fl) { aD = 0.15; avD = Math.sin(Math.min(1, g.p / 0.5) * Math.PI) * 8; }     // estoc : on pique droit devant
+    else aD = debut + (fin - debut) * ease(Math.min(1, g.p / 0.6));
+    // traînée du coup
+    if (!fl && g.p > 0.12 && g.p < 0.7) {
+      const R = ((fD ? fD.L : 6) + 12) * S;
+      c.strokeStyle = g.type === 'lourd' ? 'rgba(255,214,140,0.45)' : 'rgba(230,223,204,0.32)';
+      c.lineWidth = (g.type === 'lourd' ? 5 : 3) * S;
+      const a1 = debut + (fin - debut) * ease(Math.max(0, g.p / 0.6 - 0.25)), a2 = aD;
+      c.beginPath(); c.arc(0, 2 * S, R, Math.min(a1, a2), Math.max(a1, a2)); c.stroke();
+    }
+  } else if (g && g.type === 'poussee') { aD = 0.2; avD = Math.sin(g.p * Math.PI) * 6; }
+  else if (g && g.type === 'recharge') aD = 1.2;
+  // bras
+  const brasD = (ang, av) => { // de l'épaule droite (−1, 6) vers la main
+    const hx = -1 * S + Math.cos(ang) * (9 + av) * S, hy = 6 * S + Math.sin(ang) * 6 * S;
+    return { hx, hy };
+  };
   c.fillStyle = style.manteau;
-  if (bas) { c.beginPath(); c.ellipse(6 * S, 4 * S, 5 * S, 2.4 * S, 0.5, 0, 7); c.fill(); c.beginPath(); c.ellipse(6 * S, -4 * S, 5 * S, 2.4 * S, -0.5, 0, 7); c.fill(); }
-  else { c.beginPath(); c.ellipse((6 + (court ? -bb : 0)) * S, 6 * S, 5 * S, 2.6 * S, 0.2, 0, 7); c.fill(); c.beginPath(); c.ellipse((4 - bb) * S, -7 * S, 4.5 * S, 2.6 * S, -0.3, 0, 7); c.fill(); }
-  if (style.lampe) { c.fillStyle = '#2a2a2a'; c.fillRect(9 * S, (bas ? 3 : 5) * S, 6 * S, 3 * S); c.fillStyle = '#f2e6b0'; c.fillRect(14 * S, (bas ? 3 : 5) * S, 1.5 * S, 3 * S); }
+  const pousse = g && g.type === 'poussee';
+  const hD = brasD(aD - 0.4, avD);
+  const hG = deux || pousse ? { hx: hD.hx - 1 * S, hy: pousse ? -5 * S : hD.hy - 6 * S } : { hx: (4 - (court ? -b * 0.9 : b * 0.3)) * S, hy: -7 * S };
+  const bb = court ? b * 0.9 : b * 0.3;
+  if (bas && !g && !(cb && cb.charge)) { c.beginPath(); c.ellipse(6 * S, 4 * S, 5 * S, 2.4 * S, 0.5, 0, 7); c.fill(); c.beginPath(); c.ellipse(6 * S, -4 * S, 5 * S, 2.4 * S, -0.5, 0, 7); c.fill(); }
+  else {
+    // bras droit (vers la main droite)
+    c.lineCap = 'round'; c.strokeStyle = style.manteau; c.lineWidth = 4.6 * S;
+    c.beginPath(); c.moveTo(-1 * S, 6 * S); c.lineTo(hD.hx, hD.hy); c.stroke();
+    c.beginPath(); c.moveTo(-1 * S, -6 * S); c.lineTo(hG.hx, hG.hy); c.stroke();
+    if (!fD && !fG && !pousse && !g && !(cb && cb.charge)) { // bras ballants (comme avant)
+      c.beginPath(); c.ellipse((6 + (court ? -bb : 0)) * S, 6 * S, 5 * S, 2.6 * S, 0.2, 0, 7); c.fill();
+    }
+  }
+  // objets
+  if (fD) { c.save(); c.translate(hD.hx, hD.hy); c.rotate(aD * 0.55 - (deux ? 0.2 : 0)); dessinerObjet(c, fD, S, lueur); c.restore(); }
+  if (fG) { c.save(); c.translate(hG.hx, hG.hy); c.rotate(-0.5); dessinerObjet(c, fG, S); c.restore(); }
+  // mains
+  c.fillStyle = style.peau;
+  c.beginPath(); c.arc(hD.hx, hD.hy, 2.1 * S, 0, 7); c.fill();
+  c.beginPath(); c.arc(hG.hx, hG.hy, 2.1 * S, 0, 7); c.fill();
+  if (style.lampe) { c.save(); c.translate(hG.hx, hG.hy); c.fillStyle = '#2a2a2a'; c.fillRect(0, -1.5 * S, 6 * S, 3 * S); c.fillStyle = '#f2e6b0'; c.fillRect(5 * S, -1.5 * S, 1.5 * S, 3 * S); c.restore(); }
+  // éclair du tir
+  if (g && g.type === 'tir' && g.p < 0.35 && fD) {
+    c.save(); c.translate(hD.hx, hD.hy); c.rotate(aD * 0.55);
+    c.fillStyle = `rgba(255,220,140,${0.9 * (1 - g.p / 0.35)})`; c.beginPath(); c.arc(fD.L * S + 3 * S, 0, 4.5 * S, 0, 7); c.fill(); c.restore();
+  }
   // tête (accroupi : rentrée dans les épaules, en avant)
   const hx = bas ? 2.5 * S : court ? 1.5 * S : 0;
   c.fillStyle = style.cheveux; c.beginPath(); c.arc(hx, 0, (bas ? 4.8 : 5.2) * S, 0, 7); c.fill();
@@ -568,36 +689,77 @@ export function dessinerPersonnage(c, x, y, dir, style, t, marche, allure = 'mar
   c.restore();
 }
 
-// Mort vu de dessus. z = { dir, type, etat }, marche 0..1
+// Mort vu de dessus. z = { dir, type, sexe, uid, atk: { type, p }, vac, terre, tTouche }, marche 0..1
+const hashUid = (u) => { let h = 2166136261; u = String(u || ''); for (let i = 0; i < u.length; i++) { h ^= u.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 export function dessinerMort(c, x, y, z, t, marche) {
   const S = TS / 32;
-  const rampe = z.type === 'rampant';
-  const gros = z.type === 'colosse' || z.type === 'gonfleur' ? 1.3 : 1;
-  const animal = z.type === 'chien_infecte' || z.type === 'fauve' || z.type === 'sanglier';
-  c.save(); c.translate(x, y); c.rotate(z.dir); c.scale(gros, gros);
-  const b = Math.sin(t / 180 + (z.uid ? z.uid.length : 0)) * 2.5 * marche;
-  c.fillStyle = 'rgba(0,0,0,0.45)'; c.beginPath(); c.ellipse(2 * S, 3 * S, (rampe || animal ? 14 : 11) * S, 10 * S, 0, 0, 7); c.fill();
-  const peau = z.type === 'putrefie' ? '#6f6a4a' : z.type === 'gonfleur' ? '#7c7658' : z.type === 'militaire' ? '#4a5040' : '#7d8070';
-  const vet = z.type === 'militaire' ? '#3d4632' : ['#3b3128', '#2e3136', '#463a36'][(z.uid || 'a').charCodeAt(z.uid ? z.uid.length - 1 : 0) % 3];
-  if (animal) {
-    c.fillStyle = z.type === 'sanglier' ? '#3a2c22' : z.type === 'fauve' ? '#8a6a3a' : '#4a3c30';
-    c.beginPath(); c.ellipse(-2 * S, 0, 11 * S, 5.5 * S, 0, 0, 7); c.fill();
-    c.beginPath(); c.ellipse(10 * S, 0, 4.5 * S, 3.8 * S, 0, 0, 7); c.fill();
-    c.fillStyle = '#b8342c'; c.fillRect(13 * S, -1 * S, 2 * S, 2 * S);
-  } else if (rampe) {
-    c.fillStyle = vet; c.beginPath(); c.ellipse(-4 * S, 0, 10 * S, 5 * S, 0, 0, 7); c.fill();
-    c.fillStyle = peau; c.beginPath(); c.ellipse((9 + b) * S, -6 * S, 5 * S, 1.8 * S, 0.3, 0, 7); c.fill(); c.beginPath(); c.ellipse((9 - b) * S, 6 * S, 5 * S, 1.8 * S, -0.3, 0, 7); c.fill();
+  const def = ZOMBIES[z.type] || ZOMBIES.errant;
+  const A = def.allure || { taille: 1, carrure: 1, peau: ['#7d8070'], vetements: ['#3b3128'] };
+  const h = hashUid(z.uid);
+  const femme = z.sexe === 'f';
+  const peau = A.peau[h % A.peau.length];
+  const vet = A.vetements[(h >>> 4) % A.vetements.length];
+  const cheveux = ['#1d1612', '#3a2a1a', '#5a4a38', '#77705e', '#2a2420'][(h >>> 8) % 5];
+  const rampe = def.special === 'rampe';
+  const echelle = (A.taille || 1) * (femme ? 0.95 : 1);
+  const larg = (A.carrure || 1) * (femme ? 0.86 : 1);
+  const flash = z.tTouche && performance.now() - z.tTouche < 140;
+  c.save(); c.translate(x, y);
+  // arc de télégraphie au sol (sous le mort) : rouge = coup, ambre = empoignade
+  if (z.atk) {
+    const R = ((def.portee || 0.95) + 0.25) * TS, col = z.atk.type === 'saisie' ? '201,162,39' : '214,48,62';
+    const p = Math.min(1, z.atk.p);
+    c.save(); c.rotate(z.dir);
+    c.fillStyle = `rgba(${col},${0.10 + 0.25 * p})`;
+    c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, R, -1.05, 1.05); c.closePath(); c.fill();
+    c.strokeStyle = `rgba(${col},${0.5 + 0.5 * p})`; c.lineWidth = 2;
+    c.beginPath(); c.arc(0, 0, R * (0.35 + 0.65 * p), -1.05, 1.05); c.stroke();
+    c.beginPath(); c.arc(0, 0, R, -1.05, 1.05); c.stroke();
+    c.restore();
+  }
+  if (z.terre) { // à terre : il se tortille
+    c.rotate(z.dir + Math.PI);
+    c.fillStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); c.ellipse(2, 2, 13 * echelle, 7 * echelle, 0, 0, 7); c.fill();
+    c.fillStyle = vet; c.beginPath(); c.ellipse(0, 0, 11 * echelle, 6 * larg, 0, 0, 7); c.fill();
+    const w = Math.sin(t / 90) * 2;
+    c.fillStyle = peau; c.fillRect(-14 * echelle, -5 + w, 6, 3); c.fillRect(7, 3 - w, 9, 3);
+    c.beginPath(); c.arc(-13 * echelle, 0, 4.2, 0, 7); c.fill();
+    if (femme) { c.fillStyle = cheveux; c.beginPath(); c.ellipse(-17 * echelle, 0, 4, 5, 0, 0, 7); c.fill(); }
+    c.restore(); return;
+  }
+  c.rotate(z.dir);
+  if (z.vac) c.rotate(Math.sin(t / 45) * 0.28);
+  // pendant la télégraphie : il se ramasse (recule le buste), puis se jette en avant à la fin
+  let av = 0, brasEcart = 0;
+  if (z.atk) { const p = z.atk.p; av = p < 0.8 ? -3 * (p / 0.8) : -3 + 9 * ((p - 0.8) / 0.2); brasEcart = z.atk.type === 'saisie' ? 3.5 * p : 1.5 * p; }
+  c.scale(echelle, echelle);
+  const b = Math.sin(t / 180 + (h % 7)) * 2.5 * marche;
+  c.fillStyle = 'rgba(0,0,0,0.45)'; c.beginPath(); c.ellipse(2 * S, 3 * S, (rampe ? 14 : 11) * S, 10 * S * larg, 0, 0, 7); c.fill();
+  if (z.atk) { c.shadowColor = z.atk.type === 'saisie' ? 'rgba(201,162,39,.9)' : 'rgba(214,48,62,.9)'; c.shadowBlur = 8; }
+  c.translate(av * S, 0);
+  if (rampe) {
+    c.fillStyle = vet; c.beginPath(); c.ellipse(-4 * S, 0, 10 * S, 5 * S * larg, 0, 0, 7); c.fill();
+    c.fillStyle = peau; c.beginPath(); c.ellipse((9 + b) * S, (-6 - brasEcart) * S, 5 * S, 1.8 * S, 0.3, 0, 7); c.fill(); c.beginPath(); c.ellipse((9 - b) * S, (6 + brasEcart) * S, 5 * S, 1.8 * S, -0.3, 0, 7); c.fill();
+    if (femme) { c.fillStyle = cheveux; c.beginPath(); c.ellipse(4.5 * S, 0, 4.5 * S, 5 * S, 0, 0, 7); c.fill(); }
     c.fillStyle = peau; c.beginPath(); c.arc(7 * S, 0, 4 * S, 0, 7); c.fill();
     c.fillStyle = 'rgba(90,10,14,0.8)'; c.fillRect(-15 * S, -3 * S, 4 * S, 6 * S);
   } else {
-    c.fillStyle = '#1a1816'; c.beginPath(); c.ellipse(b * S, -5 * S, 4 * S, 2.6 * S, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(-b * S, 5 * S, 4 * S, 2.6 * S, 0, 0, 7); c.fill();
-    c.fillStyle = vet; c.beginPath(); c.ellipse(-1 * S, 0, 6 * S, 9.5 * S, 0, 0, 7); c.fill();
-    // bras tendus
-    c.fillStyle = peau; c.beginPath(); c.ellipse((8 + b) * S, -5.5 * S, 6.5 * S, 2 * S, 0.1, 0, 7); c.fill(); c.beginPath(); c.ellipse((8 - b) * S, 5.5 * S, 6.5 * S, 2 * S, -0.1, 0, 7); c.fill();
-    c.fillStyle = peau; c.beginPath(); c.arc(1 * S, 0, 4.8 * S, 0, 7); c.fill();
-    c.fillStyle = 'rgba(40,30,20,0.7)'; c.beginPath(); c.arc(-0.5 * S, 0, 3.5 * S, 1.8, 4.5); c.fill();
-    c.fillStyle = 'rgba(100,12,18,0.7)'; c.fillRect(-3 * S, -8 * S, 4 * S, 3 * S);
+    c.fillStyle = '#1a1816'; c.beginPath(); c.ellipse(b * S, -5 * S * larg, 4 * S, 2.6 * S, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(-b * S, 5 * S * larg, 4 * S, 2.6 * S, 0, 0, 7); c.fill();
+    c.fillStyle = vet; c.beginPath(); c.ellipse(-1 * S, 0, 6 * S, 9.5 * S * larg, 0, 0, 7); c.fill();
+    if (def.special === 'charge') { c.fillStyle = 'rgba(20,24,28,.85)'; c.fillRect(-5 * S, -8 * S * larg, 7 * S, 4 * S); c.fillRect(-5 * S, 4 * S * larg, 7 * S, 4 * S); }
+    // bras tendus (écartés pendant la télégraphie d'une empoignade)
+    c.fillStyle = peau;
+    c.beginPath(); c.ellipse((8 + b) * S, (-5.5 * larg - brasEcart) * S, 6.5 * S, 2 * S, 0.1 - brasEcart * 0.05, 0, 7); c.fill();
+    c.beginPath(); c.ellipse((8 - b) * S, (5.5 * larg + brasEcart) * S, 6.5 * S, 2 * S, -0.1 + brasEcart * 0.05, 0, 7); c.fill();
+    // cheveux longs (femmes) : derrière la tête
+    if (femme) { c.fillStyle = cheveux; c.beginPath(); c.ellipse(-2.5 * S, 0, 5.5 * S, 5.4 * S, 0, 0, 7); c.fill(); c.fillRect(-7 * S, -3 * S, 4 * S, 6 * S); }
+    c.fillStyle = peau; c.beginPath(); c.arc(1 * S, 0, 4.6 * S, 0, 7); c.fill();
+    if (!femme) { c.fillStyle = 'rgba(40,30,20,0.7)'; c.beginPath(); c.arc(-0.5 * S, 0, 3.5 * S, 1.8, 4.5); c.fill(); }
+    if (A.bouche || z.atk) { c.fillStyle = 'rgba(80,6,10,.9)'; c.beginPath(); c.ellipse(4.5 * S, 0, (A.bouche ? 1.6 : 1) * S, (A.bouche ? 2.2 : 1.4) * S, 0, 0, 7); c.fill(); }
+    c.fillStyle = 'rgba(100,12,18,0.7)'; c.fillRect(-3 * S, -8 * S * larg, 4 * S, 3 * S);
   }
+  c.shadowBlur = 0;
+  if (flash) { c.globalCompositeOperation = 'lighter'; c.fillStyle = 'rgba(255,240,230,.55)'; c.beginPath(); c.ellipse(0, 0, 9 * S, 10 * S * larg, 0, 0, 7); c.fill(); }
   c.restore();
 }
 

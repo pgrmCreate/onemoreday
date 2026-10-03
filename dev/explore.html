@@ -22,7 +22,7 @@
 <div id="banc">Banc d'essai — exploration</div>
 <div id="toasts"></div>
 <script type="module">
-  // Paramètres : ?lieu=_test (plan js/data/niveaux/<id>.js) · ?heure=22 · ?combat=faux (victoire après 1 s) · ?entree=cour
+  // Paramètres : ?lieu=_test (plan js/data/niveaux/<id>.js) · ?heure=22 · ?entree=cour
   import { nouvellePartie, G, setFlag } from '../js/core/state.js';
   import * as clock from '../js/core/clock.js';
   import { on } from '../js/core/bus.js';
@@ -56,7 +56,6 @@
   let dialogue = null; if (q.get('dialogue')) { try { dialogue = await import('../js/ui/dialogue.js'); } catch (e) {} }
   const crochets = {};
   if (!dialogue) crochets.scene = async (id) => { const s = SCENES[id]; await modal(`Scène : ${id}`, s ? String(s.texte || '').slice(0, 600) : '(scène inconnue)'); return { fin: '#fin' }; };
-  if (q.get('combat') === 'faux') crochets.combattre = async (spec) => { window.__dernierCombat = spec; await new Promise(r => setTimeout(r, 1000)); return { issue: 'victoire', tues: spec.zombies.map(z => z.uid), fuis: [] }; };
   vue.definirCrochets(crochets);
   on('document', ({ id }) => { const d = DOCUMENTS[id]; modal(d ? d.titre : id, d ? d.texte : ''); });
   on('toast', ({ texte }) => { const t = document.createElement('div'); t.textContent = texte; document.getElementById('toasts').append(t); setTimeout(() => t.remove(), 3000); });

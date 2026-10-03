@@ -6,12 +6,13 @@ Résumé :
 ```
 js/main.js            écran titre, création, mort, fins, démarrage
 js/core/              état + sauvegarde (state), horloge (clock), bus d'événements, hasard, utilitaires, préférences
-js/game/flow.js       enchaîne les trois temps (explorer / ouvrirCarte / voyager / combattre / scene / cinematique)
+js/game/flow.js       enchaîne les temps (explorer / ouvrirCarte / voyager / combattre / scene / cinematique)
+                      combattre = des morts surgissent dans le lieu, ou une embuscade jouable pendant un voyage
 js/game/              données fusionnées, effets, conditions, quêtes, déclencheurs, autorité co-op,
-                      personnage (player, survival, inventory, crafting)
-js/explore/           Temps 1 : plans ASCII, sim headless, IA des morts, vision, rendu canvas, entrées
+                      personnage (player, survival, inventory — mains, dos, volume —, crafting, stats_combat)
+js/explore/           Temps 1 : plans ASCII, sim headless (IA des morts + COMBAT temps réel), vision, rendu canvas, entrées,
+                      combat.js (règles), combat_vue.js (gestes du joueur), embuscade.js (bout de route généré)
 js/travel/            Temps 2 : géographie réelle, carte illustrée SVG, voyage et rencontres
-js/combat/            Temps 3 : sim headless déterministe, écran de combat
 js/cine/              cinématiques en parallaxe (36 décors)
 js/ui/                HUD, panneaux (inventaire, corps, fabrication, journal, options), scènes à choix
 js/net/               transport WebSocket + session co-op hôte-autoritaire

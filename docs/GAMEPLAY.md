@@ -27,9 +27,10 @@ Les principes, dans l'ordre : **lisible** (on sait toujours pourquoi on a pris u
 
 ## 1. La boucle de jeu
 
-**Horloge** : `temps.MS_PAR_MINUTE = 1000` : 1 seconde réelle = 1 minute de jeu, **une journée = 24 minutes réelles**.
-En solo, le temps s'arrête pendant les scènes et les panneaux (inventaire, corps, fabrication) et passe à ×0,5 en combat.
-Fabriquer, attendre et dormir **accélèrent** l'horloge (×6, ×6, ×90). En co-op, le temps coule toujours à ×1
+**Horloge** : `temps.MS_PAR_MINUTE = 1667` : 1,67 seconde réelle = 1 minute de jeu, **une journée ≈ 40 minutes réelles**
+(40 % plus lente qu'à l'origine). En voyage, l'horloge garde l'ancien rythme (×1,667) pour que les trajets ne s'allongent pas.
+En solo, le temps s'arrête pendant les scènes et les panneaux (inventaire, corps, fabrication) ; le combat se joue en temps réel.
+Fabriquer et attendre **accélèrent** l'horloge (×10 : une recette de 30 min dure toujours ~5 s réelles). En co-op, le temps coule toujours à ×1
 (le sommeil n'accélère que si **les deux** dorment).
 
 | Échelle | Temps réel | Ce qu'on y fait | Ce qui la rend tendue |
@@ -266,37 +267,34 @@ rencontres de combat « du pool » et les renforts y puisent, filtrés par `jour
 
 ---
 
-## 4. Temps 3 — Le combat
+## 4. Le combat — dans l'exploration, en temps réel
 
-### 4.1 Le cycle d'un mort, et comment le lire
+> Refonte : il n'y a plus d'écran de combat. Trois gestes : **se déplacer, frapper, pousser** (pas d'esquive ni de garde).
+> Les règles sont dans `REGLAGES.combat` et `js/explore/combat.js` ; ce chapitre en donne l'intention.
+
+### 4.1 Le cycle d'un mort au contact
 
 ```
- [ENTRÉE 1,2 s] → [MENACE : la jauge se remplit en `menace` ms ±15 %] → [TÉLÉGRAPHIE `telegraphe` ms] → [RUÉE] → [RÉCUP 0,7 s] ↺
-                                                                        rouge = COUP · ambre = EMPOIGNADE
+ [CHASSE : il s'approche, s'arrête à 0,7 case] → [à portée : 0,25-0,7 s] → [TÉLÉGRAPHIE `telegraphe` ms : arc au sol] → [ATTAQUE] → [RÉCUP `cadence` ms] ↺
+                                                                         rouge = COUP · ambre = EMPOIGNADE
 ```
+- L'attaque **touche** si, à la fin de la télégraphie, tu es encore à `portee` + 0,25 case et dans son cône de 120° (il pivote
+  pendant la télégraphie, pas assez vite pour une sortie sur le côté). **Reculer d'un pas suffit** : c'est le cœur du combat.
+- **Poussée** (recharge 0,8 s, 7 sta) : annule les télégraphies devant toi, fait reculer (1,2 case) et vaciller ; 20 % + 5 %/Force
+  de mise à terre. Résistance ≥ 0,75 (colosse) : il ne bouge pas.
+- **Coup chargé** ≥ 50 % qui touche un mort qui télégraphie : **interruption**. Coup lourd (≥ 90 %) : gros recul.
+- **Empoignade** : anneau de 2,4 s (+0,3 s au doigt), marteler Frapper/Pousser. Pendant ce temps les autres morts attendent.
+  Raté : **morsure** (seule source de morsure humaine).
+- Toucher garanti : mort à terre, qui vacille, attaque furtive (×3, silencieuse si elle tue).
 
-- **Jauge de départ** : 0 si tu as engagé, 0,35 s'il t'atteint de face, **0,7 s'il te surprend** (de dos, hors champ,
-  brouillard, rencontre `surprise`), 0,2 pour une rencontre de voyage ordinaire.
-- **Télégraphie** : il se ramasse. Le type de la ruée (coup ou **empoignade**) est tiré **au début** de la télégraphie
-  et **montré** (couleur, son, posture). La télégraphie ne descend jamais sous **450 ms**, quels que soient la difficulté
-  ou les bonus.
-- **Pendant la télégraphie, quatre réponses** :
+### 4.2 Les morts (`zombies.js`) — cinq types, hommes et femmes
 
-| Réponse | Condition | Résultat |
-|---|---|---|
-| **Esquive** | n'importe quand pendant la télégraphie | il frappe dans le vide, jauge à 0, il se reprend 0,7 s |
-| **Esquive parfaite** | dans les **250 dernières ms** (+25 ms/niv d'Agilité, **+60 ms au doigt**) | + **fenêtre de contre de 1 s** : prochain coup **garanti, ×1,6, +25 % de critique** ; +6 sta rendue |
-| **Garde** tenue | levée ≥ 150 ms avant l'impact | bloque 80 % d'un coup (50 % à mains nues), sans blessure ; coûte 1 sta par point bloqué. Contre une empoignade : compte à rebours ×1,5 et 2 martèlements de moins |
-| **Coup chargé** ≥ 50 % | qui touche pendant la télégraphie | **annule la ruée**, jauge à 40 % (garanti, sauf résistance ≥ 0,75 : jet de vacillement) |
-| **Poussée** | recharge 2,5 s | annule la ruée, jauge à 65 % ; contre un colosse : « il ne bouge pas », ruée maintenue |
+Pour l'instant : **Errant·e** (l'étalon), **Coureur·se** (rapide, fragile), **Rampant·e** (au sol, empoigne les chevilles),
+**Hurleur·se** (alerte tout le niveau, à tuer en premier), **Colosse** (95 PV, charge, casse des os). Chaque mort est un homme ou
+une femme (tiré sur sa graine : silhouette, cheveux, nom affiché). Les autres types ci-dessous sont **rangés** : leurs ids restent
+valides (`ALIAS_MORTS`) et désignent le type actif le plus proche.
 
-- **Sans réponse** : la ruée porte → dégâts, **blessure localisée** (§4.8) ; s'il s'agit d'une empoignade : §4.5.
-- Hors télégraphie : chaque **coup rapide qui touche** repousse la jauge de 6 % (+4 % par point d'allonge), un coup chargé
-  de 6 % + 25 % × charge ; l'**allonge** de l'arme ralentit aussi le remplissage de 8 % par point (on le tient à distance).
-- **Un mort actif par joueur**. Quand il tombe, le suivant de la file s'avance en 1,2 s (jauge à 0 pendant ce temps).
-  La file s'affiche (silhouettes numérotées) : **on sait combien il en reste**.
-
-### 4.2 Les morts (`zombies.js`)
+(Tableau d'origine, conservé comme référence :)
 
 | Mort | PV | Dégâts | Menace | Télégr. | Cycle | Saisie (taps) | Esquive | Résist. | Spécial | Vitesse errance/chasse | Vue | Ouïe | Jour |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -370,6 +368,10 @@ rencontres de combat « du pool » et les renforts y puisent, filtrés par `jour
 vaciller et durent. Les **armes lourdes à deux mains** tuent en un coup chargé mais coûtent 35-40 sta. Les **armes de
 tir** règlent tout et appellent la horde. Le pied-de-biche (120 de durabilité, `forcer`) reste l'arme honnête de la fin
 du monde ; la hache de pompier en est le luxe.
+
+> **Note (refonte)** : les §4.4 à 4.11 décrivent l'ancien écran de combat (esquive, garde, fuite, renforts de file) et sont
+> gardés comme référence. Ce qui reste vrai : endurance (coups jamais refusés, essoufflé ×0,6), empoignade, toucher et dégâts,
+> blessures par zone. Les nombres actifs sont dans `REGLAGES.combat`.
 
 ### 4.4 L'endurance (`combat.ENDURANCE`, par seconde réelle)
 
@@ -644,22 +646,22 @@ facile.
 
 ---
 
-## 8. Inventaire : poids et encombrement (`inventaire`)
+## 8. Inventaire : poids, VOLUME, mains et dos (`inventaire`) — façon Project Zomboid
 
-- **Encombrement** (`espace`, en emplacements) : 4 poches + l'espace offert par les vêtements (jean 1, cargo 2, gilet 3)
-  et surtout le **sac** (cabas 3, sac de fortune 3, sacoche 4, sac d'écolier 6, randonnée 10, militaire 12). Objets
-  à `espace: 0` (piles, bandages, munitions…) : en poche, sans compter. Ce qu'on **porte** ne prend pas de place.
-- **Poids** : max = 10 kg + 2 kg/niv de Force + `portage` (sacs 2 à 10 kg). Entre le max et 1,5 × max : **surpoids** f = 0..1 :
-  vitesse ×(1 − 0,3 f), coûts d'endurance ×(1 + 0,5 f), fatigue ×(1 + f), esquive parfaite ×lerp(1 ; 0,6 ; f), fuite −0,2 f,
-  toucher −0,1 f. Au-delà de 1,5 × max : on ne bouge plus.
-- **Accès rapide** : seuls les objets à la ceinture (1 à 3), au holster (1), au gilet (2) ou au sac militaire (1) servent en
-  combat, avec l'arme en main. **Sans ceinture, rien.** La ceinture de fortune (corde + scotch) est la première
-  fabrication qui change un combat.
-- **Encombrant** (`agilite: −1`) : manteau, gilet tactique, veste renforcée, sac de randonnée, sac militaire. Chaque −1
-  enlève un niveau d'agilité (esquive parfaite −25 ms, fuite −6 %). **La protection et la capacité se paient en esquive.**
+- **Volume (litres)** : chaque objet a un `volume` (planche 14 L, pelle 15 L, batte 6 L, conserve 0,8 L, couteau 0,4 L ;
+  à défaut, selon l'ancien `espace` : 0,2 / 0,8 / 4 / 8 L). Les **poches** (1,5 L + jean 1 L, cargo 2 L, gilet 3 L) ne prennent
+  que les **petits objets** (≤ 1 L). Le **sac** a une `contenance` : cabas 12 L, écolier 20 L, randonnée 45 L, militaire 55 L,
+  expédition 70 L. **Une planche remplit 70 % d'un sac d'écolier.**
+- **Mains** : main droite, main gauche, ou **les deux**. Tout objet peut se tenir (une planche dans chaque main). Une arme à
+  `deux_mains` (pelle, hache, masse, lance, fusils) tenue d'**une seule main** : dégâts ×0,6, gestes ×1,35 plus lents, pas de coup
+  chargé. Une lampe torche / à huile se tient dans la main gauche. Certains objets servent d'arme improvisée (`melee` : planche,
+  manche à balai, casserole).
+- **Dos** : un gros objet sanglé (objets `long` ou ≥ 3 L) : il ne prend pas de place au sac et **ne pèse que 75 %**. X = échanger
+  les mains, B = passer l'objet de la main au dos et inversement.
+- **Poids** : max = 10 kg + 2 kg/niv de Force + `portage` (sacs 2 à 12 kg). Entre le max et 1,5 × max : **surpoids** f = 0..1 :
+  vitesse ×(1 − 0,3 f), coûts d'endurance ×(1 + 0,5 f), fatigue ×(1 + f), toucher −0,1 f. Au-delà de 1,5 × max : on ne bouge plus.
+- **Accès rapide** (ceinture, holster, gilet) : touches 1-4 pour prendre en main une arme accrochée.
 - L'**eau** pèse : 1 L = 1 kg, sur l'instance du contenant (`eau: { q, L }`).
-
----
 
 ## 9. L'économie du butin (`butin.js`)
 
