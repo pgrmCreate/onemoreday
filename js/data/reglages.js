@@ -22,8 +22,8 @@ export const REGLAGES = {
   //  TEMPS — l'horloge du monde
   // ===========================================================================
   temps: {
-    MS_PAR_MINUTE: 1667,        // 1 667 ms réelles = 1 minute de jeu → une journée ≈ 40 min réelles
-                                //   (l'heure tourne 40 % moins vite qu'avant : 1000 ms / 0,6).
+    MS_PAR_MINUTE: 2381,        // 2 381 ms réelles = 1 minute de jeu → une journée ≈ 57 min réelles
+                                //   (encore 30 % plus lent qu'en v3 : 1 667 ms / 0,7).
                                 //   ↑ = le monde vieillit moins vite (moins de repas, de piles) ; ↓ = plus pressant.
     DEPART_MINUTES: 480,        // la partie commence le jour 1 à 8 h 00.
     HEURES: {                   // courbe de lumière (clock.lumiereJour) : 0 la nuit, rampe, 1 le jour
@@ -37,7 +37,7 @@ export const REGLAGES = {
     // coule toujours ×1, sauf sommeil commun). 0 = pause.
     VITESSE_SOLO: {
       exploration: 1,           // temps réel.
-      voyage: 1.667,            // en voyage, l'horloge garde l'ancien rythme (1 min de jeu / s) : un trajet ne dure pas
+      voyage: 2.381,            // en voyage, l'horloge garde l'ancien rythme (1 min de jeu / s) : un trajet ne dure pas
                                 //   plus longtemps en vrai qu'avant le ralentissement de l'horloge (×VOYAGE_ACCELERE au choix).
       combat: 1,                // le combat se joue dans l'exploration (plus d'écran séparé) : même vitesse.
       scene: 0,                 // une scène à choix (dialogue) met le monde en pause.
@@ -289,57 +289,77 @@ export const REGLAGES = {
   },
 
   // ===========================================================================
-  //  COMBAT — en temps réel, DANS l'exploration (plus d'écran séparé)
+  //  COMBAT — en temps réel, DANS l'exploration (refonte « combat 2 »)
   // ===========================================================================
-  // Trois gestes seulement : SE DÉPLACER, FRAPPER (appui court = coup rapide, maintenir = coup chargé), POUSSER.
-  // Le cycle d'un mort au contact : il s'approche → à portée, il TÉLÉGRAPHIE (`telegraphe` ms : arc rouge = coup,
-  // ambre = empoignade) → il frappe : touché si tu es encore à portée (`portee` + TOLERANCE) et devant lui →
-  // il récupère (`cadence` ms) → recommence. On l'évite en reculant, on l'interrompt en le poussant ou d'un coup chargé.
+  // Ce que voit et fait le joueur :
+  //   FRAPPER  appui court = coup rapide ; enchaîner 3 appuis en rythme = enchaînement (le 3e frappe fort et renverse) ;
+  //            maintenir = coup chargé (anneau), relâcher = coup lourd qui fait vaciller et INTERROMPT une attaque.
+  //            Un coup qui part TOUCHE si le mort est dans l'arc au moment de l'impact : AUCUN raté au hasard.
+  //   POUSSER  repousse tout ce qui est devant, annule leurs attaques ; chance de les mettre à terre.
+  //   ESQUIVER une ruée courte (Espace / bouton) : invulnérable un instant. Juste au moment du coup = ESQUIVE PARFAITE
+  //            (ralenti, et ton prochain coup est critique).
+  //   ACHEVER  frapper un mort à terre = coup de grâce (dégâts × 2,2, toujours critique).
+  // Ce que font les morts au contact : ils s'approchent → TÉLÉGRAPHIENT (bras levés + arc au sol : rouge = coup,
+  // ambre = empoignade) → se FENDENT vers toi (courte ruée) → le coup porte à la fin de la fente si tu es encore devant →
+  // ils récupèrent (`cadence`). Au plus JETONS morts attaquent la même personne en même temps : les autres tournent autour.
   combat: {
     // --- Les morts au corps à corps ---
-    ARRET_CASES: 0.7,           // un mort en chasse s'arrête à 0,7 case de toi (centre à centre) : il ne te traverse pas.
-    TOLERANCE_PORTEE: 0.25,     // à la fin de la télégraphie, il touche jusqu'à sa portée + 0,25 case.
-    CONE_ATTAQUE_DEG: 120,      // … et seulement si tu es dans le cône de 120° devant lui (il pivote pendant la télégraphie).
-    PIVOT_TELEGRAPHE: 4,        // rad/s : il te suit des yeux pendant la télégraphie (une roulade sur le côté le déborde).
+    ARRET_CASES: 0.75,          // un mort en chasse s'arrête à 0,75 case de toi (centre à centre) : il ne te traverse pas.
+    TOLERANCE_PORTEE: 0.3,      // au bout de la fente, il touche jusqu'à sa portée + 0,3 case…
+    CONE_ATTAQUE_DEG: 110,      // … et seulement si tu es dans le cône de 110° devant lui.
+    PIVOT_TELEGRAPHE: 3,        // rad/s : il te suit des yeux en armant son coup (un pas de côté + esquive le déborde).
     TELEGRAPHE_MIN_MS: 450,     // aucune télégraphie ne descend sous 450 ms, quoi qu'il arrive (difficulté…).
-    PREMIERE_ATTAQUE_MS: [250, 700], // arrivé au contact, il attend 0,25 à 0,7 s avant sa première télégraphie.
-    SURPRIS_MS: 0,              // attaqué de dos (hors de ton champ) : sa première télégraphie part sans attendre.
+    FENTE: { MS: 150, CASES: 0.45 }, // la fente : il se jette de 0,45 case en 150 ms ; le coup est jugé à la fin.
+    PREMIERE_ATTAQUE_MS: [300, 700], // arrivé au contact, il attend 0,3 à 0,7 s avant sa première télégraphie.
+    SURPRIS_MS: 150,            // attaqué de dos (hors de ton champ) : il arme presque aussitôt.
+    JETONS: 2,                  // au plus 2 morts arment un coup contre la même personne en même temps…
+    TOURNE_CASES: 1.35,         // … les autres attendent leur tour à 1,35 case, en tournant autour de toi.
+    EQUILIBRE: {                // chaque mort a un « équilibre » : tes coups l'entament, à 0 il VACILLE (attaque annulée).
+      PAR_PV: 0.7,              // équilibre = 0,7 × ses PV max (un colosse : 0,7 × 120 = 84).
+      RECUP_S: 8,               // il le récupère en entier en 8 s sans être frappé.
+    },
+    FLINCH_MS: 140,             // un coup rapide qui touche un mort en train d'armer RETARDE son attaque de 0,14 s.
 
     // --- Tes coups ---
-    PORTEE: [1.05, 1.4, 1.8],   // portée d'un coup (cases) selon l'allonge de l'arme 0 / 1 / 2.
-    ARC_DEG: [100, 120, 60],    // arc couvert : court = 100°, moyen = 120° (balayage), long = 60° (estoc).
+    PORTEE: [1.1, 1.45, 1.85],  // portée d'un coup (cases) selon l'allonge de l'arme 0 / 1 / 2.
+    ARC_DEG: [110, 130, 70],    // arc couvert : court = 110°, moyen = 130° (balayage), long = 70° (estoc).
     CIBLES_MAX: [1, 2, 1],      // morts touchés par un coup : les armes moyennes balaient (2), les autres 1.
-    IMPACT: 0.4,                // le coup porte à 40 % du geste (le reste : on ramène l'arme).
-    RECUL: { rapide: 0.3, lourd: 1.0 }, // recul (cases) d'un mort touché ; × (1 − résistance).
-    RECUL_MS: 180,              // durée du recul.
+    IMPACT: 0.35,               // le coup porte à 35 % du geste (le reste : on ramène l'arme).
+    TOLERANCE_ARC_CASES: 0.3,   // marge de portée (le mort est un corps, pas un point) ; protège aussi du décalage réseau.
+    RECUL: { rapide: 0.28, lourd: 1.1 }, // recul (cases) d'un mort touché ; × (1 − résistance).
+    RECUL_MS: 170,              // durée du recul.
+    COMBO: {                    // enchaînement : appuyer de nouveau dans la fenêtre après l'impact
+      FENETRE_MS: 420,          // fenêtre pour enchaîner (après l'impact du coup précédent).
+      DEGATS: [1, 1.1, 1.5],    // dégâts du 1er, 2e, 3e coup.
+      EQUILIBRE: [1, 1.25, 2.4],// entame d'équilibre du 1er, 2e, 3e coup (le 3e fait presque toujours vaciller).
+      RECUL: [1, 1.1, 2.6],     // recul × …
+      TERRE: 0.3,               // le 3e coup a 30 % de chances de mettre à terre (× (1 − résistance)).
+    },
     CHARGE: {
       FACTEUR_DUREE: 1.5,       // temps de charge pleine = vitesse de l'arme × 1,5 (couteau 0,6 s, batte 0,93 s, masse 1,5 s).
       TAPE_MS: 170,             // un appui plus court = coup rapide.
       STA_MULT_PLEIN: 2.5,      // coût d'un coup chargé plein = sta de l'arme × 2,5.
       SEUIL_INTERRUPTION: 0.5,  // un coup chargé ≥ 50 % qui TOUCHE un mort qui télégraphie annule son attaque.
       SEUIL_LOURD: 0.9,         // ≥ 90 % = « coup lourd » : vacillement plein, recul lourd, usure 2.
+      TERRE: 0.45,              // un coup lourd met à terre 45 % du temps (× (1 − résistance)).
       VITESSE: 0.5,             // on marche à 50 % en chargeant…
     },
-    VITESSE_GESTE: 0.35,        // … et à 35 % pendant un coup.
+    VITESSE_GESTE: 0.4,         // … et à 40 % pendant un coup.
     COUP: {
-      STAGGER_RAPIDE: 0.3,      // un coup rapide a 30 % de la chance de vaciller de l'arme.
+      STAGGER_RAPIDE: 0.3,      // (tir) chance de vaciller d'une balle × stagger de l'arme.
       CRIT_MULT: 2,             // critique (tête) : dégâts × 2.
       USURE: 1, USURE_LOURD: 2, // durabilité perdue par coup qui porte (lourd : 2).
       DUREE_LENTEUR_EPUISE: 1.5,// essoufflé : chaque geste dure × 1,5.
     },
-    VISEE_AUTO: { PORTEE: 2.6, ANGLE_DEG: 80 }, // tactile : en frappant, tu te tournes vers le mort le plus menaçant à ≤ 2,6 cases
-                                // dans ±80° de ton regard (sinon, n'importe lequel à ≤ 1,4 case).
-    TOUCHER: {                  // P(toucher) = BASE + PAR_NIVEAU × niv − esquive du mort + malus ; bornée [MIN, MAX]
-      BASE: 0.9,
-      PAR_NIVEAU: 0.03,         // par niveau de la compétence de l'arme.
-      MIN: 0.5, MAX: 0.98,
-      ESSOUFFLE: -0.1,          // sta < seuil d'essoufflement.
-      EPUISE: -0.08,            // fatigue < 15.
-      NOIR: -0.15,              // dans le noir sans lampe.
-      DOULEUR_60: -0.05, DOULEUR_80: -0.1,
-      SURPOIDS: -0.1,           // × facteur de surpoids.
-    },                          // Toucher garanti : mort à terre, mort qui vacille, attaque furtive.
-    DEGATS: {                   // dégâts = jet(dmg) × charge × (1 + PAR_NIVEAU × niv) × crit × états × armure
+    ACHEVER: { MULT: 2.2, PORTEE: 1.35 }, // un mort à terre devant toi : coup de grâce, × 2,2 et critique.
+    HITSTOP_MS: { rapide: 45, combo: 70, lourd: 95, achever: 120, tue: 80 }, // micro-arrêt de l'image à l'impact (sensation de choc).
+    VISEE_AUTO: { PORTEE: 2.8, ANGLE_DEG: 85 }, // tactile : en frappant, tu te tournes vers le mort le plus menaçant à ≤ 2,8 cases
+                                // dans ±85° de ton regard (sinon, n'importe lequel à ≤ 1,4 case).
+    TOUCHER: {                  // (armes de tir et attaques de scène uniquement : la mêlée ne rate JAMAIS au hasard)
+      BASE: 0.9, PAR_NIVEAU: 0.03, MIN: 0.5, MAX: 0.98,
+      ESSOUFFLE: -0.1, EPUISE: -0.08, NOIR: -0.15, DOULEUR_60: -0.05, DOULEUR_80: -0.1, SURPOIDS: -0.1,
+    },
+    DEGATS: {                   // dégâts = jet(dmg) × charge × enchaînement × (1 + PAR_NIVEAU × niv) × crit × états × armure
       PAR_NIVEAU: 0.06,         // +6 % par niveau de la compétence de l'arme (niveau 5 : +30 %).
       AFFAME: 0.85,             // faim < 15.
       USEE: 0.8, SEUIL_USEE: 0.2, // arme à < 20 % de durabilité : dégâts × 0,8.
@@ -350,24 +370,33 @@ export const REGLAGES = {
       VACILLE: 0.2,             // + 20 % contre un mort qui vacille.
     },
     VACILLER: {
-      MS: 900,                  // un mort qui vacille : il titube 0,9 s, sa télégraphie est annulée.
-      RESISTANCE_INTERRUPTION: 0.75, // au-delà (colosse), l'interruption n'est plus garantie : jet de vacillement normal.
+      MS: 850,                  // un mort qui vacille : il titube 0,85 s, son attaque est annulée.
+      RESISTANCE_INTERRUPTION: 0.75, // au-delà (colosse), un coup lourd n'interrompt que s'il casse son équilibre.
     },
     A_TERRE: {
-      MS: 1800,                 // un mort à terre : 1,8 s au sol…
+      MS: 2200,                 // un mort à terre : 2,2 s au sol (le temps de l'achever)…
       DEGATS: 1.5,              // … tes coups ×1,5…
-      CRIT: 0.25,               // … +25 % de critique, toucher garanti.
+      CRIT: 0.25,               // … +25 % de critique.
     },
 
     // --- Défense ---
+    ESQUIVE: {                  // Espace (PC) / bouton Esquiver : une ruée courte dans la direction du déplacement (en arrière sinon)
+      MS: 300, CASES: 1.7,      // 1,7 case en 0,3 s…
+      INVULN_MS: 240,           // … invulnérable pendant 0,24 s…
+      STA: 14,                  // … pour 14 d'endurance (impossible sous ce seuil : tu trébuches)…
+      COOLDOWN_MS: 450,         // … une fois toutes les 0,45 s.
+      PARFAITE_MS: 200,         // un coup qui t'aurait touché dans les 0,2 s après le début de l'esquive = ESQUIVE PARFAITE :
+      RALENTI_MS: 320,          //   ralenti de 0,32 s (seul ; à deux le monde ne ralentit pas)…
+      CRIT_MS: 1500,            //   … et ton prochain coup dans les 1,5 s est critique.
+    },
     POUSSEE: {                  // clic droit (PC) / bouton Pousser : repousse tout ce qui est devant toi.
-      PORTEE: 1.5, ARC_DEG: 130,
-      RECUL: 1.2,               // cases ; × (1 − résistance).
-      VACILLE_MS: 900,          // les morts poussés vacillent (télégraphie annulée)…
+      PORTEE: 1.5, ARC_DEG: 140,
+      RECUL: 1.25,              // cases ; × (1 − résistance).
+      VACILLE_MS: 850,          // les morts poussés vacillent (attaque annulée)…
       TERRE_BASE: 0.2,          // … chance de mise à terre : 0,2 + 0,05 × Force − 0,5 × résistance.
       TERRE_PAR_FORCE: 0.05,
       RESISTANCE_BLOQUE: 0.75,  // résistance ≥ 0,75 (colosse) : « il ne bouge pas ».
-      STA: 7, COOLDOWN_MS: 800, GESTE_MS: 300,
+      STA: 7, COOLDOWN_MS: 750, GESTE_MS: 300,
     },
     EMPOIGNADE: {               // il t'agrippe : marteler Frapper ou Pousser avant la fin de l'anneau
       MS: 2400,                 // compte à rebours…
@@ -378,6 +407,7 @@ export const REGLAGES = {
       STA_PAR_TAP: 1.5,         // chaque martèlement coûte 1,5 sta ; à 0 sta, il compte pour moitié.
       MORSURE_DEGATS: 1.2,      // raté : morsure, dégâts = dmg max × 1,2, blessure 'morsure' (seule source de morsure).
       AUTRES_ATTENDENT: true,   // pendant une empoignade, les autres morts ne frappent pas la même personne.
+      AIDE_COOP: 2,             // à deux : un coup ou une poussée de ton coéquipier sur le mort qui te tient compte pour 2 martèlements.
     },
     BOUSCULE: { CASES: 1.4 },   // la charge d'un colosse qui te percute te projette de 1,4 case.
 
@@ -398,10 +428,9 @@ export const REGLAGES = {
     BRUIT_ARME: [1.5, 3, 8, 25], // bruit (cases) d'un coup qui porte selon le `bruit` de l'arme 0..3 (tir : 25).
     // --- Endurance ---
     ENDURANCE: {
-      SEUIL_ESSOUFFLE: 15,      // sta < 15 : ESSOUFFLÉ(E) — les coups partent quand même, ×0,6 dégâts, ×1,5 durée.
+      SEUIL_ESSOUFFLE: 15,      // sta < 15 : ESSOUFFLÉ(E) — les coups partent quand même, ×0,6 dégâts, ×1,5 durée ; pas d'esquive.
       ESSOUFFLE_DEGATS: 0.6,
     },
-    // On ne refuse JAMAIS un coup faute d'endurance : le coup part, mou et lent ; seule l'esquive est bloquée.
     MAINS_NUES: {               // « arme » par défaut quand la main est vide
       nom: 'Mains nues', dmg: [3, 6], vitesse: 380, sta: 4, allonge: 0, charge: 1.5,
       stagger: 0.15, crit: 0.05, skill: 'mainsNues', bruit: 0,

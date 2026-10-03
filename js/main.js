@@ -164,11 +164,13 @@ async function reprendrePosition() {
 function lieuEchelle(id) { try { return (flow.lieuDe && flow.lieuDe(id) || {}).echelle || 'salon'; } catch (e) { return 'salon'; } }
 
 // Invité co-op : le monde arrive de l'hôte, le personnage est le sien.
-export async function demarrerInvite({ monde, joueur, position }) {
+export async function demarrerInvite({ position, neuf } = {}) {
   cacherEcran();
   demarrerSystemes({ invite: true });
   if (position && position.lieu) await flow.explorer(position.lieu, { entree: position.entree || undefined });
   else await flow.explorer('cimetiere', { entree: 'caveau' });
+  // premier soir à deux : on se réveille l'un près de l'autre
+  if (neuf && G && !G.world.flags.prologue_fini) setTimeout(() => flow.scene('coop_reveil').catch(() => {}), 600);
 }
 
 // ---------- Mort ----------

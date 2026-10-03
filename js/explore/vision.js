@@ -91,7 +91,7 @@ export function calculerVision(C, E, jour, px, py, lampes, nLampes) {
   for (let k = 0; k < C.n; k++) {
     const i = C.liste[k];
     const x = i % w + 0.5, y = ((i / w) | 0) + 0.5;
-    let l = E.lumBase[i] * jour;
+    let l = E.lumBase[i] * jour + (E.lumStat ? E.lumStat[i] * (1 - E.lumBase[i] * jour * 0.6) : 0);
     for (let q = 0; q < nLampes; q++) {
       const L = lampes[q];
       if (L.sec && C.los2[i] !== C.stamp2) continue;

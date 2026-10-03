@@ -2,7 +2,8 @@
 // Usage : node tools/generer_sw.mjs
 import { readdirSync, statSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-const racine = new URL('..', import.meta.url).pathname;
+import { fileURLToPath } from 'url';
+const racine = fileURLToPath(new URL('..', import.meta.url));
 const inclure = ['index.html', 'manifest.webmanifest', 'css', 'js', 'fonts', 'icons', 'zombies'];
 const liste = ['./'];
 function parcourir(rel) {

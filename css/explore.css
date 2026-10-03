@@ -1,94 +1,172 @@
-/* ============ Temps 1 — Exploration ============
-   Sobre : noir, crème #e6dfcc, ambre #c9a227, sang #8e1b24. Cibles tactiles ≥ 44 px. */
+/* ============ Temps 1 — Exploration (et combat sur place) ============
+   Sobre : noir, crème #e6dfcc, ambre #c9a227, sang #8e1b24, bleu coéquipier #7cc8ff. Cibles tactiles ≥ 44 px.
+   Disposition : haut-gauche HUD général (heure, lieu) · haut-centre nom de pièce + guide d'objectif · haut-droite mains + menus
+   bas-gauche vitaux · bas-centre invite d'interaction / messages · bas-droite boutons tactiles. */
 .explore {
-  --ex-noir: #0b0b0c; --ex-creme: #e6dfcc; --ex-ambre: #c9a227; --ex-sang: #8e1b24;
+  --ex-noir: #0b0b0c; --ex-creme: #e6dfcc; --ex-ambre: #c9a227; --ex-ambre-c: #e8c45a; --ex-sang: #8e1b24; --ex-rouge: #d6303e; --ex-bleu: #7cc8ff;
+  --ex-panneau: rgba(11, 11, 12, .78); --ex-bord: rgba(230, 223, 204, .16);
   position: absolute; inset: 0; overflow: hidden; background: #000; color: var(--ex-creme);
   font-family: Oswald, 'Arial Narrow', system-ui, sans-serif; user-select: none; -webkit-user-select: none;
   touch-action: none; -webkit-tap-highlight-color: transparent;
 }
 .ex-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+.cache { display: none !important; }
 
-/* Nom de pièce / d'étage */
+/* ---------- Nom de pièce / d'étage ---------- */
 .ex-lieu {
-  position: absolute; top: 12%; left: 50%; transform: translateX(-50%); pointer-events: none;
-  font-size: 22px; letter-spacing: .12em; text-transform: uppercase; color: var(--ex-creme);
-  text-shadow: 0 2px 8px #000, 0 0 2px #000; opacity: 0; white-space: nowrap;
+  position: absolute; top: 70px; left: 50%; transform: translateX(-50%); pointer-events: none;
+  font-size: 22px; letter-spacing: .16em; text-transform: uppercase; color: var(--ex-creme);
+  text-shadow: 0 2px 10px #000, 0 0 2px #000; opacity: 0; white-space: nowrap;
 }
-.ex-lieu.on { animation: ex-lieu 2.8s ease-out forwards; }
-@keyframes ex-lieu { 0% { opacity: 0; transform: translate(-50%, 6px); } 15% { opacity: .9; transform: translate(-50%, 0); } 70% { opacity: .9; } 100% { opacity: 0; } }
+.ex-lieu.on { animation: ex-lieu 3s ease-out forwards; }
+@keyframes ex-lieu { 0% { opacity: 0; transform: translate(-50%, 8px); } 14% { opacity: .95; transform: translate(-50%, 0); } 72% { opacity: .95; } 100% { opacity: 0; } }
 
-/* Message court */
+/* ---------- Guide d'objectif (haut-centre) ---------- */
+.ex-guide {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: min(520px, 46vw);
+  display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 10px; pointer-events: none;
+  background: var(--ex-panneau); border: 1px solid rgba(201,162,39,.4); border-radius: 18px;
+  font-size: 14px; letter-spacing: .03em; color: var(--ex-creme); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ex-guide span { overflow: hidden; text-overflow: ellipsis; }
+.ex-guide-ico { flex: none; width: 10px; height: 10px; border: 2px solid var(--ex-ambre-c); transform: rotate(45deg); }
+.ex-guide.neuf { animation: ex-guide-neuf 1.6s ease-out; }
+@keyframes ex-guide-neuf { 0% { border-color: var(--ex-ambre-c); box-shadow: 0 0 0 0 rgba(232,196,90,.6); } 40% { box-shadow: 0 0 0 10px rgba(232,196,90,0); } 100% { border-color: rgba(201,162,39,.4); } }
+
+/* écrans étroits : le guide passe sous la barre du haut (heure, mains, menus) */
+@media (max-width: 1180px) {
+  .ex-guide { top: 62px; max-width: min(560px, 78vw); }
+  .ex-coop { top: 96px; }
+  .ex-lieu { top: 128px; }
+}
+/* ---------- Coéquipier ---------- */
+.ex-coop {
+  position: absolute; top: 46px; left: 50%; transform: translateX(-50%); pointer-events: none;
+  padding: 3px 12px; border-radius: 12px; background: rgba(10,20,30,.72); border: 1px solid rgba(124,200,255,.45);
+  color: var(--ex-bleu); font-size: 12.5px; letter-spacing: .04em; white-space: nowrap;
+}
+.ex-coop.alerte { color: #ff8a8a; border-color: #ff6a6a; background: rgba(40,8,10,.8); animation: ex-pulse-coop .7s ease-in-out infinite alternate; }
+@keyframes ex-pulse-coop { from { opacity: .75; } to { opacity: 1; } }
+
+/* ---------- Message court ---------- */
 .ex-msg {
-  position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); max-width: min(560px, 80vw);
-  padding: 8px 14px; background: rgba(11,11,12,.82); border-left: 3px solid var(--ex-ambre);
+  position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); max-width: min(580px, 80vw);
+  padding: 9px 16px; background: rgba(11,11,12,.86); border-left: 3px solid var(--ex-ambre); border-radius: 2px 6px 6px 2px;
   font-family: 'EB Garamond', Georgia, serif; font-size: 17px; line-height: 1.3; pointer-events: none;
-  opacity: 0; transition: opacity .25s;
+  opacity: 0; transition: opacity .25s, transform .25s;
 }
 .ex-msg.on { opacity: 1; }
 
-/* Invite d'interaction (clavier) */
+/* ---------- Invite d'interaction (clavier) ---------- */
 .ex-invite {
-  position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); pointer-events: none;
-  padding: 6px 14px; background: rgba(11,11,12,.78); border: 1px solid rgba(201,162,39,.45);
+  position: absolute; left: 50%; bottom: 42px; transform: translateX(-50%); pointer-events: none;
+  padding: 7px 16px; background: var(--ex-panneau); border: 1px solid rgba(201,162,39,.55); border-radius: 6px;
   font-size: 16px; letter-spacing: .04em; white-space: nowrap; opacity: 0; transition: opacity .15s;
 }
 .ex-invite.on { opacity: 1; }
-.ex-invite kbd {
-  display: inline-block; min-width: 1.4em; padding: 0 5px; margin-right: 4px; text-align: center;
-  border: 1px solid var(--ex-ambre); color: var(--ex-ambre); font-family: inherit; font-size: 14px; border-radius: 3px;
+.ex-invite kbd, .ex-aide kbd {
+  display: inline-block; min-width: 1.5em; padding: 0 6px; margin-right: 6px; text-align: center; border-radius: 4px;
+  border: 1px solid var(--ex-ambre); background: rgba(201,162,39,.12); color: var(--ex-ambre-c); font-family: inherit; font-size: 13px; line-height: 1.6;
 }
 
-/* Endurance + lampe (bas gauche) */
-.ex-etat { position: absolute; left: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
-.ex-sta { width: 140px; height: 5px; background: rgba(230,223,204,.14); transition: opacity .6s; }
-.ex-sta i { display: block; height: 100%; width: 100%; background: var(--ex-creme); }
-.ex-sta.plein { opacity: 0; }
-.ex-sta.bas i { background: var(--ex-sang); }
-.ex-lampe { display: none; align-items: center; gap: 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ex-ambre); }
+/* ---------- Vitaux (bas-gauche) : vie + souffle, toujours lisibles ---------- */
+.ex-etat { position: absolute; left: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; transition: opacity .6s; }
+.ex-etat.discret { opacity: .45; }
+.ex-vital { display: grid; grid-template-columns: 52px 150px 30px; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.ex-vital > b { font-weight: 500; color: rgba(230,223,204,.7); text-align: right; }
+.ex-vital > em { font-style: normal; font-size: 12px; color: rgba(230,223,204,.8); letter-spacing: 0; }
+.ex-vital-b { position: relative; height: 8px; background: rgba(0,0,0,.6); border: 1px solid rgba(230,223,204,.18); border-radius: 4px; overflow: hidden; }
+.ex-vital-b i, .ex-vital-b s { position: absolute; left: 0; top: 0; bottom: 0; display: block; width: 100%; border-radius: 3px; }
+.ex-vital-b s { background: rgba(255,240,220,.55); text-decoration: none; }
+.ex-vital-b i { z-index: 1; }
+.ex-vital.pv .ex-vital-b i { background: linear-gradient(#d24452, #8e1b24); }
+.ex-vital.sta .ex-vital-b i { background: linear-gradient(#efe6cf, #b8ad94); }
+.ex-vital.sta .ex-vital-b s { display: none; }
+.ex-vital.pv.bas .ex-vital-b { border-color: var(--ex-rouge); animation: ex-pulse-pv .6s ease-in-out infinite alternate; }
+.ex-vital.sta.bas .ex-vital-b i { background: linear-gradient(#a85a3a, #6a2a1a); }
+@keyframes ex-pulse-pv { from { box-shadow: 0 0 0 0 rgba(214,48,62,.0); } to { box-shadow: 0 0 10px 1px rgba(214,48,62,.7); } }
+.ex-lampe { display: none; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ex-ambre); padding-left: 12px; }
 .ex-lampe.on { display: flex; }
-.ex-lampe b { width: 60px; height: 4px; background: rgba(201,162,39,.2); }
+.ex-lampe b { width: 80px; height: 4px; background: rgba(201,162,39,.2); border-radius: 2px; overflow: hidden; }
 .ex-lampe b i { display: block; height: 100%; background: var(--ex-ambre); }
 
-/* Barre d'action (forcer, crocheter…) */
-.ex-action { position: absolute; left: 50%; bottom: 140px; transform: translateX(-50%); width: min(320px, 70vw); pointer-events: none; text-align: center; }
-.ex-action-l { font-size: 15px; margin-bottom: 6px; text-shadow: 0 1px 4px #000; }
-.ex-action-b { height: 6px; background: rgba(0,0,0,.7); border: 1px solid rgba(201,162,39,.4); }
-.ex-action-b i { display: block; height: 100%; width: 0; background: var(--ex-ambre); }
-.cache { display: none !important; }
+/* ---------- Barre d'action (forcer, crocheter, relever…) ---------- */
+.ex-action { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); width: min(340px, 72vw); pointer-events: none; text-align: center; }
+.ex-action-l { font-size: 15px; margin-bottom: 6px; text-shadow: 0 1px 4px #000; letter-spacing: .04em; }
+.ex-action-b { height: 7px; background: rgba(0,0,0,.75); border: 1px solid rgba(201,162,39,.45); border-radius: 4px; overflow: hidden; }
+.ex-action-b i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #a8841c, var(--ex-ambre-c)); }
 
-/* Fenêtre de butin */
+/* ---------- Fenêtre de butin ---------- */
 .ex-butin {
-  position: absolute; right: 16px; top: 50%; transform: translateY(-50%); width: min(320px, 44vw); max-height: 76vh;
-  display: flex; flex-direction: column; background: rgba(11,11,12,.93); border: 1px solid rgba(230,223,204,.18);
-  box-shadow: 0 10px 40px rgba(0,0,0,.7); padding: 12px; z-index: 5;
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%); width: min(340px, 44vw); max-height: 76vh; z-index: 30;
+  display: flex; flex-direction: column; background: rgba(11,11,12,.95); border: 1px solid var(--ex-bord); border-radius: 8px;
+  box-shadow: 0 12px 44px rgba(0,0,0,.75); padding: 12px;
 }
-.ex-butin-t { font-size: 17px; letter-spacing: .06em; text-transform: uppercase; color: var(--ex-ambre); margin-bottom: 8px; }
+.ex-butin-t { font-size: 17px; letter-spacing: .06em; text-transform: uppercase; color: var(--ex-ambre-c); margin-bottom: 8px; }
 .ex-butin-t span { color: rgba(230,223,204,.55); text-transform: none; letter-spacing: 0; font-size: 14px; }
 .ex-butin-l { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
 .ex-butin-l li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; border-bottom: 1px solid rgba(230,223,204,.08); font-size: 16px; }
 .ex-butin-l li.neuf { animation: ex-apparait .3s ease-out; }
+.ex-butin-l li.plein > .ex-b-nom { opacity: .6; }
+.ex-butin-l li .ex-b + .ex-b { margin-left: 4px; }
 .ex-b-nom { flex: 1; min-width: 0; min-height: 44px; text-align: left; background: none; border: 0; color: inherit; font: inherit; padding: 0; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ex-butin-l li em { color: rgba(230,223,204,.6); font-style: normal; }
 .ex-butin-cache { color: rgba(230,223,204,.4); justify-content: center !important; }
 @keyframes ex-apparait { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
 .ex-butin-a { display: flex; gap: 8px; margin-top: 10px; }
+.ex-butin-place { font-size: 13px; color: rgba(230,223,204,.6); padding: 6px 0 2px; font-family: 'EB Garamond', Georgia, serif; font-style: italic; }
 .ex-b {
-  min-height: 44px; min-width: 44px; padding: 0 14px; background: rgba(230,223,204,.06); color: var(--ex-creme);
+  min-height: 44px; min-width: 44px; padding: 0 14px; background: rgba(230,223,204,.06); color: var(--ex-creme); border-radius: 5px;
   border: 1px solid rgba(230,223,204,.28); font: inherit; font-size: 15px; letter-spacing: .04em; cursor: pointer;
 }
 .ex-b:hover { border-color: var(--ex-ambre); }
 .ex-b:disabled { opacity: .35; cursor: default; }
-.ex-b-p { flex: 1; background: rgba(201,162,39,.16); border-color: var(--ex-ambre); color: var(--ex-ambre); }
+.ex-b-p { flex: 1; background: rgba(201,162,39,.16); border-color: var(--ex-ambre); color: var(--ex-ambre-c); }
 
-/* ---------- Tactile ---------- */
-.ex-joyzone { position: absolute; left: 0; top: 0; bottom: 0; width: 45%; display: none; touch-action: none; }
+/* ---------- Ce que l'on tient (haut-droite) ---------- */
+.ex-mains { position: absolute; top: 12px; right: 222px; display: flex; gap: 4px; z-index: 4; }
+.ex-main { position: relative; min-height: 40px; min-width: 120px; max-width: 34vw; padding: 3px 10px 6px; text-align: left; border-radius: 6px;
+  background: var(--ex-panneau); border: 1px solid rgba(230,223,204,.2); color: var(--ex-creme); font: inherit; cursor: pointer; }
+.ex-main small { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: rgba(230,223,204,.5); }
+.ex-main span { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-main em { position: absolute; right: 8px; top: 4px; font-style: normal; font-size: 11px; color: var(--ex-ambre); }
+.ex-main.droite { border-color: rgba(201,162,39,.5); }
+.ex-main.dos { border-style: dashed; }
+.ex-usure { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 2px; background: rgba(230,223,204,.12); }
+.ex-usure b { display: block; height: 100%; background: rgba(230,223,204,.6); }
+.ex-usure.bas b { background: var(--ex-rouge); }
+@media (max-width: 760px) { .ex-mains { right: 214px; } .ex-main { min-width: 0; max-width: 140px; } }
+
+/* ---------- Combat : voile rouge, « Dégage-toi ! », route ---------- */
+.ex-sang { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(120,8,14,.55) 80%, rgba(90,0,6,.85) 100%); }
+.ex-degage { position: absolute; left: 50%; top: 24%; transform: translateX(-50%); pointer-events: none; z-index: 4;
+  font-size: 28px; letter-spacing: .12em; text-transform: uppercase; color: var(--ex-ambre-c); text-shadow: 0 2px 10px #000, 0 0 3px #000;
+  animation: ex-pulse .45s ease-in-out infinite alternate; }
+@keyframes ex-pulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.08); } }
+.ex-route { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 6; min-height: 48px; padding: 0 22px; border-radius: 6px;
+  background: rgba(40,32,10,.88); border: 1px solid var(--ex-ambre); color: var(--ex-creme); font: inherit; font-size: 17px; letter-spacing: .06em; cursor: pointer; }
+.explore.ex-arene { z-index: 20; }
+
+/* ---------- Aide des commandes (PC, H) ---------- */
+.ex-aide { position: absolute; right: 16px; bottom: 16px; z-index: 5; pointer-events: none; padding: 12px 16px 10px;
+  background: rgba(11,11,12,.86); border: 1px solid var(--ex-bord); border-radius: 8px; font-size: 13px; color: rgba(230,223,204,.85); }
+.ex-aide-t { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ex-ambre-c); margin-bottom: 8px; }
+.ex-aide-t small { color: rgba(230,223,204,.45); letter-spacing: .02em; text-transform: none; }
+.ex-aide-g { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 22px; }
+.ex-aide h4 { margin: 0 0 4px; font-weight: 500; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(230,223,204,.5); }
+.ex-aide-g > div > div { line-height: 1.85; white-space: nowrap; }
+.explore.ex-tactile .ex-aide { display: none; }
+
+/* ---------- Tactile : joystick n'importe où + boutons à droite ---------- */
+.ex-joyzone { position: absolute; inset: 0; display: none; touch-action: none; z-index: 1; }
 .ex-joy {
   position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
   border: 2px solid rgba(230,223,204,.22); background: rgba(11,11,12,.25); opacity: 0; transition: opacity .12s; pointer-events: none;
 }
 .ex-joy.on { opacity: 1; }
 .ex-joy-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(230,223,204,.35); }
-.ex-pad { position: absolute; right: 14px; bottom: 14px; display: none; flex-direction: column; align-items: flex-end; gap: 10px; }
+.ex-pad { position: absolute; right: 14px; bottom: 14px; display: none; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 3; }
 .ex-pad-ligne { display: flex; gap: 10px; }
 .ex-btn {
   min-width: 56px; min-height: 56px; border-radius: 50%; border: 1px solid rgba(230,223,204,.35);
@@ -98,106 +176,66 @@
 .ex-btn.on { border-color: var(--ex-ambre); color: var(--ex-ambre); background: rgba(201,162,39,.16); }
 .ex-btn.appui { transform: scale(.94); background: rgba(230,223,204,.18); }
 .ex-btn-petit { min-width: 46px; min-height: 46px; }
+.ex-btn-ico { min-width: 44px; min-height: 44px; width: 44px; height: 44px; padding: 0; display: grid; place-items: center;
+  background: rgba(11,11,12,.38); border-color: rgba(230,223,204,.18); opacity: .78; }
+.ex-btn-ico svg { width: 22px; height: 22px; }
+.ex-btn-ico.on { opacity: 1; color: var(--ex-ambre); border-color: var(--ex-ambre); background: rgba(201,162,39,.14); }
 .ex-btn-inter {
   border-radius: 28px; min-width: 150px; max-width: 46vw; min-height: 56px; padding: 0 18px; font-size: 15px; text-transform: none;
-  border-color: var(--ex-ambre); color: var(--ex-creme); background: rgba(40,32,10,.7);
+  border-color: var(--ex-ambre); color: var(--ex-creme); background: rgba(40,32,10,.75);
 }
 .ex-btn-inter.inactif { opacity: .35; border-color: rgba(230,223,204,.3); }
 .ex-btn-l { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.explore.ex-tactile .ex-joyzone, .explore.ex-tactile .ex-pad { display: flex; }
+/* combat : Frapper (gros), Esquiver, Pousser */
+.ex-pad-combat { display: flex; align-items: flex-end; gap: 10px; }
+.ex-btn-frapper, .ex-btn-pousser, .ex-btn-esquiver { position: relative; display: grid; place-items: center; padding: 0; border-radius: 50%; overflow: visible; }
+.ex-btn-frapper { width: 92px; height: 92px; min-width: 92px; border: 2px solid rgba(230,223,204,.5); background: rgba(60,14,18,.6); }
+.ex-btn-pousser, .ex-btn-esquiver { width: 62px; height: 62px; min-width: 62px; margin-bottom: 6px; background: rgba(11,11,12,.62); }
+.ex-btn-esquiver { margin-bottom: 38px; border-color: rgba(124,200,255,.45); }
+.ex-btn-esquiver.proche { border-color: var(--ex-bleu); box-shadow: 0 0 12px rgba(124,200,255,.35); }
+.ex-frap-ico { display: grid; place-items: center; margin-top: -8px; }
+.ex-frap-ico svg { width: 28px; height: 28px; }
+.ex-btn-pousser .ex-frap-ico svg, .ex-btn-esquiver .ex-frap-ico svg { width: 22px; height: 22px; }
+.ex-frap-l { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 11px; letter-spacing: .08em; }
+.ex-btn-pousser .ex-frap-l, .ex-btn-esquiver .ex-frap-l { bottom: 7px; font-size: 9.5px; }
+.ex-btn-frapper.proche { border-color: var(--ex-rouge); box-shadow: 0 0 14px rgba(214,48,62,.45); }
+.ex-btn-frapper[data-combo="2"]::after, .ex-btn-frapper[data-combo="3"]::after { content: attr(data-combo); position: absolute; top: -6px; right: -4px;
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--ex-ambre); color: #111; font-size: 12px; font-weight: 600; }
+.ex-btn-frapper.empoigne, .ex-btn-pousser.empoigne { border-color: var(--ex-ambre); background: rgba(201,162,39,.25); animation: ex-tremble .12s linear infinite; }
+@keyframes ex-tremble { 0% { translate: 0 0; } 50% { translate: 1px -1px; } 100% { translate: -1px 1px; } }
+.ex-frap-anneau { position: absolute; inset: -6px; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: conic-gradient(var(--ex-ambre-c) calc(var(--charge, 0) * 360deg), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%); mask: radial-gradient(circle, transparent 60%, #000 61%); }
+.ex-btn-frapper.charge .ex-frap-anneau { opacity: 1; }
+.ex-btn-pousser .ex-cd, .ex-btn-esquiver .ex-cd { position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(rgba(0,0,0,.6) calc(var(--cd, 0) * 360deg), transparent 0); }
+.ex-btn-pousser.recharge, .ex-btn-esquiver.recharge { opacity: .7; }
+.ex-btn-recharger { align-self: flex-end; margin-bottom: 14px; font-size: 11px; border-radius: 26px; padding: 0 12px; }
+
 .explore.ex-tactile .ex-joyzone { display: block; }
+.explore.ex-tactile .ex-pad { display: flex; }
 .explore.ex-tactile .ex-invite { display: none; }
-.explore.ex-tactile .ex-msg { bottom: 150px; }
-.explore.ex-tactile .ex-butin { top: 12px; transform: none; max-height: calc(100% - 180px); }
+.explore.ex-tactile .ex-msg { bottom: 160px; }
 @media (pointer: coarse) {
   .explore .ex-joyzone { display: block; }
   .explore .ex-pad { display: flex; }
-  .explore .ex-invite { display: none; }
-  .explore .ex-msg { bottom: 150px; }
-  .explore .ex-butin { top: 12px; transform: none; max-height: calc(100% - 180px); }
+  .explore .ex-invite, .explore .ex-aide { display: none; }
+  .explore .ex-msg { bottom: 160px; }
+  .explore .ex-butin { top: 64px; bottom: 12px; right: 50%; transform: translateX(50%); width: min(420px, 70vw); max-height: none; }
+  .explore .ex-etat { bottom: auto; top: 96px; }
+  .explore .ex-vital { grid-template-columns: 0 110px 26px; }
+  .explore .ex-vital > b { display: none; }
 }
 @media (max-height: 420px) {
-  .ex-lieu { font-size: 17px; top: 8%; }
+  .ex-lieu { font-size: 17px; top: 56px; }
   .ex-msg { font-size: 15px; }
-}
-.ex-butin-l li.plein > .ex-b-nom { opacity: .6; }
-.ex-butin-l li .ex-b + .ex-b { margin-left: 4px; }
-.ex-butin-place { font-size: 13px; color: rgba(230,223,204,.6); padding: 6px 0 2px; font-family: 'EB Garamond', Georgia, serif; font-style: italic; }
-
-/* ---- Contrôles tactiles v2 : joystick flottant n'importe où (gauche OU droite), icônes discrètes ---- */
-.ex-joyzone { width: 100% !important; z-index: 1; }
-.ex-pad { z-index: 3; }
-.ex-btn-ico { min-width: 44px !important; min-height: 44px !important; width: 44px; height: 44px; padding: 0 !important; display: grid; place-items: center;
-  background: rgba(11,11,12,.38) !important; border-color: rgba(230,223,204,.18) !important; opacity: .72; }
-.ex-btn-ico svg { width: 22px; height: 22px; }
-.ex-btn-ico.on { opacity: 1; color: var(--ex-ambre); border-color: var(--ex-ambre) !important; background: rgba(201,162,39,.14) !important; }
-.ex-butin { z-index: 30 !important; }
-@media (pointer: coarse) {
-  .explore .ex-butin { top: 64px !important; bottom: 12px; right: 50%; transform: translateX(50%) !important; width: min(420px, 70vw); max-height: none !important; }
-  .explore .ex-butin .ex-b { min-height: 44px; }
-}
-
-/* ======================= COMBAT DANS L'EXPLORATION ======================= */
-/* Voile rouge quand on encaisse (et quand les PV sont bas) */
-.ex-sang { position: absolute; inset: 0; pointer-events: none; opacity: 0;
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(120,8,14,.55) 80%, rgba(90,0,6,.85) 100%); }
-
-/* Ce que l'on tient : main droite / gauche / dos (en haut à droite ; touche = échanger les mains / reprendre le dos) */
-.ex-mains { position: absolute; top: 12px; right: 222px; display: flex; gap: 4px; z-index: 4; }
-@media (max-width: 760px) { .ex-mains { right: 214px; } .ex-main { min-width: 0 !important; max-width: 140px; } }
-.ex-main { position: relative; min-height: 38px; min-width: 120px; max-width: 34vw; padding: 3px 10px 5px; text-align: left;
-  background: rgba(11,11,12,.66); border: 1px solid rgba(230,223,204,.2); color: var(--ex-creme); font: inherit; cursor: pointer; }
-.ex-main small { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: rgba(230,223,204,.5); }
-.ex-main span { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ex-main em { position: absolute; right: 8px; top: 4px; font-style: normal; font-size: 11px; color: var(--ex-ambre); }
-.ex-main.droite { border-color: rgba(201,162,39,.45); }
-.ex-main.dos { border-style: dashed; }
-.ex-usure { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 2px; background: rgba(230,223,204,.12); }
-.ex-usure b { display: block; height: 100%; background: rgba(230,223,204,.6); }
-.ex-usure.bas b { background: var(--ex-sang); }
-
-/* « Dégage-toi ! » pendant une empoignade */
-.ex-degage { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); pointer-events: none; z-index: 4;
-  font-size: 26px; letter-spacing: .1em; text-transform: uppercase; color: var(--ex-ambre); text-shadow: 0 2px 10px #000, 0 0 3px #000;
-  animation: ex-pulse .5s ease-in-out infinite alternate; }
-@keyframes ex-pulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.08); } }
-
-/* Embuscade nettoyée */
-.ex-route { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 6; min-height: 48px; padding: 0 22px;
-  background: rgba(40,32,10,.85); border: 1px solid var(--ex-ambre); color: var(--ex-creme); font: inherit; font-size: 17px; letter-spacing: .06em; cursor: pointer; }
-
-/* Boutons tactiles de combat : Frapper (gros, coin bas-droit), Pousser à côté */
-.ex-pad-combat { display: flex; align-items: flex-end; gap: 12px; }
-.ex-btn-frapper, .ex-btn-pousser { position: relative; display: grid; place-items: center; padding: 0 !important; border-radius: 50%; overflow: visible; }
-.ex-btn-frapper { width: 88px; height: 88px; min-width: 88px; border: 2px solid rgba(230,223,204,.5); background: rgba(60,14,18,.55); }
-.ex-btn-pousser { width: 64px; height: 64px; min-width: 64px; margin-bottom: 6px; background: rgba(11,11,12,.6); }
-.ex-frap-ico { display: grid; place-items: center; margin-top: -8px; }
-.ex-frap-ico svg { width: 28px; height: 28px; }
-.ex-btn-pousser .ex-frap-ico svg { width: 22px; height: 22px; }
-.ex-frap-l { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 11px; letter-spacing: .08em; }
-.ex-btn-pousser .ex-frap-l { bottom: 8px; font-size: 10px; }
-.ex-btn-frapper.proche { border-color: #d6303e; box-shadow: 0 0 14px rgba(214,48,62,.45); }
-.ex-btn-frapper.empoigne, .ex-btn-pousser.empoigne { border-color: var(--ex-ambre); background: rgba(201,162,39,.25); animation: ex-tremble .12s linear infinite; }
-@keyframes ex-tremble { 0% { translate: 0 0; } 50% { translate: 1px -1px; } 100% { translate: -1px 1px; } }
-/* anneau de charge (conic) */
-.ex-frap-anneau { position: absolute; inset: -6px; border-radius: 50%; pointer-events: none; opacity: 0;
-  background: conic-gradient(#c9a227 calc(var(--charge, 0) * 360deg), transparent 0);
-  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%); mask: radial-gradient(circle, transparent 60%, #000 61%); }
-.ex-btn-frapper.charge .ex-frap-anneau { opacity: 1; }
-/* recharge de la poussée */
-.ex-btn-pousser .ex-cd { position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
-  background: conic-gradient(rgba(0,0,0,.55) calc(var(--cd, 0) * 360deg), transparent 0); }
-.ex-btn-pousser.recharge { opacity: .7; }
-.ex-btn-recharger { align-self: flex-end; margin-bottom: 14px; font-size: 11px !important; border-radius: 26px !important; padding: 0 12px !important; }
-@media (max-height: 420px) {
-  .ex-btn-frapper { width: 76px; height: 76px; min-width: 76px; }
-  .ex-btn-pousser { width: 56px; height: 56px; min-width: 56px; }
-  .ex-pad { gap: 6px !important; }
-  .ex-btn-inter { min-height: 48px !important; }
+  .ex-btn-frapper { width: 78px; height: 78px; min-width: 78px; }
+  .ex-btn-pousser, .ex-btn-esquiver { width: 54px; height: 54px; min-width: 54px; }
+  .ex-btn-esquiver { margin-bottom: 30px; }
+  .ex-pad { gap: 6px; }
+  .ex-btn-inter { min-height: 48px; }
   .ex-main { min-width: 80px; padding: 3px 8px 5px; }
+  .ex-guide { font-size: 12.5px; top: 54px; padding: 4px 12px 4px 9px; }
+  .ex-coop { top: 84px; }
+  .ex-lieu { top: 108px; }
 }
-/* PC : rappel des commandes de combat sous le nom du lieu */
-.ex-aide-cbt { position: absolute; right: 12px; bottom: 12px; font-size: 12px; color: rgba(230,223,204,.45); pointer-events: none; text-align: right; line-height: 1.5; }
-.explore.ex-tactile .ex-aide-cbt { display: none; }
-@media (pointer: coarse) { .explore .ex-aide-cbt { display: none; } }
-.explore.ex-arene { z-index: 20; }

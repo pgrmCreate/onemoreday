@@ -5,7 +5,7 @@ import { genrer } from '../core/state.js';
 import { ico } from './icons.js';
 
 let racine = null, branche = false;
-const MAX = 4, DUREE = { info: 3200, bon: 3400, alerte: 4200, mauvais: 4600 };
+const MAX = 3, DUREE = { info: 3200, bon: 3400, alerte: 4200, mauvais: 4600 };
 const ICONE = { info: 'info', bon: 'coche', alerte: 'alerte', mauvais: 'alerte' };
 const derniers = new Map(); // anti-doublon (même texte < 1,2 s)
 

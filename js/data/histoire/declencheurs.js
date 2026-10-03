@@ -12,7 +12,7 @@ export const DECLENCHEURS = [
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'housse_patrick', scene: 'pro_patrick', unique: true },
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'conteneur_frigo', scene: 'pro_conteneur', unique: true },
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'loge_gardien', scene: 'pro_loge', unique: true },
-  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'grille_sortie', si: { pasFlag: 'pro_grille_ouverte' }, scene: 'pro_grille' },
+  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'grille_sortie', si: { pasFlag: 'pro_grille_ouverte' }, scene: 'pro_grille', deux: true, libelle: 'Examiner la grille' },
 
   // Voyage cimetière → Tour de l'Horloge (tutoriel de la carte, puis du combat)
   { quand: 'voyage', de: 'cimetiere', vers: 'tour_horloge', a: 0.35, si: { pasFlag: 'prologue_fini' }, rencontre: 'rh_pro_marche', unique: true },

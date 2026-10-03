@@ -122,7 +122,9 @@ export async function jouerScene(id) {
       const def = defScene(courant);
       if (!def) { console.warn('[dialogue] scène inconnue', courant); break; }
       if (def.effetsEntree) Object.assign(sortie, await appliquer(def.effetsEntree, sortie));
+      emit('scene:noeud', { id, noeud: courant, orateur: def.orateur ? genrer(def.orateur) : null, texte: genrer(def.texte || ''), avant: texteAvant ? genrer(texteAvant) : null });
       const c = await afficher(def, texteAvant);
+      emit('scene:choix', { id, label: genrer(c.label || '') });
       texteAvant = null;
       let suivant = c.suivant, effets = c.effets, texte = c.texte;
       if (c.test) {

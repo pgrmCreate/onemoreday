@@ -1,4 +1,5 @@
-// ============ Combat dans l'exploration — RÈGLES (headless, sans DOM, sans état) ============
+// ============ Combat dans l'exploration — RÈGLES (headless, sans DOM, sans état) — « combat 2 » ============
+// Mêlée sans raté au hasard, enchaînements (3 coups), coup chargé, coup de grâce sur un mort à terre, équilibre des morts.
 // La simulation du lieu (sim.js) s'en sert pour résoudre les coups des joueurs et les attaques des morts.
 // Nombres : REGLAGES.combat (docs/GAMEPLAY.md §4). Profils d'arme : js/game/stats_combat.js → statsCombat(player).arme.
 import { REGLAGES } from '../data/reglages.js';
@@ -40,48 +41,34 @@ export function coutCoup(prof, c, stats) {
   return (prof.sta || 4) * (1 + (R().CHARGE.STA_MULT_PLEIN - 1) * c) * (1 + (REGLAGES.inventaire.SURPOIDS.sta || 0.5) * ((stats && stats.surpoids) || 0));
 }
 
-function pToucher(stats, prof, def, ess) {
-  const T = R().TOUCHER, s = stats || {};
-  let p = T.BASE + T.PAR_NIVEAU * niv(s, prof.skill) - (def.esquive || 0);
-  if (ess) p += T.ESSOUFFLE;
-  if ((s.fatigue ?? 100) < 15) p += T.EPUISE;
-  if (s.noir) p += T.NOIR;
-  if ((s.douleur || 0) > 80) p += T.DOULEUR_80; else if ((s.douleur || 0) > 60) p += T.DOULEUR_60;
-  p += T.SURPOIDS * (s.surpoids || 0);
-  p += s.toucherBonus || 0;
-  return clamp(p, T.MIN, T.MAX);
-}
-
 // Résout un coup de mêlée (ou un tir) d'un joueur sur un mort.
-//   o = { stats, prof, def, c (charge 0..1), aTerre, vacille, telegraphie, furtif, ess, tir, visee, rnd, diff }
-// → { touche, raison?, degats, crit, vacille (le coup le fait vaciller), interrompt, aTerreMult }
+//   o = { stats, prof, def, c (charge 0..1), combo (0..2), achever, critForce, aTerre, vacille, telegraphie, furtif, ess, tir, visee, rnd }
+// → { touche, raison?, degats, crit, vacille (le coup le fait vaciller d'office), interrompt, equilibre (entame), terre (mise à terre) }
+// MÊLÉE : AUCUN raté au hasard — si le mort est dans l'arc au moment de l'impact, le coup porte (c'est la sim qui juge l'arc).
 export function resoudreCoup(o) {
-  const { stats = {}, prof, def, c = 0, aTerre = false, vacille = false, telegraphie = false,
+  const { stats = {}, prof, def, c = 0, combo = 0, achever = false, critForce = false, aTerre = false, vacille = false, telegraphie = false,
     furtif = false, ess = false, tir = false, visee = 0, rnd = Math.random } = o;
-  const D = R().DEGATS, CR = R().CRIT, CO = R().COUP;
-  const garanti = aTerre || vacille || furtif;
-  let p;
+  const D = R().DEGATS, CR = R().CRIT, CO = R().COUP, CB = R().COMBO, CH = R().CHARGE;
   if (tir) {
     const TI = R().TIR;
-    p = ((prof.tir && prof.tir.precision) || 0.7) * (TI.HANCHE + (1 - TI.HANCHE) * visee) + TI.PREC_PAR_NIVEAU * niv(stats, 'visee') - (def.esquive || 0);
+    let p = ((prof.tir && prof.tir.precision) || 0.7) * (TI.HANCHE + (1 - TI.HANCHE) * visee) + TI.PREC_PAR_NIVEAU * niv(stats, 'visee') - (def.esquive || 0);
     if (stats.noir) p += R().TOUCHER.NOIR;
     p = clamp(p, TI.CRITIQUE_MIN, R().TOUCHER.MAX);
-  } else p = pToucher(stats, prof, def, ess);
-  if (!garanti && rnd() >= p) {
-    const raison = ess && !tir ? 'essouffle' : stats.noir ? 'noir' : (def.esquive || 0) > 0 ? 'derobe' : 'vide';
-    return { touche: false, raison, degats: 0, crit: false, vacille: false, interrompt: false };
+    if (!(aTerre || vacille) && rnd() >= p) return { touche: false, raison: stats.noir ? 'noir' : 'vide', degats: 0, crit: false, vacille: false, interrompt: false, equilibre: 0, terre: false };
   }
+  const k = clamp(combo | 0, 0, 2);
   let [mn, mx] = prof.dmg || [1, 2];
   if (prof.skill === 'mainsNues' && !tir) { const b = R().MAINS_NUES.PAR_NIVEAU_DEGATS * niv(stats, 'mainsNues'); mn += b; mx += b; }
   let d = (mn + Math.floor(rnd() * (mx - mn + 1))) * (1 + ((prof.charge || 1) - 1) * c);
+  if (!tir) d *= CB.DEGATS[k];
   d *= 1 + D.PAR_NIVEAU * niv(stats, tir ? 'visee' : prof.skill);
   let pc = (prof.crit || 0) + CR.PAR_DEXTERITE * niv(stats, 'dexterite') + CR.CHARGE * c
-    + (vacille ? CR.VACILLE : 0) + (aTerre ? R().A_TERRE.CRIT : 0)
-    + (tir ? R().TIR.CRIT_VISEE * visee : 0);
+    + (vacille ? CR.VACILLE : 0) + (aTerre ? R().A_TERRE.CRIT : 0) + (tir ? R().TIR.CRIT_VISEE * visee : 0);
   pc *= def.critMult ?? 1;
-  const crit = rnd() < pc;
+  const crit = achever || critForce || rnd() < pc;
   if (crit) d *= CO.CRIT_MULT;
-  if (aTerre) d *= prof.skill === 'mainsNues' ? R().MAINS_NUES.A_TERRE_MULT : R().A_TERRE.DEGATS;
+  if (achever) d *= R().ACHEVER.MULT;
+  else if (aTerre) d *= prof.skill === 'mainsNues' ? R().MAINS_NUES.A_TERRE_MULT : R().A_TERRE.DEGATS;
   if (furtif) d *= REGLAGES.exploration.FURTIF.MULT;
   if (!tir && ess) d *= R().ENDURANCE.ESSOUFFLE_DEGATS;
   if ((stats.faim ?? 100) < 15) d *= D.AFFAME;
@@ -90,18 +77,21 @@ export function resoudreCoup(o) {
   if (!tir && prof.uneMain) d *= REGLAGES.inventaire.UNE_MAIN.degats;
   if (!crit && def.armure) d *= 1 - def.armure * (tir ? R().TIR.ARMURE_EFFICACE : 1);
   d = Math.max(1, Math.round(d));
-  // Vaciller / interrompre
+  // Équilibre entamé, vacillement, interruption, mise à terre
   const res = def.resistance || 0;
-  const facteur = tir ? 1 : c >= R().CHARGE.SEUIL_LOURD ? 1 : c <= 0 ? CO.STAGGER_RAPIDE : c;
-  let fait = rnd() < (prof.stagger || 0) * facteur * (1 - res);
-  let interrompt = false;
-  if (telegraphie && !tir && c >= R().CHARGE.SEUIL_INTERRUPTION) {
-    interrompt = res < R().VACILLER.RESISTANCE_INTERRUPTION ? true : fait;
-    if (interrompt) fait = true;
+  const lourd = !tir && c >= CH.SEUIL_LOURD;
+  const equilibre = tir ? d * 0.8 : d * CB.EQUILIBRE[k] * (lourd ? 2 : 1 + c);
+  let fait = false, interrompt = false, terre = false;
+  if (tir) fait = rnd() < (prof.stagger || 0) * CO.STAGGER_RAPIDE * (1 - res);
+  else {
+    if (lourd) fait = res < R().VACILLER.RESISTANCE_INTERRUPTION || rnd() < 0.35;
+    if (telegraphie && c >= CH.SEUIL_INTERRUPTION) { interrompt = res < R().VACILLER.RESISTANCE_INTERRUPTION || fait; if (interrompt) fait = true; }
+    if (lourd && rnd() < CH.TERRE * (1 - res)) terre = true;
+    if (k === 2 && rnd() < CB.TERRE * (1 - res)) terre = true;
+    if (rnd() < (prof.stagger || 0) * 0.35 * (1 - res)) fait = true;   // une arme lourde secoue même en coup rapide
   }
-  return { touche: true, degats: d, crit, vacille: fait, interrompt };
+  return { touche: true, degats: d, crit, vacille: fait, interrompt, equilibre, terre, combo: k, achever };
 }
-
 // Une attaque de mort qui porte : zone, plaie, dégâts (après protection), points de mal.
 //   o = { def, type (nom du type de mort), stats (protection par zone), morsure (empoignade ratée), rnd, diff }
 export function resoudreAttaque(o) {

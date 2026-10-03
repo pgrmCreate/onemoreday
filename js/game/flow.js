@@ -27,7 +27,9 @@ export function tempsCourant() { return courant ? courant.nom : null; }
 
 export async function explorer(lieuId, opts = {}) {
   if (G) {
-    G.player.position = { mode: 'lieu', lieu: lieuId, entree: opts.entree || null };
+    const P = G.player.position || {};
+    // on garde la position précise (reprise de partie, rejoindre son coéquipier) si rien n'impose une entrée
+    if (!(P.mode === 'lieu' && P.lieu === lieuId && P.x != null && !opts.entree && !P.sorti)) G.player.position = { mode: 'lieu', lieu: lieuId, entree: opts.entree || null };
     const L = G.world.lieux[lieuId] || (G.world.lieux[lieuId] = {});
     L.decouvert = true; L.visite = true;
   }
@@ -99,7 +101,8 @@ export async function scene(id, opts = {}) {
     clock.reprendre('scene'); pileOverlays.pop(); reprendreCourant();
   }
 }
-export async function cinematique(id) {
+export async function cinematique(id, opts = {}) {
+  if (!opts.distant) emit('cinematique', { id });   // co-op : l'autre joueur la voit aussi
   pileOverlays.push('cine'); pauserCourant(); clock.pause('cine');
   try {
     const m = await import('../cine/lecteur.js');

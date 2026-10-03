@@ -115,9 +115,15 @@ export function causeMort(p) {
   if (p.pv <= 0) return p._cause || 'combat';
   return null;
 }
+// Co-op : une mort peut être interceptée (« à terre », le coéquipier peut te relever). fn(p, cause) → true si gérée.
+let intercepteur = null;
+export function intercepterMort(fn) { intercepteur = fn; }
 function verifierMort(p) {
   const c = causeMort(p);
-  if (c && !p.mort) { p.mort = c; emit('mort', { cause: c }); }
+  if (c && !p.mort) {
+    if (intercepteur && c !== 'rechute') { try { if (intercepteur(p, c)) return null; } catch (e) { console.warn(e); } }
+    p.mort = c; emit('mort', { cause: c });
+  }
   return c;
 }
 

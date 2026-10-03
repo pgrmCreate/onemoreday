@@ -398,9 +398,13 @@ export const CINEMATIQUES = {
 
 ## 7. Le combat — DANS l'exploration (refonte)
 
+> **v4 (« combat 2 »)** — ce qui suit est mis à jour par `docs/GAMEPLAY.md` §4 qui fait foi : aucun raté au hasard en mêlée,
+> enchaînement de 3 coups, ESQUIVE (Espace / bouton, invulnérable 0,24 s, esquive parfaite = ralenti + critique),
+> coup de grâce sur un mort à terre, morts qui arment puis se FENDENT (coup jugé au bout de la fente), jetons d'attaque
+> (2 morts au plus frappent la même personne), équilibre des morts, micro-arrêt de l'image à l'impact.
+
 Il n'y a plus d'écran de combat. Les morts se battent là où ils sont, dans la simulation du lieu (`js/explore/sim.js`,
-règles dans `js/explore/combat.js`, nombres dans `REGLAGES.combat`). Trois gestes seulement : **se déplacer, frapper, pousser**
-(pas d'esquive, pas de garde).
+règles dans `js/explore/combat.js`, nombres dans `REGLAGES.combat`). Gestes : **se déplacer, frapper, esquiver, pousser**.
 
 - **Un mort en chasse** s'approche et s'arrête à bout de bras (0,7 case). À portée (`portee`), il **télégraphie**
   (`telegraphe` ms) : un **arc au sol** devant lui, **rouge = coup**, **ambre = empoignade**. À la fin, il frappe : touché si tu es
@@ -438,6 +442,14 @@ règles dans `js/explore/combat.js`, nombres dans `REGLAGES.combat`). Trois gest
   mediatheque, cinema, region, village, refuge, interieur, sombre, train.
 
 ## 9. Co-op : hôte-autoritaire
+
+> **v4** : instantanés du lieu de l'invité à 15 Hz **en différentiel** (`vm` = version du monde statique : portes, sol,
+> cadavres, conteneurs ne partent que s'ils changent), position de l'invité à 20 Hz, positions croisées précises à 4 Hz
+> (`pos` : lieu, étage, x, y, à terre). Le coéquipier est toujours dessiné (silhouette bleue + nom, flèche hors champ) ;
+> l'invité arrive auprès de l'hôte ; « Rejoindre » (badge en bas) téléporte auprès de l'autre ; « à terre » 30 s
+> (`survival.intercepterMort`) et relève (E, 3 s, message `relever`) ; partagés : drapeaux, quêtes, déclencheurs joués (`decl`),
+> lieux découverts (`decouvert`), cinématiques (`cine`) ; une scène vécue par l'un est suivie en direct par l'autre
+> (`scene` : debut / noeud / choix / fin, panneau non bloquant) ; portes et déclencheurs `deux: true` exigent les deux joueurs.
 
 - L'hôte simule **tout le monde partagé** : horloge, drapeaux, quêtes, et **chaque lieu occupé par au moins un
   joueur** (morts, portes, conteneurs, sol) + **tous les combats**. L'invité est un **client** : il possède son

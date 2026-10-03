@@ -51,6 +51,24 @@ export const SCENES_PROLOGUE = {
     ],
   },
 
+  // CO-OP : le second joueur arrive dans la partie (il se réveille près de l'hôte).
+  coop_reveil: {
+    illu: 'housse_noir', musique: 'sombre', orateur: null,
+    texte: 'Du plastique contre ta bouche. Le froid. Puis une main, dehors, qui tire sur ta fermeture éclair.\n\nLe sac s’ouvre d’un coup. Au-dessus de toi, un visage que tu connais sans savoir d’où : {coequipier}. Le même bracelet jaune au poignet. La même étiquette au pied, avec un autre nom.\n\n« Tu respires. Toi aussi, tu respires. »\n\nVous êtes deux à être revenus. Deux à avoir cette faim au fond du ventre. Autour de vous, le cimetière se tait — pas tout à fait.',
+    choix: [
+      {
+        label: 'Te relever',
+        effets: { journal: 'Je me suis {réveillé|réveillée} dans une housse mortuaire. {coequipier} m’a ouvert. Nous sommes deux. Ce qui marche dehors ne respire pas.' },
+        suivant: 'coop_reveil_2',
+      },
+    ],
+  },
+  coop_reveil_2: {
+    illu: 'cimetiere_caveau', musique: 'sombre', orateur: '{coequipier}',
+    texte: '« Reste près de moi. Si l’un de nous tombe, l’autre le relève. D’accord ? »\n\nIl y a des grilles trop lourdes pour une seule paire de bras, et des nuits trop longues pour une seule paire d’yeux. Ici, vous n’avez que vous.',
+    choix: [{ label: 'D’accord', suivant: '#fin' }],
+  },
+
   // Marqueur 'scelle_effets' (le sachet agrafé sur la housse, dans le caveau).
   pro_scelle: {
     illu: 'cimetiere_caveau', musique: 'sombre',
@@ -81,6 +99,15 @@ export const SCENES_PROLOGUE = {
         },
         suivant: '#fin',
       },
+    ],
+  },
+
+  // Zone devant la porte de la chapelle : le premier regard sur le cimetière.
+  pro_dehors: {
+    illu: 'saint_roch_nuit', musique: 'tension',
+    texte: 'L’air du soir te gifle. Ça sent le pin chaud, la cendre et la viande qui tourne.\n\nÀ quelques pas, une lueur rouge palpite entre les tombes : une fusée de détresse plantée dans le gravier, qui crache ses dernières étincelles. Sa lumière tremble sur un homme assis contre une stèle — une combinaison vert olive, un masque à gaz. Il ne bouge pas.\n\nContre ses jambes, quelque chose d’autre est couché. Quelque chose qui, lui, a bougé. Tu en es presque {sûr|sûre}.\n\nPlus loin, vers l’esplanade, un fût brûle encore. Et derrière une porte de métal, des coups. Lents. Réguliers.',
+    choix: [
+      { label: 'Approcher sans bruit (accroupi : C, ou le bouton)', effets: { journal: 'Dehors : une fusée rouge, un soldat mort, et quelque chose couché contre lui. Au loin, des coups contre une porte de métal.' }, suivant: '#fin' },
     ],
   },
 

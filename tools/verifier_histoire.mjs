@@ -114,7 +114,7 @@ function verifTexte(t, ctx) {
   if (/undefined|\[object/.test(t)) err(`${ctx} : texte corrompu`);
   const ouvre = (t.match(/\{/g) || []).length, ferme = (t.match(/\}/g) || []).length;
   if (ouvre !== ferme) err(`${ctx} : accolades déséquilibrées`);
-  for (const m of t.matchAll(/\{([^}]*)\}/g)) if (!/^[^|{}]+\|[^|{}]+$/.test(m[1])) err(`${ctx} : syntaxe de genre invalide « {${m[1]}} »`);
+  for (const m of t.matchAll(/\{([^}]*)\}/g)) if (m[1] !== 'coequipier' && !/^[^|{}]+\|[^|{}]+$/.test(m[1])) err(`${ctx} : syntaxe de genre invalide « {${m[1]}} »`);
 }
 
 function verifSuivant(s, ctx) {

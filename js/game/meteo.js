@@ -14,6 +14,8 @@ export function pluie() {
   const r = seedRng(`${G.world.seed}:averse:${Math.floor(G.world.minutes / 720)}`);
   return r() < 0.4 ? 1 : 0.55;
 }
+// Force du vent 0..1 (le mistral emporte les feuilles, fait ployer les arbres).
+export function vent() { const m = meteo(); return m === 'mistral' ? 1 : m === 'pluie' ? 0.55 : m === 'orage' ? 0.8 : 0.25; }
 function maj() {
   if (!G) return;
   const m = meteoCourante();
@@ -22,7 +24,7 @@ function maj() {
   try { setContexteSurvie({ meteo: m }); } catch (e) {}
   const p = pluie();
   import('../audio.js').then(a => a.setPluie && a.setPluie(p ? (p >= 1 ? 'forte' : 'legere') : null)).catch(() => {});
-  emit('meteo', { type: m, pluie: p });
+  emit('meteo', { type: m, pluie: p, vent: vent() });
 }
 export function demarrerMeteo() { arreterMeteo(); courante = null; maj(); off = on('minute', maj); }
 export function arreterMeteo() { if (off) off(); off = null; courante = null; import('../audio.js').then(a => a.setPluie && a.setPluie(null)).catch(() => {}); }

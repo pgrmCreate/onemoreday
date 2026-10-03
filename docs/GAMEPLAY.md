@@ -267,25 +267,37 @@ rencontres de combat « du pool » et les renforts y puisent, filtrés par `jour
 
 ---
 
-## 4. Le combat — dans l'exploration, en temps réel
+## 4. Le combat — dans l'exploration, en temps réel (« combat 2 »)
 
-> Refonte : il n'y a plus d'écran de combat. Trois gestes : **se déplacer, frapper, pousser** (pas d'esquive ni de garde).
-> Les règles sont dans `REGLAGES.combat` et `js/explore/combat.js` ; ce chapitre en donne l'intention.
+> Pas d'écran de combat : on se bat sur place. Quatre gestes : **frapper** (tape, enchaînement de 3, coup chargé),
+> **esquiver** (ruée courte invulnérable), **pousser**, **achever** (frapper un mort à terre). **Aucun raté au hasard en mêlée** :
+> si le mort est dans l'arc au moment de l'impact, le coup porte. Règles : `REGLAGES.combat`, `js/explore/combat.js`,
+> la simulation `js/explore/sim.js` ; gestes et retours : `js/explore/combat_vue.js`.
 
 ### 4.1 Le cycle d'un mort au contact
 
 ```
- [CHASSE : il s'approche, s'arrête à 0,7 case] → [à portée : 0,25-0,7 s] → [TÉLÉGRAPHIE `telegraphe` ms : arc au sol] → [ATTAQUE] → [RÉCUP `cadence` ms] ↺
-                                                                         rouge = COUP · ambre = EMPOIGNADE
+ [CHASSE : il s'approche, s'arrête à 0,75 case] → [0,3-0,7 s] → [TÉLÉGRAPHIE `telegraphe` ms : bras levés + arc au sol]
+     → [FENTE 150 ms : il se jette de 0,45 case] → coup JUGÉ AU BOUT DE LA FENTE → [RÉCUP `cadence` ms] ↺
+       rouge = COUP · ambre = EMPOIGNADE
 ```
-- L'attaque **touche** si, à la fin de la télégraphie, tu es encore à `portee` + 0,25 case et dans son cône de 120° (il pivote
-  pendant la télégraphie, pas assez vite pour une sortie sur le côté). **Reculer d'un pas suffit** : c'est le cœur du combat.
-- **Poussée** (recharge 0,8 s, 7 sta) : annule les télégraphies devant toi, fait reculer (1,2 case) et vaciller ; 20 % + 5 %/Force
+- Le coup **touche** si, au bout de la fente, tu es encore à `portee` + 0,3 case, dans son cône de 110°, et **pas en train
+  d'esquiver**. Pendant la télégraphie il pivote à 3 rad/s : un pas de côté + une esquive le débordent.
+- **Jetons** : au plus 2 morts arment un coup contre la même personne ; les autres tournent autour à 1,35 case. Un groupe
+  reste lisible : on voit qui va frapper.
+- **Équilibre** (0,7 × PV max) : chaque coup l'entame (×1 / ×1,25 / ×2,4 pour les coups 1-2-3 d'un enchaînement, ×2 lourd).
+  À 0 il **vacille** 0,85 s (attaque annulée). Il le récupère en 8 s sans être frappé.
+- **Coup rapide** sur un mort qui arme : il tressaille (+0,14 s avant son coup). **Coup chargé ≥ 50 %** : il l'interrompt.
+  **Coup lourd** (≥ 90 %) : vacillement, recul 1,1 case, 45 % de mise à terre.
+- **Esquive** (Espace / bouton) : 1,7 case en 0,3 s, invulnérable 0,24 s, 14 d'endurance, une fois toutes les 0,45 s.
+  **Esquive parfaite** (le coup tombe dans les 0,2 s) : ralenti (seul), le mort est déséquilibré, ton prochain coup est critique.
+- **Poussée** (clic droit / bouton, recharge 0,75 s, 7 sta) : annule les attaques devant toi, recul 1,25 case ; 20 % + 5 %/Force
   de mise à terre. Résistance ≥ 0,75 (colosse) : il ne bouge pas.
-- **Coup chargé** ≥ 50 % qui touche un mort qui télégraphie : **interruption**. Coup lourd (≥ 90 %) : gros recul.
-- **Empoignade** : anneau de 2,4 s (+0,3 s au doigt), marteler Frapper/Pousser. Pendant ce temps les autres morts attendent.
-  Raté : **morsure** (seule source de morsure humaine).
-- Toucher garanti : mort à terre, qui vacille, attaque furtive (×3, silencieuse si elle tue).
+- **À terre** (2,2 s) : le frapper = **coup de grâce** (× 2,2, toujours critique).
+- **Empoignade** : anneau de 2,4 s (+0,3 s au doigt), marteler Frapper. Raté : **morsure** (seule source de morsure humaine).
+  À deux, frapper le mort qui tient ton coéquipier compte pour 2 martèlements.
+- **Retours** : micro-arrêt de l'image à l'impact (45 à 120 ms), secousse, gerbes de sang qui tachent le sol pour de bon,
+  traînée de l'arme, chiffres, voile rouge, vibration.
 
 ### 4.2 Les morts (`zombies.js`) — cinq types, hommes et femmes
 
@@ -402,24 +414,23 @@ nues on le piétine ×2). **Raté** : **morsure** (dégâts max ×1,2, plaie « 
 ### 4.6 Toucher et dégâts
 
 ```
-P(toucher) = clamp(0,88 + 0,03 × niv(compétence de l'arme) − esquive du mort
-                   − 0,10 [essoufflé] − 0,08 [épuisé : fatigue < 15] − 0,15 [noir sans lampe]
-                   − 0,05/0,10 [douleur > 60 / > 80] − 0,10 × f [surpoids] , 0,50 , 0,98)
-             = 1 (garanti) si : contre, mort à terre, mort qui vacille, attaque furtive.
+Mêlée : TOUCHE si le mort est dans l'arc (portée de l'arme + 0,3 case) au moment de l'impact. Aucun jet de toucher.
+        Un mort à terre devant toi est visé en priorité (coup de grâce).
+Tir   : P = précision_arme × (0,6 + 0,4 × visée) + 0,04 × Visée − esquive ; visée 0 → 1 en 0,9 s (−60 ms/niv).
 
 Dégâts = jet(dmg) × (1 + (charge_arme − 1) × c)             c = charge 0..1
+         × enchaînement [1 ; 1,1 ; 1,5]                      1er, 2e, 3e coup en rythme
          × (1 + 0,06 × niv)                                  compétence de l'arme (+30 % au niveau 5)
-         × (critique ? 2 : 1)                                P(crit) = crit_arme + 0,02 × Dextérité + 0,15 × c (+0,25 contre, +0,2 vacille, +0,25 à terre) × critMult du mort
-         × (contre ? 1,6) × (à terre ? 1,5) × (furtif ? 3) × (flanc co-op ? 1,25)
+         × (critique ? 2 : 1)                                P(crit) = crit_arme + 0,02 × Dextérité + 0,15 × c (+0,2 vacille, +0,25 à terre)
+                                                             critique garanti : coup de grâce, coup qui suit une esquive parfaite
+         × (coup de grâce ? 2,2 : à terre ? 1,5) × (furtif ? 3)
          × (essoufflé ? 0,6) × (affamé ? 0,85) × (arme < 20 % de durabilité ? 0,8)
          × (non critique : 1 − armure du mort ; tir : 1 − armure/2)
          mains nues : + niv(Mains nues) au jet.
 
-Vaciller : P = stagger_arme × (c ≥ 0,9 ? 1 : coup rapide ? 0,3 : c) × (1 − résistance) (+0,2 en flanc co-op)
-           → jauge figée 1 s, télégraphie annulée, +20 % de critique.
-Usure : −1 durabilité par coup qui porte, −2 pour un coup lourd (≥ 90 %) ; Entretien : 10 %/niv de ne rien user.
-Tir : P = précision_arme × (0,6 + 0,4 × visée) + 0,04 × Visée − esquive ; visée 0 → 1 en 1,2 s (−80 ms/niv) ;
-      critique = crit + 0,25 × visée ; recharge −6 %/niv de Visée.
+Équilibre entamé = dégâts × [1 ; 1,25 ; 2,4] (enchaînement) × (lourd ? 2 : 1 + c)
+Mise à terre : coup lourd 45 %, 3e coup d'un enchaînement 30 %, poussée 20 % + 5 %/Force (× (1 − résistance)).
+Usure : −1 durabilité par coup qui porte, −2 pour un coup lourd (≥ 90 %).
 ```
 
 ### 4.7 Le bruit appelle la horde (`combat.RENFORTS`)

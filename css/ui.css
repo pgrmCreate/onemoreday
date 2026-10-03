@@ -102,10 +102,11 @@ body[data-temps="carte"] .ui-hud .hud-objectif:not([hidden]) { display: flex; }
 /* ======================================================================
    TOASTS
    ====================================================================== */
-.ui-toasts { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; width: min(92vw, 520px); }
+/* en haut à droite, sous les boutons de menu : jamais sur le personnage ni sur l'invite d'action */
+.ui-toasts { position: fixed; right: 12px; top: 62px; z-index: 90; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; width: min(44vw, 380px); }
 .ui-toast { pointer-events: auto; display: flex; align-items: center; gap: 9px; padding: 9px 16px 9px 12px; background: rgba(18, 17, 20, .95); border: 1px solid var(--ui-bord-fort);
-  border-left: 3px solid var(--ui-texte-2); color: var(--ui-texte); font-family: var(--ui-f-recit); font-size: calc(16px * var(--ui-echelle)); line-height: 1.25; box-shadow: var(--ui-ombre);
-  opacity: 0; transform: translateY(10px); transition: opacity .22s, transform .22s; }
+  border-left: 3px solid var(--ui-texte-2); color: var(--ui-texte); font-family: var(--ui-f-recit); font-size: calc(14.5px * var(--ui-echelle)); line-height: 1.25; box-shadow: var(--ui-ombre); border-radius: 6px;
+  opacity: 0; transform: translateX(14px); transition: opacity .22s, transform .22s; }
 .ui-toast.visible { opacity: 1; transform: none; }
 .ui-toast.sortie { opacity: 0; transform: translateY(-6px); }
 .ui-toast .ico { width: 17px; height: 17px; color: var(--ui-texte-2); }

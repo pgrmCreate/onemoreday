@@ -14,7 +14,7 @@ const canauxParSim = new WeakMap();
 
 export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } = {}) {
   const ecouteurs = new Map();
-  let timer = null, dernier = 0, enPause = false, ferme = false;
+  let timer = null, dernier = 0, enPause = false, ferme = false, facteur = 1, finFacteur = 0;
   let liste = canauxParSim.get(sim);
   if (!liste) { liste = new Set(); canauxParSim.set(sim, liste); }
 
@@ -27,7 +27,8 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } 
     const t = performance.now();
     const dt = Math.min(500, t - dernier); dernier = t;
     if (enPause) return;
-    const evts = sim.tick(dt);
+    if (facteur !== 1 && t > finFacteur) facteur = 1;
+    const evts = sim.tick(dt * facteur);
     for (const c of liste) c._recevoir(evts);
   }
   function demarrer() {
@@ -76,6 +77,8 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } 
       return () => { const s = ecouteurs.get(evt); if (s) s.delete(fn); };
     },
     pause() { enPause = true; },
+    // ralenti du monde (solo : esquive parfaite) — f × la vitesse pendant ms
+    echelle(f, ms) { if (!proprietaire) return; facteur = f; finFacteur = performance.now() + ms; },
     reprise() { if (enPause) { enPause = false; dernier = performance.now(); } },
     fermer() {
       ferme = true;

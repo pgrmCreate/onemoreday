@@ -66,5 +66,57 @@ console.log('\n== Déterminisme (même graine → même combat)');
 const a = combat('machette', ['errant', 'coureur'], { seed: 11 }), b = combat('machette', ['errant', 'coureur'], { seed: 11 });
 ok(a.t === b.t && Math.round(a.pv) === Math.round(b.pv), `identique : ${a.t} ms / ${Math.round(a.pv)} PV`);
 
+function arene(seed, arme) {
+  nouvellePartie({ nom: 'T', mode: 'solo', seed }); player.normaliserJoueur(G.player);
+  if (arme) inv.porterObjet({ id: arme, qty: 1 });
+  const niveau = parserNiveau(genererEmbuscade({ seed, echelle: 'region' }));
+  const sim = creerSimLieu({ lieuId: '__t', niveau, seed, mortsN: [0, 0] });
+  const e = niveau.entrees.defaut;
+  const j = sim.ajouterJoueur('p', { etage: e.etage, x: e.x + 0.5, y: e.y + 0.5, dir: 0 }, { stats: statsCombat(G.player) });
+  return { sim, j };
+}
+
+console.log('\n== Esquive : au moment de la fente, le coup ne porte pas');
+{
+  const { sim, j } = arene(5);
+  sim.faireApparaitre(['errant'], { joueurId: 'p' });
+  let esq = 0, parf = 0, bless = 0;
+  for (let t = 0; t < 15000; t += 50) {
+    for (const ev of sim.tick(50)) { if (ev.type === 'fente') sim.action('p', { type: 'esquiver' }); if (ev.type === 'esquive') { esq++; if (ev.parfaite) parf++; } if (ev.type === 'blessure') bless++; }
+    const z = sim.zombies()[0]; if (z) j.dir = Math.atan2(z.y - j.y, z.x - j.x);
+  }
+  ok(esq >= 3 && bless === 0, `esquives ${esq} (parfaites ${parf}), blessures ${bless}`);
+}
+
+console.log('\n== Sans rien faire, il finit par toucher');
+{
+  const { sim, j } = arene(5);
+  sim.faireApparaitre(['errant'], { joueurId: 'p' });
+  let bless = 0;
+  for (let t = 0; t < 8000; t += 50) { for (const ev of sim.tick(50)) if (ev.type === 'blessure') bless++; const z = sim.zombies()[0]; if (z) j.dir = Math.atan2(z.y - j.y, z.x - j.x); }
+  ok(bless >= 2, `blessures en 8 s : ${bless}`);
+}
+
+console.log('\n== Enchaînement : le 3e coup frappe plus fort, aucun raté au hasard');
+{
+  const { sim, j } = arene(6, 'batte_baseball');
+  sim.faireApparaitre(['colosse'], { joueurId: 'p' });
+  for (let t = 0; t < 3000; t += 50) { sim.tick(50); const z = sim.zombies()[0]; j.dir = Math.atan2(z.y - j.y, z.x - j.x); }
+  const coups = []; let rates = 0;
+  for (let k = 0; k < 3; k++) { sim.action('p', { type: 'frapper', combo: k }); for (const ev of sim.viderEvenements()) { if (ev.type === 'coup') coups.push(ev); if (ev.type === 'rate') rates++; } sim.tick(50); }
+  ok(coups.length === 3 && rates === 0 && coups[2].combo === 2, `coups : ${coups.map(d => d.degats + (d.vacille ? ' (vacille)' : '')).join(' / ')}`);
+}
+
+console.log('\n== Coup de grâce sur un mort à terre');
+{
+  const { sim, j } = arene(8);
+  sim.faireApparaitre(['errant'], { joueurId: 'p' });
+  for (let t = 0; t < 2000; t += 50) { sim.tick(50); const z = sim.zombies()[0]; j.dir = Math.atan2(z.y - j.y, z.x - j.x); }
+  const z = sim.zombies()[0]; z.aTerre = 2000;
+  sim.action('p', { type: 'frapper' });
+  const c = sim.viderEvenements().find(ev => ev.type === 'coup');
+  ok(c && c.achever && c.crit, `coup de grâce : ${c ? c.degats : '—'} dégâts`);
+}
+
 console.log(`\n${n - echecs}/${n} vérifications réussies.`);
 process.exit(echecs ? 1 : 0);

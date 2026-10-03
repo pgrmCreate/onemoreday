@@ -83,6 +83,7 @@ export function retirerFlag(k) { if (G && k in G.world.flags) { delete G.world.f
 // ---------- Genre : « Tu es {seul|seule} » ----------
 export function genrer(texte) {
   if (!texte || texte.indexOf('{') < 0) return texte;
+  if (texte.indexOf('{coequipier}') >= 0) texte = texte.replace(/{coequipier}/g, (G && G.pairNom) || 'ton coéquipier');
   const f = G && G.player && G.player.genre === 'f';
   return texte.replace(/\{([^{}|]*)\|([^{}|]*)\}/g, (_, m, fe) => (f ? fe : m));
 }

@@ -35,6 +35,7 @@ export function verifier(c) {
       case 'quete': { const q = W.quetes[v[0]]; if (!q || q.etape !== v[1]) return false; break; }
       case 'queteFaite': { const q = W.quetes[v]; if (!q || !q.faite) return false; break; }
       case 'solo': if ((G.mode === 'solo') !== !!v) return false; break;
+      case 'coop': if ((G.mode !== 'solo') !== !!v) return false; break;
       case 'ou': if (!v.some(verifier)) return false; break;
       case 'et': if (!v.every(verifier)) return false; break;
       case 'non': if (verifier(v)) return false; break;

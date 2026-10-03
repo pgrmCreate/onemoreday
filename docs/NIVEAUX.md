@@ -1,11 +1,46 @@
 # Concevoir un niveau d'exploration
 
-> Pour les concepteurs de niveaux. Référence du format : `docs/REFONTE.md` §4.2 (ce document le détaille et
-> ajoute les extensions demandées par le scénariste). Exemple complet : `js/data/niveaux/_test.js`.
 > Vérifier : `node tools/valider_niveaux.mjs` (tous les plans) ou `node tools/valider_niveaux.mjs cimetiere --avertissements`.
-> Voir le résultat : `dev/explore.html?lieu=cimetiere` (options : `&heure=22`, `&entree=caveau`, `&combat=faux`).
+> Voir le résultat : `dev/explore.html?lieu=cimetiere` (options : `&heure=22`, `&entree=caveau`).
+> Deux formats sont lus : le **format à couches** (§0, à utiliser pour tout nouveau niveau) et l'**ancien format ASCII**
+> (§1 et suivants), converti automatiquement en couches — les plans ASCII profitent donc du nouveau rendu.
 
-## 1. Le fichier
+## 0. Le format à couches (`js/carte/plan.js`) — la bonne façon
+
+Une carte est un empilement de **couches** ; on la **décrit**, le moteur la **dessine** (textures, transitions, ombres,
+toits, lumières). Catalogue complet de ce qu'on peut poser : `js/carte/catalogue.js`. Exemple réel : `js/data/niveaux/cimetiere.js`.
+
+| Couche | Appels | Effet |
+|---|---|---|
+| 1. sol | `solRect(mat, x, y, w, h)`, `disque`, `chemin(mat, [[x,y]…], largeur)`, `taches(mat, x, y, w, h, densité)` | matière (bruit des pas, texture, bords irréguliers entre matières d'extérieur) |
+| 2. murs | `murRect(style, …)`, `contour(style, x, y, w, h)`, `cloison(style, x0, y0, x1, y1)`, `vide(…)` | `platre crepi pierre brique beton bois rocher haie muret grille vitrine tole` — muret, grille, vitrine laissent voir |
+| 3. ouvertures | `porte(x, y, { etat, verrou, style, deux })`, `fenetre`, `escalier('monte'|'descend', …)`, `sortie`, `eau` | `verrou: 'cle_id'` ou `{ forcer, crocheter, flag, deux }` ; `deux: true` = il faut être deux (co-op) |
+| 4. objets | `objet(type, x, y, { w, h, rot, nom, conteneur, marqueur, couleur })`, `rangee(type, x, y, n, dx, dy)` | meubles multi-cases orientables, fouillables ; arbres et lampadaires ont une partie haute (on passe dessous) |
+| 5. décals | `decal(type, x, y, { r, a })`, `semer(type, x, y, w, h, n)` | sang, feuilles, papiers, verre, fleurs, marquages… (visuel) |
+| 6. lumières | `lumiere(type, x, y, { r, i })` | `feu bougie lanterne lampadaire neon gyrophare gyro_bleu fusee urgence` : éclairent VRAIMENT (vision, détection) |
+| 7. vivant | `zombie(type, x, y, { etat })`, `entree(nom, x, y)`, `marqueur(id, x, y)`, `pnj`, `document`, `objetSol`, `declencheur(x, y, w, h, { scene, deux })`, `nommer` | histoire et peuplement |
+
+Pièces toutes faites : `piece(x, y, w, h, { nom, sol, mur, sombre, toit, portes: [{ cote: 'n'|'s'|'e'|'o', a }], fenetres: [{ cote, a, l }] })`
+prend le rectangle EXTÉRIEUR (murs compris) et renvoie l'intérieur `{ x0, y0, x1, y1, cx, cy }` pour y placer les meubles ;
+`batiment(…)` = pièce avec façade crépie et toit de tuiles (vu de dehors, il disparaît quand on entre).
+
+```js
+import { plan } from '../../carte/plan.js';
+export default plan({ id: 'pharmacie_carnot', nom: 'Pharmacie Carnot', exterieur: true, typeButin: 'pharmacie', pool: ['errant'], morts: { n: [1, 3] } }, (p) => {
+  const e = p.etage('rdc', 'Rez-de-chaussée', 30, 20, { sol: 'bitume' });
+  e.solRect('trottoir', 0, 14, 30, 2);
+  const off = e.batiment(3, 2, 16, 11, { nom: 'Officine', sol: 'carrelage', portes: [{ cote: 's', a: 6, style: 'vitree' }], fenetres: [{ cote: 's', a: 1, l: 4 }] });
+  e.objet('comptoir', off.x0 + 3, off.y0 + 5, { w: 6, h: 1 });
+  e.rangee('rayonnage', off.x0, off.y0, 3, 0, 2, { w: 5, h: 1 });
+  e.lumiere('neon', off.cx, off.cy);
+  e.zombie('errant', off.x0 + 8, off.y0 + 2, { etat: 'immobile' });
+  e.objet('lampadaire', 22, 14); e.lumiere('lampadaire', 22.5, 14.5);
+  e.entree('defaut', 10, 17); e.sortie(0, 16, 1, 4); e.sortie(29, 16, 1, 4);
+});
+```
+Tout est déterministe (graine = id du niveau) : les deux joueurs d'une partie à deux voient exactement la même carte.
+
+## 1. Ancien format ASCII : le fichier
 
 Un fichier par plan : `js/data/niveaux/<id>.js`, avec `export default { … }`. Par convention l'id du plan est
 celui du lieu (`lieux.js`) ; sinon `niveau: 'autre_id'` dans le lieu. **1 case ≈ 0,8 m** : une pièce de 4 × 3 m fait

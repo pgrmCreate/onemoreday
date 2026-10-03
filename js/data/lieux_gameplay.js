@@ -33,7 +33,7 @@ export const LIEUX_GAMEPLAY = {
   carrefour_morgan: { danger: 0.5,  pool: ['errant', 'errant', 'coureur', 'putrefie', 'gonfleur'], morts: { n: [4, 7] }, typeButin: 'supermarche', repeuplement: 0.8, abondance: 0.65, ambiance: 'magasin' },
   mediatheque:      { danger: 0.3,  pool: ['errant', 'errant', 'rampant'], morts: { n: [1, 3] }, typeButin: 'mediatheque', repeuplement: 0.3, ambiance: 'mediatheque' },
   marius_fabre:     { danger: 0.3,  pool: ['errant', 'errant', 'putrefie'], morts: { n: [2, 4] }, typeButin: 'savonnerie', repeuplement: 0.3, ambiance: 'interieur' },
-  cimetiere:        { danger: 0.35, pool: ['errant', 'errant', 'putrefie', 'putrefie', 'rampant'], morts: { n: [2, 5] }, typeButin: 'cimetiere', repeuplement: 0.8, ambiance: 'region' },
+  cimetiere:        { danger: 0.3, pool: ['errant', 'errant', 'rampant'], morts: { n: [1, 3] }, typeButin: 'cimetiere', repeuplement: 0.8, ambiance: 'region' },
   gare:             { danger: 0.55, pool: ['errant', 'errant', 'coureur', 'hurleur', 'rampant', 'chien_infecte'], morts: { n: [4, 7] }, typeButin: 'gare', repeuplement: 1, ambiance: 'gare' },
   hopital:          { danger: 0.75, pool: ['errant', 'errant', 'putrefie', 'putrefie', 'coureur', 'gonfleur', 'hurleur', 'enrage'], morts: { n: [6, 10] }, typeButin: 'hopital', repeuplement: 1.2, abondance: 0.9, ambiance: 'hopital' },
   lycee:            { danger: 0.5,  pool: ['errant', 'coureur', 'coureur', 'hurleur'], morts: { n: [4, 7] }, typeButin: 'lycee', repeuplement: 0.6, ambiance: 'interieur' },
