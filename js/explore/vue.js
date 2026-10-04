@@ -140,7 +140,9 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     interagir: (o) => interagir(o), lampe: basculerLampe, inventaire: ouvrirInventaire,
     carte: () => { V.carte = !V.carte; }, echap, zoom: (f) => regleZoom(V.zoom * f),
     accroupi: () => {}, aide: () => V && V.hud.basculerAide(),
-    frapper: (appui, annule) => { if (!V || !V.cbt || V.occupe) return; if (enPlacement()) { if (appui) poserPlacement(); return; } if (appui) stopperActions(); V.cbt.frapper(appui, annule); },
+    frapper: (appui, annule, mode) => { if (!V || !V.cbt || V.occupe) return; if (enPlacement()) { if (appui) poserPlacement(); return; } if (appui) stopperActions(); V.cbt.frapper(appui, annule, mode); },
+    crosse: (appui, annule) => { if (!V || !V.cbt || V.occupe || enPlacement()) return; if (appui) stopperActions(); V.cbt.frapper(appui, annule, 'crosse'); },
+    clicDroit: (appui) => { if (!V || !V.cbt || V.occupe) return; if (enPlacement()) { if (appui) tournerPlacement(); return; } if (appui) stopperActions(); V.cbt.clicDroit(appui); },
     secondaire: () => basculerChoix(),
     viser: (sx, sy) => viserPlacement(sx, sy),
     tourner: () => tournerPlacement(),
@@ -164,7 +166,16 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   V.off.push(on('mort', () => { if (!V) return; V.cbt.mourir(); V.entrees.actif(false); }));
   V.off.push(on('inventaire', () => { if (!V) return; V.cbt.majStats(); V.hud.majMains(V, mod.inv); }));
   V.hud.majMains(V, mod.inv);
-  hud.mains.addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (!b || !V) return; if (b.dataset.m === 'dos') V.cbt.dos(); else V.cbt.echangerMains(); });
+  // HUD des mains : main droite → la ranger d'où elle vient ; dos → sortir / remettre ; ⇄ → échanger les mains ;
+  // cases de ceinture → sortir / remettre (comme les touches 1-4).
+  hud.mains.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-m]'); if (!b || !V) return;
+    const m = b.dataset.m;
+    if (m === 'dos') V.cbt.dos();
+    else if (m === 'echanger') V.cbt.echangerMains();
+    else if (m === 'droite') V.cbt.rangerMain();
+    else if (m.startsWith('rapide')) V.cbt.rapide(+m.slice(6));
+  });
   hud.route.addEventListener('click', () => { if (V && V.arene) finArene('route'); });
   const onResize = () => V && V.rendu.resize();
   window.addEventListener('resize', onResize);

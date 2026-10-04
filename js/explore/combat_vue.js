@@ -76,17 +76,24 @@ export function creerCombatVue(o) {
   function tourner(dir, ms = 260) { if (dir == null) return; const j = o.j(); j.dir = dir; S.dirForcee = dir; S.tDirForcee = now() + ms; }
 
   // ---------- Frapper ----------
-  function frapper(appui, annule) {
+  // mode : 'pc' (clic gauche : avec une arme à feu, tire si l'on vise au clic droit, sinon frappe à la crosse),
+  //        'crosse' (bouton tactile Crosse), rien (bouton Tirer/Frapper : arme à feu = maintenir pour viser, relâcher pour tirer).
+  function frapper(appui, annule, mode) {
     if (S.mort || o.pause()) return;
     if (S.empoigne) { if (appui) marteler(); return; }
-    if (estTir()) return appui ? debutVisee() : (annule ? (S.charge = null) : tirer());
+    if (estTir()) {
+      if (mode === 'pc') {
+        if (S.charge && S.charge.visee) { if (appui && !annule) tirer(true); return; }
+        // pas en visée : coup de crosse (suite plus bas)
+      } else if (mode !== 'crosse') return appui ? debutVisee() : (annule ? (S.charge = null) : tirer());
+    }
     if (appui) {
       if (S.charge) return;
       S.charge = { t0: now() };
       tourner(viserAuto());
       return;
     }
-    if (!S.charge) return;
+    if (!S.charge || S.charge.visee) return;
     const tenu = now() - S.charge.t0; S.charge = null;
     if (annule) return;
     if (occupe()) { S.tampon = { tenu, t: now() }; return; }
@@ -149,11 +156,19 @@ export function creerCombatVue(o) {
     const e = (G.player.equipEtat && G.player.equipEtat[slot]) || {};
     return { slot, e, balles: e.balles || 0, tir: st.arme.tir };
   }
-  function tirer() {
+  // Clic droit (PC) : avec une arme à feu, maintenir = viser (clic gauche pour tirer) ; sinon, repousser.
+  function clicDroit(appui) {
+    if (S.mort || o.pause()) return;
+    if (!estTir() || S.empoigne) { if (appui) pousser(); return; }
+    if (appui) { S.charge = null; debutVisee(); } else if (S.charge && S.charge.visee) S.charge = null;
+  }
+  // garder : on reste en visée après le coup (clic droit toujours maintenu), le recul fait perdre un peu de la visée
+  function tirer(garder) {
     const v = S.charge; S.charge = null;
     if (!v || S.mort) return;
+    if (garder) S.charge = { t0: now() - RC.TIR.VISEE_MS * 0.35, visee: true };
     const a = etatArmeTir();
-    if (a.balles <= 0) { o.sfx('clic'); o.message('Vide. Recharge (R / bouton Recharger).', 1800); return; }
+    if (a.balles <= 0) { o.sfx('clic'); o.message('Vide. Recharge (R / bouton Recharger) — ou frappe à la crosse.', 1800); return; }
     const TI = RC.TIR;
     const tv = Math.max(200, TI.VISEE_MS - TI.VISEE_PAR_NIVEAU * ((stats().niveaux || {}).visee || 0));
     const visee = Math.max(0, Math.min(1, (now() - v.t0) / tv)) * (o.j().allure === 'immobile' ? 1 : 0.5);
@@ -201,16 +216,29 @@ export function creerCombatVue(o) {
     S.geste = { type: 'change', t0: now(), duree: REGLAGES.inventaire.CHANGER_MAIN_MS, dir: o.j().dir };
     o.sfx('tissu_dechire', { volume: 0.4 }); majStats();
   }
+  // Accès rapide (1-4, ou les cases de ceinture du HUD) : sortir l'objet de la ceinture en main ; réappuyer le remet.
+  // Ce que la main tenait retourne d'où il vient (dans le dos s'il en sortait).
   function rapide(i) {
     const p = G.player, id = p.accesRapide && p.accesRapide[i];
     if (!id || !o.inv || occupe()) return;
-    const k = p.inventaire.findIndex(x => x.id === id);
-    if (k < 0) return;
     const d = o.inv.def(id) || {};
-    if (d.type !== 'arme' && !d.melee) { o.message(`${d.nom || id} : à utiliser depuis l'inventaire.`, 1600); return; }
-    o.inv.tenir(k, 'droite');
+    const enMain = p.equip.arme === id || p.equip.mainG === id;
+    if (!enMain && o.inv.estVetement && o.inv.estVetement(id)) return;
+    const r = o.inv.basculerRapide(i);
+    if (!r.ok) { o.message(r.raison, 1600); return; }
+    S.charge = null;
     S.geste = { type: 'change', t0: now(), duree: REGLAGES.inventaire.CHANGER_MAIN_MS, dir: o.j().dir };
+    if (enMain) o.message(`${d.nom || id} : remis à la ceinture.`, 1100);
     o.sfx('clic'); majStats();
+  }
+  // Ranger ce que tient la main droite là d'où il vient (dos, ceinture, sac).
+  function rangerMain() {
+    if (!o.inv || occupe()) return;
+    const r = o.inv.rangerMain(); if (!r.ok) { o.message(r.raison, 1400); return; }
+    S.charge = null;
+    S.geste = { type: 'change', t0: now(), duree: REGLAGES.inventaire.CHANGER_MAIN_MS, dir: o.j().dir };
+    o.message({ dos: 'Remis dans le dos.', ceinture: 'Remis à la ceinture.', sac: 'Rangé dans le sac.' }[r.ou] || 'Rangé.', 1100);
+    o.sfx(r.ou === 'dos' ? 'tissu_dechire' : 'clic', { volume: 0.4 }); majStats();
   }
 
   // ---------- Pas de jeu ----------
@@ -243,6 +271,7 @@ export function creerCombatVue(o) {
       pousseeCd: S.pousseePret > t ? (S.pousseePret - t) / RC.POUSSEE.COOLDOWN_MS : 0,
     });
     o.entrees.setVisible && o.entrees.setVisible('recharger', estTir());
+    o.entrees.setVisible && o.entrees.setVisible('crosse', estTir());
   }
   function vitesseMult() {
     const t = now();
@@ -376,7 +405,7 @@ export function creerCombatVue(o) {
 
   majStats();
   return {
-    frapper, pousser, recharger, echangerMains, dos, rapide, maj, vitesseMult, echelleTemps, surEvt, rendu, majStats, mourir,
+    frapper, clicDroit, pousser, recharger, echangerMains, dos, rapide, rangerMain, estTir, maj, vitesseMult, echelleTemps, surEvt, rendu, majStats, mourir,
     dirForcee: () => S.dirForcee, fx, sang, etat: S,
     occupe: () => occupe() || !!S.charge || !!S.empoigne,
     fermer() { S.mort = true; },

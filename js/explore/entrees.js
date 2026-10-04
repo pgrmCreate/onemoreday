@@ -5,7 +5,8 @@
 //             frapper(appui: bool), pousser(), recharger(), echangerMains(), dos(), rapide(i),
 //             secondaire() (G / petit rond : menu des autres actions), viser(sx, sy) (placement : un toucher place le fantôme) }
 // COMBAT : se déplacer, FRAPPER (tape = coup rapide, enchaîner = enchaînement, maintenir = coup chargé), POUSSER. Pas d'esquive.
-//   PC : ZQSD + souris (le personnage regarde la souris) ; clic gauche = frapper, clic droit / Espace = pousser,
+//   PC : ZQSD + souris (le personnage regarde la souris) ; clic gauche = frapper, clic droit / Espace = pousser
+//        (arme à feu en main : clic droit maintenu = viser, clic gauche = tirer ; sans viser, clic gauche = crosse),
 //        E = interagir, R = recharger, X = échanger les mains, B = dos ↔ main, 1-4 = accès rapide.
 //   Tactile : joystick n'importe où ; gros bouton Frapper et Pousser à droite (visée assistée).
 import { el } from '../core/util.js';
@@ -66,13 +67,16 @@ export function creerEntrees({ racine, canvas, actions }) {
   ecoute(canvas, 'mouseleave', () => { etat.viseeSouris = false; });
   ecoute(canvas, 'wheel', (e) => { e.preventDefault(); if (!actif) return; actions.zoom && actions.zoom(e.deltaY < 0 ? 1.1 : 1 / 1.1); }, { passive: false });
   // Souris : clic gauche = frapper (maintenir = charger), clic droit = pousser.
-  let sourisFrappe = false;
+  let sourisFrappe = false, sourisVise = false;
   ecoute(canvas, 'mousedown', (e) => {
     if (etat.tactile || !actif) return;
-    if (e.button === 0) { e.preventDefault(); sourisFrappe = true; actions.frapper && actions.frapper(true); }
-    else if (e.button === 2) { e.preventDefault(); actions.pousser && actions.pousser(); }
+    if (e.button === 0) { e.preventDefault(); sourisFrappe = true; actions.frapper && actions.frapper(true, false, 'pc'); }
+    else if (e.button === 2) { e.preventDefault(); sourisVise = true; actions.clicDroit ? actions.clicDroit(true) : actions.pousser && actions.pousser(); }
   });
-  ecoute(window, 'mouseup', (e) => { if (e.button === 0 && sourisFrappe) { sourisFrappe = false; actions.frapper && actions.frapper(false); } });
+  ecoute(window, 'mouseup', (e) => {
+    if (e.button === 0 && sourisFrappe) { sourisFrappe = false; actions.frapper && actions.frapper(false, false, 'pc'); }
+    if (e.button === 2 && sourisVise) { sourisVise = false; actions.clicDroit && actions.clicDroit(false); }
+  });
   ecoute(canvas, 'contextmenu', (e) => e.preventDefault());
 
   // ---------- Tactile ----------
@@ -99,15 +103,20 @@ export function creerEntrees({ racine, canvas, actions }) {
   const bPousser = el('button', { class: 'ex-btn ex-btn-pousser', type: 'button', 'aria-label': 'Pousser' },
     el('span', { class: 'ex-frap-ico', html: SVG_P }), el('span', { class: 'ex-frap-l' }, 'Pousser'), el('i', { class: 'ex-cd' }));
   const bRecharger = el('button', { class: 'ex-btn ex-btn-petit ex-btn-recharger cache', type: 'button' }, 'Recharger');
+  // arme à feu en main : le gros bouton TIRE, celui-ci frappe à la crosse
+  const SVG_C = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h12l2-2h3v4l-6 1-2 7H8l1-6H3z"/><path d="M20 4l1.5-1.5M22 8h1.5" opacity=".7"/></svg>';
+  const bCrosse = el('button', { class: 'ex-btn ex-btn-crosse cache', type: 'button', 'aria-label': 'Frapper à la crosse' },
+    el('span', { class: 'ex-frap-ico', html: SVG_C }), el('span', { class: 'ex-frap-l' }, 'Frapper'));
   // autres actions possibles ici : un petit rond collé à Interagir déplie le menu (js/explore/interactions.js)
   const bAutres = el('button', { class: 'ex-btn ex-btn-autres cache', type: 'button', 'aria-label': 'Autres actions', title: 'Autres actions' },
     el('span', { class: 'ex-autres-p', html: '<i></i><i></i><i></i>' }), el('em', {}, ''));
   // mode placement (construction) : petits boutons au-dessus d'Interagir
   const bTourner = el('button', { class: 'ex-btn ex-btn-petit cache', type: 'button' }, 'Tourner');
   const bAnnuler = el('button', { class: 'ex-btn ex-btn-petit cache', type: 'button' }, 'Arrêter');
-  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bAccr, bCourse),
+  // s'accroupir : en bas à gauche des boutons de combat (sous le pouce, comme Frapper)
+  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bCourse),
     el('div', { class: 'ex-pad-ligne ex-pad-place' }, bTourner, bAnnuler), el('div', { class: 'ex-pad-inter' }, bAutres, bInter),
-    el('div', { class: 'ex-pad-combat' }, bRecharger, bPousser, bFrapper));
+    el('div', { class: 'ex-pad-combat' }, bAccr, el('div', { class: 'ex-pad-pile' }, bRecharger, bCrosse), bPousser, bFrapper));
   racine.append(zoneJoy, pad);
 
   const joy = { id: null, ox: 0, oy: 0, R: 56, t0: 0, sx: 0, sy: 0 };
@@ -169,10 +178,13 @@ export function creerEntrees({ racine, canvas, actions }) {
   relacher(bFrapper, () => { if (!doigtFrappe) return; doigtFrappe = false; actions.frapper && actions.frapper(false); });
   presser(bPousser, () => { etat.tactile = true; actions.pousser && actions.pousser(); }); relacher(bPousser);
   presser(bRecharger, () => actions.recharger && actions.recharger()); relacher(bRecharger);
+  let doigtCrosse = false;
+  presser(bCrosse, () => { doigtCrosse = true; etat.tactile = true; actions.crosse && actions.crosse(true); });
+  relacher(bCrosse, () => { if (!doigtCrosse) return; doigtCrosse = false; actions.crosse && actions.crosse(false); });
   presser(bAutres, () => actions.secondaire && actions.secondaire()); relacher(bAutres);
   presser(bTourner, () => actions.tourner && actions.tourner()); relacher(bTourner);
   presser(bAnnuler, () => actions.echap && actions.echap()); relacher(bAnnuler);
-  for (const b of [bInter, bCourse, bAccr, bLampe, bInv, bFrapper, bPousser, bRecharger, bAutres, bTourner, bAnnuler]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
+  for (const b of [bInter, bCourse, bAccr, bLampe, bInv, bFrapper, bPousser, bRecharger, bCrosse, bAutres, bTourner, bAnnuler]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
 
   function majBoutons() {
     bAccr.classList.toggle('on', etat.accroupi);
@@ -202,7 +214,7 @@ export function creerEntrees({ racine, canvas, actions }) {
       if (a != null) b.classList.toggle('on', !!a);
       if (libelle && b !== bLampe && b !== bCourse && b !== bAccr && b.textContent !== libelle) b.textContent = libelle;
     },
-    setVisible(nom, v) { const b = { lampe: bLampe, course: bCourse, accroupi: bAccr, recharger: bRecharger }[nom]; if (b) b.classList.toggle('cache', !v); },
+    setVisible(nom, v) { const b = { lampe: bLampe, course: bCourse, accroupi: bAccr, recharger: bRecharger, crosse: bCrosse }[nom]; if (b && b.classList.contains('cache') === !!v) b.classList.toggle('cache', !v); },
     // État du bouton Frapper : libellé (Frapper / Tirer / Dégage-toi), charge 0..1, menace proche, poussée en recharge.
     setCombat({ libelle, charge = 0, proche = false, pousseeCd = 0, empoigne = false, combo = -1 } = {}) {
       const l = bFrapper.lastChild; if (libelle && l.textContent !== libelle && !bFrapper.classList.contains('placement')) l.textContent = libelle;
@@ -222,6 +234,8 @@ export function creerEntrees({ racine, canvas, actions }) {
       if (!actif) {
         bas.clear(); etat.mx = etat.my = 0; etat.course = false; boutonCourse = false; joy.id = null; joyBase.classList.remove('on');
         if (sourisFrappe || doigtFrappe) { sourisFrappe = doigtFrappe = false; actions.frapper && actions.frapper(false, true); }
+        if (doigtCrosse) { doigtCrosse = false; actions.crosse && actions.crosse(false, true); }
+        if (sourisVise) { sourisVise = false; actions.clicDroit && actions.clicDroit(false); }
       }
     },
     fermer() { for (const f of off) f(); zoneJoy.remove(); pad.remove(); },

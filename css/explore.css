@@ -167,6 +167,14 @@
 .ex-main em { position: absolute; right: 8px; top: 4px; font-style: normal; font-size: 11px; color: var(--ex-ambre); }
 .ex-main.droite { border-color: rgba(201,162,39,.5); }
 .ex-main.dos { border-style: dashed; }
+.ex-main.dos.vide { opacity: .6; min-width: 92px; }
+.ex-ceinture { display: flex; flex-direction: column; gap: 3px; }
+.ex-ceint { display: flex; align-items: center; gap: 6px; min-height: 19px; max-width: 150px; padding: 1px 8px 1px 3px; border-radius: 5px;
+  background: var(--ex-panneau); border: 1px solid rgba(230,223,204,.16); color: rgba(230,223,204,.82); font: inherit; font-size: 11px; cursor: pointer; text-align: left; }
+.ex-ceint kbd { min-width: 15px; height: 15px; line-height: 15px; border-radius: 3px; background: rgba(230,223,204,.14); font: inherit; font-size: 10px; text-align: center; }
+.ex-ceint span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-ceint.tenu { border-color: var(--ex-ambre); color: var(--ex-ambre-c); }
+.explore.ex-tactile .ex-ceint { min-height: 30px; font-size: 12px; }
 .ex-usure { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 2px; background: rgba(230,223,204,.12); }
 .ex-usure b { display: block; height: 100%; background: rgba(230,223,204,.6); }
 .ex-usure.bas b { background: var(--ex-rouge); }
@@ -235,6 +243,12 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
 .ex-btn-l { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* combat : Frapper (gros), Esquiver, Pousser */
 .ex-pad-combat { display: flex; align-items: flex-end; gap: 10px; }
+.ex-pad-combat > .ex-btn-ico { align-self: flex-end; }
+.ex-pad-pile { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 4px; }
+.ex-btn-crosse { position: relative; display: grid; place-items: center; padding: 0; width: 58px; height: 58px; min-width: 58px; border-radius: 50%;
+  background: rgba(40,20,14,.62); border-color: rgba(230,223,204,.4); }
+.ex-btn-crosse .ex-frap-ico svg { width: 22px; height: 22px; }
+.ex-btn-crosse .ex-frap-l { bottom: 7px; font-size: 9.5px; }
 .ex-btn-frapper, .ex-btn-pousser { position: relative; display: grid; place-items: center; padding: 0; border-radius: 50%; overflow: visible; }
 .ex-btn-frapper { width: 92px; height: 92px; min-width: 92px; border: 2px solid rgba(230,223,204,.5); background: rgba(60,14,18,.6); }
 .ex-btn-pousser { width: 62px; height: 62px; min-width: 62px; margin-bottom: 38px; background: rgba(11,11,12,.62); }

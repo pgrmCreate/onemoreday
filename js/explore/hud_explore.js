@@ -39,9 +39,9 @@ export function creerHud(racine, { arene = false } = {}) {
     el('div', { class: 'ex-aide-t' }, 'Commandes', el('small', {}, ' — H pour afficher / masquer')),
     el('div', { class: 'ex-aide-g' },
       el('div', {}, el('h4', {}, 'Bouger'), ligne('ZQSD', 'se déplacer'), ligne('Maj', 'courir'), ligne('C', 'accroupi (discret)'), ligne('Souris', 'regarder / viser')),
-      el('div', {}, el('h4', {}, 'Se battre'), ligne('Clic', 'frapper — 3 clics en rythme : enchaînement'), ligne('Clic maintenu', 'coup chargé'), ligne('Clic droit · Espace', 'repousser')),
+      el('div', {}, el('h4', {}, 'Se battre'), ligne('Clic', 'frapper — 3 clics en rythme : enchaînement'), ligne('Clic maintenu', 'coup chargé'), ligne('Clic droit · Espace', 'repousser'), ligne('Arme à feu', 'clic droit maintenu : viser, clic : tirer — sans viser : crosse')),
       el('div', {}, el('h4', {}, 'Construire'), ligne('Marteau', 'menu Construire'), ligne('Clic', 'placer puis bâtir'), ligne('T', 'tourner'), ligne('Échap', 'arrêter')),
-      el('div', {}, el('h4', {}, 'Faire'), ligne('E', 'interagir / fouiller'), ligne('G', 'autres actions ici'), ligne('F', 'lampe'), ligne('I', 'sac'), ligne('Tab', 'plan du lieu'), ligne('X / B', 'mains / dos'))),
+      el('div', {}, el('h4', {}, 'Faire'), ligne('E', 'interagir / fouiller'), ligne('G', 'autres actions ici'), ligne('F', 'lampe'), ligne('I', 'sac'), ligne('Tab', 'plan du lieu'), ligne('X / B', 'mains / dos'), ligne('1-4', 'ceinture (réappuyer : ranger)'))),
   );
   racine.append(h.sang, h.lieu, h.guide, h.coop, h.msg, h.invite, h.choix, h.etat, h.zoom, h.barre, h.butin, h.mains, h.degage, h.route, h.aide);
   if (!arene && !pref('aideExploreVue')) { h.aide.classList.remove('cache'); setTimeout(() => h.aide.classList.add('cache'), 16000); setPref('aideExploreVue', true); }
@@ -109,9 +109,25 @@ export function creerHud(racine, { arene = false } = {}) {
       };
       const d = m.droite ? objet(m.droite) : null;
       const balles = d && d.tir ? el('em', {}, `${(p.equipEtat.arme && p.equipEtat.arme.balles) || 0}/${d.tir.capacite}`) : null;
-      mm.append(ligneM('droite', 'mains', m.deux ? 'Deux mains' : 'Main droite', nom(m.droite) + (m.uneMainPenalite ? ' (1 main)' : ''), usure('arme'), balles));
-      if (!m.deux && m.gauche) mm.append(ligneM('gauche', 'mains', 'Main gauche', nom(m.gauche), p.equip.mainG ? usure('mainG') : null));
+      const orig = (p.equipOrigine || {}).arme;
+      const versOu = !m.droite ? '' : orig === 'dos' && !p.equip.dos ? ' ↩ dos' : (p.accesRapide || []).includes(m.droite) ? ' ↩ ceinture' : ' ↩ sac';
+      mm.append(ligneM('droite', 'droite', (m.deux ? 'Deux mains' : 'Main droite') + versOu, nom(m.droite) + (m.uneMainPenalite ? ' (1 main)' : ''), usure('arme'), balles));
+      if (!m.deux && m.gauche) mm.append(ligneM('gauche', 'echanger', 'Main gauche ⇄', nom(m.gauche), p.equip.mainG ? usure('mainG') : null));
+      // le dos reste visible tant qu'on peut y remettre ce qu'on tient
+      const peutDos = m.droite && inv.peutDos && inv.peutDos(m.droite);
       if (p.equip.dos) mm.append(ligneM('dos', 'dos', 'Dans le dos', nom(p.equip.dos), null));
+      else if (peutDos) mm.append(ligneM('dos vide', 'dos', 'Dos libre', 'Mettre au dos', null));
+      // ceinture : chaque case sort l'objet en main, ou l'y remet
+      const ar = p.accesRapide || [];
+      if (ar.length) {
+        const ceint = el('div', { class: 'ex-ceinture', title: 'Ceinture (1-4)' });
+        ar.forEach((id, i) => {
+          const tenu = p.equip.arme === id || p.equip.mainG === id;
+          ceint.append(el('button', { class: 'ex-ceint' + (tenu ? ' tenu' : ''), type: 'button', 'data-m': 'rapide' + i, title: (tenu ? 'Remettre à la ceinture : ' : 'Sortir : ') + nom(id) },
+            el('kbd', {}, String(i + 1)), el('span', {}, nom(id))));
+        });
+        mm.append(ceint);
+      }
     },
     majDegage(r) {
       if (!r) { if (!h.degage.classList.contains('cache')) h.degage.classList.add('cache'); return; }

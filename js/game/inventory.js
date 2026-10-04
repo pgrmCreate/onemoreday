@@ -255,6 +255,15 @@ function poserTenue(slot, inst, p) {
 function viderTenue(slot, p) { const inst = instanceTenue(slot, p); p.equip[slot] = null; delete p.equipEtat[slot]; if (slot === 'arme') p.deuxMains = false; return inst; }
 // Range une instance dans le sac (ou au sol si elle ne rentre pas).
 function ranger(inst, p) { if (!inst) return; const { id, qty, ...etat } = inst; addItem(id, qty || 1, etat, p); }
+// Ce qui quitte la main droite retourne d'où il vient (façon Project Zomboid) : dans le dos s'il en sortait
+// et que le dos est libre ; sinon au sac (un objet de la ceinture reste accroché à la ceinture).
+function rangerOrigine(inst, p) {
+  if (!inst) return;
+  const o = (p.equipOrigine || {}).arme; if (p.equipOrigine) p.equipOrigine.arme = null;
+  if (o === 'dos' && !p.equip.dos && peutDos(inst.id)) { poserTenue('dos', inst, p); return; }
+  ranger(inst, p);
+}
+function origine(p, slot, v) { p.equipOrigine = p.equipOrigine || {}; p.equipOrigine[slot] = v; }
 // La main gauche est-elle libre (ni objet, ni lampe tenue, ni arme à deux mains) ?
 export function mainGaucheLibre(p) { p = joueur(p); return !p.equip.mainG && !lampeTenue(p.equip.lampe) && !p.deuxMains; }
 // Ce que les mains tiennent : { droite, gauche, deux, uneMainPenalite }
@@ -291,7 +300,7 @@ export function tenir(index, main = 'droite', p) {
 export function tenirInstance(inst, main = 'droite', p) {
   p = joueur(p); if (!inst) return { ok: false };
   if (main === 'deux') {
-    if (p.equip.arme) ranger(viderTenue('arme', p), p);
+    if (p.equip.arme) rangerOrigine(viderTenue('arme', p), p);
     libererGauche(p);
     poserTenue('arme', inst, p); p.deuxMains = true;
   } else if (main === 'gauche') {
@@ -300,7 +309,7 @@ export function tenirInstance(inst, main = 'droite', p) {
     if (p.deuxMains) p.deuxMains = false;   // l'arme à deux mains passe à une main
     poserTenue('mainG', inst, p);
   } else {
-    if (p.equip.arme) ranger(viderTenue('arme', p), p);
+    if (p.equip.arme) rangerOrigine(viderTenue('arme', p), p);
     poserTenue('arme', inst, p);
     // Une arme à deux mains se prend à deux mains si la main gauche est libre.
     p.deuxMains = deuxMainsDef(inst.id) && !p.equip.mainG && !lampeTenue(p.equip.lampe);
@@ -342,7 +351,8 @@ export function mainVersDos(slot = 'arme', p) {
   p = joueur(p); const id = p.equip[slot]; if (!id) return { ok: false, raison: 'Main vide.' };
   if (!peutDos(id)) return { ok: false, raison: 'Trop petit pour le dos : range-le au sac.' };
   const inst = viderTenue(slot, p);
-  if (p.equip.dos) { const ancien = viderTenue('dos', p); poserTenue(slot, ancien, p); if (slot === 'arme') p.deuxMains = deuxMainsDef(ancien.id) && mainGaucheLibre(p); }
+  if (slot === 'arme' && p.equipOrigine) p.equipOrigine.arme = null;
+  if (p.equip.dos) { const ancien = viderTenue('dos', p); poserTenue(slot, ancien, p); if (slot === 'arme') { p.deuxMains = deuxMainsDef(ancien.id) && mainGaucheLibre(p); origine(p, 'arme', 'dos'); } }
   poserTenue('dos', inst, p);
   emit('inventaire', { equip: 'dos' });
   return { ok: true };
@@ -350,8 +360,9 @@ export function mainVersDos(slot = 'arme', p) {
 export function dosVersMain(p) {
   p = joueur(p); if (!p.equip.dos) return { ok: false, raison: 'Rien dans le dos.' };
   const inst = viderTenue('dos', p);
-  if (p.equip.arme) { const ancien = viderTenue('arme', p); if (peutDos(ancien.id)) poserTenue('dos', ancien, p); else ranger(ancien, p); }
+  if (p.equip.arme) { const ancien = viderTenue('arme', p); if (p.equipOrigine) p.equipOrigine.arme = null; if (peutDos(ancien.id)) poserTenue('dos', ancien, p); else ranger(ancien, p); }
   poserTenue('arme', inst, p);
+  origine(p, 'arme', 'dos');
   p.deuxMains = deuxMainsDef(inst.id) && mainGaucheLibre(p);
   emit('inventaire', { equip: 'arme' });
   return { ok: true };
@@ -450,9 +461,33 @@ export function accesRapideMax(p) {
   return Math.min(n, I().ACCES_RAPIDE_MAX);
 }
 function nettoyerAccesRapide(p) {
-  p.accesRapide = p.accesRapide.filter(id => p.inventaire.some(it => it.id === id));
+  // un objet de la ceinture tenu en main reste « à la ceinture » : il y retourne quand on le range
+  p.accesRapide = p.accesRapide.filter(id => p.inventaire.some(it => it.id === id) || p.equip.arme === id || p.equip.mainG === id);
   const max = accesRapideMax(p);
   if (p.accesRapide.length > max) p.accesRapide.length = max;
+}
+// Ranger ce que tient la main droite là d'où il vient (dos, ceinture, sac). → { ok, ou?, raison? }
+export function rangerMain(p) {
+  p = joueur(p); if (!p.equip.arme) return { ok: false, raison: 'Main vide.' };
+  const id = p.equip.arme, o = (p.equipOrigine || {}).arme;
+  const inst = viderTenue('arme', p);
+  let ou = 'sac';
+  if (o === 'dos' && !p.equip.dos && peutDos(id)) { poserTenue('dos', inst, p); ou = 'dos'; }
+  else { ranger(inst, p); if (p.accesRapide.includes(id)) ou = 'ceinture'; }
+  if (p.equipOrigine) p.equipOrigine.arme = null;
+  emit('inventaire', { equip: 'arme' });
+  return { ok: true, ou };
+}
+// Touche d'accès rapide i (1-4) : sortir l'objet de la ceinture en main droite, ou l'y remettre s'il y est déjà.
+export function basculerRapide(i, p) {
+  p = joueur(p); const id = p.accesRapide[i]; if (!id) return { ok: false, raison: 'Rien à cet emplacement.' };
+  if (p.equip.arme === id) return rangerMain(p);
+  if (p.equip.mainG === id) { ranger(viderTenue('mainG', p), p); emit('inventaire', { equip: 'mainG' }); return { ok: true, ou: 'ceinture' }; }
+  const k = p.inventaire.findIndex(x => x.id === id); if (k < 0) return { ok: false, raison: 'Tu ne l’as plus sur toi.' };
+  const avant = p.accesRapide.slice();
+  const r = tenir(k, 'droite', p);
+  if (r.ok) { origine(p, 'arme', 'ceinture'); p.accesRapide = avant.filter(x => x === id || p.accesRapide.includes(x)); emit('inventaire', { accesRapide: true }); }
+  return r;
 }
 export function estAccesRapide(id, p) { return joueur(p).accesRapide.includes(id); }
 export function mettreAccesRapide(id, p) {
