@@ -70,14 +70,25 @@ export const REGLAGES = {
   // ===========================================================================
   exploration: {
     CASE_M: 0.8,                // 1 case = 0,8 m (contrat des plans ASCII).
+    // --- ÉTAGÈRES : les longues rangées sont découpées en petites étagères ; la plupart ont été VIDÉES (pillage) :
+    //     dessinées vides, on ne peut pas les fouiller. Les garnies se voient (articles dessinés) et se fouillent.
+    ETAGERES: {
+      SEGMENT: 2,               // une étagère = 2 cases (une rangée de 7 → 2 + 2 + 3).
+      VIDES: 0.65,              // part d'étagères vides par défaut…
+      PAR_BUTIN: { hypermarche: 0.75, supermarche: 0.75, superette: 0.7, pharmacie: 0.6, bricolage: 0.6, librairie: 0.4 }, // … selon le lieu
+    },
     VITESSE: {                  // cases par seconde réelle, joystick poussé à fond.
       marche: 3.2,              //   traverser une pièce de 6 m ≈ 2,3 s.
       course: 5.4,              //   plus rapide que tout mort humain sauf… aucun ; chiens et fauves vont plus vite.
       accroupi: 1.6,            //   lent, presque muet.
     },
     INERTIE_MS: 110,            // temps pour atteindre la vitesse visée (lisse le joystick, évite l'effet savonnette).
-    COURSE_STA_S: 5,            // endurance/s en course : 100 sta = 20 s de sprint.
+    COURSE_STA_S: 12,           // endurance/s en course au niveau 0 : 100 sta ≈ 8 s de sprint (on s'essouffle VITE au début)…
+    COURSE_AGILITE: 0.08,       // … −8 % de dépense par niveau d'Agilité (niv 5 : ×0,6 ≈ 14 s ; plancher ×0,45)…
+    COURSE_FATIGUE: 0.35,       // … +35 % si tu es fatigué(e) (fatigue < seuil « gêne »), × surpoids (inventaire.SURPOIDS.sta).
     COURSE_STA_MIN: 8,          // en dessous, la course s'arrête (le bouton l'indique : « À bout de souffle »).
+    COURSE_REPRISE_MS: 1500,    // après une course, 1,5 s à reprendre ton souffle avant que l'endurance remonte.
+    COURSE_XP_S: 12,            // 1 XP d'Agilité toutes les 12 s de course.
     ACCROUPI_VITESSE_AGILITE: 0.05, // +5 % de vitesse accroupie par niveau d'agilité.
 
     // --- BRUIT : rayon (cases) du bruit émis ; les morts dont (distance ≤ rayon × ouïe) l'entendent ---
@@ -296,8 +307,7 @@ export const REGLAGES = {
   //            maintenir = coup chargé (anneau), relâcher = coup lourd qui fait vaciller et INTERROMPT une attaque.
   //            Un coup qui part TOUCHE si le mort est dans l'arc au moment de l'impact : AUCUN raté au hasard.
   //   POUSSER  repousse tout ce qui est devant, annule leurs attaques ; chance de les mettre à terre.
-  //   ESQUIVER une ruée courte (Espace / bouton) : invulnérable un instant. Juste au moment du coup = ESQUIVE PARFAITE
-  //            (ralenti, et ton prochain coup est critique).
+  //   PAS D'ESQUIVE : on évite un coup en RECULANT hors de sa portée, en le POUSSANT, ou en l'INTERROMPANT.
   //   ACHEVER  frapper un mort à terre = coup de grâce (dégâts × 2,2, toujours critique).
   // Ce que font les morts au contact : ils s'approchent → TÉLÉGRAPHIENT (bras levés + arc au sol : rouge = coup,
   // ambre = empoignade) → se FENDENT vers toi (courte ruée) → le coup porte à la fin de la fente si tu es encore devant →
@@ -307,7 +317,7 @@ export const REGLAGES = {
     ARRET_CASES: 0.75,          // un mort en chasse s'arrête à 0,75 case de toi (centre à centre) : il ne te traverse pas.
     TOLERANCE_PORTEE: 0.3,      // au bout de la fente, il touche jusqu'à sa portée + 0,3 case…
     CONE_ATTAQUE_DEG: 110,      // … et seulement si tu es dans le cône de 110° devant lui.
-    PIVOT_TELEGRAPHE: 3,        // rad/s : il te suit des yeux en armant son coup (un pas de côté + esquive le déborde).
+    PIVOT_TELEGRAPHE: 3,        // rad/s : il te suit des yeux en armant son coup (un pas de côté rapide le déborde).
     TELEGRAPHE_MIN_MS: 450,     // aucune télégraphie ne descend sous 450 ms, quoi qu'il arrive (difficulté…).
     FENTE: { MS: 150, CASES: 0.45 }, // la fente : il se jette de 0,45 case en 150 ms ; le coup est jugé à la fin.
     PREMIERE_ATTAQUE_MS: [300, 700], // arrivé au contact, il attend 0,3 à 0,7 s avant sa première télégraphie.
@@ -380,16 +390,7 @@ export const REGLAGES = {
     },
 
     // --- Défense ---
-    ESQUIVE: {                  // Espace (PC) / bouton Esquiver : une ruée courte dans la direction du déplacement (en arrière sinon)
-      MS: 300, CASES: 1.7,      // 1,7 case en 0,3 s…
-      INVULN_MS: 240,           // … invulnérable pendant 0,24 s…
-      STA: 14,                  // … pour 14 d'endurance (impossible sous ce seuil : tu trébuches)…
-      COOLDOWN_MS: 450,         // … une fois toutes les 0,45 s.
-      PARFAITE_MS: 200,         // un coup qui t'aurait touché dans les 0,2 s après le début de l'esquive = ESQUIVE PARFAITE :
-      RALENTI_MS: 320,          //   ralenti de 0,32 s (seul ; à deux le monde ne ralentit pas)…
-      CRIT_MS: 1500,            //   … et ton prochain coup dans les 1,5 s est critique.
-    },
-    POUSSEE: {                  // clic droit (PC) / bouton Pousser : repousse tout ce qui est devant toi.
+    POUSSEE: {                  // clic droit / Espace (PC) / bouton Pousser : repousse tout ce qui est devant toi.
       PORTEE: 1.5, ARC_DEG: 140,
       RECUL: 1.25,              // cases ; × (1 − résistance).
       VACILLE_MS: 850,          // les morts poussés vacillent (attaque annulée)…
@@ -428,7 +429,7 @@ export const REGLAGES = {
     BRUIT_ARME: [1.5, 3, 8, 25], // bruit (cases) d'un coup qui porte selon le `bruit` de l'arme 0..3 (tir : 25).
     // --- Endurance ---
     ENDURANCE: {
-      SEUIL_ESSOUFFLE: 15,      // sta < 15 : ESSOUFFLÉ(E) — les coups partent quand même, ×0,6 dégâts, ×1,5 durée ; pas d'esquive.
+      SEUIL_ESSOUFFLE: 15,      // sta < 15 : ESSOUFFLÉ(E) — les coups partent quand même, ×0,6 dégâts, ×1,5 durée.
       ESSOUFFLE_DEGATS: 0.6,
     },
     MAINS_NUES: {               // « arme » par défaut quand la main est vide
@@ -455,7 +456,6 @@ export const REGLAGES = {
     FIN_FUITE: { DISTANCE: 14, MS: 4000 }, // combat de scène : à ≥ 14 cases de tous pendant 4 s, tu leur as échappé.
     XP: {                       // gains d'expérience en combat
       touche: 2, tue: 5,        // compétence de l'arme
-      esquive: 2, parfaite: 5,  // agilité
       poussee: 1,               // force
       empoignade: 4,            // force (dégagé)
       tir: 3,                   // visée, par tir qui touche
@@ -470,6 +470,23 @@ export const REGLAGES = {
     PV_MAX: 100, STA_MAX: 100,
     // --- Besoins (par minute de jeu) ---
     FAIM_PAR_MIN: 0.035,        // 100 → 0 en 48 h (≈ 50 points par jour : un bon repas + un en-cas).
+    // --- Repas : PAS de « +30 ». La faim est un ÉTAT (rassasié·e, un creux, faim, affamé·e) ; chaque aliment a ses calories
+    //     réelles (items.kcal). On mange jusqu'à être calé·e, le reste est GARDÉ (exemplaire entamé : reste 0..1).
+    REPAS: {
+      KCAL_PAR_POINT: 16,       // 16 kcal = 1 point de faim (journée de jeu compressée : une conserve de haricots ≈ 20 points).
+      RASSASIE: 92,             // au-delà : « Tu n'as plus faim. » (on peut se forcer → nausée).
+      MIETTES: 0.08,            // s'il ne reste que 8 % de l'objet, on le finit.
+      FORCER_POINTS: 20,        // se forcer : on mange jusqu'à 20 points de plus que la faim…
+      NAUSEE_MIN: 90,           // … nausée 1 h 30 : endurance qui remonte moitié moins vite.
+      NAUSEE_REGEN: 0.5,
+      TOURNE_RISQUE: 0.5,       // entamé depuis plus de `perissable` h (items) : 50 % d'intoxication.
+      MOTS: [                   // état de la faim, du plus calé au pire (seuil : faim ≥ …)
+        [92, 'Rassasié{|e}'], [70, 'Bien nourri{|e}'], [55, 'Un petit creux'], [40, 'Faim'], [15, 'Affamé{|e}'], [1, 'Affamé{|e}, faible'], [0, 'Tu meurs de faim'],
+      ],
+      PORTIONS: [               // ce que représente un aliment pour quelqu'un d'affamé (points de faim qu'il peut caler)
+        [6, 'une bouchée'], [16, 'un en-cas'], [32, 'un repas léger'], [55, 'un vrai repas'], [90, 'un gros repas'], [1e9, 'plusieurs repas'],
+      ],
+    },
     SOIF_PAR_MIN: 0.05,         // 100 → 0 en 33 h (≈ 1,5 L par jour).
     FATIGUE_PAR_MIN: 0.055,     // 100 → 0 en 30 h éveillé(e).
     MULT_ACTIVITE: {            // × usure selon l'activité (s'applique à soif et fatigue)
@@ -478,7 +495,7 @@ export const REGLAGES = {
     SEUILS: {                   // effets (voir GAMEPLAY §Survie). Jauges 100 = bien.
       faim:    { gene: 40, grave: 15 },   // < 40 : récup. sta ×0,85 ; < 15 : staMax −15, dégâts ×0,85 ; 0 : PV −0,04/min.
       soif:    { gene: 50, grave: 20 },   // < 50 : récup. sta ×0,85 ; < 20 : staMax −20, vue ×0,85 ; 0 : PV −0,1/min.
-      fatigue: { gene: 35, grave: 15 },   // < 35 : staMax −15, esquive ×0,85 ; < 15 : staMax −30, vitesse ×0,9, toucher −8 % ; 0 : évanouissement.
+      fatigue: { gene: 35, grave: 15 },   // < 35 : staMax −15 ; < 15 : staMax −30, vitesse ×0,9, toucher −8 % ; 0 : évanouissement.
     },
     EFFETS: {
       REGEN_GENE: 0.85,
@@ -611,7 +628,7 @@ export const REGLAGES = {
     // --- Volume : ce qui RENTRE ---
     POCHES_L: 1.5,              // litres de poches de base (sans vêtement à poches). Jean +1 L, cargo +2 L, gilet tactique +3 L.
     POCHE_MAX_L: 1,             // une poche ne prend qu'un objet de ≤ 1 L (couteau, conserve, piles…). Au-delà : il faut un sac.
-    VOLUME_DEFAUT: [0.2, 0.8, 4, 8], // litres d'un objet sans `volume`, selon son ancien `espace` (0, 1, 2, 3+) : une conserve tient en poche.
+    VOLUME_DEFAUT: [0.2, 0.8, 4, 8], // filet de sécurité seulement : TOUS les objets ont un `volume` réel (items.js).
     CONTENANCE_PAR_ESPACE: 3.3, // sac sans `contenance` : espace × 3,3 L.
     // --- Poids : ce qui PÈSE ---
     POIDS_BASE: 10,             // kg portables sans sac…
@@ -663,7 +680,7 @@ export const REGLAGES = {
     LISTE: {
       force:        { nom: 'Force',              desc: 'Armes lourdes et contondantes, poussée, se dégager, forcer, porter (+2 kg/niv).' },
       dexterite:    { nom: 'Dextérité',          desc: 'Lames et lances : dégâts, critiques (+2 %/niv, toutes armes).' },
-      agilite:      { nom: 'Agilité',            desc: 'Fenêtre d\'esquive parfaite (+25 ms/niv), fuite (+6 %/niv), course.' },
+      agilite:      { nom: 'Agilité',            desc: 'Souffle en course (dépense −8 %/niv), fuite (+6 %/niv), déplacement accroupi.' },
       mainsNues:    { nom: 'Mains nues',         desc: 'Frapper sans arme (+1 dégât/niv), se dégager d\'une empoignade.' },
       visee:        { nom: 'Visée',              desc: 'Armes à feu et arbalète : visée plus rapide, précision, recharge.' },
       discretion:   { nom: 'Discrétion',         desc: 'Bruit −10 %/niv, les morts te repèrent plus tard, attaques furtives.' },
@@ -725,17 +742,17 @@ export const REGLAGES = {
     DEFAUT: 'survie',
     PRESETS: {
       recit: {                  // pour l'histoire : on meurt rarement
-        nom: 'Récit', degatsMorts: 0.7, pvMorts: 0.85, menace: 1.25, telegraphe: 1.3, fenetreEsquive: 1.4,
+        nom: 'Récit', degatsMorts: 0.7, pvMorts: 0.85, menace: 1.25, telegraphe: 1.3,
         rencontres: 0.7, mortsLieux: 0.8, butin: 1.3, besoins: 0.75, infection: 0.5, contamination: 0.5,
         repeuplement: 0.5, permanent: false,
       },
       survie: {                 // l'équilibre de référence (tous les chiffres de ce fichier)
-        nom: 'Survie', degatsMorts: 1, pvMorts: 1, menace: 1, telegraphe: 1, fenetreEsquive: 1,
+        nom: 'Survie', degatsMorts: 1, pvMorts: 1, menace: 1, telegraphe: 1,
         rencontres: 1, mortsLieux: 1, butin: 1, besoins: 1, infection: 1, contamination: 1,
         repeuplement: 1, permanent: false,
       },
       cauchemar: {              // pour qui connaît déjà Salon par cœur
-        nom: 'Cauchemar', degatsMorts: 1.25, pvMorts: 1.15, menace: 0.85, telegraphe: 0.85, fenetreEsquive: 0.8,
+        nom: 'Cauchemar', degatsMorts: 1.25, pvMorts: 1.15, menace: 0.85, telegraphe: 0.85,
         rencontres: 1.3, mortsLieux: 1.3, butin: 0.8, besoins: 1.2, infection: 1.3, contamination: 1,
         repeuplement: 1.5, permanent: true,   // mort définitive : la sauvegarde est effacée.
       },

@@ -3,6 +3,10 @@
 // dessinés, toits, lumières) sans être réécrits. Les nouveaux niveaux s'écrivent directement avec js/carte/plan.js.
 import { Plan } from './plan.js';
 import { K, SOL_IDX, SOL_AUCUN, MUR_IDX, OBJETS, OBJET_PAR_CAR } from './catalogue.js';
+import { REGLAGES } from '../data/reglages.js';
+
+// Hachage stable (même carte pour les deux joueurs, d'une partie à l'autre).
+const hache = (s) => { let h = 2166136261; for (let k = 0; k < s.length; k++) { h ^= s.charCodeAt(k); h = Math.imul(h, 16777619); } return ((h >>> 0) % 100000) / 100000; };
 
 // Légende globale de l'ancien format
 const GLOBALE = {
@@ -122,6 +126,24 @@ export function asciiVersPlan(def, avert = () => {}) {
       for (const j of cases) { const cx = j % w, cy = (j / w) | 0; if (cx < x0) x0 = cx; if (cy < y0) y0 = cy; if (cx > x1) x1 = cx; if (cy > y1) y1 = cy; }
       const plein = cases.length === (x1 - x0 + 1) * (y1 - y0 + 1);
       const cont = L && L.conteneur;
+      // Étagères ordinaires (ni butin imposé, ni marqueur) : petites étagères, la plupart vides et non fouillables.
+      const ET = REGLAGES.exploration.ETAGERES;
+      const longue = Math.max(x1 - x0 + 1, y1 - y0 + 1), ligne = Math.min(x1 - x0 + 1, y1 - y0 + 1) === 1;
+      if (OBJETS[d.prop] && OBJETS[d.prop].cat === 'etagere' && plein && ligne && longue > ET.SEGMENT && !(cont && (cont.items || cont.table)) && !(L && L.marqueur)) {
+        const horiz = x1 > x0, pVide = (ET.PAR_BUTIN || {})[def.typeButin] ?? ET.VIDES;
+        for (let a = 0; a < longue;) {
+          let l = Math.min(ET.SEGMENT, longue - a); if (longue - a - l === 1) l++;   // jamais d'étagère d'une case en bout de rangée
+          const sx = horiz ? x0 + a : x0, sy = horiz ? y0 : y0 + a;
+          const vide = hache(`${def.id}:${ed.id}:${sx}:${sy}`) < pVide;
+          e.objets.push({
+            type: d.prop, x: sx, y: sy, w: horiz ? l : 1, h: horiz ? 1 : l, rot: 0, cases: null, car: car[i],
+            nom: vide ? `${(L && L.nom) || OBJETS[d.prop].nom} (vide)` : L && L.nom, conteneur: vide ? false : cont, cat: cont && cont.categorie,
+            vide, variante: (sx * 131 + sy * 977) % 1000, ascii: true,
+          });
+          a += l;
+        }
+        continue;
+      }
       e.objets.push({
         type: d.prop, x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, rot: 0, cases: plein ? null : cases, car: car[i],
         nom: L && L.nom, conteneur: cont, cat: cont && cont.categorie, marqueur: L && L.marqueur, eau: L && L.eau,

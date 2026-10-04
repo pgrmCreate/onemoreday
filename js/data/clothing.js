@@ -7,7 +7,7 @@
 //   espace               POCHES offertes par un vêtement (1 = 1 litre de poches : jean 1, cargo 2, gilet tactique 3).
 //                        Les poches ne prennent que les PETITS objets (≤ reglages.inventaire.POCHE_MAX_L).
 //   contenance           (sacs) volume utile en LITRES (sac d'écolier 20 L, randonnée 45 L, militaire 55 L).
-//                        Une planche (14 L) remplit 70 % d'un sac d'écolier ; une pelle n'entre que dans un grand sac.
+//                        Une planche (6 L, longue) se porte en main ou dans le dos ; une pelle (10 L) n'entre que dans un grand sac.
 //   volume               (optionnel) litres occupés PLIÉ dans un sac (défaut : 0,5 + 2,5 × poids, ou 15 % de la contenance).
 //   portage              kg de charge en plus (sacs, harnais).
 //   protection 0..4      protection de chaque ZONE couverte (voir `couvre`). Par point : −2 dégâts sur un coup
@@ -15,7 +15,7 @@
 //                        ne fait plus de plaie (voir reglages.combat.PROTECTION).
 //   couvre [zones]       NOUVEAU — les zones du corps protégées (vocabulaire ZONES_CORPS ci-dessous). Si absent : COUVRE_DEFAUT[slot].
 //   chaleur              points de chaleur (froid : voir reglages.survie.FROID).
-//   agilite              NOUVEAU (ou ±1) — compte comme des niveaux d'agilité (esquive, fuite). Encombrant : −1.
+//   agilite              NOUVEAU (ou ±1) — compte comme des niveaux d'agilité (souffle, fuite). Encombrant : −1.
 //   bruitPas             NOUVEAU — × bruit de tes pas (rangers 1,2 ; baskets 0,9).
 //   impermeable          NOUVEAU — protège de la pluie (pas de +1 froid « mouillé »).
 //   ouie                 NOUVEAU — × portée à laquelle TU entends les morts (casque intégral : 0,7).
@@ -319,7 +319,7 @@ export const CLOTHES = {
   },
   sac_alpinisme: {
     nom: 'Sac d\'alpinisme', slot: 'sac', poids: 1.5, espace: 9, contenance: 50, protection: 0, chaleur: 0, portage: 9,
-    desc: '45 litres, dos ventilé, bien serré au corps. Il ne gêne presque pas quand tu dois esquiver.',
+    desc: '45 litres, dos ventilé, bien serré au corps. Il ne gêne presque pas quand tu dois courir.',
   },
   valise_cabine: {
     nom: 'Valise cabine', slot: 'sac', poids: 3.0, espace: 11, contenance: 40, protection: 0, chaleur: 0, portage: 9, agilite: -2,

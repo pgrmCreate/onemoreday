@@ -58,8 +58,10 @@ export function rendreButin() {
     const ou = inv && inv.ouPorter ? inv.ouPorter(it.id) : null;
     const portable = !!ou;
     const libPorter = { vetement: 'Porter', lampe: 'Équiper', main: 'En main', dos: 'Dans le dos' }[ou] || 'Porter';
+    const libConso = mod.survie && mod.survie.libelleConsommer ? mod.survie.libelleConsommer(it.id) : null;
     ul.append(el('li', { class: (tient ? '' : 'plein') + (i >= (B.dejaVus || 0) ? ' neuf' : '') }, el('button', { class: 'ex-b-nom', type: 'button', onclick: () => (portable ? porterItem(i) : prendreItem(i)) }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
       portable ? el('button', { class: 'ex-b', type: 'button', onclick: () => porterItem(i) }, libPorter) : null,
+      libConso ? el('button', { class: 'ex-b', type: 'button', onclick: () => consommerItem(i) }, libConso) : null,
       el('button', { class: 'ex-b', type: 'button', disabled: tient ? null : true, title: tient ? null : (inv.raisonPlace && inv.raisonPlace(it.id)) || 'Plus de place', onclick: () => prendreItem(i) }, tient ? 'Prendre' : (inv.estPetit && !inv.estPetit(it.id) && !G.player.equip.sac ? 'Trop gros' : 'Sac plein'))));
   }
   B.dejaVus = Math.min(B.visibles, B.items.length);
@@ -92,6 +94,26 @@ async function prendreItem(i) {
   if (!it) return;
   retirerDuButin(B, i);
   donner(it);
+  if (!B.items.length && B.fini) fermerButin(); else rendreButin();
+}
+// Manger / boire / se soigner sur place avec ce qu'on vient de trouver (sans le prendre). Le reste d'une boîte entamée est gardé.
+async function consommerItem(i) {
+  const B = V && V.butin, S = mod.survie, inv = mod.inv; if (!B || i >= B.visibles || !S) return;
+  const prevu = B.items[i];
+  const v = S.peutConsommer(prevu);
+  if (!v.ok && !v.peutForcer) { message(v.raison || 'Impossible.', 2200); return; }
+  if (!v.ok && v.peutForcer && !B.forcer) { B.forcer = prevu.id; message(`${v.raison} Touche encore « Manger » pour te forcer.`, 2600); return; }
+  const it = await V.canal.prendre(B.cle, i, 1);
+  if (!it) return;
+  if ((prevu.qty || 1) > 1) prevu.qty -= 1; else retirerDuButin(B, i);
+  const r = S.consommer({ ...it, qty: 1 }, G.player, { forcer: !v.ok && B.forcer === prevu.id });
+  B.forcer = null;
+  const etat = (() => { const { id: _i, qty: _q, ...e } = it; return e; })();
+  if (!r.ok) { donner({ ...it, qty: 1 }, true); if (r.raison) message(r.raison, 2200); }
+  else {
+    if (!r.fini && inv) inv.addItem(it.id, 1, { ...etat, ...(r.reste != null ? { reste: r.reste, ouvert: r.ouvert } : {}), ...(r.eau ? { eau: r.eau } : {}) });
+    if (r.rend && inv) inv.addItem(r.rend, 1);
+  }
   if (!B.items.length && B.fini) fermerButin(); else rendreButin();
 }
 async function porterItem(i) {
@@ -131,7 +153,7 @@ export function donner(it, silencieux) {
   if (it.doc) { lireDocument(it.doc); return; }
   let auSol = 0;
   const inv = mod.inv;
-  if (inv && inv.addItem) { const r = inv.addItem(it.id, it.qty || 1); auSol = (r && r.auSol) || 0; }
+  if (inv && inv.addItem) { const { id: _i, qty: _q, ...etat } = it; const r = inv.addItem(it.id, it.qty || 1, etat); auSol = (r && r.auSol) || 0; }
   else {
     const s = G.player.inventaire.find(x => x.id === it.id && x.dur == null && x.eau == null);
     if (s) s.qty += it.qty || 1; else G.player.inventaire.push({ id: it.id, qty: it.qty || 1 });
@@ -153,8 +175,14 @@ export function lireDocument(id) {
 export function fournisseurSol() {
   const proches = () => (V && V.snap ? V.snap.sol.filter(o => !o.doc && o.etage === V.j.etage && Math.hypot(o.x - V.j.x, o.y - V.j.y) <= 1.6) : []);
   return {
-    lister: () => proches().map(o => ({ id: o.id, qty: o.qty })),
+    lister: () => proches().map(o => { const { uid: _u, etage: _e, x: _x, y: _y, ...r } = o; return r; }),
     deposer: (item) => { if (V) V.canal.deposer({ etage: V.j.etage, x: V.j.x + Math.cos(V.j.dir) * 0.4, y: V.j.y + Math.sin(V.j.dir) * 0.4 }, item).then(() => { V && (V.snap = V.canal.instantane()); }); },
-    prendre: (i) => { const o = proches()[i]; if (!o) return null; V.canal.prendre('#sol:' + o.uid, 0); V.snap.sol = V.snap.sol.filter(x => x !== o); return { id: o.id, qty: o.qty }; },
+    prendre: (i, qty) => {
+      const o = proches()[i]; if (!o) return null;
+      V.canal.prendre('#sol:' + o.uid, 0, qty);
+      const { uid: _u, etage: _e, x: _x, y: _y, ...r } = o;
+      if (qty > 0 && qty < (o.qty || 1)) { o.qty -= qty; return { ...r, qty }; }
+      V.snap.sol = V.snap.sol.filter(x => x !== o); return r;
+    },
   };
 }

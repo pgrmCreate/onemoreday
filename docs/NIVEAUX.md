@@ -83,6 +83,10 @@ export default {
 | `v x T` | voiture (conteneur), gravats, arbre | oui | `T` |
 | `=` | **(extension)** tombe | oui | |
 
+Étagères (`s`, rayonnages) : une rangée plus longue que 2 cases est découpée en petites étagères de 2 (3 en bout) ; la plupart
+sont **vides** (pillées : dessinées nues, non fouillables — `REGLAGES.exploration.ETAGERES`, 75 % en grande surface). Une rangée
+avec un butin imposé (`items`, `table`) ou un marqueur reste entière.
+
 Tout meuble conteneur a une catégorie de butin : a→vetements, f→frigo, k→cuisine, s→etagere, d→bureau, r→comptoir,
 g→caisse, b→lit, w/h→salle_de_bain, v→voiture, o→poubelle, m→machine, t→table, p→canape.
 

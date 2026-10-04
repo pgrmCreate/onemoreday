@@ -20,7 +20,7 @@ Mobile : joystick n'importe où, gros bouton **Frapper**, **Esquiver** et **Pous
 Un **guide d'objectif** en haut de l'écran dit où aller, un losange marque l'endroit (une flèche au bord s'il est hors champ).
 
 **Inventaire réaliste** (façon Project Zomboid) : **main droite, main gauche, deux mains, dos** ; volume en **litres**
-(sac d'écolier 20 L, randonnée 45 L ; une planche fait 14 L) + poids. Les poches ne prennent que les petits objets.
+(sac d'écolier 20 L, randonnée 45 L ; une pile 0,02 L, une conserve 0,45 L, une planche 6 L) + poids. Les poches ne prennent que les petits objets.
 Un gros objet sanglé dans le dos pèse 25 % de moins. Une arme à deux mains tenue d'une main frappe moins fort.
 
 **Morts** : cinq types pour l'instant — Errant·e, Coureur·se, Rampant·e, Hurleur·se, Colosse — chacun en homme ou en femme.

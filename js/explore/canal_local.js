@@ -3,7 +3,7 @@
 //   propriétaire → fait tourner sim.tick à 20 Hz (setInterval) et diffuse les événements (le combat se joue ici).
 //   Plusieurs canaux peuvent partager une même sim (co-op locale / tests) : un seul propriétaire.
 // Interface (identique pour le futur canal distant de l'invité) :
-//   majJoueur(patch), bruit(b), porte(cle, action) → Promise, fouiller(cle) → Promise, prendre(cle, i) → Promise,
+//   majJoueur(patch), bruit(b), porte(cle, action) → Promise, fouiller(cle) → Promise, prendre(cle, i, qty?) → Promise,
 //   deposer(pos, item) → Promise, instantane(), pairs(), on(evt, fn) → off
 // Combat : action(a) → Promise ({ type: 'frapper'|'pousser'|'tirer'|'marteler', … }), faireApparaitre(liste, o) → Promise<uids>.
 // Extensions : ajouterJoueur(pos, info), arreterFouille(progres), blesserZombie(uid, n), retirerZombies(uids, o),
@@ -51,7 +51,7 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } 
     porte(cle, action) { return ok(sim.porte(cle, action, joueurId)); },
     fouiller(cle) { return ok(sim.fouiller(joueurId, cle)); },
     arreterFouille(progres) { sim.arreterFouille(joueurId, progres); },
-    prendre(cle, i) { return ok(sim.prendre(joueurId, cle, i)); },
+    prendre(cle, i, qty) { return ok(sim.prendre(joueurId, cle, i, qty)); },
     deposer(pos, item) { return ok(sim.deposer(joueurId, pos, item)); },
     action(a) {
       const r = sim.action(joueurId, a);
@@ -77,7 +77,7 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } 
       return () => { const s = ecouteurs.get(evt); if (s) s.delete(fn); };
     },
     pause() { enPause = true; },
-    // ralenti du monde (solo : esquive parfaite) — f × la vitesse pendant ms
+    // ralenti du monde (solo) — f × la vitesse pendant ms
     echelle(f, ms) { if (!proprietaire) return; facteur = f; finFacteur = performance.now() + ms; },
     reprise() { if (enPause) { enPause = false; dernier = performance.now(); } },
     fermer() {

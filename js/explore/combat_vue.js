@@ -1,11 +1,11 @@
 // ============ Combat dans l'exploration — CÔTÉ JOUEUR (« combat 2 ») ============
 // La simulation du lieu juge tout (sim.action) ; ici : ce que le joueur local FAIT et RESSENT.
 //   Gestes : frapper (tape = coup rapide, enchaîner 3 tapes = enchaînement, maintenir = coup chargé), pousser,
-//            esquiver (ruée courte invulnérable), achever (frapper un mort à terre), tirer / recharger, mains, dos.
+//            achever (frapper un mort à terre), tirer / recharger, mains, dos.
 //   Retours : micro-arrêt de l'image à l'impact, secousse, gerbes de sang qui tachent le sol, traînée d'arme,
-//            chiffres, voile rouge, vibration, ralenti sur esquive parfaite (seul).
-// creerCombatVue(o) → { frapper(appui, annule), pousser(), esquiver(), recharger(), echangerMains(), dos(), rapide(i),
-//                       maj(dt), vitesseMult(), dirForcee(), ruee(), echelleTemps(), surEvt(e), rendu(), fx, sang, etat, fermer() }
+//            chiffres, voile rouge, vibration. (Pas d'esquive : on recule, on pousse, on interrompt.)
+// creerCombatVue(o) → { frapper(appui, annule), pousser(), recharger(), echangerMains(), dos(), rapide(i),
+//                       maj(dt), vitesseMult(), dirForcee(), echelleTemps(), surEvt(e), rendu(), fx, sang, etat, fermer() }
 // o = { canal, j, zombies, message, sfx, sfxA, vib, inv, player, survie, entrees, tactile, pause, effets (rendu.effets),
 //       etage () → E, mouvement () → { mx, my }, ralentir (f, ms), solo: bool }
 import { G } from '../core/state.js';
@@ -25,16 +25,14 @@ export function creerCombatVue(o) {
   const moi = C.joueurId || 'local';
   const S = {
     stats: null, tStats: 0,
-    geste: null,          // { type: 'rapide'|'lourd'|'poussee'|'tir'|'recharge'|'esquive'|'change', t0, duree, dir, combo, charge }
+    geste: null,          // { type: 'rapide'|'lourd'|'poussee'|'tir'|'recharge'|'change', t0, duree, dir, combo, charge }
     charge: null,         // { t0 } appui en cours sur Frapper
     tampon: null,         // un appui pendant un geste : rejoué dès qu'il finit (jamais d'appui perdu)
     combo: 0, finCombo: 0,// enchaînement en cours, et fin de sa fenêtre
-    pousseePret: 0, esquivePret: 0,
-    ruee: null,           // { t0, duree, vx, vy } esquive en cours (déplacement forcé)
+    pousseePret: 0,
     empoigne: null,       // { uid, requis, taps, fin, duree, t0 }
     recharge: null,
     dirForcee: null, tDirForcee: 0,
-    critJusqu: 0,         // après une esquive parfaite : prochain coup critique
     hitstop: 0,           // ms d'image figée restantes
     secousse: 0, flash: 0,
     mort: false, tuto: false,
@@ -116,8 +114,7 @@ export function creerCombatVue(o) {
     setTimeout(() => {
       if (S.mort) return;
       const jj = o.j(), dir = S.geste ? S.geste.dir : jj.dir;
-      const crit = now() < S.critJusqu;
-      if (crit) S.critJusqu = 0;
+      const crit = false;
       const fx2 = o.effets && o.effets();
       if (fx2) fx2.trainee(jj.etage, jj.x, jj.y, dir, { R: 1.05 + (prof.allonge || 0) * 0.35, lourd: lourd || combo === 2, sens: combo % 2 === 1 ? -1 : 1, duree: lourd ? 200 : 150 });
       C.action({ type: 'frapper', charge: c, combo, crit, x: jj.x, y: jj.y, dir, ess, stats: S.stats });
@@ -137,25 +134,6 @@ export function creerCombatVue(o) {
     const j = o.j();
     S.geste = { type: 'poussee', t0: t, duree: P.GESTE_MS, dir: j.dir };
     setTimeout(() => { if (!S.mort) { const jj = o.j(); C.action({ type: 'pousser', x: jj.x, y: jj.y, dir: S.geste ? S.geste.dir : jj.dir, stats: S.stats }); } }, 90);
-  }
-  // ---------- Esquiver ----------
-  function esquiver() {
-    if (S.mort || o.pause()) return;
-    if (S.empoigne) { marteler(); return; }
-    const E = RC.ESQUIVE, t = now();
-    if (t < S.esquivePret || S.ruee) return;
-    if (sta() < E.STA) { o.message('Trop essoufflé pour esquiver.', 1200); o.sfx('rate', { volume: 0.4 }); return; }
-    const j = o.j(), m = o.mouvement ? o.mouvement() : { mx: 0, my: 0 };
-    let a = Math.hypot(m.mx, m.my) > 0.2 ? Math.atan2(m.my, m.mx) : j.dir + Math.PI;  // sans direction : on recule
-    const v = E.CASES / (E.MS / 1000);
-    S.ruee = { t0: t, duree: E.MS, vx: Math.cos(a) * v, vy: Math.sin(a) * v };
-    S.charge = null; S.tampon = null; S.combo = 0;
-    depenser(E.STA);
-    S.esquivePret = t + E.MS + E.COOLDOWN_MS;
-    S.geste = { type: 'esquive', t0: t, duree: E.MS, dir: j.dir };
-    o.sfx('esquive', { volume: 0.5 });
-    const fx2 = o.effets && o.effets(); if (fx2) fx2.poussiere(j.etage, j.x, j.y, 4);
-    C.action({ type: 'esquiver', x: j.x, y: j.y, dir: j.dir });
   }
   function marteler() {
     const e = S.empoigne; if (!e) return;
@@ -186,7 +164,7 @@ export function creerCombatVue(o) {
     S.geste = { type: 'tir', t0: now(), duree: Math.max(250, arme().vitesse || 300), dir: j.dir };
     o.sfx('tir');
     S.secousse = Math.max(S.secousse, 0.55);
-    const crit = now() < S.critJusqu; if (crit) S.critJusqu = 0;
+    const crit = false;
     C.action({ type: 'tirer', visee, crit, x: j.x, y: j.y, dir: j.dir, stats: S.stats });
     emit('inventaire', { tir: true });
   }
@@ -241,7 +219,6 @@ export function creerCombatVue(o) {
     if (S.dirForcee != null && t > S.tDirForcee) S.dirForcee = null;
     if (S.charge && o.tactile()) { const d = viserAuto(); if (d != null) tourner(d); }
     if (S.tampon && !occupe(t)) { const tp = S.tampon; S.tampon = null; if (t - tp.t < 600) coup(tp.tenu); }
-    if (S.ruee && t > S.ruee.t0 + S.ruee.duree) S.ruee = null;
     for (let i = fx.length - 1; i >= 0; i--) { fx[i].age += dt; if (fx[i].age > fx[i].duree) fx.splice(i, 1); }
     S.secousse = Math.max(0, S.secousse - dt / 380);
     S.flash = Math.max(0, S.flash - dt / 550);
@@ -264,25 +241,16 @@ export function creerCombatVue(o) {
       libelle: S.empoigne ? 'Dégage !' : estTir() ? (etatArmeTir().balles > 0 ? 'Tirer' : 'Vide') : auSol ? 'Achever' : 'Frapper',
       charge: ch, proche, empoigne: !!S.empoigne, combo: t <= S.finCombo ? S.combo : -1,
       pousseeCd: S.pousseePret > t ? (S.pousseePret - t) / RC.POUSSEE.COOLDOWN_MS : 0,
-      esquiveCd: S.esquivePret > t ? (S.esquivePret - t) / (RC.ESQUIVE.MS + RC.ESQUIVE.COOLDOWN_MS) : 0,
     });
     o.entrees.setVisible && o.entrees.setVisible('recharger', estTir());
   }
   function vitesseMult() {
     const t = now();
     if (S.empoigne || S.mort) return 0;
-    if (S.ruee) return 0;          // le déplacement est forcé par la ruée
-    if (S.geste && t < S.geste.t0 + S.geste.duree && S.geste.type !== 'change' && S.geste.type !== 'recharge' && S.geste.type !== 'esquive') return RC.VITESSE_GESTE;
+    if (S.geste && t < S.geste.t0 + S.geste.duree && S.geste.type !== 'change' && S.geste.type !== 'recharge') return RC.VITESSE_GESTE;
     if (S.charge) return RC.CHARGE.VITESSE;
     if (S.recharge) return 0.6;
     return 1;
-  }
-  // Déplacement forcé de l'esquive (cases/s), ou null.
-  function ruee() {
-    if (!S.ruee) return null;
-    const p = (now() - S.ruee.t0) / S.ruee.duree;
-    const k = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3 * 0.8;
-    return { vx: S.ruee.vx * k, vy: S.ruee.vy * k };
   }
   // Facteur de temps pour l'image (micro-arrêt à l'impact).
   const echelleTemps = () => (S.hitstop > 0 ? 0.08 : 1);
@@ -339,7 +307,7 @@ export function creerCombatVue(o) {
       }
       case 'poussee': if (e.joueur === moi) {
         o.sfx(e.n ? 'coup' : 'rate', { volume: 0.5 });
-        if (e.immobile && !e.n) o.message('Il ne bouge pas. Esquive, ou frappe fort.', 1600);
+        if (e.immobile && !e.n) o.message('Il ne bouge pas. Recule, ou frappe fort.', 1600);
         if (e.n) { xp('force', X.poussee); S.secousse = Math.max(S.secousse, 0.2); }
       } break;
       case 'telegraphe': if (e.joueur === moi) {
@@ -347,23 +315,14 @@ export function creerCombatVue(o) {
         if (!S.tuto && !pref('tutoCombat2Vu')) {
           S.tuto = true; try { setPref('tutoCombat2Vu', true); } catch (err) {}
           o.message(o.tactile()
-            ? 'Il arme son coup (arc rouge) : ESQUIVE au dernier moment, ou frappe fort pour l\'interrompre. Arc ambre : il veut t\'agripper.'
-            : 'Il arme son coup (arc rouge) : ESPACE pour esquiver au dernier moment, clic droit pour le repousser, ou maintiens le clic pour un coup qui l\'interrompt.', 7000);
+            ? 'Il arme son coup (arc rouge) : RECULE, POUSSE-le, ou maintiens Frapper pour l\'interrompre. Arc ambre : il veut t\'agripper.'
+            : 'Il arme son coup (arc rouge) : RECULE, clic droit ou Espace pour le repousser, ou maintiens le clic pour un coup qui l\'interrompt.', 7000);
         }
-      } break;
-      case 'esquive': if (e.joueur === moi) {
-        if (e.parfaite) {
-          S.critJusqu = now() + RC.ESQUIVE.CRIT_MS;
-          nombre(o.j().x, o.j().y - 0.3, 'Esquive parfaite', 'crit');
-          o.sfx('esquive'); o.vib(25);
-          if (o.solo && o.ralentir) o.ralentir(0.3, RC.ESQUIVE.RALENTI_MS);
-          xp('agilite', X.parfaite);
-        } else xp('agilite', X.esquive);
       } break;
       case 'attaque': if (e.joueur === moi && e.issue === 'vide') o.sfx('rate', { volume: 0.3 }); break;
       case 'saisie': if (e.joueur === moi) {
         S.empoigne = { uid: e.uid, requis: e.requis, taps: 0, t0: now(), duree: e.duree, fin: now() + e.duree };
-        S.charge = null; S.ruee = null;
+        S.charge = null;
         o.message(`${nomMort(e.typeMort, e.sexe)} t'agrippe ! Martèle Frapper (${e.requis} fois).`, 2200);
         o.sfx('alerte_contact'); o.vib([40, 30, 40]);
         S.secousse = Math.max(S.secousse, 0.55);
@@ -401,7 +360,7 @@ export function creerCombatVue(o) {
   }
   function mourir() {
     if (S.mort) return;
-    S.mort = true; S.charge = null; S.empoigne = null; S.ruee = null;
+    S.mort = true; S.charge = null; S.empoigne = null;
     C.majJoueur({ mort: true });
   }
 
@@ -412,12 +371,12 @@ export function creerCombatVue(o) {
     let ch = 0;
     if (S.charge && !S.charge.visee) { const prof = profilMelee(stats().arme); ch = Math.min(1, Math.max(0, (t - S.charge.t0 - RC.CHARGE.TAPE_MS) / Math.max(1, dureeChargePleine(prof, essouffle(sta())) - RC.CHARGE.TAPE_MS))); }
     const emp = S.empoigne ? { p: Math.min(1, (t - S.empoigne.t0) / S.empoigne.duree), taps: S.empoigne.taps, requis: S.empoigne.requis } : null;
-    return { geste: g, charge: S.charge ? (S.charge.visee ? -1 : ch) : 0, vise: !!(S.charge && S.charge.visee), empoigne: emp, secousse: S.secousse, flash: S.flash, crit: t < S.critJusqu };
+    return { geste: g, charge: S.charge ? (S.charge.visee ? -1 : ch) : 0, vise: !!(S.charge && S.charge.visee), empoigne: emp, secousse: S.secousse, flash: S.flash };
   }
 
   majStats();
   return {
-    frapper, pousser, esquiver, recharger, echangerMains, dos, rapide, maj, vitesseMult, ruee, echelleTemps, surEvt, rendu, majStats, mourir,
+    frapper, pousser, recharger, echangerMains, dos, rapide, maj, vitesseMult, echelleTemps, surEvt, rendu, majStats, mourir,
     dirForcee: () => S.dirForcee, fx, sang, etat: S,
     occupe: () => occupe() || !!S.charge || !!S.empoigne,
     fermer() { S.mort = true; },

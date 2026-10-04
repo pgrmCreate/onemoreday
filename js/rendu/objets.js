@@ -49,6 +49,18 @@ function objetsSurTable(c, x, y, w, h, r, n = 3) {
   }
 }
 function pieds(c, x, y, w, h, coul = '#20160c') { c.fillStyle = coul; const d = 3; for (const [px, py] of [[x + d, y + d], [x + w - d, y + d], [x + d, y + h - d], [x + w - d, y + h - d]]) { cercle(c, px, py, 1.6); c.fill(); } }
+// Étagère pillée : planches nues, poussière, un emballage déchiré ou une boîte renversée de temps en temps.
+function etagereVidee(c, x, y, w, h, r) {
+  c.fillStyle = 'rgba(120,110,95,0.10)'; c.fillRect(x, y, w, h);
+  const rangs = Math.max(1, Math.round(h / 12)), hh = h / rangs;
+  c.fillStyle = 'rgba(0,0,0,0.35)'; for (let k = 1; k < rangs; k++) c.fillRect(x, y + k * hh - 0.5, w, 1);
+  const n = 1 + Math.floor(r() * 3);
+  for (let k = 0; k < n; k++) {
+    const ox = x + 3 + r() * (w - 8), oy = y + 2 + r() * (h - 6);
+    if (r() < 0.5) { c.fillStyle = pick(r, ['#b8b0a0', '#8a3a2a', '#c8a032']); c.save(); c.translate(ox, oy); c.rotate(r() * 3); c.fillRect(-2.5, -1.5, 5, 3); c.restore(); }
+    else { c.fillStyle = 'rgba(210,200,180,0.35)'; c.fillRect(ox, oy, 4 + r() * 4, 1); }
+  }
+}
 function articlesEtagere(c, x, y, w, h, r, vide = 0.25) {
   const rangs = Math.max(1, Math.round(h / 12)); const hh = h / rangs;
   for (let k = 0; k < rangs; k++) {
@@ -111,15 +123,17 @@ const DESSINS = {
     }
     c.fillStyle = 'rgba(0,0,0,0.5)'; c.fillRect(4, H - 6, W - 8, 2);
   },
-  etagere(c, W, H, r) {
+  etagere(c, W, H, r, R) {
     boite(c, 2, 4, W - 4, H - 8, BOIS_F, { r: 2 });
     c.fillStyle = '#2a1e12'; c.fillRect(5, 7, W - 10, H - 14);
-    articlesEtagere(c, 5, 7, W - 10, H - 14, r);
+    if (R && R.vide) etagereVidee(c, 5, 7, W - 10, H - 14, r);
+    else articlesEtagere(c, 5, 7, W - 10, H - 14, r, 0.12);
   },
-  rayonnage(c, W, H, r) {
+  rayonnage(c, W, H, r, R) {
     boite(c, 2, 4, W - 4, H - 8, '#5a5e60', { r: 1 });
     c.fillStyle = '#2a2c2e'; c.fillRect(4, 6, W - 8, H - 12);
-    articlesEtagere(c, 4, 6, W - 8, H - 12, r, 0.35);
+    if (R && R.vide) etagereVidee(c, 4, 6, W - 8, H - 12, r);
+    else articlesEtagere(c, 4, 6, W - 8, H - 12, r, 0.15);
     c.fillStyle = 'rgba(200,60,40,0.7)'; for (let x = 10; x < W - 10; x += TS) c.fillRect(x, H - 7, 10, 2);
   },
   armoire(c, W, H, r) {

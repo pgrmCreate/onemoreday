@@ -76,16 +76,25 @@ function arene(seed, arme) {
   return { sim, j };
 }
 
-console.log('\n== Esquive : au moment de la fente, le coup ne porte pas');
+console.log('\n== Pas d\'esquive : on recule d\'un pas quand il arme son coup, et il frappe dans le vide');
 {
   const { sim, j } = arene(5);
   sim.faireApparaitre(['errant'], { joueurId: 'p' });
-  let esq = 0, parf = 0, bless = 0;
+  let vides = 0, bless = 0;
+  const rEsq = sim.action('p', { type: 'esquiver' });
   for (let t = 0; t < 15000; t += 50) {
-    for (const ev of sim.tick(50)) { if (ev.type === 'fente') sim.action('p', { type: 'esquiver' }); if (ev.type === 'esquive') { esq++; if (ev.parfaite) parf++; } if (ev.type === 'blessure') bless++; }
+    for (const ev of sim.tick(50)) {
+      if (ev.type === 'telegraphe' && ev.joueur === 'p') { // un pas en arrière (≈ 0,45 s de marche)
+        const z = sim.zombies().find(q => q.uid === ev.uid); const a = Math.atan2(j.y - z.y, j.x - z.x);
+        sim.majJoueur('p', { x: j.x + Math.cos(a) * 1.5, y: j.y + Math.sin(a) * 1.5 });
+      }
+      if (ev.type === 'attaque' && ev.issue === 'vide') vides++;
+      if (ev.type === 'blessure') bless++;
+    }
     const z = sim.zombies()[0]; if (z) j.dir = Math.atan2(z.y - j.y, z.x - j.x);
   }
-  ok(esq >= 3 && bless === 0, `esquives ${esq} (parfaites ${parf}), blessures ${bless}`);
+  ok(!rEsq.ok, `l'action « esquiver » n'existe plus (${rEsq.raison})`);
+  ok(vides >= 2 && bless === 0, `coups dans le vide ${vides}, blessures ${bless}`);
 }
 
 console.log('\n== Sans rien faire, il finit par toucher');

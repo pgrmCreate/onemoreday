@@ -33,7 +33,7 @@ export { verifierCondition };
 const RX = REGLAGES.exploration, RL = REGLAGES.lumiere;
 const RAYON = 0.3;
 const JOUEUR_ID = 'local';
-const EVTS_COMBAT = ['telegraphe', 'fente', 'attaque', 'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule', 'esquive'];
+const EVTS_COMBAT = ['telegraphe', 'fente', 'attaque', 'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule'];
 
 // ---------- Crochets remplaçables ----------
 let crochets = { scene: (id) => flow.scene(id), obtenirCanal: null, coop: null };
@@ -133,7 +133,6 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     accroupi: () => {}, aide: () => V && V.hud.basculerAide(),
     frapper: (appui, annule) => { if (!V || !V.cbt || V.occupe) return; if (appui) stopperActions(); V.cbt.frapper(appui, annule); },
     pousser: () => { if (!V || !V.cbt || V.occupe) return; stopperActions(); V.cbt.pousser(); },
-    esquiver: () => { if (!V || !V.cbt || V.occupe) return; stopperActions(); V.cbt.esquiver(); },
     recharger: () => V && V.cbt && V.cbt.recharger(),
     echangerMains: () => V && V.cbt && V.cbt.echangerMains(),
     dos: () => V && V.cbt && V.cbt.dos(),
@@ -314,9 +313,7 @@ function image(t, dt) {
   try { if (mod.player && mod.player.vitesseMarche) v *= mod.player.vitesseMarche(G.player); } catch (e) {}
   if (G.player.agonie) v *= 0.22;                 // à terre (co-op) : on rampe
   v *= V.cbt.vitesseMult();
-  const ruee = V.cbt.ruee();
-  if (ruee) { j.vx = ruee.vx; j.vy = ruee.vy; allure = 'course'; }
-  else {
+  {
     const cible = pousse > 0 ? v * pousse : 0;
     const k = 1 - Math.exp(-dtv / RX.INERTIE_MS);
     const ux = pousse > 0 ? mx / Math.hypot(mx, my) : 0, uy = pousse > 0 ? my / Math.hypot(mx, my) : 0;
@@ -330,10 +327,23 @@ function image(t, dt) {
   const vReelle = Math.hypot(j.vx, j.vy);
   j.marche = Math.min(1, vReelle / 2.5);
   j.allure = vReelle < 0.2 ? 'immobile' : allure;
-  if (j.allure === 'course' && !ruee && Math.random() < dt / 160) V.rendu.effets.poussiere(j.etage, j.x - j.vx * 0.05, j.y - j.vy * 0.05, 1);
+  if (j.allure === 'course' && Math.random() < dt / 160) V.rendu.effets.poussiere(j.etage, j.x - j.vx * 0.05, j.y - j.vy * 0.05, 1);
   // endurance
   const S = REGLAGES.survie.STA_HORS_COMBAT || { repos: 10, marche: 6, accroupi: 7 };
-  const dS = j.allure === 'course' && !ruee ? -RX.COURSE_STA_S : (S[j.allure === 'immobile' ? 'repos' : j.allure] || 6);
+  let dS;
+  const tm = performance.now();   // modificateurs du corps (faim, douleur, nausée, surpoids…), recalculés 2 fois/s
+  if (!V.mods || tm - V.tMods > 500) { V.tMods = tm; try { V.mods = mod.player && mod.player.modificateurs ? mod.player.modificateurs(G.player) : null; } catch (e) { V.mods = null; } }
+  const M = V.mods || { staCout: 1, regenSta: 1 };
+  if (j.allure === 'course') {
+    // on s'essouffle vite à bas niveau : la dépense baisse avec l'Agilité, monte avec la fatigue et le surpoids
+    let k = Math.max(0.45, 1 - RX.COURSE_AGILITE * niv('agilite')) * M.staCout;
+    if ((G.player.fatigue ?? 100) < REGLAGES.survie.SEUILS.fatigue.gene) k *= 1 + RX.COURSE_FATIGUE;
+    dS = -RX.COURSE_STA_S * k;
+    V.finCourse = performance.now() + RX.COURSE_REPRISE_MS;
+    V.tCourse = (V.tCourse || 0) + dt;
+    if (V.tCourse >= RX.COURSE_XP_S * 1000) { V.tCourse = 0; try { mod.player && mod.player.gagnerXp('agilite', 1); } catch (e) {} }
+  } else if (performance.now() < (V.finCourse || 0)) dS = 0;   // reprendre son souffle
+  else dS = (S[j.allure === 'immobile' ? 'repos' : j.allure] || 6) * M.regenSta;
   G.player.sta = clamp(G.player.sta + dS * dt / 1000, 0, staMax);
   // orientation : souris (PC) sinon direction de marche
   let dirCible = j.dir;

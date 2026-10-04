@@ -7,7 +7,7 @@
 // Blessure (G.player.blessures[i]) : { uid, type, zone, gravite, saigne, infecte, bandee, bandage: 'propre'|'sale'|'miel'|null,
 //   suturee, attelle, nettoyee, desinfectee, desinfJusqua (minute monde), souillee, animale, onguent,
 //   age (min), guerison (0..1), mal (points de mal apportés), cree (minute monde) }
-import { G } from '../core/state.js';
+import { G, genrer } from '../core/state.js';
 import { emit, on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 import { REGLAGES, presetDifficulte } from '../data/reglages.js';
@@ -210,7 +210,7 @@ function uneMinute(p, act) {
   p.maladie = Mx.intoxication ? 'intoxication' : Mx.fievre ? 'fievre' : Mx.rhume ? 'rhume' : null;
   // Effets temporaires
   const Ef = p.effets;
-  for (const k of ['antidouleur', 'alcool', 'tisane', 'vitamines', 'douleurAigue']) if (Ef[k] > 0) Ef[k]--;
+  for (const k of ['antidouleur', 'alcool', 'tisane', 'vitamines', 'douleurAigue', 'nausee']) if (Ef[k] > 0) Ef[k]--;
   if (Ef.antibioDans > 0 && --Ef.antibioDans <= 0) {
     let n = 0; for (const b of p.blessures) if (b.infecte) { b.infecte = false; n++; }
     delete Mx.fievre; if (n) emit('toast', { texte: 'Les antibiotiques ont fait leur œuvre.', type: 'bon' });
@@ -253,7 +253,7 @@ export function etatsCorps(p) {
     let n = 0; seuils.forEach((s, i) => { if (v < s) n = i + 1; });
     if (n) r.push({ id, niveau: n, label: labels[n - 1], detail, mauvais: true });
   };
-  jauge('faim', p.faim, [SE.faim.gene + 20, SE.faim.gene, SE.faim.grave, 1], ['Un creux', 'Affamé{|e}', 'Affamé{|e}, faible', 'Tu meurs de faim'], 'Mange quelque chose.');
+  jauge('faim', p.faim, [55, SE.faim.gene, SE.faim.grave, 1], ['Un petit creux', 'Faim', 'Affamé{|e}', 'Affamé{|e}, faible'], 'Mange quelque chose.');
   jauge('soif', p.soif, [SE.soif.gene + 15, SE.soif.gene, SE.soif.grave, 1], ['La bouche sèche', 'Assoiffé{|e}', 'Déshydraté{|e}', 'Tu meurs de soif'], 'Bois. De l\'eau propre si possible.');
   jauge('fatigue', p.fatigue, [SE.fatigue.gene + 20, SE.fatigue.gene, SE.fatigue.grave, 5], ['Las{|se}', 'Fatigué{|e}', 'Épuisé{|e}', 'Tu tombes de sommeil'], 'Dors dans un lieu sûr.');
   const dl = douleur(p), D = S().DOULEUR.SEUILS;
@@ -274,6 +274,7 @@ export function etatsCorps(p) {
   if (sp.f > 0 || sp.bloque) r.push({ id: 'surcharge', niveau: sp.bloque ? 4 : sp.f > 0.66 ? 3 : sp.f > 0.33 ? 2 : 1, label: sp.bloque ? 'Trop lourd : immobile' : 'Surchargé{|e}', detail: `${fmtKg(sp.kg)} / ${fmtKg(sp.max)}.`, mauvais: true });
   const M = S().CONTAMINATION.SEUILS, mal = p.mal || 0;
   if (mal > 0) r.push({ id: 'mal', niveau: mal >= M.delire ? 4 : mal >= M.fievre_noire ? 3 : mal >= M.noirceur ? 2 : 1, label: mal >= M.delire ? 'Délire' : mal >= M.fievre_noire ? 'Fièvre noire' : mal >= M.noirceur ? 'Veines noires' : 'Le mal', detail: `Le mal : ${Math.round(mal)}/100. À 100, tu redeviens l'un d'eux.`, mauvais: true });
+  if ((p.effets.nausee || 0) > 0) r.push({ id: 'nausee', niveau: 1, label: 'Nauséeux{|se}', detail: 'Trop mangé. Ton souffle revient moins vite.', mauvais: true });
   if ((p.effets.antidouleur || 0) > 0) r.push({ id: 'calme', niveau: 1, label: 'Sous calmants', detail: 'La douleur est tenue à distance.', mauvais: false });
   return r;
 }
@@ -350,16 +351,16 @@ export function soinsPossibles(p, i) {
   return r.sort((x, y) => (y.urgent - x.urgent) || (y.ok - x.ok));
 }
 
-// soigner(p, blessureIndex, objetId) — objetId : un objet de soin du sac, ou 'cauteriser'.
-// Consomme l'objet, fait passer le temps du soin, donne l'XP. → { ok, texte?, raison? }
-export function soigner(p, blessureIndex, objetId) {
+// soigner(p, blessureIndex, objetId, { horsSac }) — objetId : un objet de soin du sac, ou 'cauteriser'.
+// Consomme l'objet (sauf horsSac : il vient d'un meuble / du sol), fait passer le temps du soin, donne l'XP. → { ok, texte?, raison? }
+export function soigner(p, blessureIndex, objetId, opts = {}) {
   p = normaliserJoueur(joueur(p)); const action = actionSoin(objetId);
   if (!action) return { ok: false, raison: 'Ça ne soigne pas.' };
   const global = ['antibio', 'antidouleur', 'vitamines', 'tisane', 'charbon'].includes(action);
   const b = global ? null : p.blessures[blessureIndex];
   if (!global && !b) return { ok: false, raison: 'Quelle plaie ?' };
   if (b) { const v = peutSoigner(p, b, action); if (!v.ok) return v; }
-  if (objetId !== 'cauteriser' && !inv.hasItem(objetId, 1, p)) return { ok: false, raison: 'Tu n\'en as plus.' };
+  if (objetId !== 'cauteriser' && !opts.horsSac && !inv.hasItem(objetId, 1, p)) return { ok: false, raison: 'Tu n\'en as plus.' };
   const SV = S(), CT = SV.CONTAMINATION, INF = SV.INFECTION, med = niveau('medecine', p);
   const eff = 1 + REGLAGES.competences.EFFETS.medecine.efficacite * med;
   let texte = '', xp = REGLAGES.competences.XP_ACTIONS.soin; // { medecine: 4 }
@@ -403,7 +404,7 @@ export function soigner(p, blessureIndex, objetId) {
     case 'tisane': p.effets.tisane = SV.DOULEUR.TISANE.min; p.soif = clamp(p.soif + (SV.SOINS.tisane.soif || 0)); if (p.maladies.fievre && !p.blessures.some(w => w.infecte)) p.maladies.fievre.reste = Math.min(p.maladies.fievre.reste, 60); p.effets.vitamines = Math.max(p.effets.vitamines || 0, 720); texte = 'La tisane est amère et chaude.'; break;
     case 'charbon': p.effets.charbonDans = 30; texte = 'Le charbon fera effet dans une demi-heure.'; break;
   }
-  if (objetId !== 'cauteriser') inv.removeItem(objetId, 1, p);
+  if (objetId !== 'cauteriser' && !opts.horsSac) inv.removeItem(objetId, 1, p);
   if (action !== 'antidouleur' && action !== 'vitamines') gagnerXps(xp, 1, p);
   emit('blessure', { soin: action, index: blessureIndex });
   emit('toast', { texte, type: 'bon' });
@@ -416,18 +417,69 @@ function infligerBrulure(zone) {
 function douleurAigue(p, v, min) { p.effets.douleurAigueV = Math.max((p.effets.douleurAigue || 0) > 0 ? p.effets.douleurAigueV || 0 : 0, v); p.effets.douleurAigue = min; }
 
 // ---------- Manger / boire ----------
-// manger(id) : objet de type nourriture. → { ok, raison?, texte? }
-export function manger(id, p) {
-  p = normaliserJoueur(joueur(p)); const d = ITEMS[id];
+// Pas de « +30 » : chaque aliment a ses calories réelles (items.kcal) ; la faim est un état en mots. On mange jusqu'à être
+// calé·e et on GARDE le reste : un exemplaire entamé porte `reste` (0..1) et `ouvert` (minute d'ouverture) ; passé
+// `perissable` heures, il a tourné. Réglages : survie.REPAS.
+const RP = () => S().REPAS;
+const motDe = (table, v) => { for (const [s, m] of table) if (v >= s) return m; return table[table.length - 1][1]; };
+// Points de faim que cale un aliment (ou ce qu'il en reste).
+export function pointsAliment(id, reste = 1) { const d = ITEMS[id]; return d ? ((d.kcal || 0) * (d.cru || 1) * reste) / RP().KCAL_PAR_POINT : 0; }
+// « Rassasiée », « Un petit creux », « Faim »… (genre du joueur appliqué).
+export function motFaim(p) { p = joueur(p); return genrer(motDe(RP().MOTS, p ? p.faim : 100)); }
+export const estRassasie = (p) => (joueur(p) || {}).faim >= RP().RASSASIE;
+// « un en-cas », « un vrai repas »… : ce que l'aliment représente.
+export function motPortion(id, reste = 1) {
+  const pts = pointsAliment(id, reste); if (pts <= 0) return 'rien de nourrissant';
+  for (const [s, m] of RP().PORTIONS) if (pts < s) return m;
+  return 'plusieurs repas';
+}
+export const aTourne = (entree) => { const d = ITEMS[entree.id]; return !!(d && d.perissable && entree.ouvert != null && maintenant() - entree.ouvert > d.perissable * 60); };
+
+// mangerObjet(entree, p, { forcer }) : mange UN exemplaire (du sac, d'un meuble ou du sol) — l'appelant le retire / le remplace.
+//   entree = { id, reste?, ouvert? }. → { ok, raison?, peutForcer?, fini, reste (0..1 de cet exemplaire), ouvert, texte }
+export function mangerObjet(entree, p, opts = {}) {
+  p = normaliserJoueur(joueur(p)); const d = ITEMS[entree.id];
   if (!d || d.type !== 'nourriture') return { ok: false, raison: 'Ça ne se mange pas.' };
-  if (!inv.hasItem(id, 1, p)) return { ok: false, raison: 'Tu n\'en as pas.' };
-  if (d.besoinOuvre && !inv.hasTag('ouvrir', p) && !inv.hasTag('couper', p)) return { ok: false, raison: 'Il faut un ouvre-boîte ou une lame.' };
-  inv.removeItem(id, 1, p);
-  appliquerConso(p, d);
-  if (d.rend) inv.addItem(d.rend, 1, {}, p);
-  emit('toast', { texte: `Tu manges : ${d.nom.toLowerCase()}.`, type: 'info' });
-  emit('survie', { mange: id }); son('manger');
-  return { ok: true };
+  const R = RP(), reste0 = entree.reste ?? 1, dejaOuvert = entree.reste != null || entree.ouvert != null;
+  if (d.besoinOuvre && !dejaOuvert && !inv.hasTag('ouvrir', p) && !inv.hasTag('couper', p)) return { ok: false, raison: 'Il faut un ouvre-boîte ou une lame.' };
+  const dispo = pointsAliment(entree.id, reste0);
+  if (dispo > 0 && p.faim >= R.RASSASIE && !opts.forcer) return { ok: false, peutForcer: true, raison: genrer('Tu n\'as plus faim : tu es calé{|e}.') };
+  let pris = dispo <= 0 ? 0 : Math.min(dispo, Math.max(0, 100 - p.faim) + (opts.forcer ? R.FORCER_POINTS : 0));
+  let frac = dispo > 0 ? pris / dispo : 1;                 // part de CE QUI RESTAIT qu'on mange
+  if (reste0 * (1 - frac) < R.MIETTES) { frac = 1; pris = dispo; }
+  const part = reste0 * frac;                              // part de l'objet entier
+  const tourne = aTourne(entree);
+  p.faim = clamp(p.faim + pris);
+  if (d.soif) p.soif = clamp(p.soif + d.soif * part);
+  if (d.fatigue) p.fatigue = clamp(p.fatigue + d.fatigue * part);
+  if (d.risque) risqueMaladie(p, d.risque);
+  if (tourne) risqueMaladie(p, { type: 'intoxication', p: R.TOURNE_RISQUE });
+  if (opts.forcer) p.effets.nausee = R.NAUSEE_MIN;
+  const fini = frac >= 1, reste = fini ? 0 : Math.round(reste0 * (1 - frac) * 100) / 100;
+  const quoi = `${d.nom} : ` + (fini ? (reste0 < 1 ? 'tu finis ce qui restait' : 'tu manges tout')
+    : part < 0.3 ? 'tu en manges quelques bouchées' : part < 0.6 ? 'tu en manges la moitié' : 'tu en manges presque tout');
+  const etat = opts.forcer ? 'Tu t\'es forcé{|e}. L\'estomac proteste.' : p.faim >= R.RASSASIE ? 'Tu es calé{|e}.' : `${motFaim(p)}.`;
+  const texte = genrer(`${quoi}${tourne ? ' (ça avait tourné)' : ''}. ${fini ? '' : 'Tu gardes le reste. '}${etat}`);
+  emit('survie', { mange: entree.id }); son('manger');
+  return { ok: true, fini, reste, ouvert: fini ? null : (entree.ouvert ?? maintenant()), texte, rend: fini ? d.rend || null : null };
+}
+// manger(ref, p, opts) : ref = index du sac (exemplaire précis, entamé ou non) ou id. → { ok, raison?, peutForcer?, texte? }
+export function manger(ref, p, opts = {}) {
+  p = normaliserJoueur(joueur(p));
+  const idx = typeof ref === 'number' ? ref : (() => {   // l'exemplaire entamé d'abord, sinon la pile
+    const k = p.inventaire.findIndex(it => it.id === ref && it.reste != null);
+    return k >= 0 ? k : p.inventaire.findIndex(it => it.id === ref);
+  })();
+  const it = p.inventaire[idx];
+  if (!it) return { ok: false, raison: 'Tu n\'en as pas.' };
+  const r = mangerObjet(it, p, opts);
+  if (!r.ok) return r;
+  const id = it.id;
+  inv.removeIndex(idx, 1, p);
+  if (!r.fini) inv.addItem(id, 1, { reste: r.reste, ouvert: r.ouvert }, p);
+  if (r.rend) inv.addItem(r.rend, 1, {}, p);
+  emit('toast', { texte: r.texte, type: 'info' });
+  return r;
 }
 // boire(ref, p) : ref = id d'une boisson (bouteille d'eau, soda…) ou index d'un contenant d'eau du sac (une gorgée).
 export function boire(ref, p) {
@@ -451,8 +503,67 @@ export function boire(ref, p) {
   emit('survie', { boit: ref }); son('boire');
   return { ok: true };
 }
+// ---------- Consommer sur place (sans ramasser) ----------
+// Ce qu'on trouve dans un meuble ou par terre : nourriture, boisson, soin. L'appelant a pris UN exemplaire.
+const SOINS_GLOBAUX = ['antibio', 'antidouleur', 'vitamines', 'tisane', 'charbon'];
+// Libellé du geste (« Manger », « Boire », « Prendre », « Bander une plaie »…) ou null si ça ne se consomme pas.
+export function libelleConsommer(id) {
+  const d = ITEMS[id]; if (!d) return null;
+  if (d.type === 'nourriture') return 'Manger';
+  if (d.type === 'boisson') return 'Boire';
+  if (d.type === 'soin') { const a = actionSoin(id); if (!a) return null; return SOINS_GLOBAUX.includes(a) ? 'Prendre' : (LIBELLES_SOIN[a] || 'Soigner'); }
+  return null;
+}
+function plaiePour(p, id) { // la plaie à laquelle ce soin sert le plus (une qui saigne d'abord)
+  const a = actionSoin(id); let best = -1, bs = -1;
+  p.blessures.forEach((b, i) => { if (!peutSoigner(p, b, a).ok) return; const s = (b.saigne ? 10 : 0) + (b.gravite || 1); if (s > bs) { bs = s; best = i; } });
+  return best;
+}
+// peutConsommer(entree, p) → { ok, raison?, peutForcer? } sans rien changer.
+export function peutConsommer(entree, p) {
+  p = normaliserJoueur(joueur(p)); const d = ITEMS[entree.id];
+  if (!d) return { ok: false, raison: 'Ça ne se consomme pas.' };
+  if (d.type === 'nourriture') {
+    if (d.besoinOuvre && entree.reste == null && entree.ouvert == null && !inv.hasTag('ouvrir', p) && !inv.hasTag('couper', p)) return { ok: false, raison: 'Il faut un ouvre-boîte ou une lame.' };
+    if (pointsAliment(entree.id, entree.reste ?? 1) > 0 && p.faim >= RP().RASSASIE) return { ok: false, peutForcer: true, raison: genrer('Tu n\'as plus faim : tu es calé{|e}.') };
+    return { ok: true };
+  }
+  if (d.type === 'boisson') return entree.eau && !(entree.eau.L > 0) ? { ok: false, raison: 'Il est vide.' } : { ok: true };
+  if (d.type === 'soin') {
+    const a = actionSoin(entree.id); if (!a) return { ok: false, raison: 'Ça ne soigne pas.' };
+    if (SOINS_GLOBAUX.includes(a)) return { ok: true };
+    return plaiePour(p, entree.id) >= 0 ? { ok: true } : { ok: false, raison: p.blessures.length ? 'Aucune plaie qui en a besoin.' : 'Tu n\'as pas de plaie à soigner.' };
+  }
+  return { ok: false, raison: 'Ça ne se consomme pas.' };
+}
+// consommer(entree, p, { forcer }) : UN exemplaire pris hors du sac. → { ok, raison?, fini, reste?, ouvert?, rend?, texte }
+// Si l'aliment n'est pas fini (`fini: false`), l'appelant garde le reste : { id, qty: 1, reste, ouvert }.
+export function consommer(entree, p, opts = {}) {
+  p = normaliserJoueur(joueur(p)); const d = ITEMS[entree.id];
+  const v = peutConsommer(entree, p);
+  if (!v.ok && !(v.peutForcer && opts.forcer)) return v;
+  if (d.type === 'nourriture') { const r = mangerObjet(entree, p, opts); if (r.ok) emit('toast', { texte: r.texte, type: 'info' }); return r; }
+  if (d.type === 'boisson') {
+    if (entree.eau) { // un contenant plein trouvé : on boit ce qu'il faut (jusqu'à 0,5 L), le reste est gardé
+      const E = S().EAU, L = Math.min(entree.eau.L, 0.5);
+      p.soif = clamp(p.soif + E.SOIF_PAR_L[entree.eau.q] * L);
+      if (entree.eau.q === 'croupie') risqueMaladie(p, { type: 'intoxication', p: S().RISQUES_ALIMENTS.eau_croupie });
+      const resteL = Math.round((entree.eau.L - L) * 100) / 100;
+      emit('toast', { texte: entree.eau.q === 'propre' ? 'Tu bois.' : 'L\'eau a un goût de vase.', type: 'info' }); son('boire');
+      return { ok: true, fini: false, eau: { ...entree.eau, L: resteL }, texte: '' };
+    }
+    appliquerConso(p, d);
+    if (d.special === 'alcool') p.effets.alcool = S().DOULEUR.ALCOOL.min;
+    emit('toast', { texte: `Tu bois : ${d.nom.toLowerCase()}.`, type: 'info' }); emit('survie', { boit: entree.id }); son('boire');
+    return { ok: true, fini: true, rend: d.rend || null };
+  }
+  const a = actionSoin(entree.id);
+  const r = soigner(p, SOINS_GLOBAUX.includes(a) ? -1 : plaiePour(p, entree.id), entree.id, { horsSac: true });
+  return r.ok ? { ...r, fini: true } : r;
+}
+
 function appliquerConso(p, d) {
-  if (d.faim) p.faim = clamp(p.faim + d.faim);
+  if (d.kcal) p.faim = clamp(p.faim + (d.kcal * (d.cru || 1)) / RP().KCAL_PAR_POINT);
   if (d.soif) p.soif = clamp(p.soif + d.soif);
   if (d.fatigue) p.fatigue = clamp(p.fatigue + d.fatigue);
   if (d.risque) risqueMaladie(p, d.risque);

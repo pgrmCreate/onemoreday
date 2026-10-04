@@ -17,7 +17,7 @@ Les parties réelles de l'ancienne version ont montré quatre défauts. Chacun a
 | Symptôme observé | Cause | Réponse de la refonte |
 |---|---|---|
 | **15 coups, dont la moitié ratés**, contre un simple errant à mains nues | toucher de base 62 %, pénalisé par la charge ; dégâts à mains nues 3-6 contre 30 PV | toucher de base **88 %** (jamais sous 50 %), plus de malus de charge ; mains nues **≈ 8 coups / 3 s**, couteau **≈ 4 coups / 1,6 s** (§4.9) |
-| **« Trop épuisé »** en boucle, le bouton ne fait rien | chaque geste était refusé sous son coût | **on ne refuse jamais un coup** : sous 15 d'endurance, il part quand même, mou (×0,6) et lent (×1,5). Seule l'**esquive** est bloquée, et le bouton l'affiche (« À bout de souffle ») |
+| **« Trop épuisé »** en boucle, le bouton ne fait rien | chaque geste était refusé sous son coût | **on ne refuse jamais un coup** : sous 15 d'endurance, il part quand même, mou (×0,6) et lent (×1,5). Seule la **course** s'arrête, et le bouton l'affiche (« À bout de souffle ») |
 | **Mort d'infection au jour 1** après deux combats | ~45 % des coups encaissés faisaient une plaie, qui s'infectait vite et tuait (0,045 PV/min) | l'infection bactérienne est **lente** (−11 PV/jour par plaie infectée) et **soignable** ; la contamination par les morts devient une **jauge visible** (« le mal »), et un mort humain **ne mord qu'en empoignade ratée** (§5.4) |
 | **La garde s'effondre** sans qu'on comprenne | la garde tombait à zéro 2 s après sa charge pleine, sans avertissement | la garde ne **tombe plus au bout d'un temps**. Elle ne cède que **quand l'endurance est vide**, et la barre montre en permanence ce que coûtera le prochain blocage |
 
@@ -56,7 +56,7 @@ trajet de 900 m vers la gare (≈ 11 min, une rencontre une fois sur deux) → 1
 |---|---|---|---|---|
 | Accroupi(e) | 1,6 (+5 %/niv d'Agilité) | 0,5 | +7/s | lent mais quasi muet : on passe à 1 case d'un mort qui dort |
 | Marche | 3,2 | 2 | +6/s | on traverse une pièce de 6 m en ≈ 2,3 s ; **plus rapide que tout mort humain qui erre** |
-| Course | 5,4 | 6 | −5/s (20 s de sprint) | plus rapide que tout mort humain en chasse (coureur 4,6, enragé 4,2). **Chiens (6,2) et fauve (6,5) vont plus vite** : il faut une porte |
+| Course | 5,4 | 6 | −12/s au niveau 0 (≈ 8 s de sprint), −8 %/niv d'Agilité (plancher ×0,45), +35 % fatigué(e), × surpoids ; 1,5 s pour reprendre son souffle | plus rapide que tout mort humain en chasse (coureur 4,6, enragé 4,2). **Chiens (6,2) et fauve (6,5) vont plus vite** : il faut une porte |
 
 - Le **sol** multiplie le bruit des pas (`BRUIT_SOL`) : moquette ×0,6, gravier ×1,5, **débris/verre (`;`) ×2,5**.
 - La **Discrétion** retire 10 % par niveau à tous les bruits du joueur (−50 % au niveau 5).
@@ -269,8 +269,9 @@ rencontres de combat « du pool » et les renforts y puisent, filtrés par `jour
 
 ## 4. Le combat — dans l'exploration, en temps réel (« combat 2 »)
 
-> Pas d'écran de combat : on se bat sur place. Quatre gestes : **frapper** (tape, enchaînement de 3, coup chargé),
-> **esquiver** (ruée courte invulnérable), **pousser**, **achever** (frapper un mort à terre). **Aucun raté au hasard en mêlée** :
+> Pas d'écran de combat : on se bat sur place. Trois gestes : **frapper** (tape, enchaînement de 3, coup chargé),
+> **pousser**, **achever** (frapper un mort à terre). **Pas d'esquive** : on évite un coup en **reculant** hors de sa portée,
+> en le **poussant** ou en l'**interrompant**. **Aucun raté au hasard en mêlée** :
 > si le mort est dans l'arc au moment de l'impact, le coup porte. Règles : `REGLAGES.combat`, `js/explore/combat.js`,
 > la simulation `js/explore/sim.js` ; gestes et retours : `js/explore/combat_vue.js`.
 
@@ -281,17 +282,15 @@ rencontres de combat « du pool » et les renforts y puisent, filtrés par `jour
      → [FENTE 150 ms : il se jette de 0,45 case] → coup JUGÉ AU BOUT DE LA FENTE → [RÉCUP `cadence` ms] ↺
        rouge = COUP · ambre = EMPOIGNADE
 ```
-- Le coup **touche** si, au bout de la fente, tu es encore à `portee` + 0,3 case, dans son cône de 110°, et **pas en train
-  d'esquiver**. Pendant la télégraphie il pivote à 3 rad/s : un pas de côté + une esquive le débordent.
+- Le coup **touche** si, au bout de la fente, tu es encore à `portee` + 0,3 case, dans son cône de 110°. Pendant la télégraphie
+  il pivote à 3 rad/s : **reculer d'un pas** (ou un pas de côté rapide) suffit à le faire frapper dans le vide.
 - **Jetons** : au plus 2 morts arment un coup contre la même personne ; les autres tournent autour à 1,35 case. Un groupe
   reste lisible : on voit qui va frapper.
 - **Équilibre** (0,7 × PV max) : chaque coup l'entame (×1 / ×1,25 / ×2,4 pour les coups 1-2-3 d'un enchaînement, ×2 lourd).
   À 0 il **vacille** 0,85 s (attaque annulée). Il le récupère en 8 s sans être frappé.
 - **Coup rapide** sur un mort qui arme : il tressaille (+0,14 s avant son coup). **Coup chargé ≥ 50 %** : il l'interrompt.
   **Coup lourd** (≥ 90 %) : vacillement, recul 1,1 case, 45 % de mise à terre.
-- **Esquive** (Espace / bouton) : 1,7 case en 0,3 s, invulnérable 0,24 s, 14 d'endurance, une fois toutes les 0,45 s.
-  **Esquive parfaite** (le coup tombe dans les 0,2 s) : ralenti (seul), le mort est déséquilibré, ton prochain coup est critique.
-- **Poussée** (clic droit / bouton, recharge 0,75 s, 7 sta) : annule les attaques devant toi, recul 1,25 case ; 20 % + 5 %/Force
+- **Poussée** (clic droit / Espace / bouton, recharge 0,75 s, 7 sta) : annule les attaques devant toi, recul 1,25 case ; 20 % + 5 %/Force
   de mise à terre. Résistance ≥ 0,75 (colosse) : il ne bouge pas.
 - **À terre** (2,2 s) : le frapper = **coup de grâce** (× 2,2, toujours critique).
 - **Empoignade** : anneau de 2,4 s (+0,3 s au doigt), marteler Frapper. Raté : **morsure** (seule source de morsure humaine).
@@ -337,7 +336,7 @@ valides (`ALIAS_MORTS`) et désignent le type actif le plus proche.
   d'infection). On ne le distance pas en courant.
 - **Enragé** (jour 4) : 600 ms de télégraphie et 40 % de chance d'**enchaîner** une deuxième ruée à mi-jauge.
 - **Colosse** : lent (5,5 s par cycle) mais énorme. **Ta garde ne bloque que la moitié** de ce qu'elle bloque d'habitude,
-  la poussée ne marche pas, ses coups cassent des os (35 %). Réponses : esquiver, frapper chargé, ou éviter le combat.
+  la poussée ne marche pas, ses coups cassent des os (35 %). Réponses : reculer, frapper chargé, ou éviter le combat.
 - **Soldat de la 701** : armure (−35 % des dégâts non critiques, moitié moins contre une balle), casque (critiques ×0,5).
   Il paie : munitions 5,56, rations, parfois un casque, très rarement un fusil d'assaut.
 - **Lionne de La Barben** : prédatrice (vue 12, odorat 6), elle bondit de 5 cases et plaque au sol (empoignade à 10 taps).
@@ -389,7 +388,7 @@ du monde ; la hache de pompier en est le luxe.
 
 | Action | Coût | | Action | Coût |
 |---|---|---|---|---|
-| Coup rapide | `sta` de l'arme (4 à 16) | | Esquive | 10 (parfaite : rend 6) |
+| Coup rapide | `sta` de l'arme (4 à 16) | | Poussée | 7 |
 | Coup chargé | sta × (1 + 1,5 × charge) → ×2,5 à fond | | Garde | 2/s + 1 par point de dégât bloqué |
 | Poussée | 12 | | Martèlement (empoignade) | 1,5 par appui |
 | Tir | 3 (visée comprise) | | Lancer | 8 |
@@ -397,7 +396,7 @@ du monde ; la hache de pompier en est le luxe.
 
 **Récupération** : **+14/s** après 0,7 s sans geste, **+4/s** entre deux coups, 0 en garde ou en charge. Surpoids : coûts ×(1 + 0,5 f).
 **Essoufflé(e)** (< 15) : les coups **partent quand même**, ×0,6 dégâts, gestes ×1,5 plus lents. **À bout de souffle** (< 10) :
-l'esquive est grisée. Le bouton affiche le mot, et c'est le seul geste refusé.
+la course s'arrête. Le bouton affiche le mot, et c'est la seule chose refusée.
 
 Cadence : à la batte (9 sta en 0,62 s), on frappe **≈ 9 s en continu** avant l'essoufflement ; au couteau ≈ 12 s ;
 à la masse ≈ 6 s. Un souffle de 3 s rend ≈ 32 sta. **Le combat a un rythme** : frapper, souffler, lire la télégraphie.
@@ -422,7 +421,7 @@ Dégâts = jet(dmg) × (1 + (charge_arme − 1) × c)             c = charge 0..
          × enchaînement [1 ; 1,1 ; 1,5]                      1er, 2e, 3e coup en rythme
          × (1 + 0,06 × niv)                                  compétence de l'arme (+30 % au niveau 5)
          × (critique ? 2 : 1)                                P(crit) = crit_arme + 0,02 × Dextérité + 0,15 × c (+0,2 vacille, +0,25 à terre)
-                                                             critique garanti : coup de grâce, coup qui suit une esquive parfaite
+                                                             critique garanti : coup de grâce
          × (coup de grâce ? 2,2 : à terre ? 1,5) × (furtif ? 3)
          × (essoufflé ? 0,6) × (affamé ? 0,85) × (arme < 20 % de durabilité ? 0,8)
          × (non critique : 1 − armure du mort ; tir : 1 − armure/2)
@@ -496,16 +495,25 @@ icône d'arme usée (< 20 %). Au premier combat : trois conseils, pas plus (esqu
 
 | Jauge | Baisse | Vide en | Gêne (effet) | Grave (effet) | À zéro |
 |---|---|---|---|---|---|
-| Faim | 0,035/min | 48 h | < 40 : récup. sta ×0,85 | < 15 : staMax −15, dégâts ×0,85 | −0,04 PV/min |
+| Faim | 0,035/min | 48 h | < 40 (« Faim ») : récup. sta ×0,85 | < 15 (« Affamé·e ») : staMax −15, dégâts ×0,85 | −0,04 PV/min |
 | Soif | 0,05/min | 33 h | < 50 : récup. sta ×0,85 | < 20 : staMax −20, vue ×0,85 | −0,1 PV/min (≈ 17 h) |
-| Fatigue | 0,055/min | 30 h | < 35 : staMax −15, esquive parfaite ×0,85 | < 15 : staMax −30, vitesse ×0,9, toucher −8 % | évanouissement 2 h sur place |
+| Fatigue | 0,055/min | 30 h | < 35 : staMax −15, course +35 % plus essoufflante | < 15 : staMax −30, vitesse ×0,9, toucher −8 % | évanouissement 2 h sur place |
 
 Activité : course et voyage rapide ×2 et ×1,8 (soif, fatigue), combat ×1,5, repos ×0,6, sommeil ×0,5.
 **PV** : +0,02/min éveillé (≈ 29/jour), +0,07/min en dormant (≈ 34 par nuit), si faim et soif ≥ 40 et aucune plaie qui
 saigne ou infectée. **Endurance hors combat** : +10/s immobile, +6/s en marchant.
 
-Repères de nourriture : conserve 30-32, pâtes cuites 30 (un paquet → 2 gamelles), ragoût 55, ration militaire 50,
-barre 10. **Eau** : bouteille 40 (0,5 L), 1 L d'eau propre = 80. Un jour = ≈ 50 de faim et 0,9 L d'eau.
+**Manger : pas de « +30 ».** La faim s'affiche en mots (Rassasié·e ≥ 92, Bien nourri·e ≥ 70, Un petit creux ≥ 55, Faim ≥ 40,
+Affamé·e ≥ 15, Affamé·e faible, Tu meurs de faim). Chaque aliment a ses **calories réelles** (`items.kcal`) ; 16 kcal = 1 point
+de faim (`survie.REPAS`). On mange **jusqu'à être calé·e** : si la boîte suffit avant la fin, on s'arrête et **le reste est gardé**
+(exemplaire *entamé* : `reste` 0..1, `ouvert`). Une conserve ouverte se garde 24 h, un plat cuit 12 h, de la viande crue 6 h
+(`perissable`) ; passé ce délai, 50 % d'intoxication. Rassasié·e, on peut **se forcer** : nausée 1 h 30 (souffle ×0,5).
+Cru (`cru`) : pâtes sèches 30 %, viande 50 %, poisson 60 % des calories. Repères (points pour quelqu'un d'affamé) : conserve de
+haricots 20, raviolis 25, paquet de biscuits 87, ration militaire 75, ragoût 56, barre 6. La fiche d'un aliment dit « un en-cas »,
+« un vrai repas », « plusieurs repas »… **Eau** : bouteille 40 (0,5 L), 1 L d'eau propre = 80. Un jour ≈ 50 points et 0,9 L.
+
+**Consommer sur place** : dans la fenêtre de fouille ou au sol, un aliment, une boisson ou un soin se consomme **sans le
+ramasser** (Manger / Boire / Prendre / Bander une plaie…). Ce qui reste (boîte entamée, gourde) va dans le sac.
 
 ### 5.2 Blessures et soins (`survie.BLESSURES`, `SOINS`)
 
@@ -641,7 +649,7 @@ Agilité à 20 XP (le niveau 1 est proche).
 |---|---|---|
 | Force | armes `force` +6 % dégâts ; −1 martèlement / 2 niv ; mise à terre +5 % ; forcer −10 % ; +2 kg | frapper (contondant), bloquer, se dégager, forcer |
 | Dextérité | armes `dexterite` +6 % ; **+2 % critique toutes armes** | frapper (lames, lances) |
-| Agilité | **fenêtre d'esquive parfaite +25 ms** ; fuite +6 % ; accroupi +5 % | esquiver (3, parfaite 5), fuir (6) |
+| Agilité | **souffle en course −8 %/niv** ; fuite +6 % ; accroupi +5 % | courir (1 / 12 s de course), fuir (6) |
 | Mains nues | +1 dégât et +6 % ; niv 3 : −1 martèlement | frapper sans arme |
 | Visée | visée −80 ms ; précision +4 % ; recharge −6 % | tirer (3 par tir qui touche) |
 | Discrétion | bruits −10 % ; vue des morts −6 % | 5 s accroupi près d'un mort qui ne t'a pas vu (1), attaque furtive (6) |
@@ -652,17 +660,17 @@ Agilité à 20 XP (le niveau 1 est proche).
 | Chasse & cuisine | dépeçage +20 % ; pêche +10 % | cuisiner, pêcher, poser des collets |
 
 Rythme visé : **niveau 1 en une journée** dans les compétences qu'on utilise, **niveau 3 vers le jour 5-6**, niveau 5
-seulement si on se spécialise. Chaque niveau se sent (une arme +6 %, une fenêtre d'esquive +25 ms) sans rendre le jeu
+seulement si on se spécialise. Chaque niveau se sent (une arme +6 %, 8 % de souffle en plus en courant) sans rendre le jeu
 facile.
 
 ---
 
 ## 8. Inventaire : poids, VOLUME, mains et dos (`inventaire`) — façon Project Zomboid
 
-- **Volume (litres)** : chaque objet a un `volume` (planche 14 L, pelle 15 L, batte 6 L, conserve 0,8 L, couteau 0,4 L ;
-  à défaut, selon l'ancien `espace` : 0,2 / 0,8 / 4 / 8 L). Les **poches** (1,5 L + jean 1 L, cargo 2 L, gilet 3 L) ne prennent
+- **Volume (litres)** : chaque objet a un `volume` RÉEL (paire de piles 0,02 L, briquet 0,02 L, couteau 0,25 L, conserve 0,45 L,
+  paquet de chips 1,2 L, batte 3,5 L, planche 6 L, pelle 10 L, jerrican 10 L). Les **poches** (1,5 L + jean 1 L, cargo 2 L, gilet 3 L) ne prennent
   que les **petits objets** (≤ 1 L). Le **sac** a une `contenance` : cabas 12 L, écolier 20 L, randonnée 45 L, militaire 55 L,
-  expédition 70 L. **Une planche remplit 70 % d'un sac d'écolier.**
+  expédition 70 L. **Une pile ne prend pas plus de place qu'un briquet ; une conserve, vingt fois plus.**
 - **Mains** : main droite, main gauche, ou **les deux**. Tout objet peut se tenir (une planche dans chaque main). Une arme à
   `deux_mains` (pelle, hache, masse, lance, fusils) tenue d'**une seule main** : dégâts ×0,6, gestes ×1,35 plus lents, pas de coup
   chargé. Une lampe torche / à huile se tient dans la main gauche. Certains objets servent d'arme improvisée (`melee` : planche,

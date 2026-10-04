@@ -188,16 +188,15 @@
 .ex-btn-l { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* combat : Frapper (gros), Esquiver, Pousser */
 .ex-pad-combat { display: flex; align-items: flex-end; gap: 10px; }
-.ex-btn-frapper, .ex-btn-pousser, .ex-btn-esquiver { position: relative; display: grid; place-items: center; padding: 0; border-radius: 50%; overflow: visible; }
+.ex-btn-frapper, .ex-btn-pousser { position: relative; display: grid; place-items: center; padding: 0; border-radius: 50%; overflow: visible; }
 .ex-btn-frapper { width: 92px; height: 92px; min-width: 92px; border: 2px solid rgba(230,223,204,.5); background: rgba(60,14,18,.6); }
-.ex-btn-pousser, .ex-btn-esquiver { width: 62px; height: 62px; min-width: 62px; margin-bottom: 6px; background: rgba(11,11,12,.62); }
-.ex-btn-esquiver { margin-bottom: 38px; border-color: rgba(124,200,255,.45); }
-.ex-btn-esquiver.proche { border-color: var(--ex-bleu); box-shadow: 0 0 12px rgba(124,200,255,.35); }
+.ex-btn-pousser { width: 62px; height: 62px; min-width: 62px; margin-bottom: 38px; background: rgba(11,11,12,.62); }
+.ex-btn-pousser.proche { border-color: var(--ex-bleu); box-shadow: 0 0 12px rgba(124,200,255,.35); }
 .ex-frap-ico { display: grid; place-items: center; margin-top: -8px; }
 .ex-frap-ico svg { width: 28px; height: 28px; }
-.ex-btn-pousser .ex-frap-ico svg, .ex-btn-esquiver .ex-frap-ico svg { width: 22px; height: 22px; }
+.ex-btn-pousser .ex-frap-ico svg { width: 22px; height: 22px; }
 .ex-frap-l { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 11px; letter-spacing: .08em; }
-.ex-btn-pousser .ex-frap-l, .ex-btn-esquiver .ex-frap-l { bottom: 7px; font-size: 9.5px; }
+.ex-btn-pousser .ex-frap-l { bottom: 7px; font-size: 9.5px; }
 .ex-btn-frapper.proche { border-color: var(--ex-rouge); box-shadow: 0 0 14px rgba(214,48,62,.45); }
 .ex-btn-frapper[data-combo="2"]::after, .ex-btn-frapper[data-combo="3"]::after { content: attr(data-combo); position: absolute; top: -6px; right: -4px;
   width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--ex-ambre); color: #111; font-size: 12px; font-weight: 600; }
@@ -207,9 +206,9 @@
   background: conic-gradient(var(--ex-ambre-c) calc(var(--charge, 0) * 360deg), transparent 0);
   -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%); mask: radial-gradient(circle, transparent 60%, #000 61%); }
 .ex-btn-frapper.charge .ex-frap-anneau { opacity: 1; }
-.ex-btn-pousser .ex-cd, .ex-btn-esquiver .ex-cd { position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+.ex-btn-pousser .ex-cd { position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
   background: conic-gradient(rgba(0,0,0,.6) calc(var(--cd, 0) * 360deg), transparent 0); }
-.ex-btn-pousser.recharge, .ex-btn-esquiver.recharge { opacity: .7; }
+.ex-btn-pousser.recharge { opacity: .7; }
 .ex-btn-recharger { align-self: flex-end; margin-bottom: 14px; font-size: 11px; border-radius: 26px; padding: 0 12px; }
 
 .explore.ex-tactile .ex-joyzone { display: block; }
@@ -230,8 +229,7 @@
   .ex-lieu { font-size: 17px; top: 56px; }
   .ex-msg { font-size: 15px; }
   .ex-btn-frapper { width: 78px; height: 78px; min-width: 78px; }
-  .ex-btn-pousser, .ex-btn-esquiver { width: 54px; height: 54px; min-width: 54px; }
-  .ex-btn-esquiver { margin-bottom: 30px; }
+  .ex-btn-pousser { width: 54px; height: 54px; min-width: 54px; margin-bottom: 30px; }
   .ex-pad { gap: 6px; }
   .ex-btn-inter { min-height: 48px; }
   .ex-main { min-width: 80px; padding: 3px 8px 5px; }

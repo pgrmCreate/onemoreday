@@ -177,7 +177,7 @@ function envoyerMonde() {
 
 const invite = { lieu: null, canal: null, offs: [] };
 const EVTS_RELAIS = ['porte', 'bruit', 'hurlement', 'sol', 'conteneur', 'charge', 'zombie',
-  'telegraphe', 'fente', 'attaque', 'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule', 'esquive'];
+  'telegraphe', 'fente', 'attaque', 'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule'];
 function quitterLieuInvite() {
   invite.offs.forEach(f => f()); invite.offs = [];
   if (invite.canal) { try { invite.canal.fermer(); } catch (e) {} }
@@ -315,7 +315,7 @@ function canalDistant(lieuId, niveau) {
     porte: (cle, action) => appel('porte', [cle, action]).then(r => r || { ok: false, raison: 'réseau' }),
     fouiller: (cle) => appel('fouiller', [cle]).then(r => r || { items: [], dureeMs: 0 }),
     arreterFouille: (p) => { appel('arreterFouille', [p]); },
-    prendre: (cle, i) => appel('prendre', [cle, i]),
+    prendre: (cle, i, qty) => appel('prendre', [cle, i, qty]),
     deposer: (pos, item) => appel('deposer', [pos, item]),
     action(a) { if (majTimer) { clearTimeout(majTimer); majTimer = null; if (majEnAttente) envoyer({ t: 'x:maj', lieu: lieuId, p: majEnAttente }); majEnAttente = null; } envoyer({ t: 'x:act', lieu: lieuId, a }); return Promise.resolve({ ok: true }); },
     faireApparaitre: (l, o) => appel('faireApparaitre', [l, o]).then(r => r || []),

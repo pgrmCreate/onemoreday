@@ -95,17 +95,17 @@ export function modificateurs(p) {
   const SE = S().SEUILS, EF = S().EFFETS, D = S().DOULEUR.SEUILS, M = S().CONTAMINATION.SEUILS;
   const f = surpoids(p).f;
   const dl = douleur(p);
-  const r = { vitesse: 1, vitesseVoyage: 1, toucher: 0, degats: 1, regenSta: 1, vue: 1, esquiveParfaite: 1, fuite: 0, staCout: 1, bloque: surpoids(p).bloque };
+  const r = { vitesse: 1, vitesseVoyage: 1, toucher: 0, degats: 1, regenSta: 1, vue: 1, fuite: 0, staCout: 1, bloque: surpoids(p).bloque };
   // surpoids
   r.vitesse *= 1 - REGLAGES.inventaire.SURPOIDS.vitesse * f;
   r.staCout *= 1 + REGLAGES.inventaire.SURPOIDS.sta * f;
-  r.esquiveParfaite *= 1 - 0.4 * f; r.fuite -= 0.2 * f; r.toucher -= 0.1 * f;
+  r.fuite -= 0.2 * f; r.toucher -= 0.1 * f;
   // faim / soif / fatigue
   if (p.faim < SE.faim.gene) r.regenSta *= EF.REGEN_GENE;
+  if ((p.effets.nausee || 0) > 0) r.regenSta *= S().REPAS.NAUSEE_REGEN;
   if (p.faim < SE.faim.grave) r.degats *= 0.85;
   if (p.soif < SE.soif.gene) r.regenSta *= EF.REGEN_GENE;
   if (p.soif < SE.soif.grave) r.vue *= 0.85;
-  if (p.fatigue < SE.fatigue.gene) r.esquiveParfaite *= 0.85;
   if (p.fatigue < SE.fatigue.grave) { r.vitesse *= EF.VITESSE_EPUISE; r.toucher -= 0.08; }
   // douleur
   if (dl > D[2]) r.toucher -= 0.10; else if (dl > D[1]) r.toucher -= 0.05; else if (dl > D[0]) r.toucher -= 0.03;

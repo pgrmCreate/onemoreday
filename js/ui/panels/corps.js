@@ -148,7 +148,7 @@ function jauges(p) {
   const SE = REGLAGES.survie.SEUILS;
   const dl = surv.douleur(p), def = surv.deficitFroid(p), besoin = surv.besoinChaleur(p), ch = inv.chaleurVetements(p);
   const r = [el('h3', { class: 'pn-section' }, 'Besoins'),
-    jauge({ label: 'Faim', icone: 'faim', v: p.faim / 100, texte: `${Math.round(p.faim)}`, cls: cl(p.faim, SE.faim.gene, SE.faim.grave) }),
+    jauge({ label: 'Faim', icone: 'faim', v: p.faim / 100, texte: surv.motFaim(p), cls: cl(p.faim, SE.faim.gene, SE.faim.grave) }),
     jauge({ label: 'Soif', icone: 'soif', v: p.soif / 100, texte: `${Math.round(p.soif)}`, cls: cl(p.soif, SE.soif.gene, SE.soif.grave) }),
     jauge({ label: 'Repos', icone: 'fatigue', v: p.fatigue / 100, texte: `${Math.round(p.fatigue)}`, cls: cl(p.fatigue, SE.fatigue.gene, SE.fatigue.grave) }),
     jauge({ label: 'Douleur', icone: 'douleur', v: dl / 100, texte: `${dl}`, cls: dl > 60 ? 'rouge' : dl > 30 ? 'ambre' : 'gris' }),

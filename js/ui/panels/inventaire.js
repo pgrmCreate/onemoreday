@@ -51,13 +51,13 @@ function jaugesCharge(p) {
   const cls = b.bloque ? 'rouge' : b.f > 0 ? 'ambre' : '';
   return el('div', { class: 'inv-charge' },
     jauge({ label: 'Poids', icone: 'poids', v: vp, repere, texte: `${fmtKg(b.kg)} / ${fmtKg(b.max)}`, cls: `mini ${cls}`, titre: `Au-delà de ${fmtKg(b.max)} : surpoids. Au-delà de ${fmtKg(b.plafond)} : impossible de bouger.` }),
-    jauge({ label: 'Volume', icone: 'encombrement', v: b.volumeMax ? b.volume / b.volumeMax : 1, texte: `${fmtL(b.volume)} / ${fmtL(b.volumeMax)}`, cls: `mini ${b.volume >= b.volumeMax - 0.3 ? 'ambre' : ''}`, titre: 'Poches (petits objets ≤ 1 L) + sac. Une planche fait 14 L : elle se porte en main ou dans le dos.' }));
+    jauge({ label: 'Volume', icone: 'encombrement', v: b.volumeMax ? b.volume / b.volumeMax : 1, texte: `${fmtL(b.volume)} / ${fmtL(b.volumeMax)}`, cls: `mini ${b.volume >= b.volumeMax - 0.3 ? 'ambre' : ''}`, titre: 'Poches (petits objets ≤ 1 L) + sac. Une pile ou un briquet : quelques centilitres ; une conserve : 0,45 L ; une planche (6 L, longue) se porte en main ou dans le dos.' }));
 }
 
 // ---------- Onglet Sac ----------
 function metaObjet(it, d) {
   const bits = [];
-  const kg = (d.poids || 0) * it.qty + (it.eau ? it.eau.L : 0);
+  const kg = (d.poids || 0) * (it.reste ?? 1) * it.qty + (it.eau ? it.eau.L : 0);
   bits.push(fmtKg(kg));
   const v = inv.volumeDe(it.id) * it.qty;
   if (v >= 0.05) bits.push(fmtL(Math.round(v * 10) / 10));
@@ -68,6 +68,7 @@ function ligneObjet({ index, it, def: d }, p, actif, onclick) {
   const ic = el('span', { class: 'inv-ic' }, icoEl(iconeObjet(it.id)));
   const nom = el('span', { class: 'inv-nom' }, d ? d.nom : it.id);
   if (it.qty > 1) nom.append(el('em', { class: 'inv-qty' }, `×${it.qty}`));
+  if (it.reste != null) nom.append(el('em', { class: 'inv-qty' }, surv.aTourne(it) ? ' (entamé, a tourné)' : ' (entamé)'));
   const sous = el('span', { class: 'inv-meta' }, metaObjet(it, d || {}));
   const txt = el('span', { class: 'inv-txt' }, nom, sous);
   b.append(ic, txt);
@@ -204,16 +205,20 @@ function statsObjet(id, it, p) {
     if (c.agilite) rows.push(['Agilité', `${c.agilite > 0 ? '+' : ''}${c.agilite}`]);
   }
   if (d.type === 'nourriture' || d.type === 'boisson') {
-    if (d.faim) rows.push(['Faim', `${d.faim > 0 ? '+' : ''}${d.faim}`]);
-    if (d.soif) rows.push(['Soif', `${d.soif > 0 ? '+' : ''}${d.soif}`]);
-    if (d.fatigue) rows.push(['Fatigue', `+${d.fatigue}`]);
-    if (d.risque) rows.push(['Risque', `intoxication ${Math.round(d.risque.p * 100)} %`]);
+    const reste = it && it.reste != null ? it.reste : 1;
+    if (d.kcal) rows.push(['Ça cale', `${surv.motPortion(id, reste)}${d.cru ? ' (cru : mal digéré)' : ''}`], ['Calories', `≈ ${Math.round(d.kcal * reste / 10) * 10} kcal`]);
+    if (it && it.reste != null) rows.push(['Entamé', `il en reste ${reste >= 0.6 ? 'plus de la moitié' : reste >= 0.35 ? 'à peu près la moitié' : 'un fond'}`]);
+    if (it && it.ouvert != null && d.perissable) rows.push(['Ouvert', surv.aTourne(it) ? 'depuis trop longtemps : ça a tourné' : `il se garde ${d.perissable} h une fois ouvert`]);
+    if (d.soif > 0) rows.push(['Soif', d.soif >= 15 ? 'désaltère bien' : 'désaltère un peu']);
+    else if (d.soif < 0) rows.push(['Soif', 'donne soif']);
+    if (d.fatigue) rows.push(['Fatigue', 'te réveille un peu']);
+    if (d.risque) rows.push(['Risque', d.risque.p >= 0.5 ? 'gros risque d\'intoxication' : 'risque d\'intoxication']);
   }
   if (d.contenance) rows.push(['Contenance', fmtL(d.contenance)]);
   if (it && it.eau) rows.push(['Contenu', `${fmtL(it.eau.L)} ${it.eau.q === 'propre' ? 'propre' : 'croupie'}`]);
   if (REGLAGES.lumiere.SOURCES[id] && ITEMS[id]) { const s = REGLAGES.lumiere.SOURCES[id]; rows.push(['Portée', `${s.portee} cases`], ['Autonomie', `${Math.round(s.minParCharge / 60 * 10) / 10} h / ${s.charge ? inv.nomObjet(s.charge).toLowerCase() : 'charge'}`]); }
   if (d.type === 'livre') rows.push(['Lecture', `${d.lecture} min`], ['Lu', p.livresLus.includes(id) ? 'oui' : 'non']);
-  rows.push(['Poids', fmtKg((d.poids || 0) + (it && it.eau ? it.eau.L : 0))]);
+  rows.push(['Poids', fmtKg((d.poids || 0) * (it && it.reste != null ? it.reste : 1) + (it && it.eau ? it.eau.L : 0))]);
   const v = inv.volumeDe(id);
   rows.push(['Volume', `${fmtL(v)}${inv.estPetit(id) ? ' (tient en poche)' : ''}`]);
   if (inv.peutDos(id)) rows.push(['Dans le dos', `oui (pèse ${Math.round(REGLAGES.inventaire.DOS_POIDS * 100)} %)`]);
@@ -224,7 +229,10 @@ function actionsSac(index, it, p, racine, api) {
   const d = inv.def(it.id) || {}; const a = [];
   const apres = () => { if (!p.inventaire[index] || p.inventaire[index].id !== it.id) etat.sel = null; dessiner(racine, api); };
   const res = (r) => { if (r && r.ok === false && r.raison) api && import('../toast.js').then(m => m.toast(r.raison, 'alerte')); apres(); };
-  if (d.type === 'nourriture') a.push({ label: 'Manger', icone: 'manger', principal: true, f: () => res(surv.manger(it.id)) });
+  if (d.type === 'nourriture') {
+    if (!surv.estRassasie(p)) a.push({ label: 'Manger', icone: 'manger', principal: true, f: () => res(surv.manger(index)) });
+    else a.push({ label: 'Manger quand même (tu n\'as plus faim)', icone: 'manger', f: () => res(surv.manger(index, p, { forcer: true })) });
+  }
   if (d.type === 'boisson') a.push({ label: 'Boire', icone: 'boire', principal: true, f: () => res(surv.boire(it.id)) });
   if (it.eau && it.eau.L > 0) a.push({ label: 'Boire une gorgée', icone: 'boire', principal: true, f: () => res(surv.boire(index)) });
   if (d.contenance) {
@@ -315,6 +323,13 @@ function remplirFiche(f, p, racine, api) {
       if (ou === 'dos') acts.push({ label: 'Prendre en main', icone: 'main_arme', f: () => { const r = inv.equiperDepuisSol(s.ref, p, 'main'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
       else acts.push({ label: 'Dans le dos', icone: 'sac', f: () => { const r = inv.equiperDepuisSol(s.ref, p, 'dos'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
     }
+    const lib = surv.libelleConsommer(it.id);
+    if (lib) {
+      const v = surv.peutConsommer(it, p);
+      const forcer = !v.ok && v.peutForcer;
+      acts.push({ label: forcer ? `${lib} quand même` : lib, icone: ({ Manger: 'manger', Boire: 'boire' })[lib] || 'soin', principal: v.ok && !acts.length, disabled: !v.ok && !forcer, raison: v.ok || forcer ? null : v.raison,
+        f: () => { consommerAuSol(s.ref, p, { forcer }); etat.sel = null; dessiner(racine, api); } });
+    }
     const tient = inv.combienTient(it.id, it.qty || 1) >= 1;
     acts.push({ label: tient ? 'Ramasser' : (inv.estPetit(it.id) ? 'Sac plein' : 'Trop gros pour le sac'), icone: 'ramasser', principal: !acts.length, disabled: !tient, raison: tient ? null : inv.raisonPlace(it.id),
       f: () => { if (!tient) return; inv.ramasser(s.ref); etat.sel = null; dessiner(racine, api); } });
@@ -335,6 +350,15 @@ function remplirFiche(f, p, racine, api) {
   for (const [k, v] of statsObjet(id, it, p)) tb.append(el('dt', {}, k), el('dd', {}, v));
   f.append(tb);
 }
+// Consommer un objet du sol sans le ramasser ; ce qui reste (boîte entamée, gourde) est gardé dans le sac.
+function consommerAuSol(i, p, opts) {
+  const it = inv.prendreUnAuSol(i); if (!it) return;
+  const r = surv.consommer(it, p, opts);
+  if (!r.ok) { inv.addItem(it.id, 1, etatDe(it), p); if (r.raison) emit('toast', { texte: r.raison }); return; }
+  if (!r.fini) inv.addItem(it.id, 1, { ...etatDe(it), ...(r.reste != null ? { reste: r.reste, ouvert: r.ouvert } : {}), ...(r.eau ? { eau: r.eau } : {}) }, p);
+  if (r.rend) inv.addItem(r.rend, 1, {}, p);
+}
+const etatDe = (it) => { const { id: _i, qty: _q, ...e } = it; return e; };
 function typeLisible(id, d) {
   if (CLOTHES[id]) return `Vêtement — ${SLOTS[CLOTHES[id].slot] || ''}`;
   return ({ arme: d.tir ? 'Arme de tir' : 'Arme de mêlée', munition: 'Munition', jet: 'À lancer', nourriture: 'Nourriture', boisson: 'Boisson', soin: 'Soin', outil: 'Outil', materiau: 'Matériau', recipient: 'Contenant', livre: 'Livre', lore: 'Souvenir', quete: 'Objet important' })[d.type] || 'Objet';

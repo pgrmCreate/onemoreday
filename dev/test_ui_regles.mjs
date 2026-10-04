@@ -43,6 +43,25 @@ ok(!r.ok && /ouvre-boîte/.test(r.raison), 'conserve sans ouvre-boîte : refusé
 inv.addItem('ouvre_boite', 1);
 const faimAv = p.faim; r = surv.manger('conserve_haricots');
 ok(r.ok && p.faim > faimAv && inv.hasItem('boite_vide'), 'conserve mangée, boîte vide rendue');
+// Satiété : on mange jusqu'à être calé·e, le reste est gardé ; pas de « +30 »
+p.faim = 80; inv.addItem('biscuits', 1);
+r = surv.manger('biscuits');
+const ent = p.inventaire.find(x => x.id === 'biscuits');
+ok(r.ok && p.faim >= 99 && ent && ent.reste > 0.5 && ent.reste < 1, `paquet de biscuits : calé·e (${surv.motFaim(p)}), il en reste ${ent && ent.reste} — « ${r.texte} »`);
+r = surv.manger('biscuits');
+ok(!r.ok && r.peutForcer, `rassasié·e : « ${r.raison} »`);
+const resteAv = ent.reste; r = surv.manger(p.inventaire.indexOf(ent), p, { forcer: true });
+ok(r.ok && p.effets.nausee > 0 && p.inventaire.find(x => x.id === 'biscuits' && x.reste < resteAv), 'se forcer : on en mange encore un peu, nausée');
+p.faim = 10; r = surv.manger('biscuits');
+ok(r.ok && !p.inventaire.some(x => x.id === 'biscuits'), `affamé·e : on finit le paquet entamé (${surv.motFaim(p)})`);
+ok(surv.motPortion('compote') === 'une bouchée' && surv.motPortion('barre_cereales') === 'un en-cas' && surv.motPortion('conserve_raviolis') === 'un repas léger' && surv.motPortion('biscuits') === 'un gros repas',
+  `portions en mots : barre = ${surv.motPortion('barre_cereales')}, raviolis = ${surv.motPortion('conserve_raviolis')}, biscuits = ${surv.motPortion('biscuits')}`);
+// Consommer sur place (meuble / sol), sans ramasser
+p.faim = 30;
+r = surv.consommer({ id: 'conserve_raviolis', qty: 1 }, p);
+ok(r.ok && r.fini && r.rend === 'boite_vide', 'raviolis mangés sur place (ouvre-boîte dans le sac)');
+r = surv.consommer({ id: 'bandage', qty: 1 }, p);
+ok(!r.ok && /plaie/.test(r.raison), `bandage au sol sans plaie : « ${r.raison} »`);
 inv.addItem('gourde', 1);
 const ig = p.inventaire.findIndex(x => x.id === 'gourde');
 inv.remplir(ig, 'propre');
@@ -95,11 +114,12 @@ nouvellePartie({ nom: 'Test', mode: 'solo', seed: 3 }); player.normaliserJoueur(
 const j = G.player;
 ok(inv.capacites(j).poches === REGLAGES.inventaire.POCHES_L + 1 && inv.capacites(j).sac === 0, 'poches de base + jean (1 L), pas de sac');
 const res = inv.addItem('planche', 1, {}, j);
-ok(res.ajoute === 0 && res.auSol === 1, 'une planche (14 L) ne rentre pas dans des poches : posée au sol');
+ok(res.ajoute === 0 && res.auSol === 1, 'une planche (6 L) ne rentre pas dans des poches : posée au sol');
 ok(inv.porterObjet({ id: 'sac_a_dos', qty: 1 }, j).ok && inv.capacites(j).sac === 20, 'sac à dos d\'écolier porté : 20 L');
 const iPl = inv.objetsAuSol().findIndex(x => x.id === 'planche');
-ok(inv.ramasser(iPl, j).ajoute === 1 && inv.bilan(j).sac.utilise === 14, 'planche au sac : 14 L sur 20 (70 %)');
-ok(inv.combienTient('planche', 3, j) === 0, 'une deuxième planche ne rentre plus');
+ok(inv.ramasser(iPl, j).ajoute === 1 && inv.bilan(j).sac.utilise === 6, 'planche au sac : 6 L sur 20 (30 %)');
+ok(inv.combienTient('planche', 5, j) === 2, 'deux planches de plus tiennent, pas trois (18 L sur 20)');
+ok(inv.combienTient('piles', 50, j) === 50 && inv.combienTient('conserve_haricots', 99, j) >= 25, 'une paire de piles = 0,02 L : 50 tiennent sans peine ; une conserve, 0,45 L');
 ok(inv.tenir(j.inventaire.findIndex(x => x.id === 'planche'), 'gauche', j).ok && j.equip.mainG === 'planche', 'planche en main gauche');
 ok(inv.porterObjet({ id: 'planche', qty: 1 }, j, 'droite').ok && j.equip.arme === 'planche', 'une autre planche en main droite (une dans chaque main)');
 const avant = inv.poidsPorte(j);

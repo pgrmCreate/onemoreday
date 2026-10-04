@@ -64,10 +64,9 @@ function dessiner(racine) {
       ['Lampe', 'F', 'Bouton « Lampe »'],
       ['Sac · Corps · Journal', 'I · C (hors exploration) · J', 'Boutons ronds en haut à droite'],
       ['Fermer un panneau · Menu', 'Échap', 'Croix'],
-      ['Frapper (maintenir = charger)', 'Espace ou J', 'Bouton « Frapper »'],
-      ['Garde · Esquive · Pousser', 'K · L ou Maj · H', 'Boutons dédiés'],
+      ['Frapper (maintenir = charger)', 'Clic gauche', 'Bouton « Frapper »'],
+      ['Pousser', 'Clic droit · Espace', 'Bouton « Pousser »'],
       ['Accès rapide · Recharger', '1-4 · R', 'Ceinture en bas'],
-      ['Fuir (maintenir)', 'Échap (1,5 s)', 'Bouton « Fuir »'],
     ];
     const tb = el('table', { class: 'op-commandes' }, el('thead', {}, el('tr', {}, el('th', {}, 'Action'), el('th', {}, 'Clavier'), el('th', {}, 'Tactile'))));
     const tbody = el('tbody'); for (const [a, k, t] of T) tbody.append(el('tr', {}, el('td', {}, a), el('td', {}, ...k.split(' · ').flatMap((x, i) => [i ? ' · ' : null, el('kbd', {}, x)])), el('td', {}, t)));

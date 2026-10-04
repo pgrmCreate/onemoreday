@@ -4,18 +4,18 @@
 // Pour l'instant, CINQ types humains, chacun en homme OU en femme (tiré à l'apparition, sur la graine).
 // Le combat se joue en temps réel dans l'exploration (js/explore/combat.js) : un mort en chasse
 // s'approche, et à portée il TÉLÉGRAPHIE (arc rouge = coup, ambre = empoignade) puis frappe.
-// On recule, on esquive, on le pousse, ou on l'interrompt d'un coup chargé.
+// On recule, on le pousse, ou on l'interrompt d'un coup chargé.
 //
 // ── COMBAT ──
 //   hp            points de vie.
 //   dmg [min,max] dégâts d'une attaque qui porte (avant protection).
 //   portee        allonge de son attaque, en cases (0,8 m) depuis son centre. Hors de portée à la fin
 //                 de la télégraphie (tu as reculé, roulé) : il frappe dans le vide.
-//   telegraphe    ms d'avertissement avant l'attaque (fenêtre pour esquiver / pousser / interrompre).
+//   telegraphe    ms d'avertissement avant l'attaque (fenêtre pour reculer / pousser / interrompre).
 //   cadence       ms de récupération après une attaque (avant de pouvoir en relancer une).
 //   saisie 0..1   chance qu'une attaque soit une EMPOIGNADE (ambre) : il t'agrippe, tu dois marteler.
 //   saisieForce   martèlements nécessaires pour se dégager (avant bonus de Force / Mains nues).
-//   esquive 0..0.3  retranché à ta chance de toucher (il se dérobe).
+//   esquive 0..0.3  retranché à ta chance de toucher AU TIR (il se dérobe) — les morts esquivent, pas toi.
 //   resistance 0..1 réduit le recul, le vacillement et la mise à terre ; ≥ 0,75 : la poussée ne le bouge pas.
 //   armure 0..1   (optionnel) réduction des dégâts NON critiques (moitié moins efficace contre une balle).
 //   fracture 0..1 (optionnel) chance qu'une attaque de type 'coup' casse un os.

@@ -55,7 +55,7 @@ export function creerSimLieu(opts) {
   const bruits = [];                 // file de bruits à traiter au prochain tick
   let evts = [];
   let tFlag = 0;
-  let T = 0;                         // temps de simulation (ms) : horloge des télégraphies, esquives, empoignades
+  let T = 0;                         // temps de simulation (ms) : horloge des télégraphies, empoignades
   let rngCbt = seedRng(`${seed}:combat:${lieuId}:${minutes}`);
 
   for (const p of niveau.portes) {
@@ -627,7 +627,7 @@ export function creerSimLieu(opts) {
     z.atk = { type, t0: T, fin: T + duree, duree, cible: j.id };
     evts.push({ type: 'telegraphe', uid: z.uid, joueur: j.id, attaque: type, duree });
   }
-  // Le coup est jugé au bout de la fente : encore à portée, devant lui, et pas en train d'esquiver.
+  // Le coup est jugé au bout de la fente : encore à portée et devant lui (on l'évite en reculant ou en le poussant).
   function resoudreAttaqueMort(z, at) {
     const def = z.def;
     z.recupJusqu = T + (def.cadence || 1300);
@@ -637,12 +637,6 @@ export function creerSimLieu(opts) {
     const a = Math.abs(angDiff(Math.atan2(j.y - z.y, j.x - z.x), z.dir));
     if (d > (def.portee || 0.95) + RC.TOLERANCE_PORTEE || a > RC.CONE_ATTAQUE_DEG * DEG / 2) {
       evts.push({ type: 'attaque', uid: z.uid, joueur: j.id, issue: 'vide', attaque: at.type }); return;
-    }
-    if (j.invuln > T) { // esquivé ! juste au moment du coup = esquive parfaite (il est déséquilibré)
-      const parfaite = T - j.esquiveT0 <= RC.ESQUIVE.PARFAITE_MS;
-      if (parfaite) { z.vacille = Math.max(z.vacille, 450); z.equilibre = Math.max(0, z.equilibre - z.equilibreMax * 0.5); z.tEquil = T; }
-      evts.push({ type: 'esquive', uid: z.uid, joueur: j.id, parfaite, x: z.x, y: z.y });
-      return;
     }
     if (j.empoigne && j.empoigne.uid !== z.uid && E_.AUTRES_ATTENDENT) { // un autre le tient déjà : il attend son tour
       evts.push({ type: 'attaque', uid: z.uid, joueur: j.id, issue: 'retenue', attaque: at.type }); z.recupJusqu = T + 400; return;
@@ -784,12 +778,6 @@ export function creerSimLieu(opts) {
     if (e.taps >= e.requis) degager(j, zombies.find(q => q.uid === e.uid));
     return { ok: true };
   }
-  function esquiver(j, a) {
-    if (j.empoigne) return marteler(j, a);
-    j.invuln = T + RC.ESQUIVE.INVULN_MS; j.esquiveT0 = T;
-    j.geste = { type: 'esquive', t: T, duree: RC.ESQUIVE.MS };
-    return { ok: true };
-  }
   function tirer(j, a) {
     const st = j.stats || {}, prof = st.arme;
     if (!prof || !prof.tir) return { ok: false, raison: 'pas_arme_tir' };
@@ -809,7 +797,7 @@ export function creerSimLieu(opts) {
     return { ok: true, touche };
   }
   // Une action de combat d'un joueur (le client a déjà payé l'endurance et joue l'animation).
-  //   a = { type: 'frapper' { charge, combo, crit } | 'pousser' | 'esquiver' | 'tirer' { visee, crit } | 'marteler', x, y, dir, ess, stats? }
+  //   a = { type: 'frapper' { charge, combo, crit } | 'pousser' | 'tirer' { visee, crit } | 'marteler', x, y, dir, ess, stats? }
   function action(joueurId, a) {
     const j = joueurs.get(joueurId);
     if (!j || !a || j.mort) return { ok: false, raison: 'absent' };
@@ -822,7 +810,6 @@ export function creerSimLieu(opts) {
       case 'marteler': return marteler(j, a);
       case 'frapper': return j.empoigne ? marteler(j, a) : frapper(j, a);
       case 'pousser': return j.empoigne ? marteler(j, a) : pousser(j, a);
-      case 'esquiver': return esquiver(j, a);
       case 'tirer': return j.empoigne ? marteler(j, a) : tirer(j, a);
       default: return { ok: false, raison: 'inconnue' };
     }
@@ -904,7 +891,7 @@ export function creerSimLieu(opts) {
       id, nom: info.nom || id, etage: e, ei: EI(e), x: pos.x ?? niveau.entrees.defaut.x + 0.5, y: pos.y ?? niveau.entrees.defaut.y + 0.5,
       dir: pos.dir || 0, allure: 'immobile', lumiere: 1, lampe: false, lampeSource: null, discretion: info.discretion || 0,
       bruitPas: info.bruitPas || 1, enCombat: false, aTerre: false, fouille: null, tPas: 0, px: 0, py: 0,
-      mort: false, stats: info.stats || null, empoigne: null, geste: null, invuln: 0, esquiveT0: -1e9, agonie: false, pv: null,
+      mort: false, stats: info.stats || null, empoigne: null, geste: null, agonie: false, pv: null,
     };
     j.px = j.x; j.py = j.y;
     joueurs.set(id, j);
@@ -1029,26 +1016,34 @@ export function creerSimLieu(opts) {
     if (c && progres != null) { c.progres = Math.max(c.progres || 0, Math.min(1, progres)); vm++; }
     j.fouille = null;
   }
-  function prendre(joueurId, cle, index) {
+  // prendre(joueurId, cle, index, qty?) : toute la pile, ou seulement `qty` exemplaires (le reste reste en place).
+  function prendre(joueurId, cle, index, qty) {
     if (cle.startsWith('#sol:')) { // objet posé par terre (« #sol:uid ») — pas un meuble de l'étage « sol »
       const uid = +cle.slice(5);
       const k = sol.findIndex(o => o.uid === uid);
       if (k < 0) return null;
-      const o = sol.splice(k, 1)[0];
+      const o = sol[k];
+      if (!o.doc && qty > 0 && qty < (o.qty || 1)) { o.qty -= qty; evts.push({ type: 'sol', action: 'pris', uid, joueur: joueurId }); vm++; return { ...etatObjet(o), qty }; }
+      sol.splice(k, 1);
       evts.push({ type: 'sol', action: 'pris', uid, joueur: joueurId }); vm++;
-      return o.doc ? { doc: o.doc } : { id: o.id, qty: o.qty };
+      return o.doc ? { doc: o.doc } : etatObjet(o);
     }
     const c = conteneurs[cle];
     if (!c || !c.items || index < 0 || index >= c.items.length) return null;
-    const it = c.items.splice(index, 1)[0];
+    const src = c.items[index];
+    let it;
+    if (qty > 0 && qty < (src.qty || 1)) { src.qty -= qty; it = { ...src, qty }; }
+    else it = c.items.splice(index, 1)[0];
     evts.push({ type: 'conteneur', cle, reste: c.items.length, joueur: joueurId }); vm++;
     return it;
   }
+  // Un objet du sol sans sa position (id, qty et son état : reste, ouvert, dur, eau…).
+  function etatObjet(o) { const { uid: _u, etage: _e, x: _x, y: _y, doc: _d, ...r } = o; return r; }
   function deposer(joueurId, pos, item) {
     const j = joueurs.get(joueurId);
     const e = (pos && pos.etage) || (j && j.etage);
     if (!item || EI(e) == null) return null;
-    const o = { uid: uidSeq++, etage: e, x: pos && pos.x != null ? pos.x : j.x, y: pos && pos.y != null ? pos.y : j.y, ...(item.doc ? { doc: item.doc } : { id: item.id, qty: item.qty || 1 }) };
+    const o = { uid: uidSeq++, etage: e, x: pos && pos.x != null ? pos.x : j.x, y: pos && pos.y != null ? pos.y : j.y, ...(item.doc ? { doc: item.doc } : { ...etatObjet(item), qty: item.qty || 1 }) };
     sol.push(o);
     evts.push({ type: 'sol', action: 'pose', uid: o.uid, joueur: joueurId }); vm++;
     return o;
@@ -1102,7 +1097,7 @@ export function creerSimLieu(opts) {
       portes: pp, conteneurs: cc,
       sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })),
       joueurs: [...joueurs.values()].map(j => ({ id: j.id, nom: j.nom, x: j.x, y: j.y, etage: j.etage, dir: j.dir, lampe: j.lampe, lampeSource: j.lampeSource, allure: j.allure, mort: j.mort,
-        aTerre: !!j.aTerre, agonie: !!j.agonie, pv: j.pv ?? null, invuln: j.invuln > T,
+        aTerre: !!j.aTerre, agonie: !!j.agonie, pv: j.pv ?? null,
         geste: j.geste && T - j.geste.t < j.geste.duree ? { type: j.geste.type, p: (T - j.geste.t) / j.geste.duree, combo: j.geste.combo || 0 } : null,
         empoigne: j.empoigne ? { uid: j.empoigne.uid, p: (T - j.empoigne.debut) / j.empoigne.duree, taps: j.empoigne.taps, requis: j.empoigne.requis, reste: Math.max(0, j.empoigne.fin - T) } : null,
         arme: j.stats && j.stats.arme ? j.stats.arme.id : null })),

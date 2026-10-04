@@ -30,7 +30,7 @@ export const estArme = (id) => { const d = def(id); return !!(d && d.type === 'a
 export const estLampe = (id) => !!REGLAGES.lumiere.SOURCES[id] && !!ITEMS[id] && (ITEMS[id].usage || []).includes('lumiere');
 export const lampeTenue = (id) => !!(id && REGLAGES.lumiere.SOURCES[id] && REGLAGES.lumiere.SOURCES[id].mains);
 export const deuxMainsDef = (id) => { const d = def(id); return !!(d && d.deux_mains); };
-const aEtat = (it) => it.dur != null || it.eau != null || it.charge != null || it.balles != null;
+const aEtat = (it) => it.dur != null || it.eau != null || it.charge != null || it.balles != null || it.reste != null;
 
 // Catégorie d'affichage d'un objet (onglet Sac).
 export const CATEGORIES_OBJETS = [
@@ -54,9 +54,9 @@ let solLocal = [];
 let sol = {
   lister: () => solLocal,
   deposer: (item) => { const s = solLocal.find(x => x.id === item.id && !aEtat(x) && !aEtat(item)); if (s) s.qty += item.qty; else solLocal.push({ ...item }); },
-  prendre: (i) => solLocal.splice(i, 1)[0] || null,
+  prendre: (i, qty) => { const s = solLocal[i]; if (!s) return null; if (qty > 0 && qty < s.qty) { s.qty -= qty; return { ...s, qty }; } return solLocal.splice(i, 1)[0]; },
 };
-// provider : { lister() → [items], deposer(item), prendre(index) → item|null }
+// provider : { lister() → [items], deposer(item), prendre(index, qty?) → item|null }
 export function setSol(provider) { sol = provider || sol; emit('inventaire', { sol: true }); }
 export function objetsAuSol() { try { return sol.lister() || []; } catch (e) { return []; } }
 
@@ -121,7 +121,7 @@ export function espaceUtilise(p) { return occupation(p).total; }
 export function placeLibre(p) { p = joueur(p); return Math.max(0, Math.round((capacites(p).total - occupation(p).total) * 10) / 10); }
 
 // ---------- Poids ----------
-function poidsItem(it) { const d = def(it.id); return ((d && d.poids) || 0) * (it.qty || 1) + (it.eau ? it.eau.L : 0); }
+function poidsItem(it) { const d = def(it.id); return ((d && d.poids) || 0) * (it.reste ?? 1) * (it.qty || 1) + (it.eau ? it.eau.L : 0); }
 export function poidsPorte(p) {
   p = joueur(p); let kg = 0;
   for (const it of p.inventaire) kg += poidsItem(it);
@@ -226,6 +226,14 @@ export function poser(index, qty, p) {
   return true;
 }
 // Ramasser depuis le sol (index de la liste du sol). → { ajoute, auSol }
+// Une seule unité d'une pile du sol (pour la consommer sur place). → item { id, qty: 1, …état } | null
+export function prendreUnAuSol(indexSol) {
+  const s = objetsAuSol()[indexSol]; if (!s) return null;
+  const it = sol.prendre(indexSol, 1); if (!it) return null;
+  if ((it.qty || 1) > 1) { sol.deposer({ ...it, qty: it.qty - 1 }); return { ...it, qty: 1 }; }  // fournisseur sans « qty »
+  emit('inventaire', { sol: true });
+  return it;
+}
 export function ramasser(indexSol, p) {
   p = joueur(p); const item = sol.prendre(indexSol); if (!item) return { ajoute: 0, auSol: 0 };
   const { id, qty, ...inst } = item;
