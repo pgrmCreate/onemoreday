@@ -67,5 +67,12 @@ Vérifications : `node tools/valider_niveaux.mjs` · `node dev/test_combat.mjs` 
   (vraie photo 360°), cadrées et étalonnées par ambiance ; `js/cine/photos.js` dit quelles couches dessinées elles remplacent
   (les couches proches restent, en silhouettes ; une couche `naturel` garde ses couleurs : la main de l'hôpital).
   Non préchargées par le service worker (6 Mo, chargées à la demande).
+- `img/objets/<type>_<n>.webp` + `objets.json` : TOUS les meubles, objets, véhicules, végétaux et constructions, rendus vus de
+  dessus dans Blender (modèles Poly Haven CC0 ou construits en code), fond transparent, SANS ombre : `js/rendu/objets.js` dessine
+  l'ombre portée d'après la silhouette (toujours vers le bas-droite) et retombe sur le dessin procédural tant qu'un sprite manque.
+  `haut_<type>_<n>.webp` : houppiers des arbres. États : `_vide` (étagère pillée), `_ouverte` (portes construites).
+  Atelier : `tools/blender/omd_assets.py` (scène, import Poly Haven, mise à l'échelle sur la grille, rendu) et
+  `tools/blender/omd_catalogue.py` (un type = une fonction de variante). Ajouter un objet : une entrée au CATALOGUE, puis
+  `A.tout_rendre(types=['mon_type'])` dans Blender. Échelle : 1 case = 0,8 m ; dos de l'objet en haut de l'image.
 - Sources Blender (hors dépôt) : `D:\projects 3D\OneMoreDay\omd_textures_sol.blend`, `omd_cine.blend`, `plaques.json`
   (décor → HDRI, angle, inclinaison, étalonnage).

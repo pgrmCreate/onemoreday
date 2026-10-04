@@ -10,7 +10,7 @@
 import { TS, CHUNK, canvas, rng, graine, cercle, ellipse, rr, clamp, angDiff } from './outils.js';
 import { peindreSol } from './sols.js';
 import { peindreMurs, FACE } from './murs.js';
-import { dessinerObjet, spriteHaut } from './objets.js';
+import { dessinerObjet, spriteHaut, chargerObjetsPhoto, surObjetsPrets, viderSprites } from './objets.js';
 import { dessinerHumain, dessinerMort, dessinerCadavre } from './personnages.js';
 import { creerLumiere, ambiance, SUB } from './lumiere.js';
 import { creerEffets } from './effets.js';
@@ -40,6 +40,9 @@ export function creerRendu(cv, niveau) {
   // sols photoréalistes : dès qu'ils arrivent, les blocs pré-rendus sont refaits
   const offSols = surSolsPrets(() => { blocs.clear(); toitsCache.clear(); });
   chargerSolsPhoto();
+  // meubles et objets photoréalistes (Blender) : même principe
+  const offObjets = surObjetsPrets(() => { blocs.clear(); viderSprites(); });
+  chargerObjetsPhoto();
 
   function resize() {
     const r = cv.getBoundingClientRect();
@@ -49,7 +52,8 @@ export function creerRendu(cv, niveau) {
     vignette = null;
     majEchelle();
   }
-  function majEchelle() { const base = Math.max(26, Math.min(W / 19, H / 11)); cam.pxc = base * cam.zoom; }
+  // ≈ 27 cases de large : on voit plus loin, tout est plus petit (le cran de zoom le plus serré retrouve l’ancienne échelle)
+  function majEchelle() { const base = Math.max(20, Math.min(W / 27, H / 15.5)); cam.pxc = base * cam.zoom; }
   function setZoom(z) { cam.zoom = Math.max(0.55, Math.min(2.5, z)); majEchelle(); }
 
   // ---------- Blocs pré-rendus ----------
@@ -676,7 +680,7 @@ export function creerRendu(cv, niveau) {
     cam, resize, dessiner, ecranVersMonde, mondeVersEcran, suivre, recaler, setZoom, effets,
     zoom: () => cam.zoom, taille: () => ({ W, H }),
     viderCache() { blocs.clear(); toitsCache.clear(); },
-    fermer() { offSols(); blocs.clear(); toitsCache.clear(); grain = null; vignette = null; carteCv = null; lumiere.fermer(); effets.fermer(); anim.clear(); },
+    fermer() { offSols(); offObjets(); blocs.clear(); toitsCache.clear(); grain = null; vignette = null; carteCv = null; lumiere.fermer(); effets.fermer(); anim.clear(); },
   };
 }
 

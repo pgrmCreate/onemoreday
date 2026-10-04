@@ -149,6 +149,11 @@ export const OBJETS = {
   prie_dieu:  { cat: null, bloque: 1, t: [3, 1], nom: 'le banc d\'église' },
   cloche:     { cat: null, bloque: 1, t: [2, 2], nom: 'la cloche' },
   pilier:     { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'le pilier' },
+  treteau:    { cat: 'table', bloque: 1, t: [2, 1], nom: 'les tréteaux' },                 // morgue de fortune, chantier
+  chariot:    { cat: null, bloque: 1, t: [1, 2], nom: 'le chariot de la morgue' },
+  etabli_meuble: { cat: 'caisse', bloque: 1, t: [3, 1], nom: 'l\'établi' },
+  couronne:   { cat: null, bloque: 0, t: [1, 1], nom: 'la couronne de fleurs', decor: 1, sol: 1 },
+  banc_pierre:{ cat: null, bloque: 1, t: [2, 1], nom: 'le banc de pierre' },
   // — décor au sol (on marche dessus) —
   cadavre:    { c: '%', cat: null, bloque: 0, t: [1, 1], nom: 'le corps', decor: 1 },
   debris:     { c: ';', cat: null, bloque: 0, t: [1, 1], nom: 'les débris', decor: 1, bruit: 2.5 },

@@ -41,7 +41,8 @@ export default plan({
     portes: [{ cote: 's', a: 2, nom: 'la porte de la chapelle' }], fenetres: [{ cote: 's', a: 4 }] });
   e.objet('cercueil', ch.x0, ch.y0, { rot: 1, w: 2, h: 1 });
   e.objet('cercueil', ch.x1 - 1, ch.y0, { rot: 1, w: 2, h: 1 });
-  e.objet('etagere', ch.x0 + 2, ch.y0, { nom: 'le sachet agrafé à ta housse', marqueur: 'scelle_effets', conteneur: false, w: 2, h: 1 });
+  e.objet('treteau', ch.x0 + 2, ch.y0, { nom: 'le sachet agrafé à ta housse', marqueur: 'scelle_effets', conteneur: false, w: 2, h: 1 });
+  e.objet('couronne', ch.x0 + 5, ch.y0 + 1);
   e.objet('housse', ch.x0 + 1, ch.y0 + 2);
   e.objet('housse', ch.x0 + 4, ch.y0 + 2);
   e.objet('housse', ch.x0, ch.y0 + 2, { rot: 1, w: 1, h: 1 });
@@ -120,12 +121,12 @@ export default plan({
 
   // ---------- La remise (une pelle : de quoi se défendre) ----------
   const re = e.piece(11, 25, 6, 4, { nom: 'La remise', sol: 'beton', mur: 'bois', sombre: 1, toit: 'tole', portes: [{ cote: 'n', a: 1 }] });
-  e.objet('etagere', re.x0 + 1, re.y1, { w: 3, h: 1, nom: 'l’établi', marqueur: 'remise_etabli', conteneur: { nom: 'l’établi', items: [{ id: 'pelle', qty: 1 }], table: 'cimetiere.etagere' } });
+  e.objet('etabli_meuble', re.x0 + 1, re.y1, { w: 3, h: 1, nom: 'l’établi', marqueur: 'remise_etabli', conteneur: { nom: 'l’établi', items: [{ id: 'pelle', qty: 1 }], table: 'cimetiere.etagere' } });
   e.objet('poubelle', re.x1, re.y0);
   e.objet('fut', re.x0, re.y1);
 
   // ---------- La placette et le boulevard ----------
-  e.objet('banc', 17, 26, { w: 2, h: 1 }); e.objet('banc', 25, 26, { w: 2, h: 1 });
+  e.objet('banc_pierre', 17, 26, { w: 2, h: 1 }); e.objet('banc_pierre', 25, 26, { w: 2, h: 1 });
   e.objet('fontaine', 27, 27, { w: 1, h: 1 });
   e.decal('feuilles', 20, 27, { r: 0.9 }); e.decal('feuilles', 24.5, 25.5, { r: 0.7 });
   for (const x of [3, 11, 33, 41]) e.objet('platane', x, 31);

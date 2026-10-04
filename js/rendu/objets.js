@@ -7,9 +7,94 @@ import { TS, rng, canvas, rr, cercle, ellipse, avecOmbre, boite, teinte, hex, rg
 const BOIS = '#5d4128', BOIS_C = '#7a5838', BOIS_F = '#3b2819', METAL = '#6e7272', BLANC = '#c9c4b6', DRAP = '#b9b2a0';
 const pick = (r, a) => a[Math.floor(r() * a.length)];
 
+// ---------- Sprites photoréalistes (rendus dans Blender : tools/blender/omd_assets.py → img/objets) ----------
+// img/objets/objets.json : { type: { n (variantes), m (marge, cases), h (hauteur, m), c? ([couleurs] des variantes), plat? } }.
+// Chaque sprite couvre l'empreinte de l'objet + la marge, vu de dessus, sans ombre : l'ombre portée est dessinée ici d'après
+// la silhouette (toujours vers le bas-droite, quelle que soit la rotation), plus longue pour un meuble haut.
+// Tant qu'un sprite n'est pas arrivé, le dessin procédural (DESSINS) sert ; à l'arrivée, le moteur refait ses blocs.
+const SP = { meta: null, img: new Map(), surPret: new Set(), lance: false, t: 0 };
+const BASE_OBJ = typeof document !== 'undefined' ? new URL('../../img/objets/', import.meta.url) : null;
+export function chargerObjetsPhoto() {
+  if (SP.lance || !BASE_OBJ || typeof Image === 'undefined') return; SP.lance = true;
+  fetch(new URL('objets.json', BASE_OBJ)).then(r => (r.ok ? r.json() : null)).then(m => {
+    if (!m) return; SP.meta = m;
+    // préchargement en tâche de fond : les blocs sont refaits au fil des arrivées (au plus 2 fois par seconde)
+    for (const [type, d] of Object.entries(m)) for (let v = 0; v < (d.n || 1); v++) imageObjet(type, v);
+  }).catch(() => {});
+}
+export function surObjetsPrets(fn) { SP.surPret.add(fn); return () => SP.surPret.delete(fn); }
+function signalerPret() {
+  if (SP.t) return;
+  SP.t = setTimeout(() => { SP.t = 0; for (const f of SP.surPret) { try { f(); } catch (e) {} } }, 450);
+}
+function imageObjet(type, v) {
+  const cle = type + '_' + v;
+  let im = SP.img.get(cle);
+  if (!im) { im = new Image(); im.decoding = 'async'; im.onload = signalerPret; im.src = new URL(`${type}_${v}.webp`, BASE_OBJ).href; SP.img.set(cle, im); }
+  return im.complete && im.naturalWidth ? im : null;
+}
+const hexRgb = (h) => { const n = parseInt(String(h).replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+function spriteObjet(R) {
+  if (!SP.meta) return null;
+  const nom = (R.vide && SP.meta[R.type + '_vide']) ? R.type + '_vide' : R.type;
+  const m = SP.meta[nom]; if (!m) return null;
+  let v = Math.abs(R.variante || 0) % (m.n || 1);
+  // une couleur imposée par la carte (voiture noire, couverture rouge…) : la variante la plus proche
+  if (R.couleur && m.c) { const a = hexRgb(R.couleur); let bd = Infinity; m.c.forEach((c, i) => { const b = hexRgb(c); const d = (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2; if (d < bd) { bd = d; v = i; } }); }
+  const im = imageObjet(nom, v);
+  return im ? { im, m } : null;
+}
+// Retouches dynamiques par-dessus un sprite (feu qui danse, usure d'une construction…).
+const PAR_DESSUS = {
+  feu_camp: (c, W, H, r, R) => flammes(c, W, H, R, 0.24), feu_branches: (c, W, H, r, R) => flammes(c, W, H, R, 0.22),
+  brasero: (c, W, H, r, R) => flammes(c, W, H, { c: { feuJusqua: 1 }, minutes: 0 }, 0.2), four_pierre: (c, W, H, r, R) => flammes(c, W, H, R, 0.1),
+  torche_murale: (c, W, H, r, R) => flammes(c, W, H, R, 0.12),
+};
+function flammes(c, W, H, R, k) {
+  const allume = R && R.c && (R.c.feuJusqua || 0) > (R.minutes || 0);
+  if (!allume) return;
+  const t = performance.now() / 120, f = 0.85 + 0.15 * Math.sin(t) * Math.sin(t * 1.7), rr2 = Math.min(W, H) * k * f;
+  const g = c.createRadialGradient(W / 2, H / 2, 1, W / 2, H / 2, rr2); g.addColorStop(0, 'rgba(255,225,130,0.95)'); g.addColorStop(0.5, 'rgba(255,140,50,0.75)'); g.addColorStop(1, 'rgba(160,40,10,0)');
+  c.fillStyle = g; cercle(c, W / 2, H / 2, rr2); c.fill();
+}
+function dessinerSprite(c, R, S, W, H, r) {
+  const mg = (S.m.m ?? 0.12) * TS;
+  // une carte qui pose l'objet sur une empreinte d'une autre forme (housse sur une seule case…) : on garde ses proportions
+  if (S.m.t && Math.abs((W / H) / (S.m.t[0] / S.m.t[1]) - 1) > 0.15) {
+    const k = Math.min(W / S.m.t[0], H / S.m.t[1]), w2 = S.m.t[0] * k, h2 = S.m.t[1] * k;
+    c.save(); c.translate((W - w2) / 2, (H - h2) / 2); dessinerSprite(c, R, { ...S, m: { ...S.m, t: null, m: (S.m.m ?? 0.12) * k / TS } }, w2, h2, r); c.restore();
+    return;
+  }
+  const h = S.m.h ?? 0.5;
+  if (S.m.tourne) { c.translate(W / 2, H / 2); c.rotate((r() - 0.5) * 2 * S.m.tourne); c.translate(-W / 2, -H / 2); }
+  // ombre portée : plus le meuble est haut, plus elle s'allonge vers le bas-droite (lumière du haut-gauche)
+  if (!S.m.plat) {
+    c.save();
+    c.shadowColor = `rgba(0,0,0,${Math.min(0.62, 0.36 + h * 0.12).toFixed(2)})`;
+    c.shadowBlur = Math.min(16, 3 + h * 6); const o = Math.min(14, 1.5 + h * 6.5);
+    c.shadowOffsetX = o; c.shadowOffsetY = o;
+    c.drawImage(S.im, -mg, -mg, W + 2 * mg, H + 2 * mg);
+    c.restore();
+  } else c.drawImage(S.im, -mg, -mg, W + 2 * mg, H + 2 * mg);
+  const P = PAR_DESSUS[R.type]; if (P) P(c, W, H, r, R);
+  if (R.c) usure(c, W, H, R);
+}
+
 export function dessinerObjet(c, R) {
   const D = DESSINS[R.type] || DESSINS._defaut;
   const r = rng((R.variante || 0) * 7919 + R.x * 131 + R.y * 977 + 1);
+  const S = spriteObjet(R);
+  if (S && !R.irregulier) {
+    const rot = R.rot || 0, quart = rot % 2 === 1;
+    const W = (quart ? R.h : R.w) * TS, H = (quart ? R.w : R.h) * TS;
+    c.save();
+    c.translate((R.x + R.w / 2) * TS, (R.y + R.h / 2) * TS);
+    if (rot) c.rotate(rot * Math.PI / 2);
+    c.translate(-W / 2, -H / 2);
+    dessinerSprite(c, R, S, W, H, r);
+    c.restore();
+    return;
+  }
   if (R.irregulier) {
     // forme irrégulière (ancien format) : une boîte par case, du type de l'objet
     const w = R.E_w;
@@ -664,10 +749,27 @@ function corpsDecor(c, W, H, r, R) {
 // ---------- Partie haute (au-dessus des personnages) : houppiers, têtes de lampadaires ----------
 // Pré-rendue en sprite par (type, variante) ; renvoie { cv, ox, oy, r } (centre du sprite au centre de l'objet).
 const sprites = new Map();
+// Houppier photoréaliste (img/objets/haut_<type>_<n>.webp) s'il est arrivé : même format { cv, S, rayon }.
+const HAUT_SPRITE = { arbre: 'houppier', houppier: 'houppier', platane: 'platane', pin: 'pin', olivier: 'olivier', cypres: 'cypres', figuier: 'figuier', amandier: 'amandier' };
+function spriteHautPhoto(R) {
+  const nom = HAUT_SPRITE[R.haut]; if (!nom || !SP.meta) return null;
+  const m = SP.meta['haut_' + nom]; if (!m) return null;
+  const v = Math.abs(R.variante || 0) % (m.n || 1);
+  const im = imageObjet('haut_' + nom, v); if (!im) return null;
+  const rayon = (m.d || 3) * TS / 2;
+  const S = Math.ceil(rayon * 2 + 24), cv = canvas(S, S), c = cv.getContext('2d');
+  // ombre du feuillage au sol, décalée vers le bas-droite (le soleil est haut-gauche)
+  c.save(); c.shadowColor = 'rgba(0,0,0,0.5)'; c.shadowBlur = 10; c.shadowOffsetX = 9; c.shadowOffsetY = 9;
+  c.translate(S / 2, S / 2); c.rotate(((R.variante || 0) % 4) * Math.PI / 2);
+  c.drawImage(im, -rayon, -rayon, rayon * 2, rayon * 2); c.restore();
+  return { cv, S, rayon };
+}
 export function spriteHaut(R) {
   const cle = R.haut + ':' + (R.variante % 8);
   let s = sprites.get(cle);
   if (s) return s;
+  s = spriteHautPhoto(R);
+  if (s) { sprites.set(cle, s); return s; }
   const r = rng((R.variante % 8) * 101 + R.haut.length * 7);
   let rayon;
   switch (R.haut) {
