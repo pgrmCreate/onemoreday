@@ -642,10 +642,20 @@ comme ça.
 
 ## 6 bis. La construction (`js/data/construction.js`) — façon Project Zomboid
 
-On bâtit SUR PLACE, dans un lieu : **Sac → Fabrication → Construire** → « Placer ». Un fantôme suit la souris (PC) ou se
-place devant toi (tactile) : **vert** = possible, **rouge** = non (et pourquoi). Clic / bouton **Poser** : on bâtit en temps réel
-(30 min de jeu ≈ 5 s, −8 %/niv de Construction ; **bouger interrompt**, le marteau s'entend à 7 cases). **T** tourne, **Échap**
-arrête. On reste en mode placement tant qu'on a de quoi (un mur après l'autre). Les matériaux ne sont payés qu'une fois posé.
+On bâtit SUR PLACE, dans un lieu : le menu **Construire** est à part (bouton marteau à côté du Sac et du Corps, ou l'onglet
+du même nom) → « Placer ». Le panneau se ferme ; un fantôme **vert clair** suit la souris (PC) ou se place devant toi — un
+toucher sur l'écran le pose où tu veux (tactile) ; **rouge** = impossible (et pourquoi). Clic / bouton **Poser** : le personnage
+bâtit en temps réel, le chantier se remplit à mesure (30 min de jeu ≈ 5 s, −8 %/niv de Construction ; **bouger interrompt**,
+le marteau s'entend à 7 cases). **T** tourne, **Échap** arrête. On reste en mode placement tant qu'on a de quoi (un mur après
+l'autre). Les matériaux ne sont payés qu'une fois posé.
+
+**Un mort approche** (vu et en chasse à moins de 9 cases, ou vu à moins de 3,5 cases, ou entendu tout près) : tout se coupe —
+sac et autres menus, plan du lieu, placement, chantier, fouille — et on rend la main au joueur (« Un mort approche ! »).
+Un mort déjà signalé ne recoupe pas avant d'avoir disparu 6 s (`REGLAGES.exploration.ALERTE`).
+
+**Plusieurs actions au même endroit** (objets au sol + meuble à fouiller, porte à barricader, construction à démonter…) :
+la plus probable reste sur **E / Interagir** ; un petit rond à côté d'Interagir (touche **G** au clavier, chiffres pour choisir)
+déplie la liste des autres.
 
 | Construction | Matériaux | Outil | Niv. | Effet |
 |---|---|---|---|---|
@@ -663,10 +673,10 @@ arrête. On reste en mode placement tant qu'on a de quoi (un mur après l'autre)
 | Potager | 4 planches, 4 clous, graines | pelle | 0 | 3 jours → 4 légumes (180 kcal) ; replanter avec un sachet de graines |
 
 - **Les morts cognent** sur une construction qui leur barre la route (comme une porte) : ses PV baissent, elle finit par céder.
-- **Démonter** (touche **G** près d'elle) rend la moitié des matériaux (moins si elle est abîmée).
-- **Meubles** : G près d'un meuble (marteau ou pied-de-biche) le démonte : chaise 1 planche, table 2, lit 2 + ressort, armoire 3,
+- **Démonter** (menu des actions : G / petit rond, près d'elle) rend la moitié des matériaux (moins si elle est abîmée).
+- **Meubles** : « Démonter » dans le menu des actions près d'un meuble (marteau ou pied-de-biche) le démonte : chaise 1 planche, table 2, lit 2 + ressort, armoire 3,
   étagère 2, palette 2 + clous… Le contenu tombe au sol. C'est **la source de planches**.
-- **Barricader une porte** : G près d'elle (2 planches, 4 clous, marteau) → 180 PV ; une pièce fermée et barricadée est sûre pour dormir.
+- **Barricader une porte** : « Barricader » dans le menu des actions près d'elle (2 planches, 4 clous, marteau) → 180 PV ; une pièce fermée et barricadée est sûre pour dormir.
 - **Contexte** (2 fois par seconde) : établi (table, bureau, machine, établi construit), feu (feu de camp allumé à ≤ 2 cases),
   point d'eau (évier, lavabo, WC, baignoire, fontaine → eau croupie) : la fabrication et le remplissage des contenants en dépendent.
 - Tout est tenu par la simulation du lieu (l'hôte en co-op) et reste dans la sauvegarde.

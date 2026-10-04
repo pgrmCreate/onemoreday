@@ -1,6 +1,8 @@
 // ============ Exploration — interactions : cible la plus proche, portes, actions chronométrées, PNJ, documents,
 // déclencheurs d'histoire, escaliers, sorties, pièces ============
 // Une seule touche (E / bouton Interagir) : l'action proposée est toujours écrite en clair (« Fouiller l'armoire »).
+// Plusieurs actions possibles au même endroit (objets au sol + meuble à fouiller, porte à barricader…) : la plus
+// probable reste sur E / Interagir ; un petit rond à côté (G au clavier) déplie la liste des autres.
 // Co-op : portes à deux (verrou { deux: true }), déclencheurs « à deux » (deux: true), relever son coéquipier à terre.
 import { G, getFlag, sauver as sauverPartie } from '../core/state.js';
 import { emit } from '../core/bus.js';
@@ -15,7 +17,7 @@ import { K } from './niveau.js';
 import { mod, sfx, message, afficherLieu, verifierCondition, compter, niv, nomObjet, outil, caseLibrePres } from './commun.js';
 import { ouvrirSommeil } from '../game/sommeil.js';
 import { commencerFouille, interrompreFouille, fermerButin, ramasser, lireDocument, prendreTout } from './butin.js';
-import { ciblesConstruction, libelleConstruction, agirConstruction, secondaireConstruction, secondaireMeuble, secondairePorte, demonterMeuble } from './construction.js';
+import { ciblesConstruction, libelleConstruction, agirConstruction, constructionActive, secondaireConstruction, secondaireMeuble, secondairePorte, demonterMeuble } from './construction.js';
 import { DEMONTABLES } from '../data/construction.js';
 
 const RX = REGLAGES.exploration;
@@ -29,9 +31,11 @@ export function chercherCible() {
   const j = V.j, E = V.E, C = V.C, n = V.niveau, snap = V.snap;
   const R = RX.INTERACTION_CASES;
   let best = null, bs = Infinity;
+  const cands = [];
   const proposer = (c, d, bonus = 0) => {
     let a = Math.atan2(c.cy - j.y, c.cx - j.x) - j.dir; a = Math.abs(Math.atan2(Math.sin(a), Math.cos(a)));
     const s = d + a * 0.25 - bonus;
+    c._s = s; cands.push(c);
     if (s < bs) { bs = s; best = c; }
   };
   const x0 = Math.floor(j.x - R - 0.5), x1 = Math.floor(j.x + R + 0.5), y0 = Math.floor(j.y - R - 0.5), y1 = Math.floor(j.y + R + 0.5);
@@ -105,20 +109,77 @@ export function chercherCible() {
   ciblesConstruction(proposer);
   if (best) {
     best.libelle = libelle(best);
-    // geste secondaire (touche G / petit bouton) : démonter, barricader
-    if (best.type === 'construction') best.secondaire = secondaireConstruction(best.c);
-    else if (best.type === 'porte') best.secondaire = secondairePorte(best.p, best.s);
-    else if (best.type === 'meuble' && !best.decl && (best.m.conteneur || estLit(best.m))) best.secondaire = secondaireMeuble(best.m);
-    else best.secondaire = null;
+    best.secondaire = secondaire(best);
+    // les autres gestes possibles ici : le secondaire de la cible, puis les autres cibles (plus proches d'abord)
+    const autres = [];
+    if (best.secondaire) autres.push({ cle: cleCible(best) + ':2', libelle: best.secondaire.libelle, f: best.secondaire.f });
+    cands.sort((a, b) => a._s - b._s);
+    const vus = new Set([cleCible(best)]);
+    for (const c of cands) {
+      if (autres.length >= 6) break;
+      const k = cleCible(c); if (vus.has(k)) continue; vus.add(k);
+      c.libelle = libelle(c);
+      if (c.type !== 'construction' || constructionActive(c.c)) autres.push({ cle: k, libelle: c.libelle, f: () => agirSur(c) });
+      const s2 = secondaire(c);
+      if (s2 && autres.length < 6) autres.push({ cle: k + ':2', libelle: s2.libelle, f: s2.f });
+    }
+    best.autres = autres;
   }
   return best;
 }
-// Touche G : le geste secondaire de la cible (démonter, barricader).
-export function interagirSecondaire() {
-  if (!V || V.occupe || V.enPause || V.action || V.fouille) return;
-  const c = V.cible = chercherCible();
-  if (c && c.secondaire) c.secondaire.f();
+// Geste secondaire d'une cible : démonter, barricader.
+function secondaire(c) {
+  if (c.type === 'construction') return secondaireConstruction(c.c);
+  if (c.type === 'porte') return secondairePorte(c.p, c.s);
+  if (c.type === 'meuble' && !c.decl && (c.m.conteneur || estLit(c.m))) return secondaireMeuble(c.m);
+  return null;
 }
+// Identité stable d'une cible (le menu des actions reste ouvert tant qu'elle ne change pas).
+function cleCible(c) {
+  switch (c.type) {
+    case 'porte': return 'p:' + c.p.cle;
+    case 'meuble': return 'm:' + c.m.cle;
+    case 'construction': return 'c:' + c.c.uid;
+    case 'sol': return 's:' + c.o.uid;
+    case 'cadavre': return 'k:' + c.cd.uid;
+    case 'pnj': return 'n:' + c.q.id;
+    case 'relever': return 'r:' + c.p.id;
+    case 'marqueur': case 'doc': return 'q:' + (c.m ? c.m.id : '') + (c.p ? c.p.cle : '');
+    default: return c.type + ':' + c.x0 + ',' + c.y0;
+  }
+}
+
+// ---------- Le menu des autres actions (petit rond à côté d'Interagir, touche G) ----------
+// Il fige la liste au moment où on l'ouvre ; il se referme si on s'éloigne, si la cible change, après un choix.
+export function basculerChoix() {
+  if (!V || V.occupe || V.enPause) return;
+  if (V.choix) { fermerChoix(); return; }
+  const c = V.cible = chercherCible();
+  if (!c || !c.autres || !c.autres.length) return;
+  V.choix = { cle: cleCible(c), x: V.j.x, y: V.j.y, t: performance.now(), liste: [{ cle: cleCible(c), libelle: c.libelle, f: () => agirSur(c), principal: true }, ...c.autres] };
+  V.hud.montrerChoix(V.choix.liste, (i) => choisir(i));
+}
+export function fermerChoix() { if (V && V.choix) { V.choix = null; V.hud.montrerChoix(null); } }
+export function choisir(i) {
+  const ch = V && V.choix; if (!ch) return false;
+  const a = ch.liste[i]; if (!a) return false;
+  fermerChoix();
+  if (V.fouille) interrompreFouille();
+  if (V.butin) fermerButin();
+  if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); }
+  a.f();
+  return true;
+}
+// Appelée à chaque recherche de cible : le menu suit le joueur (ou se ferme).
+function majChoix() {
+  const ch = V.choix; if (!ch) return;
+  const c = V.cible;
+  // la cible « principale » peut basculer entre deux objets voisins : on ne ferme que si celle du menu n'est plus là
+  const ici = !!c && (cleCible(c) === ch.cle || (c.autres || []).some(a => a.cle === ch.cle));
+  if (!ici || Math.hypot(V.j.x - ch.x, V.j.y - ch.y) > 1.2 || V.occupe) fermerChoix();
+}
+// Ancienne touche G (geste secondaire) : désormais elle ouvre le menu des actions.
+export const interagirSecondaire = basculerChoix;
 function libelle(c) {
   switch (c.type) {
     case 'porte': {
@@ -156,16 +217,17 @@ function libelle(c) {
 const LITS = new Set(['lit', 'lit_simple', 'lit_hopital', 'canape', 'brancard', 'fauteuil']);
 const estLit = (m) => LITS.has(m.type);
 export function majInvite() {
+  majChoix();
   const c = V.cible;
-  const txt = c ? c.libelle : null, sec = c && c.secondaire ? c.secondaire.libelle : null;
-  if (V._invite !== txt || V._inviteSec !== sec) {
-    V._invite = txt; V._inviteSec = sec;
+  const txt = c ? c.libelle : null, n = c && c.autres ? c.autres.length : 0;
+  if (V._invite !== txt || V._inviteN !== n) {
+    V._invite = txt; V._inviteN = n;
     V.hud.invite.textContent = '';
     if (txt) V.hud.invite.append(el('kbd', {}, 'E'), ' ', txt);
-    if (sec) V.hud.invite.append(el('span', { class: 'ex-inv-sec' }, ' · ', el('kbd', {}, 'G'), ' ', sec));
-    V.hud.invite.classList.toggle('on', !!(txt || sec));
+    if (n) V.hud.invite.append(el('span', { class: 'ex-inv-sec' }, el('kbd', {}, 'G'), `+${n}`));
+    V.hud.invite.classList.toggle('on', !!txt);
     V.entrees.setInteragir(txt);
-    if (V.entrees.setSecondaire) V.entrees.setSecondaire(sec);
+    if (V.entrees.setAutres) V.entrees.setAutres(n);
   }
 }
 
@@ -174,8 +236,13 @@ export async function interagir(o) {
   if (V.butin && !o) { prendreTout(); return; }
   if (V.fouille) { interrompreFouille(); return; }
   if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); return; }
+  fermerChoix();
   const c = V.cible = chercherCible();
   if (!c) return;
+  return agirSur(c);
+}
+// Le geste principal d'une cible (E, ou choisi dans le menu des actions).
+export function agirSur(c) {
   switch (c.type) {
     case 'porte': return actionPorte(c);
     case 'construction': return agirConstruction(c.c);

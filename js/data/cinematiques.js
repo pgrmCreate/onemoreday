@@ -33,7 +33,7 @@ export const CINEMATIQUES = {
     { decor: 'salon_mercredi', camera: { de: { x: 0.3, zoom: 1.2 }, vers: { x: 0.7, zoom: 1.4 } }, duree: 8000,
       effets: ['grain', 'secousse'], anim: ['foule_court', 'etals_renverses', 'silhouette_penchee'],
       texte: 'À 10 h 40, sur le cours Carnot, une femme mord son mari. Les gens mordus meurent en quelques heures… puis se relèvent, et mordent à leur tour.' },
-    { decor: 'couloir_hopital', camera: { de: { x: 0.2, zoom: 1.5 }, vers: { x: 0.6, zoom: 1.2 } }, duree: 8000,
+    { decor: 'couloir_hopital', camera: { de: { x: 0.2, y: 0.5, zoom: 1.5 }, vers: { x: 0.6, y: 0.95, zoom: 1.3 } }, duree: 8400,
       effets: ['grain', 'vignette_pulse'], anim: ['neon_clignote', 'clochette_tremble', 'main_billet'],
       texte: 'À l’hôpital, une médecin nourrit ses malades au son d’une clochette. Puis elle glisse un mot plié dans la poche d’un mort.' },
     { decor: 'salon_mistral_vide', camera: { de: { x: 0.1, zoom: 1.1 }, vers: { x: 0.9, zoom: 1.15 } }, duree: 9000,

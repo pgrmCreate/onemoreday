@@ -1,6 +1,7 @@
-// ============ Panneau Fabrication — onglet « Construire » ============
+// ============ Panneau Construire — liste et fiche (js/ui/panels/construction.js) ============
 // Liste des constructions (réalisables d'abord), fiche (il faut : matériaux, outils, niveau) et bouton « Placer » :
-// le panneau se ferme, le fantôme apparaît dans le lieu (js/explore/construction.js) — on choisit l'endroit, puis on bâtit.
+// le panneau se ferme, le fantôme vert clair apparaît dans le lieu (js/explore/construction.js) — on choisit l'endroit,
+// on pose, puis le personnage bâtit.
 import { G } from '../../core/state.js';
 import { emit } from '../../core/bus.js';
 import * as cons from '../../game/construction.js';
@@ -13,12 +14,13 @@ export const ICONE_CONSTRUCTION = {
 };
 const ic = (type) => ICONE_CONSTRUCTION[type] || 'fabriquer';
 
-// liste + fiche dans la grille du panneau de fabrication ; etat = { sel } (partagé avec l'onglet), redessiner()
+// liste + fiche dans la grille du panneau ; etat = { sel, cat? } (cat : filtre de catégorie), redessiner()
 export function dessinerConstruire(liste, fiche, etat, redessiner, api) {
   const p = G.player;
-  const tous = Object.keys(cons.CONSTRUCTIONS).map(type => ({ type, e: cons.etatConstruction(type, p) }));
+  const tous = Object.keys(cons.CONSTRUCTIONS).filter(type => !etat.cat || cons.CONSTRUCTIONS[type].cat === etat.cat).map(type => ({ type, e: cons.etatConstruction(type, p) }));
   const faisables = tous.filter(x => x.e.faisable), autres = tous.filter(x => !x.e.faisable);
-  if (!G.player.position || G.player.position.mode !== 'lieu') liste.append(el('p', { class: 'fi-desc' }, 'On construit sur place, dans un lieu : pas en route.'));
+  const enLieu = !!(G.player.position && G.player.position.mode === 'lieu');
+  if (!enLieu) liste.append(el('p', { class: 'fi-desc' }, 'On construit sur place, dans un lieu : pas en route.'));
   const section = (titre, arr, cls) => {
     if (!arr.length) return;
     liste.append(el('h3', { class: `pn-section ${cls}` }, titre, el('em', {}, String(arr.length))));
@@ -35,7 +37,7 @@ export function dessinerConstruire(liste, fiche, etat, redessiner, api) {
   section('Tu peux construire', faisables, 'faisable');
   section('Il manque quelque chose', autres, 'incomplete');
   // fiche
-  if (!etat.sel || !cons.CONSTRUCTIONS[etat.sel]) { fiche.append(vide('Choisis ce que tu veux bâtir. Démonter un meuble (touche G près de lui, avec un marteau ou un pied-de-biche) donne des planches.', 'etabli')); return; }
+  if (!etat.sel || !cons.CONSTRUCTIONS[etat.sel]) { fiche.append(vide('Choisis ce que tu veux bâtir, puis « Placer » : tu choisis l\'endroit en vert clair et tu poses. Démonter un meuble (près de lui, avec un marteau ou un pied-de-biche) donne des planches.', 'marteau')); return; }
   const type = etat.sel, e = cons.etatConstruction(type, p), d = e.d;
   fiche.append(el('button', { type: 'button', class: 'fi-fermer', 'aria-label': 'Fermer la fiche', onclick: () => { etat.sel = null; redessiner(); } }, icoEl('fermer')));
   fiche.append(el('div', { class: `fi-tete${e.faisable ? ' faisable' : ''}` }, el('span', { class: 'fi-ic' }, icoEl(ic(type))),
@@ -57,7 +59,7 @@ export function dessinerConstruire(liste, fiche, etat, redessiner, api) {
   if (d.potager) infos.push(`récolte en ${d.potager.jours} jours`);
   if (infos.length) fiche.append(el('p', { class: 'fi-desc' }, infos.join(' · ') + '.'));
   const pied = el('div', { class: 'fa-pied' }, el('div', { class: 'fa-infos' }, el('span', {}, icoEl('sablier'), `${d.tempsMin} min`)));
-  pied.append(bouton({ label: e.faisable ? 'Placer' : 'Impossible', icone: 'poser', cls: 'principal fa-go', disabled: !e.faisable, raison: e.faisable ? null : e.manques[0],
+  pied.append(bouton({ label: e.faisable ? (enLieu ? 'Placer' : 'Dans un lieu seulement') : 'Impossible', icone: 'poser', cls: 'principal fa-go', disabled: !e.faisable || !enLieu, raison: e.faisable ? null : e.manques[0],
     onclick: () => { emit('construction:placer', { type }); if (api && api.fermer) api.fermer(); } }));
   fiche.append(pied);
 }

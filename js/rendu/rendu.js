@@ -172,13 +172,18 @@ export function creerRendu(cv, niveau) {
       dessinerObjet(ctx, R);
     }
     if (S.placement && S.placement.etage === E.id) {
-      const P = S.placement;
-      ctx.globalAlpha = 0.5;
-      dessinerObjet(ctx, { type: P.dessin, x: P.x, y: P.y, w: P.w, h: P.h, rot: 0, variante: 1 });
+      // fantôme vert clair (rouge si impossible) ; pendant le chantier, il se remplit à mesure que l'on bâtit
+      const P = S.placement, ch = P.chantier;
+      const x0 = P.x * TS, y0 = P.y * TS, w = P.w * TS, h = P.h * TS;
+      ctx.fillStyle = P.ok ? 'rgba(170,255,170,0.16)' : 'rgba(240,80,70,0.16)'; ctx.fillRect(x0, y0, w, h);
+      if (ch != null) {
+        ctx.globalAlpha = 0.3; dessinerObjet(ctx, { type: P.dessin, x: P.x, y: P.y, w: P.w, h: P.h, rot: 0, variante: 1 });
+        ctx.save(); ctx.beginPath(); ctx.rect(x0, y0 + h * (1 - ch), w, h * ch + 1); ctx.clip();
+        ctx.globalAlpha = 0.92; dessinerObjet(ctx, { type: P.dessin, x: P.x, y: P.y, w: P.w, h: P.h, rot: 0, variante: 1 }); ctx.restore();
+      } else { ctx.globalAlpha = 0.55; dessinerObjet(ctx, { type: P.dessin, x: P.x, y: P.y, w: P.w, h: P.h, rot: 0, variante: 1 }); }
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = P.ok ? 'rgba(110,230,120,0.95)' : 'rgba(240,80,70,0.95)'; ctx.lineWidth = 3;
-      ctx.setLineDash([6, 4]); ctx.strokeRect(P.x * TS + 1.5, P.y * TS + 1.5, P.w * TS - 3, P.h * TS - 3); ctx.setLineDash([]);
-      ctx.fillStyle = P.ok ? 'rgba(110,230,120,0.12)' : 'rgba(240,80,70,0.14)'; ctx.fillRect(P.x * TS, P.y * TS, P.w * TS, P.h * TS);
+      ctx.strokeStyle = P.ok ? 'rgba(175,255,175,0.95)' : 'rgba(240,80,70,0.95)'; ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 4]); ctx.lineDashOffset = -t / 60; ctx.strokeRect(x0 + 1.5, y0 + 1.5, w - 3, h - 3); ctx.setLineDash([]); ctx.lineDashOffset = 0;
     }
     // arcs d'attaque des morts (au sol, sous les corps)
     for (const z of S.zombies) {

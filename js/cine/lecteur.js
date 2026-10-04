@@ -18,7 +18,8 @@
 //   export default {
 //     largeur: 2.4,                 // largeur du décor en cadres 2.39:1 (1 = plan fixe, pas de travelling)
 //     fond: '#0b0b0c',              // couleur sous les couches
-//     couches: [ { profondeur: 0..1, svg: (L, H) => '<g>…</g>' }, … ],   // du fond (0) au premier plan (1)
+//     couches: [ { profondeur: 0..1, svg: (L, H) => '<g>…</g>', naturel? }, … ],   // du fond (0) au premier plan (1)
+//       naturel: { lum, sat } — sur un décor photo, la couche garde ses couleurs (étalonnées) au lieu de passer en silhouette
 //     anims: { nom: (t, S) => { … } },   // t : secondes depuis l'apparition du décor
 //     ambiance: ['nom', …],         // animations toujours actives (facultatif)
 //     reglages: { fumee, braises, brouillard, lampe: [x,y], vent, … }   // teintes des effets globaux (facultatif)
@@ -162,8 +163,11 @@ export function jouerScript(def, opts = {}) {
         const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         el.setAttribute('viewBox', `0 0 ${L} ${H}`);
         el.setAttribute('preserveAspectRatio', 'none');
-        el.setAttribute('class', 'cine-couche' + (ph && !cd.photo ? ' cine-silhouette' : ''));
-        if (ph && !cd.photo) el.style.filter = `brightness(${ph.ombre}) saturate(0.2) contrast(1.15)${cd.profondeur >= 0.9 ? '' : ' blur(0.6px)'}`;
+        // une couche « naturel » (la main du premier plan…) garde ses couleurs, juste étalonnée sur la photo
+        const sil = ph && !cd.photo && !cd.naturel;
+        el.setAttribute('class', 'cine-couche' + (sil ? ' cine-silhouette' : ''));
+        if (sil) el.style.filter = `brightness(${ph.ombre}) saturate(0.2) contrast(1.15)${cd.profondeur >= 0.9 ? '' : ' blur(0.6px)'}`;
+        else if (ph && cd.naturel) el.style.filter = `brightness(${cd.naturel.lum ?? 0.75}) saturate(${cd.naturel.sat ?? 0.65}) contrast(1.05)`;
         el.innerHTML = contenu;
         monde.appendChild(el);
         const sMax = 1 + (zMax * 1.04 - 1) * facteurZoom(p);

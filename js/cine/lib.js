@@ -41,7 +41,7 @@ let compteur = 0;
 export function uid(p = 'g') { return 'cn' + p + (++compteur).toString(36); }
 
 // ---------- Couleurs ----------
-function hexVers(c) { const n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function hexVers(c) { if (c.length === 4) c = '#' + c[1] + c[1] + c[2] + c[2] + c[3] + c[3]; const n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 function versHex(r, g, b) { return '#' + ((1 << 24) | (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b)).toString(16).slice(1); }
 export function mix(a, b, t) {
   const A = hexVers(a), B = hexVers(b);
@@ -554,99 +554,188 @@ export function clocherVillage(x, yBase, h, c, o = {}) {
 }
 
 // ---------- Humains et morts ----------
-// Squelette articulé → { membres (chemin à tracer), corps (chemin plein), tete {x,y,r}, pieds }.
+// Un corps DESSINÉ COMME UN CORPS, pas en bâtons : cuisses plus larges que les mollets, chevilles fines, pieds chaussés qui
+// déroulent le pas (talon qui se lève, pointe qui se relève à l'attaque), mains (paume, doigts, pouce), cou, tête de profil
+// (front, nez, lèvres, menton, mâchoire), cheveux ; le bras et la jambe du fond sont plus sombres (profondeur).
+// Chaque partie est un chemin plein marqué data-k : l'animation (js/cine/anim.js) les recalcule sans rien reconstruire.
 // Angles en degrés, 0 = vers le bas, positif = vers l'avant (sens du regard).
-// p : { pench, tete (inclinaison), jambes: [[cuisse, genou], [cuisse, genou]], bras: [[epaule, coude], [epaule, coude]] }
+// p : { pench, tete (inclinaison), jambes: [[cuisse, genou], …], bras: [[epaule, coude], …], assis?, poing?, doigts? }
+//   jambes[0] / bras[0] : côté proche ; [1] : côté du fond.
 const RAD = Math.PI / 180;
+const PROP = { cuisse: 0.235, tibia: 0.215, torse: 0.29, cou: 0.052, rt: 0.061, bras: 0.165, avant: 0.148 };
 export function squelette(x, yBase, h, p, sens = 1) {
-  const cuisse = 0.245 * h, tibia = 0.245 * h, torse = 0.3 * h, cou = 0.09 * h, rt = 0.064 * h;
-  const bras1 = 0.165 * h, bras2 = 0.16 * h;
+  const P = PROP, cuisse = P.cuisse * h, tibia = P.tibia * h, torse = P.torse * h, rt = P.rt * h;
   const pt = (ox, oy, ang, len) => [ox + Math.sin(ang * RAD) * len * sens, oy + Math.cos(ang * RAD) * len];
-  const hanche = [0, 0];
-  const jambes = p.jambes.map(([a, b]) => { const g = pt(0, 0, a, cuisse); const f = pt(g[0], g[1], a - b, tibia); return [g, f]; });
+  const jambes = p.jambes.map(([a, b]) => { const g = pt(0, 0, a, cuisse); const f = pt(g[0], g[1], a - b, tibia); return { g, f, s: a - b }; });
   const pench = p.pench || 0;
   const epaule = pt(0, 0, 180 - pench, torse);
-  const tete = pt(epaule[0], epaule[1], 180 - pench - (p.tete || 0), cou + rt * 0.6);
-  const bras = p.bras.map(([a, b]) => { const e = [epaule[0], epaule[1] + h * 0.03]; const c = pt(e[0], e[1], a, bras1); const m = pt(c[0], c[1], a + b, bras2); return [e, c, m]; });
-  // Le pied le plus bas touche le sol.
-  let bas = 0; for (const [, f] of jambes) bas = Math.max(bas, f[1]);
+  const angT = 180 - pench - (p.tete || 0);
+  const tete = pt(epaule[0], epaule[1], angT, P.cou * h + rt * 0.92);
+  const art = pt(0, 0, 180 - pench, torse * 0.9);                 // articulation de l'épaule, un peu sous le haut du torse
+  const bras = p.bras.map(([a, b]) => { const c = pt(art[0], art[1], a, P.bras * h); const m = pt(c[0], c[1], a + b, P.avant * h); return { e: art, c, m, ang: a + b }; });
+  // pieds : le talon se lève quand la jambe passe derrière, la pointe se relève quand elle attaque devant
+  const pieds = jambes.map(j => { const s = j.s; return s < -8 ? (-s - 8) * 0.9 : s > 12 ? -(s - 12) * 0.6 : 0; });
+  let bas = 0;
+  jambes.forEach((j, i) => { for (const q of PIED) bas = Math.max(bas, j.f[1] + rotPied(q, pieds[i], h, 1)[1]); });
   if (p.assis) bas = p.assis * h;
   const dx = x, dy = yBase - bas;
-  const T = q => `${r1(q[0] + dx)} ${r1(q[1] + dy)}`;
-  let membres = '';
-  for (const [g, f] of jambes) membres += `M${T(hanche)}L${T(g)}L${T(f)}`;
-  let brasD = '';
-  for (const [e, c, m] of bras) brasD += `M${T(e)}L${T(c)}L${T(m)}`;
-  // Torse galbé : hanches, taille, poitrine, épaules arrondies.
-  const ux = epaule[0] / torse, uy = epaule[1] / torse, nx = -uy, ny = ux;
-  const P2 = (t, w) => T([ux * torse * t + nx * w * h, uy * torse * t + ny * w * h]);
-  const Q2 = (t, w) => T([ux * torse * t + nx * w * h, uy * torse * t + ny * w * h]);
-  const corps = `M${P2(0, 0.088)}Q${Q2(0.35, 0.066)} ${P2(0.55, 0.078)}L${P2(0.88, 0.104)}Q${Q2(1.08, 0.112)} ${P2(1.04, 0.04)}L${P2(1.12, 0.02)}L${P2(1.12, -0.02)}L${P2(1.04, -0.04)}Q${Q2(1.08, -0.112)} ${P2(0.88, -0.104)}L${P2(0.55, -0.078)}Q${Q2(0.35, -0.066)} ${P2(0, -0.088)}Q${Q2(-0.1, 0)} ${P2(0, 0.088)}Z`;
-  return { membres, brasD, corps, tete: { x: tete[0] + dx, y: tete[1] + dy, r: rt }, epaule: [epaule[0] + dx, epaule[1] + dy], mains: bras.map(b => [b[2][0] + dx, b[2][1] + dy]), hanche: [dx, dy] };
+  const T = (q) => [q[0] + dx, q[1] + dy];
+  return {
+    h, sens, pench, angT, rt,
+    hanche: T([0, 0]), epaule: T(epaule), tete: { x: tete[0] + dx, y: tete[1] + dy, r: rt },
+    jambes: jambes.map((j, i) => ({ g: T(j.g), f: T(j.f), pied: pieds[i] })),
+    bras: bras.map(b => ({ e: T(b.e), c: T(b.c), m: T(b.m), ang: b.ang })),
+    mains: bras.map(b => T(b.m)), poing: !!p.poing, doigts: p.doigts ?? 22,
+  };
 }
-// Poses nommées. phase (0..1) pour la marche et la course.
+// Chaussure (repère de la cheville, unités de h, x vers l'avant, y vers le bas).
+const PIED = [[-0.044, 0.006], [-0.03, -0.02], [0.018, -0.017], [0.07, 0.01], [0.103, 0.023], [0.113, 0.035], [0.102, 0.046], [-0.038, 0.046], [-0.05, 0.03]];
+function rotPied(q, deg, h, sens) {
+  const a = deg * RAD, x = q[0] * h, y = q[1] * h;
+  return [(x * Math.cos(a) - y * Math.sin(a)) * sens, x * Math.sin(a) + y * Math.cos(a)];
+}
+// Tête de profil et cheveux (repère de la tête, unités du rayon ; x vers l'avant, y vers le bas).
+const TETE = [[-0.98, -0.05], [-0.86, -0.62], [-0.36, -0.98], [0.3, -0.98], [0.78, -0.62], [0.9, -0.26], [0.85, -0.08], [1.1, 0.17], [0.92, 0.3], [0.97, 0.44], [0.88, 0.57], [0.91, 0.71], [0.72, 0.86], [0.3, 0.84], [-0.04, 0.56], [-0.36, 0.52], [-0.76, 0.36]];
+const CHEV_COURTS = [[-1.05, 0.06], [-1.01, -0.6], [-0.46, -1.09], [0.3, -1.09], [0.83, -0.72], [0.88, -0.5], [0.56, -0.63], [0.1, -0.56], [-0.28, -0.3], [-0.44, 0.12], [-0.76, 0.44]];
+const CHEV_LONGS = [[-1.06, 0.06], [-1.01, -0.62], [-0.46, -1.1], [0.3, -1.09], [0.85, -0.72], [0.9, -0.46], [0.52, -0.6], [0.06, -0.5], [-0.24, -0.1], [-0.28, 0.7], [-0.3, 1.5], [-0.8, 1.62], [-1.12, 0.9]];
+const CHAPEAU = [[-1.62, -0.5], [-0.82, -0.6], [-0.74, -1.32], [0.7, -1.34], [0.82, -0.62], [1.66, -0.54], [1.62, -0.42], [-1.6, -0.38]];
+
+const f1 = (q) => `${r1(q[0])} ${r1(q[1])}`;
+// Spline de Catmull-Rom fermée → chemin de Bézier ; orientée comme les capsules (aire négative à l'écran) pour que les
+// parties d'un même chemin se recouvrent sans trou.
+function lisse(pts, k = 1) {
+  let a = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; a += p[0] * q[1] - q[0] * p[1]; }
+  if (a > 0) pts = pts.slice().reverse();
+  const n = pts.length, P = (i) => pts[(i + n) % n];
+  let d = `M${f1(pts[0])}`;
+  for (let i = 0; i < n; i++) {
+    const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6 * k, p1[1] + (p2[1] - p0[1]) / 6 * k];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6 * k, p2[1] - (p3[1] - p1[1]) / 6 * k];
+    d += `C${f1(c1)} ${f1(c2)} ${f1(p2)}`;
+  }
+  return d + 'Z';
+}
+// Capsule effilée de a (rayon ra) à b (rayon rb), galbée d'un côté (gonfle > 0 : vers l'avant du corps, < 0 : vers l'arrière).
+function capsule(a, b, ra, rb, gonfle = 0, sens = 1) {
+  let dx = b[0] - a[0], dy = b[1] - a[1]; const L = Math.hypot(dx, dy) || 1e-6; dx /= L; dy /= L;
+  const nx = -dy, ny = dx;
+  const avant = Math.sign(nx * sens) || 1;                 // le côté +n regarde-t-il vers l'avant du corps ?
+  const gP = gonfle * avant > 0 ? Math.abs(gonfle) : 0, gM = gonfle * avant < 0 ? Math.abs(gonfle) : 0;
+  const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, rm = (ra + rb) / 2;
+  const a1 = [a[0] + nx * ra, a[1] + ny * ra], b1 = [b[0] + nx * rb, b[1] + ny * rb], b2 = [b[0] - nx * rb, b[1] - ny * rb], a2 = [a[0] - nx * ra, a[1] - ny * ra];
+  const c1 = [mx + nx * (rm + gP * 2), my + ny * (rm + gP * 2)], c2 = [mx - nx * (rm + gM * 2), my - ny * (rm + gM * 2)];
+  return `M${f1(a1)}Q${f1(c1)} ${f1(b1)}A${r1(rb)} ${r1(rb)} 0 0 0 ${f1(b2)}Q${f1(c2)} ${f1(a2)}A${r1(ra)} ${r1(ra)} 0 0 0 ${f1(a1)}Z`;
+}
+const versDir = (o, ang, len, sens) => [o[0] + Math.sin(ang * RAD) * len * sens, o[1] + Math.cos(ang * RAD) * len];
+
+// Toutes les parties d'un corps (clé → chemin). o : options de humain (robe, manteau, cheveux, chapeau, sac, lampe…).
+export function formes(x, yBase, h, nomPose, phase = 0, sens = 1, o = {}) {
+  const p = typeof nomPose === 'string' ? pose(nomPose, phase) : nomPose;
+  const k = squelette(x, yBase, h, p, sens);
+  const F = {};
+  // jambes (cuisse galbée devant, mollet derrière) et chaussures
+  k.jambes.forEach((j, i) => {
+    F['j' + i] = capsule(k.hanche, j.g, 0.058 * h, 0.04 * h, 0.012 * h, sens) + capsule(j.g, j.f, 0.039 * h, 0.022 * h, -0.016 * h, sens);
+    F['p' + i] = lisse(PIED.map(q => { const r = rotPied(q, j.pied, h, sens); return [j.f[0] + r[0], j.f[1] + r[1]]; }), 0.9);
+  });
+  // torse de profil : bassin, ventre, poitrine, dos, omoplates, base du cou
+  const ux = (k.epaule[0] - k.hanche[0]) / (PROP.torse * h), uy = (k.epaule[1] - k.hanche[1]) / (PROP.torse * h);
+  const fx = -uy * sens, fy = ux * sens;
+  const T = (t, w) => [k.hanche[0] + ux * PROP.torse * h * t + fx * w * h, k.hanche[1] + uy * PROP.torse * h * t + fy * w * h];
+  F.corps = lisse([T(-0.1, 0.048), T(0.14, 0.054), T(0.4, 0.048), T(0.64, 0.062), T(0.86, 0.054), T(1.0, 0.032), T(1.07, 0.02),
+    T(1.07, -0.026), T(0.97, -0.054), T(0.76, -0.064), T(0.5, -0.05), T(0.3, -0.042), T(0.1, -0.06), T(-0.07, -0.066), T(-0.18, -0.03)]);
+  // cou et tête
+  const t = k.tete, hx = Math.sin(k.angT * RAD) * sens, hy = Math.cos(k.angT * RAD);      // « haut » de la tête
+  const ax = -hy * sens, ay = hx * sens;                                                    // « avant » de la tête
+  const H2 = (q) => [t.x + ax * q[0] * t.r - hx * q[1] * t.r, t.y + ay * q[0] * t.r - hy * q[1] * t.r];
+  F.cou = capsule(T(0.98, -0.006), H2([-0.12, 0.62]), 0.027 * h, 0.024 * h, 0, sens);
+  F.tete = lisse(TETE.map(H2), 1);
+  if (o.cheveux) F.cheveux = lisse((o.cheveuxLongs ? CHEV_LONGS : CHEV_COURTS).map(H2), 1);
+  if (o.chapeau) F.chapeau = lisse(CHAPEAU.map(H2), 0.6);
+  // bras (biceps, avant-bras) et mains (paume, doigts repliés, pouce)
+  k.bras.forEach((b, i) => {
+    F['b' + i] = capsule(b.e, b.c, 0.04 * h, 0.03 * h, -0.006 * h, sens) + capsule(b.c, b.m, 0.03 * h, 0.02 * h, 0.006 * h, sens);
+    const paume = versDir(b.m, b.ang, 0.046 * h, sens);
+    const plie = k.poing ? 95 : k.doigts;
+    const bout = versDir(paume, b.ang + plie, (k.poing ? 0.026 : 0.044) * h, sens);
+    const pouceA = versDir(b.m, b.ang + 90, 0.012 * h, sens), pouceB = versDir(pouceA, b.ang + 38, 0.03 * h, sens);
+    F['m' + i] = capsule(b.m, paume, 0.018 * h, 0.021 * h, 0, sens) + capsule(paume, bout, 0.019 * h, 0.011 * h, 0, sens) + capsule(pouceA, pouceB, 0.009 * h, 0.0065 * h, 0, sens);
+  });
+  // vêtements longs : robe (évasée, suit les genoux), manteau (des épaules à mi-cuisse, le vent le pousse)
+  const genoux = k.jambes.map(j => j.g);
+  const avantG = Math.max(...genoux.map(g => (g[0] - k.hanche[0]) * sens)), arriereG = Math.min(...genoux.map(g => (g[0] - k.hanche[0]) * sens));
+  const yG = Math.max(...genoux.map(g => g[1]));
+  if (o.robe) F.robe = lisse([T(0.36, 0.05), [k.hanche[0] + (avantG + 0.05 * h) * sens, yG + 0.035 * h], [k.hanche[0] + (arriereG - 0.06 * h) * sens, yG + 0.04 * h], T(0.36, -0.048)], 0.7);
+  if (o.manteau) {
+    const v = (o.vent || 0) * -sens * 0.6;
+    F.manteau = lisse([T(1.0, 0.04), T(0.62, 0.068), T(0.2, 0.066), [k.hanche[0] + (avantG * 0.6 + 0.06 * h) * sens + v * 0.5, k.hanche[1] + 0.2 * h],
+      [k.hanche[0] + (arriereG * 0.6 - 0.07 * h) * sens + v, k.hanche[1] + 0.21 * h], T(0.2, -0.07), T(0.7, -0.07), T(0.98, -0.058)], 0.8);
+  }
+  if (o.sac) { const [mx, my] = k.mains[0]; F.sac = `M${f1([mx - 0.012 * h, my + 0.01 * h])}l${r1(-0.035 * h)} ${r1(0.03 * h)}v${r1(0.075 * h)}q0 ${r1(0.012 * h)} ${r1(0.012 * h)} ${r1(0.012 * h)}h${r1(0.075 * h)}q${r1(0.012 * h)} 0 ${r1(0.012 * h)} ${r1(-0.012 * h)}v${r1(-0.075 * h)}l${r1(-0.035 * h)} ${r1(-0.03 * h)}z`; }
+  if (o.lampe) { const [mx, my] = k.mains[0]; const q = versDir([mx, my], k.bras[0].ang, 0.05 * h, sens); F.lampe = `M${f1([q[0] - 0.022 * h, q[1]])}a${r1(0.022 * h)} ${r1(0.022 * h)} 0 1 0 ${r1(0.044 * h)} 0a${r1(0.022 * h)} ${r1(0.022 * h)} 0 1 0 ${r1(-0.044 * h)} 0z`; }
+  if (o.sonnaille) F.sonnaille = `M${f1(T(0.95, 0.02))}h${r1(0.04 * h * sens)}l${r1(0.01 * h * sens)} ${r1(0.06 * h)}h${r1(-0.06 * h * sens)}z`;
+  F._k = k;
+  return F;
+}
+// Poses nommées. phase (0..1) pour la marche et la course : une vraie foulée (genou qui se plie au passage, bras opposés).
+function foulee(phase, ampC = 18, ampG = 48, base = 6, decal = 6) {
+  const jambe = (ph) => {
+    const a = decal + ampC * Math.sin(ph * Math.PI * 2);                                   // la cuisse va plus loin devant que derrière
+    const g = base + ampG * Math.pow(Math.max(0, Math.cos((ph + 0.04) * Math.PI * 2)), 1.6);  // le genou se plie au passage
+    return [a, g];
+  };
+  return [jambe(phase), jambe(phase + 0.5)];
+}
 export function pose(nom, phase = 0) {
-  const s = Math.sin(phase * Math.PI * 2), c = Math.cos(phase * Math.PI * 2);
+  const s = Math.sin(phase * Math.PI * 2);
+  const bras = (amp, coude = 16) => [[-amp * s, coude + 8 * Math.max(0, -s)], [amp * s, coude + 8 * Math.max(0, s)]];
   switch (nom) {
-    case 'debout': return { pench: 2, jambes: [[3, 0], [-3, 0]], bras: [[4, 6], [-3, 4]] };
-    case 'marche': return { pench: 4, jambes: [[22 * s, Math.max(0, -c) * 28 + 4], [-22 * s, Math.max(0, c) * 28 + 4]], bras: [[-18 * s, 14], [18 * s, 14]] };
-    case 'cabas': return { pench: 3, jambes: [[18 * s, Math.max(0, -c) * 24 + 4], [-18 * s, Math.max(0, c) * 24 + 4]], bras: [[-12 * s, 8], [8, 4]] };
-    case 'court': return { pench: 18, tete: -8, jambes: [[38 * s, Math.max(0, -c) * 70 + 10], [-38 * s, Math.max(0, c) * 70 + 10]], bras: [[-50 * s, 80], [50 * s, 80]] };
-    case 'courbe': return { pench: 28, tete: -6, jambes: [[16 * s + 8, 12 + Math.max(0, -c) * 20], [-16 * s + 8, 12 + Math.max(0, c) * 20]], bras: [[30, 40], [10, 60]] };
-    case 'mort': return { pench: 12 + s * 3, tete: 28, jambes: [[10 * s, 6], [-12 * s, 14]], bras: [[18, 10], [-4, 2]] };
-    case 'mort_bras': return { pench: 10, tete: 20, jambes: [[10 * s, 6], [-10 * s, 12]], bras: [[80, 10], [70, 20]] };
-    case 'mort_leve': return { pench: -4, tete: -40, jambes: [[3, 0], [-3, 2]], bras: [[10, 0], [-6, 0]] };
-    case 'penche': return { pench: 58, tete: 40, jambes: [[12, 20], [-8, 6]], bras: [[70, 40], [50, 50]] };
+    case 'debout': return { pench: 2, tete: -2, jambes: [[4, 2], [-3, 1]], bras: [[3, 8], [-4, 10]], doigts: 30 };
+    case 'marche': return { pench: 4, tete: -3, jambes: foulee(phase), bras: bras(18), doigts: 26 };
+    case 'cabas': return { pench: 3, tete: -2, jambes: foulee(phase, 16, 42), bras: [[5, 4], [-12 * s, 14]], doigts: 70 };
+    case 'court': return { pench: 16, tete: -10, jambes: foulee(phase, 36, 100, 14, 12), bras: [[-46 * s, 84], [46 * s, 84]], poing: true };
+    case 'courbe': return { pench: 26, tete: -10, jambes: foulee(phase, 14, 38, 14, 14), bras: [[30, 40], [12, 58]], doigts: 50 };
+    case 'mort': return { pench: 12 + s * 3, tete: 28, jambes: [[10 * s, 6], [-12 * s, 14]], bras: [[18, 10], [-4, 2]], doigts: 10 };
+    case 'mort_bras': return { pench: 10, tete: 20, jambes: [[10 * s, 6], [-10 * s, 12]], bras: [[80, 10], [70, 20]], doigts: 40 };
+    case 'mort_leve': return { pench: -4, tete: -40, jambes: [[3, 0], [-3, 2]], bras: [[10, 0], [-6, 0]], doigts: 10 };
+    case 'penche': return { pench: 58, tete: 40, jambes: [[12, 20], [-8, 6]], bras: [[70, 40], [50, 50]], doigts: 40 };
     case 'accroupi': return { pench: 40, tete: 10, jambes: [[90, 150], [80, 140]], bras: [[60, 20], [40, 30]] };
     case 'assis': return { pench: 6, tete: 10, assis: 0.02, jambes: [[90, 90], [85, 80]], bras: [[40, 50], [30, 60]] };
     case 'assis_sol': return { pench: 12, tete: 18, assis: 0.02, jambes: [[90, 10], [80, 30]], bras: [[30, 40], [20, 50]] };
-    case 'bras_leves': return { pench: -2, tete: -10, jambes: [[4, 0], [-4, 0]], bras: [[170, 8], [158, 12]] };
-    case 'bras_tendus': return { pench: 0, tete: -25, jambes: [[5, 0], [-5, 0]], bras: [[150, 5], [140, 5]] };
-    case 'porte_lampe': return { pench: 6, jambes: [[18 * s, Math.max(0, -c) * 22 + 4], [-18 * s, Math.max(0, c) * 22 + 4]], bras: [[70, 10], [-10 * s, 14]] };
-    case 'regarde_mains': return { pench: 20, tete: 40, assis: 0.02, jambes: [[90, 10], [80, 20]], bras: [[70, 70], [60, 80]] };
+    case 'bras_leves': return { pench: -2, tete: -10, jambes: [[4, 0], [-4, 0]], bras: [[170, 8], [158, 12]], doigts: 6 };
+    case 'bras_tendus': return { pench: 0, tete: -25, jambes: [[5, 0], [-5, 0]], bras: [[150, 5], [140, 5]], doigts: 8 };
+    case 'porte_lampe': return { pench: 6, jambes: foulee(phase, 16, 44), bras: [[70, 10], [-12 * s, 14]], poing: true };
+    case 'regarde_mains': return { pench: 20, tete: 40, assis: 0.02, jambes: [[90, 10], [80, 20]], bras: [[70, 70], [60, 80]], doigts: 14 };
     case 'redresse': return { pench: 10, tete: 30, assis: 0.02, jambes: [[90, 80], [70, 60]], bras: [[20, 30], [60, 70]] };
-    case 'porte_redon': return { pench: 4, tete: 6, jambes: [[16 * s, Math.max(0, -c) * 18 + 4], [-16 * s, Math.max(0, c) * 18 + 4]], bras: [[40, 90], [30, 100]] };
-    case 'leve_cloche': return { pench: -4, tete: -10, jambes: [[14 * s, Math.max(0, -c) * 18 + 4], [-14 * s, Math.max(0, c) * 18 + 4]], bras: [[165, 5], [20, 60]] };
+    case 'porte_redon': return { pench: 4, tete: 6, jambes: foulee(phase, 16, 44), bras: [[40, 90], [30, 100]], poing: true };
+    case 'leve_cloche': return { pench: -4, tete: -10, jambes: foulee(phase, 14, 40), bras: [[165, 5], [20, 60]], poing: true };
     default: return pose('debout');
   }
 }
-// Silhouette humaine complète. o : { corps, jambes, tete, sens, robe, sac, chapeau, cls, attrs, id }
+// Silhouette humaine complète. o : { corps, jambes, tete, bras, cheveux, cheveuxLongs, sens, robe, manteau, vent, sac, chapeau,
+//   lampe, enfant, sonnaille, cls, attrs }
+const ORDRE = [['b1', 'manche', 0.16], ['m1', 'peau', 0.16], ['j1', 'jambes', 0.15], ['p1', 'chaussure', 0.15], ['j0', 'jambes', 0], ['p0', 'chaussure', 0],
+  ['robe', 'robe', 0], ['corps', 'corps', 0], ['manteau', 'manteau', 0], ['cou', 'peau', 0.12], ['tete', 'peau', 0], ['cheveux', 'cheveux', 0],
+  ['chapeau', 'chapeau', 0], ['sonnaille', 'sonnaille', 0], ['sac', 'sac', 0], ['b0', 'manche', 0], ['m0', 'peau', 0], ['lampe', 'lampe', 0]];
+// Options qui ajoutent des parties (gardées sur le groupe animé : data-o).
+export const OPTIONS_FORMES = ['robe', 'manteau', 'cheveux', 'cheveuxLongs', 'chapeau', 'sac', 'lampe', 'sonnaille', 'vent'];
 export function humain(x, yBase, h, nomPose, o = {}, phase = 0) {
   const sens = o.sens || 1;
-  const p = typeof nomPose === 'string' ? pose(nomPose, phase) : nomPose;
-  const k = squelette(x, yBase, h, p, sens);
-  const cc = o.corps || '#111', cj = o.jambes || cc, ct = o.tete || cc, cb = o.bras || cc;
+  const F = formes(x, yBase, h, nomPose, phase, sens, o);
+  const cc = o.corps || '#111111', cj = o.jambes || cc, ct = o.tete || cc;
+  const coul = { corps: cc, jambes: cj, peau: ct, manche: o.bras || sombre(cc, 0.08), chaussure: mix(sombre(cj, 0.45), '#16130f', 0.5), robe: o.robe, manteau: o.manteau,
+    cheveux: o.cheveux, chapeau: o.chapeau, sac: o.sac, lampe: o.lampe, sonnaille: o.sonnaille };
   let s = `<g class="${o.cls || 'humain'}" ${o.attrs || ''}>`;
-  s += `<path class="h-jambes" d="${k.membres}" stroke="${cj}" stroke-width="${r1(h * (o.epJ || 0.08))}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
-  s += `<path class="h-corps" d="${k.corps}" fill="${cc}"/>`;
-  if (o.robe) {
-    const [hx, hy] = k.hanche;
-    s += `<path d="M${r1(hx - h * 0.08)} ${r1(hy - h * 0.06)}L${r1(hx + h * 0.08)} ${r1(hy - h * 0.06)}L${r1(hx + h * 0.13)} ${r1(hy + h * 0.2)}L${r1(hx - h * 0.13)} ${r1(hy + h * 0.2)}Z" fill="${o.robe}"/>`;
+  for (const [cle, c, fonce] of ORDRE) {
+    const d = F[cle]; if (!d || !coul[c]) continue;
+    s += `<path class="h-${cle}" data-k="${cle}" d="${d}" fill="${fonce ? sombre(coul[c], fonce) : coul[c]}"/>`;
   }
-  if (o.manteau) {
-    const [hx, hy] = k.hanche;
-    s += `<path d="M${r1(k.epaule[0] - h * 0.09)} ${r1(k.epaule[1] + h * 0.02)}L${r1(k.epaule[0] + h * 0.09)} ${r1(k.epaule[1] + h * 0.02)}L${r1(hx + h * 0.12 + (o.vent || 0))} ${r1(hy + h * 0.14)}L${r1(hx - h * 0.12 + (o.vent || 0))} ${r1(hy + h * 0.16)}Z" fill="${o.manteau}"/>`;
-  }
-  s += `<path class="h-bras" d="${k.brasD}" stroke="${o.bras || sombre(cc, 0.16)}" stroke-width="${r1(h * (o.epB || 0.064))}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
-  s += `<circle class="h-tete" cx="${r1(k.tete.x)}" cy="${r1(k.tete.y)}" r="${r1(k.tete.r)}" fill="${ct}"/>`;
-  if (o.cheveux) {
-    const r = k.tete.r, tx = k.tete.x, ty = k.tete.y;
-    s += o.cheveuxLongs
-      ? `<path class="h-cheveux" d="M${r1(tx - r * 1.05)} ${r1(ty + r * 0.2)}a${r1(r * 1.05)} ${r1(r * 1.1)} 0 0 1 ${r1(r * 2.1)} 0l${r1(-r * 0.1 * sens)} ${r1(r * 1.5)}h${r1(-r * 1.9)}z" fill="${o.cheveux}"/>`
-      : `<path class="h-cheveux" d="M${r1(tx - r * 1.04)} ${r1(ty + r * 0.1)}a${r1(r * 1.04)} ${r1(r * 1.1)} 0 0 1 ${r1(r * 2.08)} 0q${r1(-r * 0.5)} ${r1(-r * 0.55)} ${r1(-r * 1.3)} ${r1(-r * 0.45)}z" fill="${o.cheveux}"/>`;
-  }
-  if (o.chapeau) s += `<path d="M${r1(k.tete.x - k.tete.r * 1.8)} ${r1(k.tete.y - k.tete.r * 0.35)}h${r1(k.tete.r * 3.6)}M${r1(k.tete.x - k.tete.r * 0.9)} ${r1(k.tete.y - k.tete.r * 0.35)}v${r1(-k.tete.r * 0.9)}h${r1(k.tete.r * 1.8)}v${r1(k.tete.r * 0.9)}" stroke="${o.chapeau}" stroke-width="${r1(k.tete.r * 0.45)}" fill="${o.chapeau}"/>`;
-  if (o.sac) { const [mx, my] = k.mains[1]; s += `<path d="M${r1(mx - h * 0.05)} ${r1(my)}h${r1(h * 0.1)}l${r1(-h * 0.01)} ${r1(h * 0.1)}h${r1(-h * 0.08)}z" fill="${o.sac}"/>`; }
-  if (o.lampe) { const [mx, my] = k.mains[0]; s += `<circle class="h-lampe" cx="${r1(mx)}" cy="${r1(my)}" r="${r1(h * 0.025)}" fill="${o.lampe}"/>`; }
-  if (o.enfant) s += humain(k.epaule[0] - h * 0.04 * sens, k.epaule[1] + h * 0.02, h * 0.36, 'assis', { corps: o.enfant, sens });
-  if (o.sonnaille) s += `<path d="M${r1(k.epaule[0] - h * 0.02)} ${r1(k.epaule[1] + h * 0.02)}h${r1(h * 0.04)}l${r1(h * 0.01)} ${r1(h * 0.06)}h${r1(-h * 0.06)}z" fill="${o.sonnaille}"/>`;
+  if (o.enfant) { const k = F._k; s += humain(k.epaule[0] - h * 0.04 * sens, k.epaule[1] + h * 0.02, h * 0.36, 'assis', { corps: o.enfant, sens }); }
   return s + '</g>';
 }
-// Membres seuls (pour animer une marche sans reconstruire la silhouette) : { jambes, bras }.
-export function membres(x, yBase, h, nomPose, phase, sens = 1) {
-  const k = squelette(x, yBase, h, pose(nomPose, phase), sens);
-  return { jambes: k.membres, bras: k.brasD, corps: k.corps, tete: k.tete };
-}
+// Parties seules (pour animer une marche sans reconstruire la silhouette) : { clé: chemin }.
+export function membres(x, yBase, h, nomPose, phase, sens = 1, o = {}) { return formes(x, yBase, h, nomPose, phase, sens, o); }
 // Corps couché (mort au sol, housse).
 export function gisant(x, yBase, lg, c, o = {}) {
   const e = lg * 0.16;

@@ -1,6 +1,6 @@
 // ============ Panneaux — cadre commun (plein écran sur mobile, latéral sur PC) ============
 // ouvrirPanneau(nom, opts), fermerPanneau(), panneauOuvert() → nom|null.
-// nom ∈ 'inventaire' | 'corps' | 'fabrication' | 'journal' | 'options'. En solo, l'horloge est en pause tant qu'un panneau est ouvert.
+// nom ∈ 'inventaire' | 'corps' | 'fabrication' | 'construction' | 'journal' | 'options'. En solo, l'horloge est en pause tant qu'un panneau est ouvert.
 // Chaque panneau exporte monter(corps, opts, api) → { maj?(evt), demonter?() } ; api = { ouvrir, fermer, rafraichir }.
 // Émet bus 'panneau' { nom|null }.
 import { G } from '../../core/state.js';
@@ -10,6 +10,7 @@ import { ico } from '../icons.js';
 import * as inventaire from './inventaire.js';
 import * as corps from './corps.js';
 import * as fabrication from './fabrication.js';
+import * as construction from './construction.js';
 import * as journal from './journal.js';
 import * as options from './options.js';
 
@@ -17,6 +18,7 @@ const PANNEAUX = {
   inventaire: { titre: 'Sac', icone: 'sac', m: inventaire },
   corps: { titre: 'Corps', icone: 'corps', m: corps },
   fabrication: { titre: 'Fabriquer', icone: 'fabrication', m: fabrication },
+  construction: { titre: 'Construire', icone: 'marteau', m: construction },
   journal: { titre: 'Journal', icone: 'journal', m: journal },
   options: { titre: 'Menu', icone: 'menu', m: options },
 };

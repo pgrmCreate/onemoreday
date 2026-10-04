@@ -10,10 +10,8 @@ import { nomCompetence } from '../../game/player.js';
 import { iconeObjet, ICONE_CATEGORIE_RECETTE } from '../icons.js';
 import { toast } from '../toast.js';
 import { el, icoEl, bouton, avecScroll, vide, pct, g } from './commun.js';
-import { dessinerConstruire } from './construire.js';
 
 let etat = { cat: null, sel: null, qty: 1, cible: null };
-const etatC = { sel: null };   // onglet « Construire »
 let apiPanneau = null;
 let enCours = null; // { raf, debut, duree, id }
 
@@ -42,14 +40,9 @@ function dessiner(racine) {
   };
   cats.append(catBtn(null, 'Tout', 'tout', totF));
   for (const [id, nom] of Object.entries(craft.CATEGORIES_RECETTES)) cats.append(catBtn(id, nom, ICONE_CATEGORIE_RECETTE[id] || 'fabrication', comptes[id] && comptes[id].faisables));
-  cats.append(catBtn('construire', 'Construire', 'etabli', 0));
-  if (etat.cat === 'construire') {
-    const liste = el('div', { class: 'fa-liste', 'data-scroll': 'liste-construire' });
-    const fiche = el('aside', { class: 'pn-fiche fa-fiche', 'data-scroll': 'fiche' });
-    dessinerConstruire(liste, fiche, etatC, () => dessiner(racine), apiPanneau);
-    racine.append(el('div', { class: 'fa-grille' + (etatC.sel ? ' avec-fiche' : '') }, cats, liste, fiche));
-    return;
-  }
+  // la construction a son propre menu (rail, ou bouton marteau du HUD) : ce raccourci y mène
+  cats.append(el('button', { type: 'button', class: 'fa-cat fa-cat-lien', title: 'Construire', onclick: () => apiPanneau && apiPanneau.ouvrir('construction') }, icoEl('marteau'), el('span', {}, 'Construire'), icoEl('chevron')));
+  if (etat.cat === 'construire') etat.cat = null;
   // Postes disponibles
   const po = craft.postesDisponibles(p);
   const postes = el('div', { class: 'fa-postes' },

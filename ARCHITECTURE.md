@@ -39,7 +39,9 @@ js/explore/             Temps 1 : l'exploration — et le combat sur place
   combat.js               règles pures du combat · niveau.js : point d'entrée des plans · vision, physique, entrées, canal_local
 
 js/travel/              Temps 2 : géographie réelle, carte illustrée SVG, voyage et rencontres
-js/cine/                cinématiques en parallaxe (36 décors)
+js/cine/                cinématiques en parallaxe (36 décors) ; lib.js : personnages dessinés comme des corps (membres galbés,
+                        pieds, mains, visage de profil, vraie foulée) ; main.js : main articulée (doigts, pouce, ongles)
+                        de l'hôpital ; banc d'essai dev/humains.html
 js/ui/                  HUD général, panneaux (inventaire, corps, fabrication, journal, options), scènes à choix, toasts
 js/net/                 transport WebSocket (net.js) + co-op (coop.js) : hôte-autoritaire, instantanés différentiels,
                         coéquipier visible, relève, histoire partagée, scène suivie en direct, « Rejoindre »
@@ -63,6 +65,7 @@ Vérifications : `node tools/valider_niveaux.mjs` · `node dev/test_combat.mjs` 
   Chargées par `js/rendu/textures.js` (`chargerSolsPhoto`) ; le procédural sert tant qu'elles ne sont pas arrivées.
 - `img/cine/<décor>.webp` : plaques photographiques des cinématiques, rendues avec une caméra panoramique dans un HDRI Poly Haven
   (vraie photo 360°), cadrées et étalonnées par ambiance ; `js/cine/photos.js` dit quelles couches dessinées elles remplacent
-  (les couches proches restent, en silhouettes). Non préchargées par le service worker (6 Mo, chargées à la demande).
+  (les couches proches restent, en silhouettes ; une couche `naturel` garde ses couleurs : la main de l'hôpital).
+  Non préchargées par le service worker (6 Mo, chargées à la demande).
 - Sources Blender (hors dépôt) : `D:\projects 3D\OneMoreDay\omd_textures_sol.blend`, `omd_cine.blend`, `plaques.json`
   (décor → HDRI, angle, inclinaison, étalonnage).

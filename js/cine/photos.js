@@ -4,7 +4,8 @@
 // plaques.json). Le lecteur la pose comme couche de fond (profondeur 0,15 : elle glisse doucement) et retire les couches
 // dessinées qu'elle remplace : celles de profondeur < `jusqua` (sauf les couches nommées qu'on garde, ex. les foules
 // animées) et celles nommées dans `retirer`. Les couches restantes (personnages, foules, objets proches) passent en
-// silhouettes : luminosité × `ombre`, saturation réduite — elles se détachent sur la photo comme à contre-jour.
+// silhouettes : luminosité × `ombre`, saturation réduite — elles se détachent sur la photo comme à contre-jour ; une couche
+// marquée `naturel` (la main de l'hôpital) garde ses couleurs, simplement étalonnées.
 // Un décor absent de la liste (housse_noir…) reste entièrement dessiné.
 const NUIT = 0.26, SOIR = 0.32, JOUR = 0.36;
 export const PHOTOS = {

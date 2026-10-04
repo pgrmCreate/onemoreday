@@ -26,14 +26,17 @@ import { genererEmbuscade } from './embuscade.js';
 import { creerHud } from './hud_explore.js';
 import { mod, chargerOptionnels, lierCommun, vib, sfx, sfxA, posPorte, verifierCondition, compter, niv, message, afficherLieu, caseLibrePres } from './commun.js';
 import { lierButin, avancerFouille, interrompreFouille, fermerButin, fournisseurSol } from './butin.js';
-import { lierInteractions, chercherCible, majInvite, interagir, interagirSecondaire, avancerAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
+import { lierInteractions, chercherCible, majInvite, interagir, basculerChoix, fermerChoix, choisir, avancerAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
 import { lierCombatLieu, combatIci as combatIci_, embuscade as embuscade_, suivreCombat, finArene } from './combat_lieu.js';
-import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, majConstruction, feuxCommeLampes, fantome } from './construction.js';
+import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, viserPlacement, majConstruction, feuxCommeLampes, fantome } from './construction.js';
 
 export { verifierCondition };
 const RX = REGLAGES.exploration, RL = REGLAGES.lumiere;
 const RAYON = 0.3;
 const JOUEUR_ID = 'local';
+// Zoom à trois crans (petit bouton discret en bas à gauche) : large, normal, proche. La molette et le pincement restent libres.
+const CRANS_ZOOM = [0.72, 1, 1.4];
+const cranZoom = (z) => { let b = 0; for (let i = 1; i < CRANS_ZOOM.length; i++) if (Math.abs(CRANS_ZOOM[i] - z) < Math.abs(CRANS_ZOOM[b] - z)) b = i; return b; };
 const EVTS_COMBAT = ['telegraphe', 'fente', 'attaque', 'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule'];
 
 // ---------- Crochets remplaçables ----------
@@ -135,17 +138,21 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   V.rendu.setZoom(V.zoom);
   V.entrees = creerEntrees({ racine, canvas, actions: {
     interagir: (o) => interagir(o), lampe: basculerLampe, inventaire: ouvrirInventaire,
-    carte: () => { V.carte = !V.carte; }, echap, zoom: (f) => { V.zoom = clamp(V.zoom * f, 0.55, 2); V.rendu.setZoom(V.zoom * (V.zoomCbt || 1)); setPref('zoomExplore', V.zoom); },
+    carte: () => { V.carte = !V.carte; }, echap, zoom: (f) => regleZoom(V.zoom * f),
     accroupi: () => {}, aide: () => V && V.hud.basculerAide(),
     frapper: (appui, annule) => { if (!V || !V.cbt || V.occupe) return; if (enPlacement()) { if (appui) poserPlacement(); return; } if (appui) stopperActions(); V.cbt.frapper(appui, annule); },
-    secondaire: () => interagirSecondaire(),
+    secondaire: () => basculerChoix(),
+    viser: (sx, sy) => viserPlacement(sx, sy),
     tourner: () => tournerPlacement(),
     pousser: () => { if (!V || !V.cbt || V.occupe) return; stopperActions(); V.cbt.pousser(); },
     recharger: () => V && V.cbt && V.cbt.recharger(),
     echangerMains: () => V && V.cbt && V.cbt.echangerMains(),
     dos: () => V && V.cbt && V.cbt.dos(),
-    rapide: (i) => V && V.cbt && V.cbt.rapide(i),
+    rapide: (i) => { if (!V) return; if (V.choix) { choisir(i); return; } if (i < 4 && V.cbt) V.cbt.rapide(i); },
   } });
+  hud.majZoom(cranZoom(V.zoom));
+  hud.zoom.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
+  hud.zoom.addEventListener('click', () => { if (!V) return; const c = cranZoom(V.zoom); regleZoom(CRANS_ZOOM[(c + 1) % CRANS_ZOOM.length]); });
   V.cbt = creerCombatVue({
     canal: V.canal, j: () => V.j, zombies: () => V.zListe, message, sfx, sfxA, vib, inv: mod.inv, player: mod.player, survie: mod.survie, entrees: V.entrees,
     tactile: () => !!(V.entrees.etat.tactile || matchMedia('(pointer: coarse)').matches), pause: () => !V || V.enPause || V.occupe || !!G.player.agonie,
@@ -198,6 +205,7 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   V.off.push(on('quete', () => { if (V) V.tGuide = 0; }));
   V.off.push(on('flag', () => { if (V) V.tGuide = 0; }));
   if (mod.inv && mod.inv.setSol) mod.inv.setSol(fournisseurSol());
+  if (!mod.panneaux) import('../ui/panels/index.js').then(m => { mod.panneaux = m; }).catch(() => {});
 
   V.raf = requestAnimationFrame(boucle);
   if (G.mode === 'solo') clock.setVitesse(((REGLAGES.temps.VITESSE_SOLO || {}).exploration) ?? 1);
@@ -214,7 +222,12 @@ function lierTout(v) {
   lierCombatLieu(v, { entrer, sortir, vue });
   lierConstruction(v);
 }
-function stopperActions() { if (V.fouille || V.butin || V.action) { interrompreFouille(); fermerButin(); V.action = null; V.hud.barre.classList.add('cache'); } }
+function regleZoom(z) {
+  if (!V) return;
+  V.zoom = clamp(z, 0.55, 2); V.rendu.setZoom(V.zoom * (V.zoomCbt || 1)); setPref('zoomExplore', V.zoom);
+  V.hud.majZoom(cranZoom(V.zoom));
+}
+function stopperActions() { fermerChoix(); if (V.fouille || V.butin || V.action) { interrompreFouille(); fermerButin(); V.action = null; V.hud.barre.classList.add('cache'); } }
 function ajouterJoueurSim(pos) {
   const C = V.canal;
   if (C.ajouterJoueur) C.ajouterJoueur(pos, { nom: G.player.nom, discretion: niv('discretion') });
@@ -414,6 +427,7 @@ function image(t, dt) {
   // --- HUD ---
   let menace = false;
   for (const z of V.zListe) if (z.etage === j.etage && (z.etat === 'chasse' || z.atk) && z._vu && Math.hypot(z.x - j.x, z.y - j.y) < 6) { menace = true; break; }
+  alerteMort(t);
   V.hud.majVitaux(menace || !!V.cbt.etat.empoigne);
   V.hud.majLampe(la);
   V.hud.majDegage(V.cbt.etat.empoigne);
@@ -599,12 +613,45 @@ function basculerLampe() {
   V.entrees.setBouton('lampe', { actif: !!V.lampeFallback });
 }
 
+// ---------- Un mort approche : on coupe tout ----------
+// Inventaire ou autre menu ouvert, plan du lieu, placement d'une construction, chantier, fouille, geste en cours :
+// dès qu'un NOUVEAU mort menace (vu et en chasse assez près, vu tout près, ou entendu juste à côté), tout se ferme et on
+// rend la main au joueur. Un mort déjà signalé ne recoupe pas tant qu'il n'a pas disparu quelques secondes (on peut
+// rouvrir le sac en pleine fuite pour prendre un bandage).
+function alerteMort(t) {
+  const j = V.j, A = RX.ALERTE || {}, chasse = A.CHASSE ?? 9, proche = A.PROCHE ?? 3.5, oubli = A.OUBLI_MS ?? 6000;
+  const vus = V.alertes || (V.alertes = new Map());
+  let nouveau = false;
+  for (const z of V.zListe) {
+    if (z.etage !== j.etage || z.terre) continue;
+    const d = Math.hypot(z.x - j.x, z.y - j.y);
+    const menace = z._vu ? ((z.etat === 'chasse' || z.atk) ? d < chasse : d < proche) : (z.etat === 'chasse' && d < 2.2);
+    if (!menace) continue;
+    const avant = vus.get(z.uid);
+    if (avant == null || t - avant > oubli) nouveau = true;
+    vus.set(z.uid, t);
+  }
+  if (nouveau) couperTout();
+}
+function couperTout() {
+  let coupe = false;
+  const pn = mod.panneaux;
+  if (pn && pn.panneauOuvert && pn.panneauOuvert() && pn.panneauOuvert() !== 'options') { pn.fermerPanneau(); coupe = true; }
+  if (V.carte) { V.carte = false; coupe = true; }
+  if (V.choix) { fermerChoix(); coupe = true; }
+  if (annulerPlacement()) coupe = true;
+  if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); coupe = true; }
+  if (V.fouille || V.butin) { interrompreFouille(); fermerButin(); coupe = true; }
+  if (coupe) { message('Un mort approche !', 1800); sfx('alerte'); vib(80); }
+}
+
 // ---------- Divers ----------
 async function ouvrirInventaire() {
   if (mod.panneaux === null || mod.panneaux === undefined) { try { mod.panneaux = await import('../ui/panels/index.js'); } catch (e) { mod.panneaux = false; } }
   if (mod.panneaux && mod.panneaux.ouvrirPanneau) { try { mod.panneaux.ouvrirPanneau('inventaire'); } catch (e) { console.warn(e); } }
 }
 function echap() {
+  if (V.choix) { fermerChoix(); return; }
   if (annulerPlacement()) { message('Construction : arrêtée.', 1200); return; }
   if (V.carte) { V.carte = false; return; }
   if (V.cbt && V.cbt.etat.charge) { V.cbt.frapper(false, true); return; }

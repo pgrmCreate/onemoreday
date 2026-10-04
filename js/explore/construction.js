@@ -1,7 +1,9 @@
 // ============ Exploration — construire, démonter, et ce que les constructions apportent ============
-// Placement : le panneau « Construire » émet 'construction:placer' { type } → un fantôme suit la souris (PC) ou se place
-// devant toi (tactile) ; vert = possible, rouge = non. Clic / bouton Poser = bâtir (action en temps réel : ne bouge pas,
-// le marteau s'entend) ; T = tourner ; Échap = annuler. On reste en mode placement tant qu'on a de quoi (un mur après l'autre).
+// Placement : le menu « Construire » (à part, à côté du Sac) émet 'construction:placer' { type } → un fantôme vert clair
+// suit la souris (PC) ou se place devant toi — un toucher sur l'écran le pose où tu veux (tactile) ; rouge = impossible.
+// Clic / bouton Poser = le personnage bâtit à cet endroit (action en temps réel : ne bouge pas, le marteau s'entend ; le
+// chantier se dessine en se remplissant) ; T = tourner ; Échap = annuler. On reste en mode placement tant qu'on a de quoi
+// (un mur après l'autre). Un mort qui approche coupe le placement et le chantier (js/explore/vue.js, alerteMort).
 // Interactions : caisse (ouvrir, ranger), porte construite, feu (remettre du bois), récupérateur (boire, remplir),
 // potager (récolter, replanter), lit (dormir), établi (fabriquer) ; touche G = geste secondaire (démonter, barricader).
 // Contexte : établi, feu, point d'eau, dehors → fabrication et survie (2 fois par seconde).
@@ -32,8 +34,16 @@ const feuAllume = (c) => (defDe(c) || {}).feu && (c.feuJusqua || 0) > minutes();
 export function demarrerPlacement(type) {
   if (!V || !CONSTRUCTIONS[type]) return;
   if (V.arene) { message('Pas ici : tu es en pleine route.'); return; }
-  V.placement = { type, rot: 0, x: 0, y: 0, ok: false, raison: '' };
-  message(`${CONSTRUCTIONS[type].nom} : choisis l'endroit. ${V.entrees.etat.tactile ? 'Bouton Poser' : 'Clic'} pour bâtir, T pour tourner, Échap pour arrêter.`, 4200);
+  V.placement = { type, rot: 0, x: 0, y: 0, ok: false, raison: '', cible: null };
+  const tactile = V.entrees.etat.tactile || matchMedia('(pointer: coarse)').matches;
+  message(tactile ? `${CONSTRUCTIONS[type].nom} : touche l'endroit voulu, puis « Poser ».` : `${CONSTRUCTIONS[type].nom} : choisis l'endroit, clic pour bâtir (T tourne, Échap arrête).`, 4200);
+}
+// Tactile : un toucher sur la carte place le fantôme à cet endroit (il y reste même si tu bouges).
+export function viserPlacement(sx, sy) {
+  if (!V || !V.placement || !V.rendu) return false;
+  const m = V.rendu.ecranVersMonde(sx, sy);
+  V.placement.cible = { x: m.x, y: m.y };
+  return true;
 }
 export function annulerPlacement() { if (V && V.placement) { V.placement = null; return true; } return false; }
 export function tournerPlacement() { if (V && V.placement) { V.placement.rot = (V.placement.rot + 1) % 2; return true; } return false; }
@@ -57,14 +67,15 @@ function verifier(P) {
     }
   }
   const [w, h] = tailleConstruction(P.type, P.rot);
-  if (Math.hypot(P.x + w / 2 - V.j.x, P.y + h / 2 - V.j.y) > 3.2) return 'trop loin';
+  if (Math.hypot(P.x + w / 2 - V.j.x, P.y + h / 2 - V.j.y) > 3.2) return 'trop loin : approche-toi';
   return '';
 }
 function majPlacement() {
   const P = V.placement, I = V.entrees.etat, j = V.j;
   const [w, h] = tailleConstruction(P.type, P.rot);
   let cx, cy;
-  if (I.viseeSouris && !I.tactile) { const m = V.rendu.ecranVersMonde(I.sx, I.sy); cx = m.x; cy = m.y; }
+  if (P.cible) { cx = P.cible.x; cy = P.cible.y; }
+  else if (I.viseeSouris && !I.tactile) { const m = V.rendu.ecranVersMonde(I.sx, I.sy); cx = m.x; cy = m.y; }
   else { cx = j.x + Math.cos(j.dir) * 1.6; cy = j.y + Math.sin(j.dir) * 1.6; }
   P.x = Math.floor(cx - w / 2 + 0.5); P.y = Math.floor(cy - h / 2 + 0.5);
   P.raison = verifier(P);
@@ -79,6 +90,8 @@ export function poserPlacement() {
   majPlacement();
   if (!P.ok) { message(`Impossible : ${P.raison}.`, 1800); sfx('rate', { volume: 0.4 }); return true; }
   const d = CONSTRUCTIONS[P.type], o = { type: P.type, etage: V.E.id, x: P.x, y: P.y, rot: P.rot };
+  const chantier = { type: P.type, dessin: d.dessin, x: P.x, y: P.y, w: P.w, h: P.h, etage: V.E.id };
+  P.cible = null;
   lancerAction(`Construire : ${d.nom.toLowerCase()}…`, cons.dureeConstructionMs(P.type), P.x + P.w / 2, P.y + P.h / 2, async () => {
     if (!cons.etatConstruction(o.type).faisable) { message('Il te manque des matériaux.'); return; }
     const r = await V.canal.construire({ ...o, minutes: minutes() });
@@ -88,11 +101,15 @@ export function poserPlacement() {
     message(`${d.nom} : fait.`, 1600);
     if (V && V.placement && !cons.etatConstruction(o.type).faisable) { V.placement = null; message(`${d.nom} : fait. Plus assez de matériaux pour un autre.`, 2600); }
   }, d.outils && d.outils.includes('marteler') ? 7 : 3);
+  if (V.action) V.action.chantier = chantier;
   return true;
 }
-// Ce que le rendu dessine (fantôme).
+// Ce que le rendu dessine : le chantier en cours (il se remplit), sinon le fantôme du placement.
 export function fantome() {
-  const P = V && V.placement; if (!P || V.action) return null;
+  if (!V) return null;
+  const A = V.action;
+  if (A && A.chantier) return { ...A.chantier, ok: true, chantier: Math.min(1, A.t / A.duree) };
+  const P = V.placement; if (!P || A) return null;
   return { type: P.type, dessin: CONSTRUCTIONS[P.type].dessin, x: P.x, y: P.y, w: P.w || 1, h: P.h || 1, ok: P.ok, etage: V.E.id };
 }
 
@@ -172,7 +189,9 @@ function eauRecuperee(c) {
 function pousse(c) { const d = defDe(c); return d && d.potager && c.plante != null ? Math.min(1, (minutes() - c.plante) / (d.potager.jours * 1440)) : 0; }
 const besoinEau = () => (G.player.soif ?? 100) < 85;
 
-// Libellé du geste principal (E) et du geste secondaire (G).
+// Une construction qui fait quelque chose quand on interagit (un mur nu, non : on ne peut que le démonter).
+export function constructionActive(c) { const d = defDe(c); return !!(d && (d.contenance || d.porte || d.lit || d.poste || d.feu || d.eau || d.potager)); }
+// Libellé du geste principal (E) et du geste secondaire (démonter : dans le menu des autres actions).
 export function libelleConstruction(c) {
   const d = defDe(c); if (!d) return null;
   if (d.contenance) return `Ouvrir ${le(c)}${c.n ? ` (${c.n} objet${c.n > 1 ? 's' : ''})` : ' (vide)'}`;

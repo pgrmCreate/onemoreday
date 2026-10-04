@@ -49,6 +49,7 @@ function construire() {
     <div class="hud-haut-d" role="toolbar" aria-label="Menus">
       <button class="hud-btn" data-p="corps" type="button" aria-label="Corps">${ico('corps')}<span class="hud-pastille" hidden></span></button>
       <button class="hud-btn" data-p="inventaire" type="button" aria-label="Sac">${ico('sac')}</button>
+      <button class="hud-btn hud-btn-construire" data-p="construction" type="button" aria-label="Construire" title="Construire">${ico('marteau')}</button>
       <button class="hud-btn" data-p="journal" type="button" aria-label="Journal">${ico('journal')}<span class="hud-pastille" hidden></span></button>
       <button class="hud-btn" data-p="options" type="button" aria-label="Menu">${ico('menu')}</button>
     </div>

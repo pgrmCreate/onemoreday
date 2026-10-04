@@ -1,6 +1,35 @@
 // Urgences de Salon, la nuit. Travelling latéral le long du couloir des box ; néons, brancards,
 // la clochette sur le chariot, et une main à manche rouge qui glisse un billet dans une housse.
 import { alea, r1, halo, mix, sombre, degrade, uid, gisant, humain } from '../lib.js';
+import { svgBrasMain, poserMain, formesMain, formesBillet, POSES_MAIN, melangePose } from '../main.js';
+
+// La main (js/cine/main.js) : où se trouve le poignet, l'angle de la main, la pose des doigts, à chaque instant du plan.
+// Repères : px = centre de la pochette porte-étiquette sur la housse (fraction 0,56 de la couche), Y_POCHE = son bord haut.
+const Y_POCHE = 702, ECH_MAIN = 1.25;
+const ease = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+const seg = (t, a, b) => ease((t - a) / (b - a));
+// Clés : t (s), poignet (dx depuis px, y), angle de la main (°)
+const CLES = [
+  { t: 0, x: 760, y: 60, a: 92 }, { t: 3.2, x: 760, y: 60, a: 92 },
+  { t: 5.0, x: 139, y: 551, a: 110 },                     // au-dessus de la pochette, le billet pincé
+  { t: 5.45, x: 132, y: 558, a: 111 },                    // un temps d'hésitation
+  { t: 6.05, x: 128, y: 614, a: 113 },                    // le billet entre dans la pochette
+  { t: 6.5, x: 132, y: 612, a: 112 },                     // les doigts s'ouvrent
+  { t: 6.95, x: 156, y: 530, a: 106 },                    // la main remonte
+  { t: 8.4, x: 700, y: 90, a: 95 },                       // et s'en va
+];
+function etatMain(tp) {
+  let i = 0; while (i < CLES.length - 2 && tp > CLES[i + 1].t) i++;
+  const A = CLES[i], B = CLES[i + 1], k = seg(tp, A.t, B.t);
+  const x = A.x + (B.x - A.x) * k, y = A.y + (B.y - A.y) * k, a = A.a + (B.a - A.a) * k;
+  // doigts : pincés jusqu'à 6,05 s, s'ouvrent jusqu'à 6,4 s, se détendent en partant
+  let g = POSES_MAIN.pince;
+  if (tp > 6.05) g = melangePose(POSES_MAIN.pince, POSES_MAIN.ouverte, seg(tp, 6.05, 6.4));
+  if (tp > 6.6) g = melangePose(POSES_MAIN.ouverte, POSES_MAIN.repos, seg(tp, 6.6, 7.3));
+  // un léger tremblement au-dessus de la housse (elle hésite)
+  const tr = tp > 4.9 && tp < 6.1 ? Math.sin(tp * 37) * 1.2 + Math.sin(tp * 23) * 0.8 : 0;
+  return { x, y: y + tr, a, g, lache: tp > 6.15 };
+}
 
 const MUR = '#5d7d76', MUR_OMBRE = '#2c3b38', SOL = '#1f2826', NEON = '#e9f5ee';
 
@@ -90,24 +119,30 @@ export default {
       return s;
     } },
     { profondeur: 1, svg: (L) => {
-      // Brancard de premier plan : la housse blanche, la poche, la main.
-      const x = L * 0.47, y = 1010;
+      // Brancard de premier plan (en silhouette sur la photo).
+      const x = L * 0.47, y = 900;   // relevé : l'action reste au-dessus des sous-titres
       let s = brancard(x - 40, y, 900, { matelas: '#1f2c2a' });
-      s += gisant(x - 60, y - 88, 960, '#d8dcd6', { housse: true, etiquette: '#e8e2c8' });
       s += `<path d="M${x - 40} ${y - 180}q480 -60 900 -20" stroke="#8c928d" stroke-width="4" fill="none" stroke-dasharray="10 5"/>`;
-      // Poche de la housse.
-      const px = L * 0.56;
-      s += `<rect x="${px - 70}" y="${y - 180}" width="140" height="70" fill="#c3c8c2"/><path d="M${px - 70} ${y - 180}h140" stroke="#7a807b" stroke-width="5"/>`;
-      // La main (manche de blouse, poignet d'anorak rouge), billet plié.
-      s += `<g class="main-billet" data-x="${px}" data-y="${y - 180}"><g class="bras-main">
-        <path d="M${px + 520} ${y - 900}L${px + 60} ${y - 250}" stroke="#d6dad4" stroke-width="120" stroke-linecap="round"/>
-        <path d="M${px + 180} ${y - 420}L${px + 60} ${y - 250}" stroke="#a3222a" stroke-width="112" stroke-linecap="round"/>
-        <path d="M${px + 120} ${y - 330}l-60 84" stroke="#7a151c" stroke-width="30"/>
-        <path d="M${px + 40} ${y - 262}c-26 10 -52 40 -48 70c4 26 30 40 56 30l52 -34c10 -20 -6 -52 -24 -64z" fill="#c9a488"/>
-        <path d="M${px - 4} ${y - 200}l-30 20M${px + 8} ${y - 188}l-26 28M${px + 22} ${y - 182}l-18 30" stroke="#b48e72" stroke-width="16" stroke-linecap="round"/>
-        <g class="billet"><rect x="${px - 44}" y="${y - 200}" width="54" height="40" fill="#efe9d8" transform="rotate(-24 ${px - 20} ${y - 180})"/><path d="M${px - 40} ${y - 172}l46 -20" stroke="#b8b09a" stroke-width="2"/></g>
-      </g></g>`;
-      s += `<rect x="${px - 76}" y="${y - 176}" width="152" height="70" fill="#c3c8c2" class="poche-avant"/><path d="M${px - 76} ${y - 176}h152" stroke="#7a807b" stroke-width="5"/>`;
+      return s;
+    } },
+    { profondeur: 1, naturel: { lum: 0.66, sat: 0.6 }, svg: (L) => {
+      // Couleurs naturelles (pas de silhouette) : la housse, sa pochette porte-étiquette, le billet et la main.
+      const x = L * 0.47, y = 900, px = L * 0.56;   // relevé : l'action reste au-dessus des sous-titres
+      const ig = uid('hs'), ip = uid('pl');
+      let s = `<defs>${degrade(ig, [[0, '#eef1ec'], [0.45, '#d6dbd5'], [1, '#9aa29b']])}${degrade(ip, [[0, '#ffffff', 0.5], [0.3, '#e8eef0', 0.2], [1, '#c8d2d4', 0.35]])}</defs>`;
+      // housse : plastique épais, fermeture éclair sur le dessus, plis
+      s += gisant(x - 60, y - 88, 960, `url(#${ig})`, { housse: true });
+      s += `<path d="M${x - 10} ${y - 232}c150 -26 420 -34 620 -40c120 -4 220 2 300 16" stroke="#4a504c" stroke-width="7" fill="none" stroke-dasharray="3 4" opacity="0.8"/>`;
+      s += `<path d="M${x + 60} ${y - 120}q60 -40 140 -30M${x + 300} ${y - 210}q30 50 10 110M${x + 560} ${y - 200}q-30 60 20 120M${x + 760} ${y - 150}q50 -20 100 0" stroke="#8d958f" stroke-width="5" fill="none" opacity="0.55" stroke-linecap="round"/>`;
+      s += `<path d="M${x + 40} ${y - 200}q200 -40 420 -46" stroke="#ffffff" stroke-width="10" fill="none" opacity="0.35" stroke-linecap="round"/>`;
+      // pochette : dos (l'étiquette dedans), puis le billet libre, la main, et le devant transparent
+      s += `<rect x="${px - 80}" y="${Y_POCHE}" width="160" height="86" rx="4" fill="#b9c1bb"/>`;
+      s += `<rect x="${px - 66}" y="${Y_POCHE + 22}" width="132" height="56" fill="#f2ecd6"/><path d="M${px - 56} ${Y_POCHE + 38}h90M${px - 56} ${Y_POCHE + 52}h112M${px - 56} ${Y_POCHE + 66}h70" stroke="#6a6458" stroke-width="3"/>`;
+      const Mp = formesMain(POSES_MAIN.pince), Bp = formesBillet(Mp);
+      s += `<g class="billet-libre" opacity="0"><path d="${Bp.billet}" fill="#efe9d8"/><path d="${Bp.pliBillet}" stroke="#b6ad96" stroke-width="2" fill="none"/></g>`;
+      s += `<g class="main-billet" data-px="${r1(px)}">${svgBrasMain({ id: uid('mn') })}</g>`;
+      s += `<rect x="${px - 80}" y="${Y_POCHE}" width="160" height="86" rx="4" fill="url(#${ip})" stroke="#e9eef0" stroke-width="2.5" class="poche-avant"/>`;
+      s += `<path d="M${px - 78} ${Y_POCHE + 2}h156" stroke="#ffffff" stroke-width="3" opacity="0.7"/><path d="M${px - 60} ${Y_POCHE + 12}l30 64" stroke="#ffffff" stroke-width="6" opacity="0.18"/>`;
       return s;
     } },
   ],
@@ -124,14 +159,27 @@ export default {
       for (const el of S.q('.clochette')) S.attr(el, 'transform', `rotate(${(Math.sin(t * 60) * 2.2 * salve).toFixed(2)} ${el.dataset.x} ${el.dataset.y})`);
     },
     main_billet(t, S) {
-      // 0-2,6 s : la main descend ; 2,6-4 s : le billet entre ; puis elle se retire.
+      // La main approche, hésite, glisse le billet dans la pochette, ouvre les doigts, remonte et s'en va.
       const tp = S.tp;
-      const desc = Math.min(1, tp / 2.6), ret = Math.max(0, (tp - 4.4) / 2.5);
-      const e = x => x * x * (3 - 2 * x);
-      const dy = -220 * (1 - e(desc)) - 520 * e(Math.min(1, ret)), dx = 140 * (1 - e(desc)) + 360 * e(Math.min(1, ret));
-      for (const el of S.q('.bras-main')) S.attr(el, 'transform', `translate(${dx.toFixed(1)},${dy.toFixed(1)})`);
-      const b = Math.max(0, Math.min(1, (tp - 2.6) / 1.2));
-      for (const el of S.q('.billet')) { S.attr(el, 'transform', `translate(${(-10 * b).toFixed(1)},${(60 * e(b)).toFixed(1)})`); S.attr(el, 'opacity', tp > 4.2 ? '0' : '1'); }
+      const e = etatMain(tp);
+      for (const grp of S.q('.main-billet')) {
+        const px = +grp.dataset.px, wx = px + e.x, wy = e.y;
+        const bras = grp.__bras || (grp.__bras = grp.querySelector('.bras-rig')), main = grp.__main || (grp.__main = grp.querySelector('.main-rig'));
+        S.attr(bras, 'transform', `translate(${r1(wx)},${r1(wy)}) rotate(${(e.a + 9).toFixed(2)}) scale(${ECH_MAIN})`);
+        S.attr(main, 'transform', `translate(${r1(wx)},${r1(wy)}) rotate(${e.a.toFixed(2)}) scale(${ECH_MAIN})`);
+        // les doigts ne sont recalculés que s'ils bougent
+        const cle = e.g.doigts.flat().concat(e.g.pouce).map(v => v.toFixed(1)).join(',') + (e.lache ? 'l' : '');
+        if (grp.__cle !== cle) { grp.__cle = cle; poserMain(main, e.g, !e.lache); }
+        // le billet lâché reste dans la pochette et glisse au fond
+        if (!grp.__libre) grp.__libre = grp.parentNode.querySelector('.billet-libre');
+        const lib = grp.__libre;
+        if (e.lache) {
+          if (!grp.__pose) { const r = etatMain(6.15); grp.__pose = { x: px + r.x, y: r.y, a: r.a }; }
+          const k = ease((tp - 6.15) / 0.6), P = grp.__pose;
+          S.attr(lib, 'transform', `translate(${r1(P.x - 6 * k)},${r1(P.y + 34 * k)}) rotate(${(P.a + 8 * k).toFixed(2)}) scale(${ECH_MAIN})`);
+          S.attr(lib, 'opacity', '1');
+        } else { grp.__pose = null; S.attr(lib, 'opacity', '0'); }
+      }
     },
   },
 };

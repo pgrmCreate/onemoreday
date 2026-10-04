@@ -94,6 +94,10 @@ body[data-temps="carte"] .ui-hud .hud-objectif:not([hidden]) { display: flex; }
 .hud-btn:focus-visible, .hud-moodle:focus-visible, .hud-objectif:focus-visible { outline: 2px solid var(--ui-ambre); outline-offset: 2px; }
 .hud-pastille { position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--ui-rouge); box-shadow: 0 0 0 2px #0b0b0c; }
 .hud-btn[data-p=journal] .hud-pastille { background: var(--ui-ambre); }
+/* le menu Construire n'a de sens que dans un lieu */
+body:not([data-temps=exploration]) .hud-btn-construire { display: none; }
+.fa-cat-lien { color: var(--ui-texte-3) !important; } .fa-cat-lien > .ico:last-child { display: none; }
+@container (min-width: 900px) { .fa-cat-lien > .ico:last-child { display: block; width: 14px; height: 14px; margin-left: auto; opacity: .6; } }
 .hud-bulle { position: fixed; z-index: 41; max-width: 260px; padding: 9px 12px; background: #151317; border: 1px solid var(--ui-bord-fort); border-left: 2px solid var(--ui-ambre);
   box-shadow: var(--ui-ombre); pointer-events: none; }
 .hud-bulle strong { display: block; font-weight: 500; font-size: var(--ui-t); letter-spacing: .03em; }

@@ -2,7 +2,8 @@
 // creerEntrees({ racine, canvas, actions }) → { etat, fermer(), setInteragir(libelle|null), setBouton(nom, { actif, libelle }), actif(bool) }
 // etat : { mx, my (−1..1, vecteur de déplacement, norme = poussée), course, accroupi, viseeSouris (bool), sx, sy (souris écran) }
 // actions : { interagir(), lampe(), inventaire(), carte(), echap(), zoom(facteur), accroupi(bool),
-//             frapper(appui: bool), pousser(), recharger(), echangerMains(), dos(), rapide(i) }
+//             frapper(appui: bool), pousser(), recharger(), echangerMains(), dos(), rapide(i),
+//             secondaire() (G / petit rond : menu des autres actions), viser(sx, sy) (placement : un toucher place le fantôme) }
 // COMBAT : se déplacer, FRAPPER (tape = coup rapide, enchaîner = enchaînement, maintenir = coup chargé), POUSSER. Pas d'esquive.
 //   PC : ZQSD + souris (le personnage regarde la souris) ; clic gauche = frapper, clic droit / Espace = pousser,
 //        E = interagir, R = recharger, X = échanger les mains, B = dos ↔ main, 1-4 = accès rapide.
@@ -43,7 +44,7 @@ export function creerEntrees({ racine, canvas, actions }) {
     else if (c === 'KeyR') actions.recharger && actions.recharger();
     else if (c === 'KeyX') actions.echangerMains && actions.echangerMains();
     else if (c === 'KeyB') actions.dos && actions.dos();
-    else if (/^Digit[1-4]$/.test(c)) actions.rapide && actions.rapide(+c.slice(5) - 1);
+    else if (/^Digit[1-9]$/.test(c)) actions.rapide && actions.rapide(+c.slice(5) - 1);
     else if (c === 'KeyF') actions.lampe && actions.lampe();
     else if (c === 'KeyG') actions.secondaire && actions.secondaire();
     else if (c === 'KeyT') actions.tourner && actions.tourner();
@@ -98,17 +99,19 @@ export function creerEntrees({ racine, canvas, actions }) {
   const bPousser = el('button', { class: 'ex-btn ex-btn-pousser', type: 'button', 'aria-label': 'Pousser' },
     el('span', { class: 'ex-frap-ico', html: SVG_P }), el('span', { class: 'ex-frap-l' }, 'Pousser'), el('i', { class: 'ex-cd' }));
   const bRecharger = el('button', { class: 'ex-btn ex-btn-petit ex-btn-recharger cache', type: 'button' }, 'Recharger');
-  // geste secondaire (démonter, barricader) et mode placement (construction) : petits boutons au-dessus d'Interagir
-  const bSecond = el('button', { class: 'ex-btn ex-btn-petit ex-btn-second cache', type: 'button' }, el('span', { class: 'ex-btn-l' }, ''));
+  // autres actions possibles ici : un petit rond collé à Interagir déplie le menu (js/explore/interactions.js)
+  const bAutres = el('button', { class: 'ex-btn ex-btn-autres cache', type: 'button', 'aria-label': 'Autres actions', title: 'Autres actions' },
+    el('span', { class: 'ex-autres-p', html: '<i></i><i></i><i></i>' }), el('em', {}, ''));
+  // mode placement (construction) : petits boutons au-dessus d'Interagir
   const bTourner = el('button', { class: 'ex-btn ex-btn-petit cache', type: 'button' }, 'Tourner');
   const bAnnuler = el('button', { class: 'ex-btn ex-btn-petit cache', type: 'button' }, 'Arrêter');
   const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bAccr, bCourse),
-    el('div', { class: 'ex-pad-ligne ex-pad-place' }, bTourner, bAnnuler), bSecond, bInter,
+    el('div', { class: 'ex-pad-ligne ex-pad-place' }, bTourner, bAnnuler), el('div', { class: 'ex-pad-inter' }, bAutres, bInter),
     el('div', { class: 'ex-pad-combat' }, bRecharger, bPousser, bFrapper));
   racine.append(zoneJoy, pad);
 
-  const joy = { id: null, ox: 0, oy: 0, R: 56 };
-  let boutonCourse = false;
+  const joy = { id: null, ox: 0, oy: 0, R: 56, t0: 0, sx: 0, sy: 0 };
+  let boutonCourse = false, enPlacement = false;
   const pinch = { ids: new Map(), d0: 0 };
   function knob(dx, dy) { joyBase.firstChild.style.transform = `translate(${dx}px, ${dy}px)`; }
   ecoute(zoneJoy, 'pointerdown', (e) => {
@@ -119,7 +122,7 @@ export function creerEntrees({ racine, canvas, actions }) {
       return;
     }
     e.preventDefault();
-    joy.id = e.pointerId; joy.ox = e.clientX; joy.oy = e.clientY;
+    joy.id = e.pointerId; joy.ox = e.clientX; joy.oy = e.clientY; joy.t0 = performance.now();
     const r = zoneJoy.getBoundingClientRect();
     joyBase.style.left = (e.clientX - r.left) + 'px'; joyBase.style.top = (e.clientY - r.top) + 'px';
     joyBase.classList.add('on'); knob(0, 0);
@@ -139,6 +142,8 @@ export function creerEntrees({ racine, canvas, actions }) {
   const finJoy = (e) => {
     pinch.ids.delete(e.pointerId);
     if (e.pointerId !== joy.id) return;
+    // construction : un toucher bref (sans glisser) place le fantôme là où on a touché
+    if (enPlacement && e.type === 'pointerup' && performance.now() - joy.t0 < 320 && Math.hypot(e.clientX - joy.ox, e.clientY - joy.oy) < 14) actions.viser && actions.viser(e.clientX, e.clientY);
     joy.id = null; etat.mx = 0; etat.my = 0; joyBase.classList.remove('on'); knob(0, 0);
   };
   ecoute(zoneJoy, 'pointerup', finJoy); ecoute(zoneJoy, 'pointercancel', finJoy);
@@ -164,10 +169,10 @@ export function creerEntrees({ racine, canvas, actions }) {
   relacher(bFrapper, () => { if (!doigtFrappe) return; doigtFrappe = false; actions.frapper && actions.frapper(false); });
   presser(bPousser, () => { etat.tactile = true; actions.pousser && actions.pousser(); }); relacher(bPousser);
   presser(bRecharger, () => actions.recharger && actions.recharger()); relacher(bRecharger);
-  presser(bSecond, () => actions.secondaire && actions.secondaire()); relacher(bSecond);
+  presser(bAutres, () => actions.secondaire && actions.secondaire()); relacher(bAutres);
   presser(bTourner, () => actions.tourner && actions.tourner()); relacher(bTourner);
   presser(bAnnuler, () => actions.echap && actions.echap()); relacher(bAnnuler);
-  for (const b of [bInter, bCourse, bAccr, bLampe, bInv, bFrapper, bPousser, bRecharger, bSecond, bTourner, bAnnuler]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
+  for (const b of [bInter, bCourse, bAccr, bLampe, bInv, bFrapper, bPousser, bRecharger, bAutres, bTourner, bAnnuler]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
 
   function majBoutons() {
     bAccr.classList.toggle('on', etat.accroupi);
@@ -175,12 +180,14 @@ export function creerEntrees({ racine, canvas, actions }) {
   }
   return {
     etat,
-    setSecondaire(libelle) {
-      const l = bSecond.firstChild; if (l.textContent !== (libelle || '')) l.textContent = libelle || '';
-      bSecond.classList.toggle('cache', !libelle);
+    // n autres actions possibles ici (0 = le petit rond disparaît)
+    setAutres(n) {
+      const t = n > 1 ? String(n) : ''; const em = bAutres.lastChild; if (em.textContent !== t) em.textContent = t;
+      bAutres.classList.toggle('cache', !n);
     },
     // Mode placement (construction) : le gros bouton devient « Poser », Tourner et Arrêter apparaissent.
     setPlacement(on) {
+      enPlacement = !!on;
       bTourner.classList.toggle('cache', !on); bAnnuler.classList.toggle('cache', !on);
       const l = bFrapper.lastChild; if (on && l.textContent !== 'Poser') l.textContent = 'Poser';
       bFrapper.classList.toggle('placement', !!on);

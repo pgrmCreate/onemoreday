@@ -119,6 +119,13 @@ export const REGLAGES = {
       porte_fermee: 0.6,        //   à travers une porte fermée : rayon × 0,6.
     },
 
+    // --- UN MORT APPROCHE : menus, plan, placement, chantier et fouille se ferment (js/explore/vue.js, alerteMort) ---
+    ALERTE: {
+      CHASSE: 9,                // un mort vu qui te chasse, à moins de 9 cases.
+      PROCHE: 3.5,              // un mort vu, même tranquille, à moins de 3,5 cases.
+      OUBLI_MS: 6000,           // un mort déjà signalé ne recoupe pas avant d'avoir disparu 6 s.
+    },
+
     // --- PERCEPTION DES MORTS ---
     PERCEPTION: {
       CONE_DEG: 100,            // cône de vue des morts (degrés).

@@ -15,6 +15,8 @@ export function creerHud(racine, { arene = false } = {}) {
     lieu: el('div', { class: 'ex-lieu' }),
     msg: el('div', { class: 'ex-msg' }),
     invite: el('div', { class: 'ex-invite' }),
+    choix: el('div', { class: 'ex-choix cache', role: 'menu', 'aria-label': 'Actions possibles' }),
+    zoom: el('button', { class: 'ex-zoom', type: 'button', 'aria-label': 'Zoom', title: 'Zoom' }, el('i'), el('i'), el('i')),
     etat: el('div', { class: 'ex-etat' }),
     butin: el('div', { class: 'ex-butin cache' }),
     barre: el('div', { class: 'ex-action cache' }, el('div', { class: 'ex-action-l' }), el('div', { class: 'ex-action-b' }, el('i'))),
@@ -38,16 +40,29 @@ export function creerHud(racine, { arene = false } = {}) {
     el('div', { class: 'ex-aide-g' },
       el('div', {}, el('h4', {}, 'Bouger'), ligne('ZQSD', 'se déplacer'), ligne('Maj', 'courir'), ligne('C', 'accroupi (discret)'), ligne('Souris', 'regarder / viser')),
       el('div', {}, el('h4', {}, 'Se battre'), ligne('Clic', 'frapper — 3 clics en rythme : enchaînement'), ligne('Clic maintenu', 'coup chargé'), ligne('Clic droit · Espace', 'repousser')),
-      el('div', {}, el('h4', {}, 'Construire'), ligne('Sac → Fabrication', 'onglet Construire'), ligne('Clic', 'poser'), ligne('T', 'tourner'), ligne('G', 'démonter / barricader')),
-      el('div', {}, el('h4', {}, 'Faire'), ligne('E', 'interagir / fouiller'), ligne('F', 'lampe'), ligne('I', 'sac'), ligne('Tab', 'plan du lieu'), ligne('X / B', 'mains / dos'))),
+      el('div', {}, el('h4', {}, 'Construire'), ligne('Marteau', 'menu Construire'), ligne('Clic', 'placer puis bâtir'), ligne('T', 'tourner'), ligne('Échap', 'arrêter')),
+      el('div', {}, el('h4', {}, 'Faire'), ligne('E', 'interagir / fouiller'), ligne('G', 'autres actions ici'), ligne('F', 'lampe'), ligne('I', 'sac'), ligne('Tab', 'plan du lieu'), ligne('X / B', 'mains / dos'))),
   );
-  racine.append(h.sang, h.lieu, h.guide, h.coop, h.msg, h.invite, h.etat, h.barre, h.butin, h.mains, h.degage, h.route, h.aide);
+  racine.append(h.sang, h.lieu, h.guide, h.coop, h.msg, h.invite, h.choix, h.etat, h.zoom, h.barre, h.butin, h.mains, h.degage, h.route, h.aide);
   if (!arene && !pref('aideExploreVue')) { h.aide.classList.remove('cache'); setTimeout(() => h.aide.classList.add('cache'), 16000); setPref('aideExploreVue', true); }
 
   const cache = {};
   const fixer = (cle, v, f) => { if (cache[cle] !== v) { cache[cle] = v; f(v); } };
   return Object.assign(h, {
     basculerAide() { h.aide.classList.toggle('cache'); },
+    // Menu des actions possibles ici (liste figée) : la première est celle de E / Interagir. null = fermer.
+    montrerChoix(liste, choisir) {
+      h.choix.textContent = '';
+      h.choix.classList.toggle('cache', !liste);
+      if (!liste) return;
+      liste.forEach((a, i) => {
+        const b = el('button', { class: 'ex-choix-b' + (a.principal ? ' principal' : ''), type: 'button', role: 'menuitem' }, el('kbd', {}, String(i + 1)), el('span', {}, a.libelle));
+        b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); choisir(i); });
+        h.choix.append(b);
+      });
+    },
+    // Zoom à trois crans : le cran courant est allumé.
+    majZoom(cran) { [...h.zoom.children].forEach((b, i) => b.classList.toggle('on', i <= cran)); h.zoom.dataset.cran = cran; },
     // Vie / endurance : toujours visibles en combat, discrètes sinon (on les voit quand elles comptent)
     majVitaux(enCombat) {
       const p = G.player, pvMax = p.pvMax || 100, staMax = p.staMax || 100;

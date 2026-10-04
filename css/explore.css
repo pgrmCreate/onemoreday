@@ -69,8 +69,43 @@
   border: 1px solid var(--ex-ambre); background: rgba(201,162,39,.12); color: var(--ex-ambre-c); font-family: inherit; font-size: 13px; line-height: 1.6;
 }
 
+/* « G +2 » : d'autres actions possibles ici */
+.ex-inv-sec { margin-left: 12px; padding-left: 10px; border-left: 1px solid rgba(230,223,204,.18); color: rgba(230,223,204,.6); font-size: 13px; }
+.ex-inv-sec kbd { margin-right: 4px; opacity: .8; }
+
+/* ---------- Menu des actions possibles ici (G / petit rond) : discret, au-dessus de l'invite ---------- */
+.ex-choix {
+  position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 6; min-width: 220px; max-width: min(420px, 86vw);
+  display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: 10px;
+  background: rgba(11,11,12,.9); border: 1px solid rgba(230,223,204,.14); box-shadow: 0 8px 28px rgba(0,0,0,.6);
+  animation: ex-choix-ouvre .14s ease-out;
+}
+@keyframes ex-choix-ouvre { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.ex-choix-b {
+  display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px 0 8px; border: 0; border-radius: 7px;
+  background: none; color: var(--ex-creme); font: inherit; font-size: 15px; letter-spacing: .03em; text-align: left; cursor: pointer;
+}
+.ex-choix-b span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-choix-b:hover { background: rgba(230,223,204,.08); }
+.ex-choix-b kbd { flex: none; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; border: 1px solid rgba(230,223,204,.25);
+  font-family: inherit; font-size: 11px; color: rgba(230,223,204,.6); }
+.ex-choix-b.principal kbd { border-color: var(--ex-ambre); color: var(--ex-ambre-c); }
+.ex-choix-b.principal span { color: var(--ex-ambre-c); }
+
+/* ---------- Zoom à trois crans (bas-gauche, discret) ---------- */
+.ex-zoom {
+  position: absolute; left: 14px; bottom: 16px; z-index: 3; width: 30px; height: 30px; padding: 0; border-radius: 50%;
+  display: flex; align-items: flex-end; justify-content: center; gap: 2px; padding-bottom: 9px;
+  background: rgba(11,11,12,.35); border: 1px solid rgba(230,223,204,.14); opacity: .55; cursor: pointer; transition: opacity .2s;
+}
+.ex-zoom:hover, .ex-zoom:active { opacity: .95; }
+.ex-zoom i { display: block; width: 3px; border-radius: 1px; background: rgba(230,223,204,.35); }
+.ex-zoom i:nth-child(1) { height: 5px; } .ex-zoom i:nth-child(2) { height: 8px; } .ex-zoom i:nth-child(3) { height: 11px; }
+.ex-zoom i.on { background: var(--ex-creme); }
+.ex-zoom::after { content: ''; position: absolute; inset: -8px; }   /* cible tactile ≥ 44 px sans grossir le bouton */
+
 /* ---------- Vitaux (bas-gauche) : vie + souffle, toujours lisibles ---------- */
-.ex-etat { position: absolute; left: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; transition: opacity .6s; }
+.ex-etat { position: absolute; left: 56px; bottom: 16px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; transition: opacity .6s; }
 .ex-etat.discret { opacity: .45; }
 .ex-vital { display: grid; grid-template-columns: 52px 150px 30px; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
 .ex-vital > b { font-weight: 500; color: rgba(230,223,204,.7); text-align: right; }
@@ -136,6 +171,9 @@
 .ex-usure b { display: block; height: 100%; background: rgba(230,223,204,.6); }
 .ex-usure.bas b { background: var(--ex-rouge); }
 @media (max-width: 760px) { .ex-mains { right: 214px; } .ex-main { min-width: 0; max-width: 140px; } }
+/* le bouton Construire (marteau) s'ajoute aux menus du haut en exploration */
+body[data-temps=exploration] .ex-mains { right: 276px; }
+@media (max-width: 760px) { body[data-temps=exploration] .ex-mains { right: 268px; } }
 
 /* ---------- Combat : voile rouge, « Dégage-toi ! », route ---------- */
 .ex-sang { position: absolute; inset: 0; pointer-events: none; opacity: 0;
@@ -185,6 +223,15 @@
   border-color: var(--ex-ambre); color: var(--ex-creme); background: rgba(40,32,10,.75);
 }
 .ex-btn-inter.inactif { opacity: .35; border-color: rgba(230,223,204,.3); }
+/* Interagir + le petit rond des autres actions, collé à sa gauche */
+.ex-pad-inter { display: flex; align-items: center; gap: 6px; }
+.ex-btn-autres { position: relative; min-width: 34px; min-height: 34px; width: 34px; height: 34px; padding: 0; display: grid; place-items: center;
+  background: rgba(11,11,12,.5); border-color: rgba(230,223,204,.28); }
+.ex-btn-autres::after { content: ''; position: absolute; inset: -6px; }
+.ex-autres-p { display: flex; gap: 3px; } .ex-autres-p i { width: 4px; height: 4px; border-radius: 50%; background: var(--ex-creme); opacity: .8; }
+.ex-btn-autres em { position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; font-style: normal; font-size: 10px;
+  line-height: 15px; text-align: center; background: var(--ex-ambre); color: #111; }
+.ex-btn-autres em:empty { display: none; }
 .ex-btn-l { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* combat : Frapper (gros), Esquiver, Pousser */
 .ex-pad-combat { display: flex; align-items: flex-end; gap: 10px; }
@@ -215,13 +262,18 @@
 .explore.ex-tactile .ex-pad { display: flex; }
 .explore.ex-tactile .ex-invite { display: none; }
 .explore.ex-tactile .ex-msg { bottom: 160px; }
+.explore.ex-tactile .ex-etat { bottom: auto; top: 96px; left: 16px; }
+.explore.ex-tactile .ex-choix { left: auto; right: 14px; bottom: 180px; transform: none; animation: none; }
 @media (pointer: coarse) {
+  .explore .ex-choix { left: auto; right: 14px; bottom: 180px; transform: none; animation: none; }
+  .explore .ex-choix-b { min-height: 44px; }
+  .explore .ex-choix-b kbd { display: none; }
   .explore .ex-joyzone { display: block; }
   .explore .ex-pad { display: flex; }
   .explore .ex-invite, .explore .ex-aide { display: none; }
   .explore .ex-msg { bottom: 160px; }
   .explore .ex-butin { top: 64px; bottom: 12px; right: 50%; transform: translateX(50%); width: min(420px, 70vw); max-height: none; }
-  .explore .ex-etat { bottom: auto; top: 96px; }
+  .explore .ex-etat { bottom: auto; top: 96px; left: 16px; }
   .explore .ex-vital { grid-template-columns: 0 110px 26px; }
   .explore .ex-vital > b { display: none; }
 }

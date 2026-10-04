@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banc d'essai — Personnages des cinématiques</title>
+<style>
+  html, body { margin: 0; background: #2b2f33; color: #e6dfcc; font-family: sans-serif; }
+  svg { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<!-- ?pose=marche (défaut : planche de toutes les poses) · &anim=1 (marche animée) · &fond=photo (silhouettes sur clair) -->
+<svg id="s" viewBox="0 0 2400 1000" preserveAspectRatio="xMidYMid meet"></svg>
+<script type="module">
+  import { humain, pose } from '../js/cine/lib.js';
+  import { passant, animerPassants } from '../js/cine/anim.js';
+  import { svgBrasMain, poserMain, POSES_MAIN } from '../js/cine/main.js';
+  const q = new URLSearchParams(location.search);
+  const svg = document.getElementById('s');
+  const poses = ['debout', 'marche', 'cabas', 'court', 'courbe', 'mort', 'mort_bras', 'penche', 'accroupi', 'assis', 'bras_leves', 'porte_lampe', 'leve_cloche', 'regarde_mains'];
+  let s = '<rect width="2400" height="1000" fill="#3a3f44"/><rect y="900" width="2400" height="100" fill="#26292c"/>';
+  if (q.get('main')) {
+    // la main de la cinématique de l'hôpital : ?main=pince|ouverte|repos
+    const noms = q.get('main') === '1' ? ['pince', 'ouverte', 'repos'] : [q.get('main')];
+    noms.forEach((n, i) => { s += `<g transform="translate(${+(q.get('x') || 500) + i * 700},${+(q.get('y') || 300)}) rotate(${+(q.get('rot') || 100)}) scale(${+(q.get('ech') || 1.6)})" class="m${i}">${svgBrasMain({ id: 'm' + i, pose: POSES_MAIN[n] })}</g>`; });
+    svg.innerHTML = s;
+    noms.forEach((n, i) => poserMain(svg.querySelector('.m' + i + ' .main-rig'), POSES_MAIN[n]));
+  } else if (q.get('anim')) {
+    for (let i = 0; i < 6; i++) s += passant(200 + i * 380, 900, 360 + (i % 3) * 60, { v: (i % 2 ? -1 : 1) * (60 + i * 8), L: 2400, pose: i === 5 ? 'court' : i % 3 === 1 ? 'cabas' : 'marche', corps: ['#5a4a3a', '#3a4a5a', '#6a3a3a'][i % 3], jambes: '#2a2c30', tete: '#c8a088', cheveux: '#2a1c12', cheveuxLongs: i % 2 === 1, sac: i % 3 === 1 ? '#b8322c' : null, robe: i === 4 ? '#6a4a6a' : null });
+    svg.innerHTML = s;
+    const cache = new Map();
+    const S = { q: (sel) => cache.get(sel) || (cache.set(sel, [...svg.querySelectorAll(sel)]), cache.get(sel)), attr: (el, k, v) => el.setAttribute(k, v) };
+    const t0 = performance.now();
+    const boucle = () => { animerPassants((performance.now() - t0) / 1000, S, '.passant', { marge: 200 }); requestAnimationFrame(boucle); };
+    boucle();
+  } else {
+    const liste = q.get('pose') ? [q.get('pose')] : poses;
+    liste.forEach((p, i) => {
+      const seul = liste.length === 1, ph = +(q.get('ph') || 0.15);
+      const x = seul ? 1200 : 120 + (i % 7) * 330, y = seul ? 960 : i < 7 ? 470 : 940, h = seul ? 880 : 400;
+      s += humain(x, y, h, p, { corps: '#4a5a6a', jambes: '#2a2c30', tete: '#c8a088', cheveux: '#2a1c12', cheveuxLongs: i % 3 === 0, sens: +(q.get('sens') || (i % 2 ? -1 : 1)), sac: p === 'cabas' ? '#b8322c' : null, lampe: p === 'porte_lampe' ? '#fff2c8' : null }, ph);
+      s += `<text x="${x}" y="${y + 24}" fill="#e6dfcc" font-size="20" text-anchor="middle">${p}</text>`;
+    });
+    svg.innerHTML = s;
+  }
+  window.__pret = true;
+</script>
+</body>
+</html>
