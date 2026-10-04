@@ -48,6 +48,7 @@ export function creerEntrees({ racine, canvas, actions }) {
     else if (/^Digit[1-9]$/.test(c)) actions.rapide && actions.rapide(+c.slice(5) - 1);
     else if (c === 'KeyF') actions.lampe && actions.lampe();
     else if (c === 'KeyG') actions.secondaire && actions.secondaire();
+    else if (c === 'KeyO') actions.recherche && actions.recherche();
     else if (c === 'KeyT') actions.tourner && actions.tourner();
     else if (c === 'KeyI') actions.inventaire && actions.inventaire();
     else if (c === 'KeyH') actions.aide && actions.aide();
@@ -88,12 +89,14 @@ export function creerEntrees({ racine, canvas, actions }) {
   const SVG = {
     courir: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="4.2" r="1.9" fill="currentColor" stroke="none"/><path d="M8.5 9.5 12 7.6l3 1.6 1.4 3 2.6.8"/><path d="M12 7.6 10.6 13l3.4 2.6-1 5.2"/><path d="M10.6 13 7.4 15.4 4.4 15"/></svg>',
     accroupi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="6.2" r="1.9" fill="currentColor" stroke="none"/><path d="M12.4 8.8 9 12.2l4.4 2.4-1.6 5"/><path d="M9 12.2 7.6 16.4 4.6 17"/><path d="M12 10.6l4 1.4"/><path d="M3 20.5h18" opacity=".45"/></svg>',
+    loupe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="9" r="5.2"/><path d="m14 13 5.5 5.5"/><path d="M3 21.2h9" opacity=".45"/></svg>',
     lampe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="10" width="8" height="4.5" rx="1.2"/><path d="M10.5 9.2 13.5 8v8.5l-3-1.2z"/><path d="M15.5 9.5 21 7.5M15.5 12.2H21.5M15.5 15l5.5 2" opacity=".7"/></svg>',
   };
   const icone = (nom, label) => el('button', { class: 'ex-btn ex-btn-ico', type: 'button', 'aria-label': label, title: label, html: SVG[nom] });
   const bCourse = icone('courir', 'Courir (maintenir)');
   const bAccr = icone('accroupi', 'S\'accroupir');
   const bLampe = icone('lampe', 'Lampe');
+  const bLoupe = icone('loupe', 'Chercher par terre (O)');
   const bInv = el('button', { class: 'cache', type: 'button' });
   // Combat : gros bouton Frapper (maintenir = charger), Pousser à côté.
   const SVG_F = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 15 9"/><path d="m13 7 4-4 4 4-4 4"/><path d="M6 15l3 3"/></svg>';
@@ -114,7 +117,7 @@ export function creerEntrees({ racine, canvas, actions }) {
   const bTourner = el('button', { class: 'ex-btn ex-btn-petit cache', type: 'button' }, 'Tourner');
   const bAnnuler = el('button', { class: 'ex-btn ex-btn-petit cache', type: 'button' }, 'Arrêter');
   // s'accroupir : en bas à gauche des boutons de combat (sous le pouce, comme Frapper)
-  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bCourse),
+  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLoupe, bLampe, bCourse),
     el('div', { class: 'ex-pad-ligne ex-pad-place' }, bTourner, bAnnuler), el('div', { class: 'ex-pad-inter' }, bAutres, bInter),
     el('div', { class: 'ex-pad-combat' }, bAccr, el('div', { class: 'ex-pad-pile' }, bRecharger, bCrosse), bPousser, bFrapper));
   racine.append(zoneJoy, pad);
@@ -172,6 +175,7 @@ export function creerEntrees({ racine, canvas, actions }) {
   presser(bCourse, () => { boutonCourse = true; majClavier(); majBoutons(); }); relacher(bCourse, () => { boutonCourse = false; majClavier(); majBoutons(); });
   presser(bAccr, () => { etat.accroupi = !etat.accroupi; actions.accroupi && actions.accroupi(etat.accroupi); majBoutons(); }); relacher(bAccr);
   presser(bLampe, () => actions.lampe && actions.lampe()); relacher(bLampe);
+  presser(bLoupe, () => actions.recherche && actions.recherche()); relacher(bLoupe);
   presser(bInv, () => actions.inventaire && actions.inventaire()); relacher(bInv);
   let doigtFrappe = false;
   presser(bFrapper, () => { doigtFrappe = true; etat.tactile = true; actions.frapper && actions.frapper(true); });
@@ -184,7 +188,7 @@ export function creerEntrees({ racine, canvas, actions }) {
   presser(bAutres, () => actions.secondaire && actions.secondaire()); relacher(bAutres);
   presser(bTourner, () => actions.tourner && actions.tourner()); relacher(bTourner);
   presser(bAnnuler, () => actions.echap && actions.echap()); relacher(bAnnuler);
-  for (const b of [bInter, bCourse, bAccr, bLampe, bInv, bFrapper, bPousser, bRecharger, bCrosse, bAutres, bTourner, bAnnuler]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
+  for (const b of [bInter, bCourse, bAccr, bLampe, bLoupe, bInv, bFrapper, bPousser, bRecharger, bCrosse, bAutres, bTourner, bAnnuler]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
 
   function majBoutons() {
     bAccr.classList.toggle('on', etat.accroupi);
@@ -210,9 +214,9 @@ export function creerEntrees({ racine, canvas, actions }) {
       bInter.classList.toggle('inactif', !libelle);
     },
     setBouton(nom, { actif: a, libelle } = {}) {
-      const b = { lampe: bLampe, course: bCourse, accroupi: bAccr, sac: bInv }[nom]; if (!b) return;
+      const b = { lampe: bLampe, course: bCourse, accroupi: bAccr, sac: bInv, recherche: bLoupe }[nom]; if (!b) return;
       if (a != null) b.classList.toggle('on', !!a);
-      if (libelle && b !== bLampe && b !== bCourse && b !== bAccr && b.textContent !== libelle) b.textContent = libelle;
+      if (libelle && b !== bLampe && b !== bCourse && b !== bAccr && b !== bLoupe && b.textContent !== libelle) b.textContent = libelle;
     },
     setVisible(nom, v) { const b = { lampe: bLampe, course: bCourse, accroupi: bAccr, recharger: bRecharger, crosse: bCrosse }[nom]; if (b && b.classList.contains('cache') === !!v) b.classList.toggle('cache', !v); },
     // État du bouton Frapper : libellé (Frapper / Tirer / Dégage-toi), charge 0..1, menace proche, poussée en recharge.

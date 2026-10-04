@@ -28,6 +28,7 @@ import { mod, chargerOptionnels, lierCommun, vib, sfx, sfxA, posPorte, verifierC
 import { lierButin, avancerFouille, interrompreFouille, fermerButin, fournisseurSol } from './butin.js';
 import { lierInteractions, chercherCible, majInvite, interagir, basculerChoix, fermerChoix, choisir, avancerAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
 import { lierCombatLieu, combatIci as combatIci_, embuscade as embuscade_, suivreCombat, finArene } from './combat_lieu.js';
+import { lierNature, majRecherche, basculerRecherche, vitesseRecherche, enRecherche } from './nature.js';
 import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, viserPlacement, majConstruction, feuxCommeLampes, fantome } from './construction.js';
 
 export { verifierCondition };
@@ -144,6 +145,7 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     crosse: (appui, annule) => { if (!V || !V.cbt || V.occupe || enPlacement()) return; if (appui) stopperActions(); V.cbt.frapper(appui, annule, 'crosse'); },
     clicDroit: (appui) => { if (!V || !V.cbt || V.occupe) return; if (enPlacement()) { if (appui) tournerPlacement(); return; } if (appui) stopperActions(); V.cbt.clicDroit(appui); },
     secondaire: () => basculerChoix(),
+    recherche: () => { if (V && !V.arene) basculerRecherche(); },
     viser: (sx, sy) => viserPlacement(sx, sy),
     tourner: () => tournerPlacement(),
     pousser: () => { if (!V || !V.cbt || V.occupe) return; stopperActions(); V.cbt.pousser(); },
@@ -231,7 +233,7 @@ function lierTout(v) {
   lierCommun(v); lierButin(v);
   lierInteractions(v, { changerEtage, sortir, finArene, scene: (id) => crochets.scene(id), coop: crochets.coop });
   lierCombatLieu(v, { entrer, sortir, vue });
-  lierConstruction(v);
+  lierConstruction(v); lierNature(v);
 }
 function regleZoom(z) {
   if (!V) return;
@@ -338,14 +340,14 @@ function image(t, dt) {
   const pousse = Math.min(1, Math.hypot(mx, my));
   const sta = G.player.sta, staMax = G.player.staMax || 100;
   let allure = pousse < 0.05 ? 'immobile' : I.accroupi ? 'accroupi' : 'marche';
-  if (allure !== 'immobile' && I.course && !I.accroupi && pousse > 0.35) {
+  if (allure !== 'immobile' && I.course && !I.accroupi && pousse > 0.35 && !enRecherche()) {
     if (sta > RX.COURSE_STA_MIN || (j.allure === 'course' && sta > 0)) allure = 'course';
   }
   let v = RX.VITESSE[allure === 'immobile' ? 'marche' : allure] || 3.2;
   if (allure === 'accroupi') v *= 1 + RX.ACCROUPI_VITESSE_AGILITE * niv('agilite');
   try { if (mod.player && mod.player.vitesseMarche) v *= mod.player.vitesseMarche(G.player); } catch (e) {}
   if (G.player.agonie) v *= 0.22;                 // à terre (co-op) : on rampe
-  v *= V.cbt.vitesseMult();
+  v *= V.cbt.vitesseMult() * vitesseRecherche();
   {
     const cible = pousse > 0 ? v * pousse : 0;
     const k = 1 - Math.exp(-dtv / RX.INERTIE_MS);
@@ -430,6 +432,7 @@ function image(t, dt) {
   if (V.fouille) avancerFouille(dt);
   if (V.action) avancerAction(dt);
   majConstruction(dt);
+  majRecherche(dt);
   if (V._placeVu !== enPlacement()) { V._placeVu = enPlacement(); V.entrees.setPlacement && V.entrees.setPlacement(V._placeVu); }
   if (V.butin && Math.hypot(V.butin.x - j.x, V.butin.y - j.y) > 1.9) fermerButin();
   V.tPnj -= dt; if (V.tPnj <= 0) { V.tPnj = 800; majPnj(); }

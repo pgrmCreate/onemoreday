@@ -19,7 +19,7 @@ import { seedRng } from '../core/rng.js';
 import { K, parserNiveau, cleCase, MATIERES } from './niveau.js';
 import { deplacer, ligneLibre, obstaclesSon } from './physique.js';
 import { profilMelee, geometrie, resoudreCoup, resoudreAttaque, tapsEmpoignade, bruitCoup } from './combat.js';
-import { CONSTRUCTIONS, DEMONTABLES, casesConstruction, appliquerConstructions, cassableC } from '../data/construction.js';
+import { CONSTRUCTIONS, DEMONTABLES, RECOLTES, casesConstruction, appliquerConstructions, cassableC } from '../data/construction.js';
 
 const RX = REGLAGES.exploration, RP = RX.PERCEPTION, RF = REGLAGES.fouille, RC = REGLAGES.combat;
 const RAYON_JOUEUR = 0.3, RAYON_MORT = 0.3;
@@ -428,8 +428,13 @@ export function creerSimLieu(opts) {
     const d = c && CONSTRUCTIONS[c.type];
     if (!d || !d.piege || (z.tPiege && T - z.tPiege < 1200)) return;
     z.tPiege = T;
-    z.hp -= d.piege.degats; z.vacille = Math.max(z.vacille, 700); z.atk = null;
-    c.pv -= 1; vm++; cache = null;
+    const P = d.piege;
+    // alarme (boîtes de conserve) : du bruit, pas de mal ; barbelés : il s'empêtre ; fosse : il tombe dedans
+    if (P.alarme) bruit({ etage: z.etage, x: c.x + 0.5, y: c.y + 0.5, rayon: P.alarme });
+    if (P.degats) { z.hp -= P.degats; z.vacille = Math.max(z.vacille, P.vacille ?? 700); z.atk = null; }
+    if (P.empetre) { z.vacille = Math.max(z.vacille, P.empetre); z.atk = null; }
+    if (P.chute) { z.aTerre = Math.max(z.aTerre || 0, P.chute); z.atk = null; }
+    c.pv -= P.usure ?? 1; vm++; cache = null;
     evts.push({ type: 'construction', action: 'piege', uid: c.uid, zuid: z.uid, x: z.x, y: z.y, etage: z.etage, pv: c.pv });
     if (z.hp <= 0) { lacher(z); zombies = zombies.filter(q => q !== z); cadavres.push({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: z.x, y: z.y, dir: z.dir }); evts.push({ type: 'mort_zombie', joueur: null, uid: z.uid, typeMort: z.type, sexe: z.sexe, x: z.x, y: z.y, etage: z.etage, piege: true }); }
     if (c.pv <= 0) retirerConstruction(c, 'detruite', z.uid);
@@ -1253,8 +1258,9 @@ export function creerSimLieu(opts) {
   }
   // demonterMeuble(joueurId, cle) → { ok, rendu: [{ id, qty }] } : le meuble disparaît, son contenu tombe au sol.
   function demonterMeuble(joueurId, cle) {
-    const m = niveau.meubleParCle[cle]; const D2 = m && DEMONTABLES[m.type];
+    const m = niveau.meubleParCle[cle]; const D2 = m && (DEMONTABLES[m.type] || (RECOLTES[m.type] && RECOLTES[m.type].rendu));
     if (!m || !D2 || retires.has(cle)) return { ok: false, raison: 'impossible' };
+    if (RECOLTES[m.type] && RECOLTES[m.type].souche) bruit({ etage: m.etage, x: (m.x0 + m.x1 + 1) / 2, y: (m.y0 + m.y1 + 1) / 2, rayon: 12 });
     retires.add(cle);
     const c = conteneurs[cle];
     if (c && c.items) for (const it of c.items) sol.push({ uid: uidSeq++, etage: m.etage, x: (m.x0 + m.x1 + 1) / 2, y: (m.y0 + m.y1 + 1) / 2, ...it });

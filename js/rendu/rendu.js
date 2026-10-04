@@ -16,7 +16,7 @@ import { creerLumiere, ambiance, SUB } from './lumiere.js';
 import { creerEffets } from './effets.js';
 import { textureToit, chargerSolsPhoto, surSolsPrets } from './textures.js';
 import { K } from '../carte/catalogue.js';
-import { CONSTRUCTIONS, tailleConstruction } from '../data/construction.js';
+import { CONSTRUCTIONS, tailleConstruction, RECOLTES } from '../data/construction.js';
 import { ZOMBIES } from '../data/zombies.js';
 
 const MAX_BLOCS = 40;
@@ -70,7 +70,10 @@ export function creerRendu(cv, niveau) {
     const x0 = bx * CHUNK, y0 = by * CHUNK, x1 = Math.min(E.w - 1, x0 + CHUNK - 1), y1 = Math.min(E.h - 1, y0 + CHUNK - 1);
     c.save(); c.translate(-x0 * TS, -y0 * TS);
     peindreSol(c, niveau, E, x0, y0, x1, y1);
-    const objets = (E.rendu ? E.rendu.objets : []).filter(R => !R.retire && R.x + R.w >= x0 - 1 && R.x <= x1 + 1 && R.y + R.h >= y0 - 1 && R.y <= y1 + 2);
+    const dans = (R) => R.x + R.w >= x0 - 1 && R.x <= x1 + 1 && R.y + R.h >= y0 - 1 && R.y <= y1 + 2;
+    const objets = (E.rendu ? E.rendu.objets : []).filter(R => !R.retire && dans(R));
+    // un arbre abattu laisse sa souche
+    for (const R of (E.rendu ? E.rendu.objets : [])) if (R.retire && dans(R) && RECOLTES[R.type] && RECOLTES[R.type].souche) dessinerObjet(c, { ...R, type: 'souche', E_w: E.w });
     // décor plat (tapis, corps, débris, housses) sous les murs
     const plat = (R) => R.d && R.d.decor;
     for (const R of objets) if (plat(R)) { R.E_w = E.w; dessinerObjet(c, R); }
@@ -521,7 +524,7 @@ export function creerRendu(cv, niveau) {
       let ox = ecranX(o.x), oy = ecranY(o.y);
       const marge = 26, dehors = ox < marge || oy < marge || ox > W - marge || oy > H - marge;
       if (dehors) { ox = clamp(ox, marge, W - marge); oy = clamp(oy, marge, H - marge); }
-      ctx.strokeStyle = o.danger ? `rgba(214,48,62,${0.6 * a})` : `rgba(230,223,204,${0.45 * a})`;
+      ctx.strokeStyle = o.danger ? `rgba(214,48,62,${0.6 * a})` : o.trouve ? `rgba(232,196,90,${0.75 * a})` : `rgba(230,223,204,${0.45 * a})`;
       ctx.lineWidth = 2;
       for (let r = 0; r < 2; r++) { const rr2 = ((o.age / 600 + r * 0.5) % 1) * (dehors ? 18 : pxc * 0.9) + 4; cercle(ctx, ox, oy, rr2); ctx.stroke(); }
     }

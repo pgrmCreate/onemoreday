@@ -49,6 +49,8 @@ const LEG = {
   'μ': { prop: 'benne', nom: 'la benne' }, 'ν': { prop: 'haie', nom: 'la haie' }, 'ξ': { prop: 'camionnette', nom: 'la camionnette' },
   'π': { prop: 'poteau', nom: 'le poteau' }, 'ρ': { prop: 'fut', nom: 'le fût' }, 'σ': { prop: 'palette', nom: 'la palette' },
   'ο': { prop: 'fontaine', nom: 'la fontaine' }, 'υ': { prop: 'borne', nom: 'la borne' },
+  'Ϙ': { prop: 'figuier', nom: 'le figuier' }, 'Ϛ': { prop: 'amandier', nom: 'l\'amandier' },
+  'Ϝ': { prop: 'roncier', nom: 'le roncier' }, 'Ϟ': { prop: 'cannier', nom: 'les cannes de Provence' },
   'ϗ': { porte: true, etat: 'verrouillee', nom: 'la porte fermée à clé' },        // forçable au pied-de-biche
   'ϖ': { comme: '.', sol: 'parquet', bloque: true },                                // intérieur d'une maison close : on ne voit que le toit
   'ϙ': { comme: '"', sol: 'herbe', bloque: true },                                  // fourré impénétrable (poche sans accès)
@@ -346,6 +348,17 @@ export function agrandirDef(def) {
       const c = G[y][x];
       set(x, y, c === '+' || c === '/' || c === 'ϗ' ? '#' : ['ω', 'ψ', 'χ', 'ϕ', 'ϑ', '.'].includes(c) ? 'ϖ' : 'ϙ');
     }
+  }
+
+  // ---------- 4 bis. essences variées (sans toucher au plan : mêmes cases bloquées) ----------
+  // Une part des buissons devient des ronciers (mûres) ou des cannes de Provence (au bord des champs) ;
+  // une part des oliviers des jardins, des figuiers ou des amandiers. Hasard par case, indépendant du tirage du plan.
+  const hc = (x, y, k) => { let h = (x * 374761393 + y * 668265263 + k * 1274126177) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
+    if (oc(x, y) === 1) continue;
+    const c = G[y][x], u = hc(x, y, 7);
+    if (c === 'κ') { if (u < 0.3) G[y][x] = 'Ϝ'; else if (u < 0.42 && milieu !== 'centre') G[y][x] = 'Ϟ'; }
+    else if (c === 'θ' && milieu !== 'zone') { if (u < 0.18) G[y][x] = 'Ϙ'; else if (u < 0.3) G[y][x] = 'Ϛ'; }
   }
 
   // ---------- 5. sorties sur les bords (au bout des rues / pistes) ----------

@@ -10,7 +10,7 @@
 import { G } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { REGLAGES } from '../data/reglages.js';
-import { CONSTRUCTIONS, DEMONTABLES, casesConstruction, tailleConstruction } from '../data/construction.js';
+import { CONSTRUCTIONS, DEMONTABLES, COMBUSTIBLES, casesConstruction, tailleConstruction } from '../data/construction.js';
 import * as cons from '../game/construction.js';
 import { setContexteFabrication } from '../game/crafting.js';
 import { meteoCourante } from '../travel/rencontres_voyage.js';
@@ -27,7 +27,7 @@ const minutes = () => (G ? G.world.minutes : 0);
 const defDe = (c) => CONSTRUCTIONS[c.type];
 const consListe = () => (V && V.snap && V.snap.constructions) || [];
 const nomC = (c) => (defDe(c) || {}).nom || 'la construction';
-const le = (c) => { const n = nomC(c); return /^[AEIOUYÉÈ]/i.test(n) ? `l'${n.toLowerCase()}` : `${/^(Caisse|Palissade|Porte|Barricade)/.test(n) ? 'la' : 'le'} ${n.toLowerCase()}`; };
+const le = (c) => { const n = nomC(c); return /^[AEIOUYÉÈ]/i.test(n) ? `l'${n.toLowerCase()}` : `${/^(Caisse|Palissade|Porte|Barricade|Clôture|Fosse|Table|Chaise|Torche|Alarme)/.test(n) ? 'la' : /^(Barbelés)/.test(n) ? 'les' : 'le'} ${n.toLowerCase()}`; };
 const feuAllume = (c) => (defDe(c) || {}).feu && (c.feuJusqua || 0) > minutes();
 
 // ---------- Placement ----------
@@ -134,7 +134,8 @@ export function feuxCommeLampes(lampes, n, max = 6) {
   for (const c of consListe()) {
     if (n >= max) break;
     if (c.etage !== V.E.id || !feuAllume(c)) continue;
-    lampes[n++] = { x: c.x + 0.5, y: c.y + 0.5, dir: 0, forme: 'halo', angle: 360, portee: 6, sec: true, feu: true };
+    const f = defDe(c).feu;
+    lampes[n++] = { x: c.x + 0.5, y: c.y + 0.5, dir: 0, forme: 'halo', angle: 360, portee: f.discret ? 2.6 : f.petit ? 4.2 : 6, sec: true, feu: true };
   }
   return n;
 }
@@ -147,6 +148,7 @@ function majContexte() {
     const d = defDe(c); if (!d) continue;
     const [w, h] = tailleConstruction(c.type, c.rot), cx = c.x + w / 2, cy = c.y + h / 2;
     if (d.poste === 'etabli' && pres(cx, cy, 1.8)) { etabli = true; etabliVrai = true; }
+    if (d.poste === 'table' && pres(cx, cy, 1.6)) etabli = true;
     if (feuAllume(c)) { if (pres(cx, cy, 2.2)) feu = true; if (pres(cx, cy, 3.5)) feuProche = true; }
   }
   for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
@@ -198,7 +200,7 @@ export function libelleConstruction(c) {
   if (d.porte) return c.ouverte ? 'Fermer la porte' : 'Ouvrir la porte';
   if (d.lit) return 'Dormir dans le lit';
   if (d.poste === 'etabli') return 'Fabriquer à l\'établi';
-  if (d.feu) return feuAllume(c) ? `Remettre du bois (${Math.round((c.feuJusqua - minutes()) / 60 * 10) / 10} h restantes)` : 'Rallumer le feu';
+  if (d.feu) return feuAllume(c) ? `Remettre du bois (${String(Math.round((c.feuJusqua - minutes()) / 60 * 10) / 10).replace('.', ',')} h restantes)` : d.feu.petit && !d.poste ? 'Rallumer la torche' : 'Rallumer le feu';
   if (d.eau) { const L = eauRecuperee(c); return L < 0.1 ? 'Récupérateur : vide (il attend la pluie)' : besoinEau() ? `Boire l'eau de pluie (${L.toString().replace('.', ',')} L)` : `Remplir tes contenants (${L.toString().replace('.', ',')} L)`; }
   if (d.potager) { if (c.plante == null) return 'Planter des graines'; const p = pousse(c); return p >= 1 ? `Récolter (${d.potager.recolte} légumes)` : `Potager : ${p < 0.34 ? 'ça germe' : p < 0.67 ? 'ça pousse' : 'presque prêt'}`; }
   return `${d.nom}${c.pv < c.pvMax ? ` (${Math.round(100 * c.pv / c.pvMax)} %)` : ''}`;
@@ -226,12 +228,15 @@ export async function agirConstruction(c) {
   if (d.lit) return ouvrirSommeil({ lit: true });
   if (d.poste === 'etabli') { try { (await import('../ui/panels/index.js')).ouvrirPanneau('fabrication'); } catch (e) {} return; }
   if (d.feu) {
-    if (compter('planche') < 1) { message(feuAllume(c) ? 'Il faudrait une planche pour l\'entretenir.' : 'Il faut une planche (et de quoi allumer).'); return; }
+    // on met au feu le meilleur bois qu'on a (bûche, planche, branche, brindilles)
+    const bois = COMBUSTIBLES.find(([id]) => compter(id) > 0);
+    if (!bois) { message(feuAllume(c) ? 'Il faudrait du bois pour l\'entretenir (bûche, planche, branche).' : 'Il faut du bois (et de quoi allumer).'); return; }
     if (!feuAllume(c) && !(mod.inv && mod.inv.hasTag('allumer'))) { message('Il faut un briquet ou des allumettes.'); return; }
     return lancerAction(feuAllume(c) ? 'Remettre du bois…' : 'Rallumer…', 1600, c.x + 0.5, c.y + 0.5, async () => {
-      const fin = Math.max(minutes(), c.feuJusqua || 0) + d.feu.bois;
-      const r = await C.agirConstruction(c.uid, 'maj', { feuJusqua: Math.min(fin, minutes() + 6 * 60) });
-      if (r && r.ok) { mod.inv.removeItem('planche', 1); sfx('allumer'); message('Le feu reprend.'); }
+      const gain = Math.round(bois[1] * (d.feu.bois / 60));
+      const fin = Math.max(minutes(), c.feuJusqua || 0) + gain;
+      const r = await C.agirConstruction(c.uid, 'maj', { feuJusqua: Math.min(fin, minutes() + 8 * 60) });
+      if (r && r.ok) { mod.inv.removeItem(bois[0], 1); sfx('allumer'); message(`Le feu reprend (${mod.inv.nomObjet(bois[0]).toLowerCase()}).`); }
     });
   }
   if (d.eau) {

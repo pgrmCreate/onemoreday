@@ -8,7 +8,7 @@
 //   usage [tags]    ce que l'objet permet quand il est dans le sac / en main (outils des recettes, actions) :
 //                   allumer, cuisson, couper, ouvrir, visser, marteler, affuter, coudre, forcer, couper_chaine,
 //                   crocheter, siphon, lumiere, peche, piege, alarme, filtrer, creuser, observer, radio,
-//                   entretien_arme, escalade, desinfecter, combustible
+//                   entretien_arme, escalade, desinfecter, combustible, abattre (hache : arbres), elaguer (buissons), scier
 //
 // ── ARMES (type 'arme') — voir docs/GAMEPLAY.md §Temps 3 ──
 //   dmg [min,max]   dégâts d'un coup rapide (arme à feu : d'un tir).
@@ -70,10 +70,22 @@ export const ITEMS = {
     dur: 25, bruit: 0, skill: 'dexterite', reparation: 'metal', usage: ['visser'],
     desc: 'Dans l\'œil, jusqu\'au manche, ça marche aussi. Sinon, ça visse.',
   },
+  epieu: {
+    nom: 'Épieu', type: 'arme', poids: 0.9, espace: 2, volume: 3, long: true,
+    dmg: [7, 12], vitesse: 600, sta: 7, allonge: 2, charge: 1.5, stagger: 0.2, crit: 0.1,
+    dur: 16, bruit: 0, skill: 'dexterite', reparation: 'bois',
+    desc: 'Une branche taillée en pointe. Ça tient un mort à distance — le temps qu\'elle ne casse pas.',
+  },
+  hachette: {
+    nom: 'Hachette', type: 'arme', poids: 0.9, espace: 2, volume: 1.2,
+    dmg: [11, 17], vitesse: 620, sta: 9, allonge: 0, charge: 1.8, stagger: 0.3, crit: 0.12,
+    dur: 55, bruit: 1, skill: 'force', reparation: 'bois', usage: ['couper', 'abattre', 'elaguer'],
+    desc: 'Une hachette de camping au manche verni. Elle fend une bûche, elle ouvre un crâne : c\'est la même main qui décide.',
+  },
   machette: {
     nom: 'Machette', type: 'arme', poids: 0.8, espace: 2, volume: 1.5, long: true,
     dmg: [13, 20], vitesse: 560, sta: 9, allonge: 1, charge: 1.6, stagger: 0.2, crit: 0.15,
-    dur: 50, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper'],
+    dur: 50, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper', 'elaguer'],
     desc: 'Tranche net. Elle tranche net. Chez eux, les moignons ne saignent même plus.',
   },
   machette_aiguisee: {
@@ -153,7 +165,7 @@ export const ITEMS = {
   hache_pompier: {
     nom: 'Hache de pompier', type: 'arme', poids: 3.2, espace: 3, volume: 6, long: true,
     dmg: [18, 27], vitesse: 880, sta: 14, allonge: 1, charge: 2.2, stagger: 0.55, crit: 0.12,
-    dur: 70, bruit: 1, skill: 'force', deux_mains: true, reparation: 'bois', usage: ['forcer', 'couper'],
+    dur: 70, bruit: 1, skill: 'force', deux_mains: true, reparation: 'bois', usage: ['forcer', 'couper', 'abattre'],
     desc: 'Lourde, lente, définitive. Un seul bon coup suffit souvent.',
   },
   masse_chantier: {
@@ -679,6 +691,75 @@ export const ITEMS = {
   eclat_verre: {
     nom: 'Éclat de verre', type: 'materiau', poids: 0.2, espace: 0, volume: 0.05, usage: ['couper'],
     desc: 'Long comme la main, coupant comme un rasoir.',
+  },
+  // --- Ce que donne la nature (recherche au sol, arbres abattus, buissons) ---
+  buche: {
+    nom: 'Bûche', type: 'materiau', poids: 6, espace: 3, volume: 12, long: true, usage: ['combustible'],
+    desc: 'Un tronçon de tronc fendu à la hache, encore humide de sève. Trois heures de feu, ou deux planches avec une scie.',
+  },
+  branche: {
+    nom: 'Branche', type: 'materiau', poids: 0.7, espace: 2, volume: 3, long: true, usage: ['combustible'],
+    melee: { dmg: [3, 6], vitesse: 560, sta: 6, allonge: 1, charge: 1.4, stagger: 0.2, crit: 0.03, skill: 'force', bruit: 0 },
+    desc: 'Une branche droite, longue comme un bras. Du petit bois, une clôture, un manche de lance.',
+  },
+  brindilles: {
+    nom: 'Brindilles', type: 'materiau', poids: 0.15, espace: 0, volume: 0.8, usage: ['combustible'],
+    desc: 'Du bois mort sec, cassé menu. Ça prend au premier coup de briquet.',
+  },
+  pierre: {
+    nom: 'Pierre', type: 'jet', poids: 0.9, espace: 1, volume: 0.5,
+    jet: { portee: 7, bruit: 5, dmg: [4, 8], stagger: 0.25, combat: true, recuperable: 0.9 },
+    desc: 'Un caillou de la Crau, lisse et lourd. Ça se lance, ça cale, ça monte un muret.',
+  },
+  fibres: {
+    nom: 'Fibres végétales', type: 'materiau', poids: 0.1, espace: 0, volume: 0.4,
+    desc: 'De l\'herbe sèche et des tiges d\'ortie, battues et effilées. Tressées, elles font une ficelle qui tient.',
+  },
+  cannes: {
+    nom: 'Cannes de Provence', type: 'materiau', poids: 0.5, espace: 2, volume: 3, long: true,
+    desc: 'Des roseaux géants coupés au bord d\'un fossé, droits et creux. Une palissade, une lance légère, des tuteurs.',
+  },
+  mures: {
+    nom: 'Mûres', type: 'nourriture', poids: 0.15, espace: 0, volume: 0.25,
+    kcal: 65, perissable: 18, soif: 2,
+    desc: 'Une poignée de mûres noires cueillies dans les ronces. Les doigts violets, les avant-bras griffés : ça valait le coup.',
+  },
+  figues: {
+    nom: 'Figues', type: 'nourriture', poids: 0.25, espace: 1, volume: 0.35,
+    kcal: 180, perissable: 30, soif: 2,
+    desc: 'Des figues violettes, éclatées par le soleil de septembre. Personne n\'est venu les ramasser cette année.',
+  },
+  amandes: {
+    nom: 'Amandes', type: 'nourriture', poids: 0.12, espace: 0, volume: 0.15,
+    kcal: 300,
+    desc: 'Des amandes tombées sous l\'amandier, dans leur coque dure. Ça se garde des mois.',
+  },
+  champignons: {
+    nom: 'Champignons', type: 'nourriture', poids: 0.2, espace: 1, volume: 0.4,
+    kcal: 40, cru: 0.5, perissable: 20, risque: { type: 'intoxication', p: 0.18 },
+    desc: 'Des champignons de garrigue sortis après la pluie. Presque sûr que ce sont des bons. Presque.',
+  },
+  escargots: {
+    nom: 'Escargots', type: 'nourriture', poids: 0.2, espace: 1, volume: 0.3,
+    kcal: 90, cru: 0.2, perissable: 48, risque: { type: 'intoxication', p: 0.5 },
+    desc: 'Des petits-gris ramassés sous les pierres humides. Cuits à la poêle avec un peu d\'ail, c\'est un repas de fête.',
+  },
+  pignons: {
+    nom: 'Pignons de pin', type: 'nourriture', poids: 0.08, espace: 0, volume: 0.1,
+    kcal: 190,
+    desc: 'Sortis un à un des pommes de pin, à la pointe du couteau. Long à récolter, mais ça nourrit.',
+  },
+  ferraille: {
+    nom: 'Ferraille', type: 'materiau', poids: 0.8, espace: 1, volume: 0.8,
+    desc: 'Un bout de cornière, une tôle tordue, des boulons rouillés. Le fer ne se perd jamais tout à fait.',
+  },
+  sac_sable: {
+    nom: 'Sac de terre', type: 'materiau', poids: 12, espace: 4, volume: 18,
+    desc: 'Un sac plastique bourré de terre et noué serré. Empilés, ils arrêtent les morts et les balles.',
+  },
+  scie: {
+    nom: 'Scie égoïne', type: 'outil', poids: 0.7, espace: 2, volume: 1.5, long: true, usage: ['scier', 'couper'],
+    desc: 'Une scie de menuisier aux dents encore vives. Une bûche devient des planches, un meuble devient du bois.',
   },
   manche_balai: {
     nom: 'Manche à balai', type: 'materiau', poids: 0.5, espace: 2, volume: 1.5, long: true,

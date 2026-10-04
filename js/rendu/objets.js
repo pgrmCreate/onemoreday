@@ -264,6 +264,8 @@ const DESSINS = {
   platane(c, W, H, r) { tronc(c, W, H, r, 8, '#7a7466'); },
   pin(c, W, H, r) { tronc(c, W, H, r, 6, '#4a3424'); },
   olivier(c, W, H, r) { tronc(c, W, H, r, 6, '#5a5446'); },
+  figuier(c, W, H, r) { tronc(c, W, H, r, 6, '#8a8678'); },
+  amandier(c, W, H, r) { tronc(c, W, H, r, 5, '#4a3a30'); },
   cypres(c, W, H, r) { tronc(c, W, H, r, 4); },
   buisson(c, W, H, r) {
     avecOmbre(c, 8, 4, 6, 0.55, () => { c.fillStyle = '#1e2c16'; cercle(c, W / 2, H / 2, Math.min(W, H) / 2 - 2); c.fill(); });
@@ -310,7 +312,137 @@ const DESSINS = {
     const g = c.createRadialGradient(W / 2, H / 2, 1, W / 2, H / 2, W * 0.24 * f); g.addColorStop(0, 'rgba(255,220,120,0.95)'); g.addColorStop(0.5, 'rgba(255,140,50,0.8)'); g.addColorStop(1, 'rgba(160,40,10,0)'); c.fillStyle = g; cercle(c, W / 2, H / 2, W * 0.24 * f); c.fill();
     if (R && R.c) for (let k = 0; k < 4; k++) { const a = t * 0.4 + k * 1.6; c.fillStyle = `rgba(255,${150 + 60 * Math.sin(t + k) | 0},60,0.8)`; ellipse(c, W / 2 + Math.cos(a) * 3, H / 2 + Math.sin(a) * 3 - 2, 3, 6 * f, a); c.fill(); }
   },
+  // ─────────── Nature ───────────
+  souche(c, W, H, r) {
+    const m = Math.min(W, H) / 2;
+    avecOmbre(c, 3, 2, 3, 0.5, () => { c.fillStyle = '#4a3422'; cercle(c, W / 2, H / 2, m * 0.42); c.fill(); });
+    c.fillStyle = '#b89668'; cercle(c, W / 2, H / 2, m * 0.34); c.fill();
+    c.strokeStyle = 'rgba(90,60,30,0.55)'; c.lineWidth = 0.8; for (let k = 1; k < 5; k++) { cercle(c, W / 2 + r() - 0.5, H / 2 + r() - 0.5, m * 0.34 * k / 5); c.stroke(); }
+    c.fillStyle = 'rgba(220,200,160,0.7)'; for (let k = 0; k < 7; k++) { const a = r() * 6.28; c.fillRect(W / 2 + Math.cos(a) * m * 0.6, H / 2 + Math.sin(a) * m * 0.6, 3, 1.4); }
+  },
+  roncier(c, W, H, r) {
+    for (let k = 0; k < 14; k++) { const a = r() * 6.28, d = r() * W * 0.32; c.fillStyle = teinte('#2e3a1e', 0.7 + r() * 0.6); cercle(c, W / 2 + Math.cos(a) * d, H / 2 + Math.sin(a) * d, 5 + r() * 6); c.fill(); }
+    c.strokeStyle = 'rgba(90,40,50,0.7)'; c.lineWidth = 1; for (let k = 0; k < 8; k++) { const a = r() * 6.28; c.beginPath(); c.moveTo(W / 2, H / 2); c.quadraticCurveTo(W / 2 + Math.cos(a + 0.6) * W * 0.3, H / 2 + Math.sin(a + 0.6) * H * 0.3, W / 2 + Math.cos(a) * W * 0.46, H / 2 + Math.sin(a) * H * 0.46); c.stroke(); }
+    c.fillStyle = '#1a0e1c'; for (let k = 0; k < 9; k++) { cercle(c, 6 + r() * (W - 12), 6 + r() * (H - 12), 1.6); c.fill(); }
+  },
+  cannier(c, W, H, r) {
+    for (let k = 0; k < 26; k++) { const x = 4 + r() * (W - 8), y = 4 + r() * (H - 8); c.fillStyle = teinte('#8a8a52', 0.75 + r() * 0.5); cercle(c, x, y, 1.8); c.fill(); }
+    c.strokeStyle = 'rgba(120,140,70,0.85)'; c.lineWidth = 1.6; for (let k = 0; k < 16; k++) { const x = r() * W, y = r() * H, a = r() * 6.28; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * 9, y + Math.sin(a) * 9); c.stroke(); }
+  },
   // ─────────── Constructions (js/data/construction.js) ───────────
+  mur_rondins(c, W, H, r, R) {
+    for (let k = 0; k < 2; k++) {
+      const y = 3 + k * (H - 6) / 2, h = (H - 6) / 2 - 1;
+      avecOmbre(c, 4, 3, 4, 0.55, () => { c.fillStyle = teinte('#6a4a2c', 0.85 + r() * 0.3); rr(c, 1, y, W - 2, h, h / 2); c.fill(); });
+      c.fillStyle = 'rgba(255,230,190,0.12)'; c.fillRect(4, y + 2, W - 8, 2);
+      c.fillStyle = '#b89668'; ellipse(c, 3, y + h / 2, 2.5, h / 2 - 1); c.fill(); ellipse(c, W - 3, y + h / 2, 2.5, h / 2 - 1); c.fill();
+    }
+    usure(c, W, H, R);
+  },
+  cloture_branches(c, W, H, r, R) {
+    c.lineCap = 'round';
+    for (let k = 0; k < 9; k++) { c.strokeStyle = teinte('#5a4430', 0.7 + r() * 0.5); c.lineWidth = 2 + r() * 2; const y = 6 + r() * (H - 12); c.beginPath(); c.moveTo(1, y + (r() - 0.5) * 10); c.lineTo(W - 1, y + (r() - 0.5) * 10); c.stroke(); }
+    c.fillStyle = '#3a2a1a'; cercle(c, 4, H / 2, 3); c.fill(); cercle(c, W - 4, H / 2, 3); c.fill();
+    usure(c, W, H, R);
+  },
+  palissade_cannes(c, W, H, r, R) {
+    avecOmbre(c, 3, 2, 3, 0.5, () => { c.fillStyle = '#9a9460'; c.fillRect(1, H * 0.3, W - 2, H * 0.4); });
+    for (let x = 2; x < W - 2; x += 3) { c.fillStyle = teinte('#b8b07a', 0.75 + r() * 0.4); c.fillRect(x, H * 0.3, 2.2, H * 0.4); c.fillStyle = 'rgba(60,50,20,0.5)'; c.fillRect(x, H * 0.3 + r() * H * 0.4, 2.2, 0.8); }
+    c.fillStyle = '#5a5a5a'; c.fillRect(1, H * 0.42, W - 2, 1); c.fillRect(1, H * 0.58, W - 2, 1);
+    usure(c, W, H, R);
+  },
+  mur_sacs(c, W, H, r, R) {
+    for (let k = 0; k < 2; k++) for (let i = 0; i < 2; i++) {
+      const x = 2 + i * (W - 4) / 2 + (k ? (W - 4) / 4 : 0) - (k ? 2 : 0), y = 4 + k * (H - 8) / 2, w = (W - 4) / 2 - 1, h = (H - 8) / 2 - 1;
+      if (x + w > W) continue;
+      avecOmbre(c, 3, 2, 3, 0.5, () => { c.fillStyle = teinte('#a8946a', 0.85 + r() * 0.25); rr(c, x, y, w, h, 5); c.fill(); });
+      c.strokeStyle = 'rgba(60,45,25,0.5)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x + 4, y + h / 2); c.lineTo(x + w - 4, y + h / 2); c.stroke();
+    }
+    usure(c, W, H, R);
+  },
+  muret_pierres(c, W, H, r, R) {
+    for (let k = 0; k < 16; k++) { const x = 3 + r() * (W - 6), y = H * 0.25 + r() * H * 0.5; avecOmbre(c, 2, 2, 2, 0.45, () => { c.fillStyle = teinte('#a39a88', 0.75 + r() * 0.45); ellipse(c, x, y, 3 + r() * 4, 2.5 + r() * 3, r() * 3); c.fill(); }); }
+    usure(c, W, H, R);
+  },
+  portail_bois(c, W, H, r, R) {
+    const ouverte = R && R.c && R.c.ouverte;
+    c.fillStyle = BOIS_F; c.fillRect(0, 0, 4, H); c.fillRect(W - 4, 0, 4, H);
+    if (ouverte) { for (const [x, a] of [[4, 1.3], [W - 4, Math.PI - 1.3]]) { c.save(); c.translate(x, H / 2); c.rotate(a); c.fillStyle = BOIS_C; c.fillRect(0, -3, W / 2 - 6, 6); c.restore(); } return; }
+    avecOmbre(c, 4, 3, 4, 0.5, () => { c.fillStyle = BOIS_C; c.fillRect(4, 3, W - 8, H - 6); });
+    grainBois(c, 4, 3, W - 8, H - 6, r, 6);
+    c.fillStyle = BOIS_F; c.fillRect(W / 2 - 1, 3, 2, H - 6);
+    c.fillStyle = '#7a7a7a'; c.fillRect(W / 2 - 6, H / 2 - 1.5, 12, 3);
+    usure(c, W, H, R);
+  },
+  barbeles(c, W, H, r) {
+    c.fillStyle = '#4a3a2a'; cercle(c, 4, H / 2, 2.5); c.fill(); cercle(c, W - 4, H / 2, 2.5); c.fill();
+    c.strokeStyle = 'rgba(150,150,145,0.85)'; c.lineWidth = 0.9;
+    for (let k = 0; k < 3; k++) { c.beginPath(); for (let x = 3; x <= W - 3; x += 2) { const y = H / 2 + Math.sin(x / 3 + k * 2) * (5 + k * 3); x === 3 ? c.moveTo(x, y) : c.lineTo(x, y); } c.stroke(); }
+    c.fillStyle = 'rgba(180,180,175,0.9)'; for (let k = 0; k < 10; k++) c.fillRect(4 + r() * (W - 8), H / 2 - 9 + r() * 18, 1.6, 1.6);
+  },
+  alarme_conserves(c, W, H, r) {
+    c.strokeStyle = 'rgba(160,160,155,0.7)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(1, H / 2); c.lineTo(W - 1, H / 2); c.stroke();
+    for (let k = 0; k < 4; k++) { const x = 6 + k * (W - 12) / 3; avecOmbre(c, 1.5, 1.5, 2, 0.45, () => { c.fillStyle = teinte('#b0aca2', 0.8 + r() * 0.3); cercle(c, x, H / 2 + 3, 2.6); c.fill(); }); c.fillStyle = 'rgba(60,60,60,0.6)'; cercle(c, x, H / 2 + 3, 1.4); c.fill(); }
+  },
+  fosse(c, W, H, r) {
+    c.fillStyle = 'rgba(60,44,28,0.55)'; rr(c, 3, 3, W - 6, H - 6, 6); c.fill();
+    c.strokeStyle = 'rgba(80,60,40,0.8)'; c.lineWidth = 2; for (let k = 0; k < 5; k++) { const y = 5 + r() * (H - 10); c.beginPath(); c.moveTo(4, y); c.lineTo(W - 4, y + (r() - 0.5) * 8); c.stroke(); }
+    c.fillStyle = 'rgba(120,100,70,0.35)'; for (let k = 0; k < 12; k++) { cercle(c, 6 + r() * (W - 12), 6 + r() * (H - 12), 2 + r() * 2); c.fill(); }
+  },
+  chevaux_frise(c, W, H, r, R) {
+    avecOmbre(c, 4, 3, 4, 0.55, () => { c.fillStyle = '#5a4026'; c.fillRect(2, H / 2 - 3, W - 4, 6); });
+    c.strokeStyle = '#7a5838'; c.lineWidth = 2.5; c.lineCap = 'round';
+    for (let x = 6; x < W - 4; x += 8) { c.beginPath(); c.moveTo(x - 6, 3); c.lineTo(x + 6, H - 3); c.moveTo(x + 6, 3); c.lineTo(x - 6, H - 3); c.stroke(); }
+    usure(c, W, H, R);
+  },
+  coffre(c, W, H, r, R) {
+    avecOmbre(c, 5, 3, 4, 0.55, () => { boite(c, 2, 4, W - 4, H - 8, teinte(BOIS, 1.08), { r: 2 }); });
+    grainBois(c, 3, 5, W - 6, H - 10, r, 5, 0.3);
+    c.fillStyle = '#3a3a3a'; c.fillRect(2, H / 2 - 1, W - 4, 2); c.fillStyle = '#9a8a5a'; c.fillRect(W / 2 - 3, H / 2 - 3, 6, 6);
+    if (R && R.c && R.c.n) { c.fillStyle = 'rgba(255,230,160,0.5)'; cercle(c, W - 7, 8, 2.5); c.fill(); }
+  },
+  etagere_bois(c, W, H, r, R) {
+    avecOmbre(c, 4, 3, 4, 0.5, () => { c.fillStyle = BOIS; c.fillRect(2, 3, W - 4, H - 6); });
+    c.fillStyle = BOIS_C; c.fillRect(3, 4, W - 6, H - 8);
+    c.fillStyle = BOIS_F; for (let k = 1; k < 3; k++) c.fillRect(3, 4 + k * (H - 8) / 3, W - 6, 1.2);
+    if (R && R.c && R.c.n) for (let k = 0; k < Math.min(8, R.c.n * 2); k++) { c.fillStyle = pick(r, ['#8a3a2a', '#c8a032', '#5a7a3a', '#d8d0c0', '#6a6a6a']); c.fillRect(5 + r() * (W - 14), 6 + r() * (H - 14), 4, 3); }
+  },
+  table_bois(c, W, H, r) { avecOmbre(c, 5, 3, 4, 0.5, () => { c.fillStyle = BOIS_C; rr(c, 3, 4, W - 6, H - 8, 2); c.fill(); }); grainBois(c, 3, 4, W - 6, H - 8, r, 5); for (let k = 0; k < 3; k++) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(3, 4 + (k + 1) * (H - 8) / 4, W - 6, 0.8); } },
+  chaise_bois(c, W, H, r) { avecOmbre(c, 3, 2, 3, 0.45, () => { c.fillStyle = BOIS_C; c.fillRect(W * 0.28, H * 0.3, W * 0.44, H * 0.44); }); c.fillStyle = BOIS_F; c.fillRect(W * 0.28, H * 0.26, W * 0.44, 3); grainBois(c, W * 0.28, H * 0.3, W * 0.44, H * 0.44, r, 2); },
+  torche_murale(c, W, H, r, R) {
+    c.fillStyle = 'rgba(0,0,0,0.35)'; ellipse(c, W / 2 + 3, H / 2 + 3, 5, 3); c.fill();
+    c.fillStyle = '#4a3020'; cercle(c, W / 2, H / 2, 3.2); c.fill();
+    const allume = R && R.c && (R.c.feuJusqua || 0) > (R.minutes || 0);
+    c.fillStyle = allume ? 'rgba(255,190,90,0.95)' : '#2a2420'; cercle(c, W / 2, H / 2, 2.2); c.fill();
+    if (allume) { const g = c.createRadialGradient(W / 2, H / 2, 1, W / 2, H / 2, 9); g.addColorStop(0, 'rgba(255,200,110,0.7)'); g.addColorStop(1, 'rgba(255,120,40,0)'); c.fillStyle = g; cercle(c, W / 2, H / 2, 9); c.fill(); }
+  },
+  four_pierre(c, W, H, r, R) {
+    for (let k = 0; k < 12; k++) { const a = k / 12 * 6.28; avecOmbre(c, 2, 2, 2, 0.45, () => { c.fillStyle = teinte('#8e867a', 0.75 + r() * 0.4); cercle(c, W / 2 + Math.cos(a) * W * 0.32, H / 2 + Math.sin(a) * H * 0.32, 4.5); c.fill(); }); }
+    c.fillStyle = teinte('#7a7266', 0.9); cercle(c, W / 2, H / 2, W * 0.24); c.fill();
+    const allume = R && R.c && (R.c.feuJusqua || 0) > (R.minutes || 0);
+    c.fillStyle = allume ? 'rgba(255,120,40,0.85)' : '#1a1410'; ellipse(c, W / 2, H * 0.78, W * 0.12, 3); c.fill();
+  },
+  fumoir(c, W, H, r, R) {
+    avecOmbre(c, 5, 3, 4, 0.55, () => { c.fillStyle = '#5d4128'; c.fillRect(4, 4, W - 8, H - 8); });
+    c.fillStyle = '#3a4a3a'; c.fillRect(5, 5, W - 10, H - 10);
+    c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(5, H / 2); c.lineTo(W - 5, H / 2); c.stroke();
+    const allume = R && R.c && (R.c.feuJusqua || 0) > (R.minutes || 0);
+    if (allume) { c.fillStyle = 'rgba(200,200,200,0.25)'; cercle(c, W / 2 + 2, H / 2 - 4, 7); c.fill(); }
+  },
+  tonneau(c, W, H, r) {
+    avecOmbre(c, 4, 3, 4, 0.55, () => { c.fillStyle = '#6a4a2c'; cercle(c, W / 2, H / 2, W * 0.38); c.fill(); });
+    c.fillStyle = '#2a3a4a'; cercle(c, W / 2, H / 2, W * 0.3); c.fill();
+    c.strokeStyle = '#8a8a8a'; c.lineWidth = 1.5; cercle(c, W / 2, H / 2, W * 0.36); c.stroke();
+    c.fillStyle = 'rgba(200,220,240,0.15)'; cercle(c, W / 2 - 3, H / 2 - 3, W * 0.12); c.fill();
+  },
+  abri_branches(c, W, H, r, R) {
+    avecOmbre(c, 7, 5, 6, 0.55, () => { c.fillStyle = '#3e4a30'; rr(c, 4, 6, W - 8, H - 12, 8); c.fill(); });
+    c.fillStyle = '#4a5a6a'; c.fillRect(8, 10, W - 16, H - 20);
+    c.strokeStyle = '#5a4430'; c.lineCap = 'round'; for (let k = 0; k < 14; k++) { c.lineWidth = 2 + r() * 2; const x = 6 + r() * (W - 12); c.beginPath(); c.moveTo(x, 6); c.lineTo(x + (r() - 0.5) * 14, H - 6); c.stroke(); }
+    c.fillStyle = BOIS_F; c.fillRect(W / 2 - 1.5, 4, 3, H - 8);
+    for (let k = 0; k < 20; k++) { c.fillStyle = teinte('#4e5e30', 0.7 + r() * 0.6); cercle(c, 6 + r() * (W - 12), 6 + r() * (H - 12), 2 + r() * 2.5); c.fill(); }
+    usure(c, W, H, R);
+  },
   mur_planches(c, W, H, r, R) {
     avecOmbre(c, 5, 3, 4, 0.55, () => { c.fillStyle = BOIS; c.fillRect(1, 1, W - 2, H - 2); });
     const n = 4; for (let k = 0; k < n; k++) { const y = 2 + k * (H - 4) / n; c.fillStyle = teinte(BOIS_C, 0.8 + r() * 0.35); c.fillRect(2, y, W - 4, (H - 4) / n - 1.5); }
@@ -542,6 +674,8 @@ export function spriteHaut(R) {
     case 'platane': rayon = TS * 2.3; break;
     case 'pin': rayon = TS * 2.1; break;
     case 'olivier': rayon = TS * 1.4; break;
+    case 'figuier': rayon = TS * 1.5; break;
+    case 'amandier': rayon = TS * 1.35; break;
     case 'cypres': rayon = TS * 0.75; break;
     case 'lampadaire': rayon = TS * 0.6; break;
     default: rayon = TS * 1.7;
@@ -557,7 +691,7 @@ export function spriteHaut(R) {
     for (let k = 0; k < 26; k++) { const a = r() * 6.28, d = r() * rayon * 0.7, t = 4 + r() * 6, f = 0.6 + r() * 0.7; c.fillStyle = rgb([28 * f, 46 * f, 22 * f]); cercle(c, m + Math.cos(a) * d, m + Math.sin(a) * d, t); c.fill(); }
     c.fillStyle = 'rgba(160,200,120,0.08)'; cercle(c, m - rayon * 0.25, m - rayon * 0.25, rayon * 0.5); c.fill();
   } else {
-    const base = R.haut === 'pin' ? [28, 44, 26] : R.haut === 'olivier' ? [70, 80, 58] : R.haut === 'platane' ? [52, 70, 34] : [36, 54, 28];
+    const base = R.haut === 'pin' ? [28, 44, 26] : R.haut === 'olivier' ? [70, 80, 58] : R.haut === 'figuier' ? [44, 74, 30] : R.haut === 'amandier' ? [64, 82, 44] : R.haut === 'platane' ? [52, 70, 34] : [36, 54, 28];
     const touffes = R.haut === 'pin' ? 9 : R.haut === 'olivier' ? 7 : 11;
     avecOmbre(c, 14, 10, 14, 0.5, () => {
       c.fillStyle = rgb(base.map(v => v * 0.7));

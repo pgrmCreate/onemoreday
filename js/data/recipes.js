@@ -305,6 +305,72 @@ export const RECIPES = [
     desc: 'Dénoyauter, hacher au couteau jusqu\'à la pâte, noyer d\'huile. Trois pots qui se gardent et ne demandent pas de feu.',
   },
 
+  // ======================== BOIS ET NATURE ========================
+  {
+    id: 'r_planches_scie', cat: 'recyclage', nom: 'Scier une bûche en planches',
+    resultat: { id: 'planche', qty: 3 },
+    ingredients: [{ id: 'buche', qty: 1 }],
+    outils: ['scier'], poste: null, skill: null, tempsMin: 25, xp: { construction: 4 }, connue: true,
+    desc: 'Caler la bûche du pied, scier dans le fil, trois fois. Trois planches un peu gauches, mais des planches.',
+  },
+  {
+    id: 'r_planches_hache', cat: 'recyclage', nom: 'Fendre une bûche',
+    resultat: { id: 'planche', qty: 2 },
+    ingredients: [{ id: 'buche', qty: 1 }],
+    outils: ['abattre'], poste: null, skill: null, tempsMin: 30, xp: { construction: 3, force: 2 }, connue: true,
+    desc: 'Fendre au coin de la hache, dégrossir les faces. Deux planches épaisses — le reste part en copeaux.',
+  },
+  {
+    id: 'r_brindilles', cat: 'survie', nom: 'Casser du petit bois',
+    resultat: { id: 'brindilles', qty: 3 },
+    ingredients: [{ id: 'branche', qty: 1 }],
+    outils: [], poste: null, skill: null, tempsMin: 3, xp: {}, connue: true,
+    desc: 'Casser la branche sur le genou, encore, encore. De quoi démarrer un feu.',
+  },
+  {
+    id: 'r_corde_fibres', cat: 'survie', nom: 'Tresser une corde',
+    resultat: { id: 'corde', qty: 1 },
+    ingredients: [{ id: 'fibres', qty: 6 }],
+    outils: [], poste: null, skill: null, tempsMin: 40, xp: { chasse: 4 }, connue: true,
+    desc: 'Rouler les fibres sur la cuisse, deux brins, puis trois, tordus en sens contraire. Lent, mais ça tient un homme.',
+  },
+  {
+    id: 'r_epieu', cat: 'armes', nom: 'Épieu',
+    resultat: { id: 'epieu', qty: 1 },
+    ingredients: [{ id: 'branche', qty: 1 }],
+    outils: ['couper'], poste: null, skill: null, tempsMin: 15, xp: { construction: 3 }, connue: true,
+    desc: 'Choisir la branche la plus droite, tailler la pointe en biseau, la durcir au feu si on peut. L\'arme d\'avant les armes.',
+  },
+  {
+    id: 'r_lance_cannes', cat: 'armes', nom: 'Lance en canne',
+    resultat: { id: 'lance_artisanale', qty: 1 },
+    ingredients: [{ id: 'cannes', qty: 1 }, { id: 'couteau_cuisine', qty: 1 }, { id: 'fibres', qty: 2 }],
+    outils: [], poste: null, skill: null, tempsMin: 20, xp: { construction: 6 }, connue: true,
+    desc: 'Fendre le bout de la canne, y glisser le manche du couteau, ligaturer serré. Légère, longue, fragile.',
+  },
+  {
+    id: 'r_torche_branche', cat: 'lumiere', nom: 'Torche de branche',
+    resultat: { id: 'torche', qty: 1 },
+    ingredients: [{ id: 'branche', qty: 1 }, { id: 'chiffon', qty: 1 }, { id: 'huile_olive', qty: 1 }],
+    outils: [], poste: null, skill: null, tempsMin: 6, xp: { construction: 2 }, connue: true,
+    desc: 'Un chiffon imbibé d\'huile serré au bout d\'une branche. Ça fume, ça éclaire, ça sent la friture.',
+  },
+  {
+    id: 'r_sac_sable', cat: 'survie', nom: 'Remplir un sac de terre',
+    resultat: { id: 'sac_sable', qty: 1 },
+    ingredients: [{ id: 'sac_plastique', qty: 1 }],
+    outils: ['creuser'], poste: null, skill: null, tempsMin: 10, xp: { force: 2 }, connue: true,
+    desc: 'Pelleter la terre dans le sac, tasser, nouer. Douze kilos qui arrêtent un mort — et une balle.',
+  },
+  {
+    id: 'r_hachette', cat: 'armes', nom: 'Hachette de fortune',
+    resultat: { id: 'hachette', qty: 1 },
+    ingredients: [{ id: 'ferraille', qty: 2 }, { id: 'branche', qty: 1 }, { id: 'fil_de_fer', qty: 1 }],
+    outils: ['marteler', 'affuter'], poste: 'etabli', skill: { construction: 2 }, tempsMin: 45, xp: { construction: 12 },
+    connue: false, apprise_par: ['manuel_bricolage', 'guide_survie'], apprise_niveau: { construction: 3 },
+    desc: 'Marteler une cornière en coin, l\'affûter, l\'emmancher dans une fourche de branche. Elle coupe du bois. Et le reste.',
+  },
+
   // ======================== LUMIÈRE ========================
   {
     id: 'r_torche', cat: 'lumiere', nom: 'Torche',

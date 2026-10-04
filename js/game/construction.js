@@ -9,7 +9,7 @@ import { niveau as nivComp, gagnerXps, nomCompetence } from './player.js';
 
 export { CONSTRUCTIONS, CATS_CONSTRUCTION, DEMONTABLES };
 const joueur = (p) => p || (G && G.player);
-const NOM_OUTIL = { marteler: 'Un marteau', couper: 'Une lame', allumer: 'De quoi allumer (briquet, allumettes)', creuser: 'Une pelle', forcer: 'Un pied-de-biche', visser: 'Un tournevis' };
+const NOM_OUTIL = { abattre: 'Une hache ou une hachette', scier: 'Une scie', elaguer: 'Une lame', marteler: 'Un marteau', couper: 'Une lame', allumer: 'De quoi allumer (briquet, allumettes)', creuser: 'Une pelle', forcer: 'Un pied-de-biche', visser: 'Un tournevis' };
 
 // etatConstruction(type, p) → { d, faisable, manques: [texte], ingredients: [{ id, nom, faut, a, ok }], outils: [{ tag, nom, ok }],
 //   competences: [{ skill, nom, faut, a, ok }] }

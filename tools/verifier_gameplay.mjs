@@ -65,7 +65,7 @@ const num = (x) => typeof x === 'number' && Number.isFinite(x);
 const dans = (x, a, b) => num(x) && x >= a && x <= b;
 const paire = (p) => Array.isArray(p) && p.length === 2 && num(p[0]) && num(p[1]) && p[0] <= p[1];
 
-const TAGS = ['allumer', 'cuisson', 'couper', 'ouvrir', 'visser', 'marteler', 'affuter', 'coudre', 'forcer', 'couper_chaine',
+const TAGS = ['abattre', 'elaguer', 'scier', 'allumer', 'cuisson', 'couper', 'ouvrir', 'visser', 'marteler', 'affuter', 'coudre', 'forcer', 'couper_chaine',
   'crocheter', 'siphon', 'lumiere', 'peche', 'piege', 'alarme', 'filtrer', 'creuser', 'observer', 'radio',
   'entretien_arme', 'escalade', 'desinfecter', 'combustible'];
 const TYPES_OBJET = mItems.TYPES_OBJET;
@@ -192,7 +192,7 @@ for (const [id, z] of Object.entries(ZOMBIES)) {
 const CATS_R = Object.keys(mRec.CATEGORIES_RECETTES);
 const tagsDispo = new Set(Object.values(ITEMS).flatMap(d => d.usage || []));
 const idsR = new Set();
-if (RECIPES.length < 40 || RECIPES.length > 60) W(`recettes : ${RECIPES.length} (visé : 40 à 60)`);
+if (RECIPES.length < 40 || RECIPES.length > 80) W(`recettes : ${RECIPES.length} (visé : 40 à 80)`);
 for (const r of RECIPES) {
   const o = `recette ${r.id}`;
   if (idsR.has(r.id)) E(`${o} : id en double`); idsR.add(r.id);
@@ -410,12 +410,16 @@ for (const [id, sc] of Object.entries(SCENES_R)) {
 }
 for (const id of Object.keys(SCENES_R)) if (!scenesAtteintes.has(id)) W(`scène ${id} : jamais atteinte (ni rencontre ni suivant)`);
 
+// Recherche au sol (js/data/recherche.js)
+try { const mR = await import('../js/data/recherche.js'); for (const t of Object.values(mR.TABLES_RECHERCHE)) for (const [id] of t) { obtenables.add(id); if (!ITEMS[id]) E(`recherche au sol : objet inconnu « ${id} »`); } } catch (e) { W('recherche au sol : ' + e.message); }
 // ─────────────────────────── ÉCONOMIE : objets jamais obtenables ───────────────────────────
 for (const r of RECIPES) if (r.resultat) obtenables.add(r.resultat.id);
 // Construction : le potager donne des légumes ; démonter un meuble rend planches, ressorts, visserie…
 if (mCons) {
   for (const d of Object.values(mCons.CONSTRUCTIONS)) if (d.potager) obtenables.add('legumes');
   for (const d of Object.values(mCons.DEMONTABLES)) for (const id of Object.keys(d)) if (id !== 'ms') obtenables.add(id);
+  // la nature : arbres abattus, buissons coupés, cueillette
+  for (const d of Object.values(mCons.RECOLTES || {})) { for (const id of Object.keys(d.rendu || {})) obtenables.add(id); if (d.cueillette) obtenables.add(d.cueillette.id); }
   for (const [k, d] of Object.entries(mCons.CONSTRUCTIONS)) {
     for (const x of d.ingredients || []) if (!ITEMS[x.id]) E(`construction ${k} : ingrédient inconnu « ${x.id} »`);
     if (!d.t || !d.nom || !d.dessin) E(`construction ${k} : t, nom ou dessin manquant`);

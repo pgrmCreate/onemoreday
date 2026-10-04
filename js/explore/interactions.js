@@ -19,6 +19,7 @@ import { ouvrirSommeil } from '../game/sommeil.js';
 import { commencerFouille, interrompreFouille, fermerButin, ramasser, lireDocument, prendreTout } from './butin.js';
 import { ciblesConstruction, libelleConstruction, agirConstruction, constructionActive, secondaireConstruction, secondaireMeuble, secondairePorte, demonterMeuble } from './construction.js';
 import { DEMONTABLES } from '../data/construction.js';
+import { recoltable, libelleNature, secondaireNature, agirNature } from './nature.js';
 
 const RX = REGLAGES.exploration;
 let V = null, api = null;
@@ -56,7 +57,7 @@ export function chercherCible() {
       if (!m || vusMeubles.has(m.idx)) continue; vusMeubles.add(m.idx);
       if (V.retires && V.retires.has(m.cle)) continue;          // démonté
       const decl = m.marqueur && declencheurMarqueur(m.marqueur);
-      if (!m.conteneur && !decl && !DEMONTABLES[m.type]) continue;
+      if (!m.conteneur && !decl && !DEMONTABLES[m.type] && !recoltable(m)) continue;
       proposer({ type: 'meuble', m, decl, etage: E.id, x0: m.x0, y0: m.y0, x1: m.x1 + 1, y1: m.y1 + 1, cx: x + 0.5, cy: y + 0.5 }, d, decl ? 0.2 : 0);
     } else if (code === K.ESC_MONTE || code === K.ESC_DESCEND) {
       const s = n.escaliers.find(e => e.etage === E.id && e.cases.includes(i));
@@ -131,6 +132,7 @@ export function chercherCible() {
 function secondaire(c) {
   if (c.type === 'construction') return secondaireConstruction(c.c);
   if (c.type === 'porte') return secondairePorte(c.p, c.s);
+  if (c.type === 'meuble' && !c.decl && recoltable(c.m)) return secondaireNature(c.m);
   if (c.type === 'meuble' && !c.decl && (c.m.conteneur || estLit(c.m))) return secondaireMeuble(c.m);
   return null;
 }
@@ -197,6 +199,7 @@ function libelle(c) {
     case 'construction': return libelleConstruction(c.c);
     case 'meuble': {
       if (c.decl) return c.decl.libelle || `Examiner ${c.m.nom}`;
+      if (recoltable(c.m)) return libelleNature(c.m);
       if (!c.m.conteneur && !estLit(c.m)) return `Démonter ${c.m.nom}`;
       const st = V.snap.conteneurs[c.m.cle];
       if (estLit(c.m) && (!c.m.conteneur || (st && st.progres >= 1 && st.reste === 0))) return `Dormir dans ${c.m.nom}`;
@@ -246,7 +249,7 @@ export function agirSur(c) {
   switch (c.type) {
     case 'porte': return actionPorte(c);
     case 'construction': return agirConstruction(c.c);
-    case 'meuble': if (c.decl) return jouerDeclencheur(c.decl); if (c.libelle && c.libelle.startsWith('Dormir')) return ouvrirSommeil({ lit: true });
+    case 'meuble': if (c.decl) return jouerDeclencheur(c.decl); if (recoltable(c.m)) return agirNature(c.m); if (c.libelle && c.libelle.startsWith('Dormir')) return ouvrirSommeil({ lit: true });
       if (!c.m.conteneur) { const s = secondaireMeuble(c.m); if (s) s.f(); return; }
       return commencerFouille(c.m.cle, c.m.nom, (c.m.x0 + c.m.x1 + 1) / 2, (c.m.y0 + c.m.y1 + 1) / 2);
     case 'escalier': return prendreEscalier(c.s);
