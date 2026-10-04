@@ -329,7 +329,7 @@ export function creerCombatVue(o) {
       } break;
       case 'martele': if (e.joueur === moi && S.empoigne) S.empoigne.taps = e.taps; break;
       case 'degage': if (e.joueur === moi) {
-        if (S.empoigne && !e.lache) { o.message('Dégagé ! Il tombe : achève-le.', 1500); xp('force', X.empoignade); }
+        if (S.empoigne && !e.lache) { o.message('Tu te dégages ! Il tombe : achève-le.', 1500); xp('force', X.empoignade); }
         S.empoigne = null;
       } break;
       case 'blessure': if (e.joueur === moi) appliquerBlessure(e); break;

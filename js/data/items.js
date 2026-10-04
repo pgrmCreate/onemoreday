@@ -74,7 +74,7 @@ export const ITEMS = {
     nom: 'Machette', type: 'arme', poids: 0.8, espace: 2, volume: 1.5, long: true,
     dmg: [13, 20], vitesse: 560, sta: 9, allonge: 1, charge: 1.6, stagger: 0.2, crit: 0.15,
     dur: 50, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper'],
-    desc: 'Tranche net. Les moignons ne saignent même plus chez eux.',
+    desc: 'Tranche net. Elle tranche net. Chez eux, les moignons ne saignent même plus.',
   },
   machette_aiguisee: {
     nom: 'Machette aiguisée', type: 'arme', poids: 0.8, espace: 2, volume: 1.5, long: true,
@@ -92,7 +92,7 @@ export const ITEMS = {
     nom: 'Lance artisanale', type: 'arme', poids: 1.3, espace: 3, volume: 8, long: true,
     dmg: [10, 16], vitesse: 560, sta: 8, allonge: 2, charge: 1.5, stagger: 0.15, crit: 0.12,
     dur: 20, bruit: 0, skill: 'dexterite', deux_mains: true, reparation: 'bois',
-    desc: 'Un couteau ligaturé sur un manche à balai. Tient les dents à distance — et les gonflés aussi.',
+    desc: 'Un couteau ligaturé au bout d\'un manche à balai. Il tient les dents à distance.',
   },
   lance_renforcee: {
     nom: 'Lance renforcée', type: 'arme', poids: 1.5, espace: 3, volume: 8, long: true,
@@ -169,7 +169,7 @@ export const ITEMS = {
     dmg: [22, 34], vitesse: 450, sta: 3, allonge: 2, charge: 1, stagger: 0.5, crit: 0.2,
     dur: 200, bruit: 3, skill: 'visee', reparation: 'arme_feu', crosse: [4, 8],
     tir: { munition: 'munitions_9mm', capacite: 15, precision: 0.75, recharge: 1600, portee: 2 },
-    desc: 'Le métal est froid et rassurant. Chaque détonation est une invitation au dîner.',
+    desc: 'Le métal est froid et rassurant. Chaque coup de feu s\'entend de loin, et tous les morts du quartier viennent voir.',
   },
   fusil_chasse: {
     nom: 'Fusil de chasse', type: 'arme', poids: 3.4, espace: 3, volume: 8, long: true,
@@ -220,7 +220,7 @@ export const ITEMS = {
   cocktail_molotov: {
     nom: 'Cocktail Molotov', type: 'jet', poids: 0.8, espace: 1, volume: 0.8,
     jet: { portee: 7, bruit: 8, dmg: [28, 40], feu: { ms: 4000, dps: 5, suivant: true }, lumiere: 5, duree_s: 60, combat: true },
-    desc: 'L\'odeur d\'alcool et d\'essence. En combat, il embrase le mort actif et le suivant de la file. La chair brûlée pue pendant des heures.',
+    desc: 'Une bouteille d\'essence, un chiffon pour mèche. Lancé, il embrase le mort touché et ceux qui sont collés à lui. La chair brûlée pue pendant des heures.',
   },
   couteau_lancer: {
     nom: 'Couteau de lancer', type: 'jet', poids: 0.25, espace: 0, volume: 0.08,
@@ -426,7 +426,7 @@ export const ITEMS = {
   thermos: {
     nom: 'Thermos', type: 'recipient', poids: 0.35, espace: 1, volume: 0.6,
     contenance: 0.5, recipient: 'ferme',
-    desc: 'Un demi-litre sous double paroi d\'acier brossé. Le café qu\'il a connu manque à tout le monde.',
+    desc: 'Un demi-litre sous double paroi d\'acier brossé. Il sent encore le café d\'avant.',
   },
   bouteille_vide: {
     nom: 'Bouteille vide', type: 'recipient', poids: 0.1, espace: 1, volume: 0.55,
@@ -469,7 +469,7 @@ export const ITEMS = {
   },
   savon: {
     nom: 'Savon de Marseille', type: 'soin', poids: 0.3, espace: 0, volume: 0.25, soin: 'nettoyer',
-    desc: 'Un cube vert estampillé « Salon-de-Provence ». Laver une plaie à l\'eau et au savon : la base, depuis toujours. L\'infection prend deux fois moins.',
+    desc: 'Un cube vert estampillé « Salon-de-Provence ». Laver une plaie à l\'eau et au savon : la base, depuis toujours. Le risque d\'infection est divisé par deux.',
   },
   antibiotiques: {
     nom: 'Antibiotiques', type: 'soin', poids: 0.05, espace: 0, volume: 0.03, soin: 'antibio',
@@ -519,7 +519,7 @@ export const ITEMS = {
   },
   lampe_torche: {
     nom: 'Lampe torche', type: 'outil', poids: 0.3, espace: 1, volume: 0.3, usage: ['lumiere'], carburant: 'piles',
-    desc: 'Un cône de lumière dans le noir. Et tout ce que la lumière attire. Tenue en main, elle laisse une main pour l\'arme — une seule. Une paire de piles : dix minutes de vraie lumière.',
+    desc: 'Un cône de lumière dans le noir — et tout ce que la lumière attire. Elle occupe une main : il n\'en reste qu\'une pour l\'arme. Une paire de piles tient environ dix heures.',
   },
   lampe_frontale: {
     nom: 'Lampe frontale', type: 'outil', poids: 0.15, espace: 0, volume: 0.2, usage: ['lumiere'], carburant: 'piles',
@@ -545,7 +545,7 @@ export const ITEMS = {
     nom: 'Casserole', type: 'outil', poids: 0.7, espace: 2, volume: 3, usage: ['cuisson'],
     melee: { dmg: [3, 6], vitesse: 480, sta: 6, allonge: 0, charge: 1.5, stagger: 0.25, crit: 0.04, skill: 'force', bruit: 2 },
     contenance: 1.5, recipient: 'ouvert',
-    desc: 'Pour faire bouillir l\'eau ou cuire ce que tu attrapes. Pleine, elle se porte à deux mains — pas dans le sac.',
+    desc: 'Pour faire bouillir l\'eau ou cuire ce que tu attrapes. En dernier recours, elle assomme.',
   },
   rechaud_camping: {
     nom: 'Réchaud de camping', type: 'outil', poids: 1.1, espace: 2, volume: 2, usage: ['cuisson'], carburant: 'cartouche_gaz',
@@ -561,7 +561,7 @@ export const ITEMS = {
   },
   trousse_outils: {
     nom: 'Trousse à outils', type: 'outil', poids: 2.5, espace: 3, volume: 7, usage: ['visser', 'marteler', 'affuter'],
-    desc: 'Clés, pinces, douilles, une lime. Le nécessaire du mécano — et un établi qui tient dans un sac.',
+    desc: 'Clés, pinces, douilles, une lime : tout le nécessaire du mécanicien.',
   },
   pierre_aiguiser: {
     nom: 'Pierre à aiguiser', type: 'outil', poids: 0.2, espace: 0, volume: 0.1, usage: ['affuter'],
@@ -695,7 +695,7 @@ export const ITEMS = {
   },
   journal_papier: {
     nom: 'Vieux journaux', type: 'materiau', poids: 0.1, espace: 0, volume: 0.4,
-    desc: '« L\'ÉTAT D\'URGENCE DÉCRÉTÉ DANS LES BOUCHES-DU-RHÔNE ». Bon allume-feu, bonne armure une fois roulé serré.',
+    desc: '« L\'ÉTAT D\'URGENCE DÉCRÉTÉ DANS LES BOUCHES-DU-RHÔNE ». Bon pour allumer un feu.',
   },
   cable_electrique: {
     nom: 'Câble électrique', type: 'materiau', poids: 0.3, espace: 1, volume: 0.5,
@@ -719,7 +719,7 @@ export const ITEMS = {
   },
   boite_vide: {
     nom: 'Boîte de conserve vide', type: 'materiau', poids: 0.05, espace: 0, volume: 0.45,
-    desc: 'Rincée à l\'eau croupie, le couvercle replié. Un bougeoir, un piège, une lampe.',
+    desc: 'Rincée, le couvercle replié. Elle peut servir de bougeoir, de piège sonore ou de lampe à huile.',
   },
   graines: {
     nom: 'Sachet de graines', type: 'materiau', poids: 0.02, espace: 0, volume: 0.02,

@@ -57,7 +57,7 @@ export const CLOTHES = {
   },
   casque_chantier: {
     nom: 'Casque de chantier', slot: 'tete', poids: 0.4, espace: 0, protection: 1, chaleur: 0,
-    desc: 'Jaune, fendu, la sangle réglée sur la tête d\'un autre. Un coup de poing mort glisse dessus.',
+    desc: 'Jaune, fendu, la sangle réglée sur la tête d\'un autre. Le poing d\'un mort glisse dessus.',
   },
   casque_fortune: {
     nom: 'Casque de fortune', slot: 'tete', poids: 0.9, espace: 0, protection: 1, chaleur: 1, couvre: ['à la tête', 'au visage'],
@@ -235,7 +235,7 @@ export const CLOTHES = {
   },
   sac_randonnee: {
     nom: 'Sac de randonnée', slot: 'sac', poids: 2.0, espace: 10, contenance: 45, protection: 0, chaleur: 0, portage: 8, agilite: -1,
-    desc: '60 litres, armatures et sangle ventrale. Tout ce que tu possèdes tiendra dedans — et tout ça te tirera en arrière quand il faudra plonger.',
+    desc: '45 litres, armatures et sangle ventrale. Tout ce que tu possèdes tiendra dedans — et tout ça te tirera en arrière quand il faudra courir.',
   },
   sac_militaire: {
     nom: 'Sac militaire', slot: 'sac', poids: 2.6, espace: 12, contenance: 55, protection: 0, chaleur: 0, portage: 10, accesRapide: 1, agilite: -1,
@@ -243,7 +243,7 @@ export const CLOTHES = {
   },
   sac_banane: {
     nom: 'Sac banane', slot: 'sac', poids: 0.2, espace: 2, contenance: 2, protection: 0, chaleur: 0, portage: 1, accesRapide: 1,
-    desc: 'Ridicule il y a un mois. Aujourd\'hui, deux places de plus et un objet toujours sous la main.',
+    desc: 'Ridicule il y a un mois. Aujourd\'hui : deux litres de plus, et un objet toujours sous la main.',
   },
   tote_bag: {
     nom: 'Tote bag en toile', slot: 'sac', poids: 0.15, espace: 2, contenance: 10, protection: 0, chaleur: 0, portage: 1, tissu: 1,
@@ -319,7 +319,7 @@ export const CLOTHES = {
   },
   sac_alpinisme: {
     nom: 'Sac d\'alpinisme', slot: 'sac', poids: 1.5, espace: 9, contenance: 50, protection: 0, chaleur: 0, portage: 9,
-    desc: '45 litres, dos ventilé, bien serré au corps. Il ne gêne presque pas quand tu dois courir.',
+    desc: '50 litres, dos ventilé, bien serré au corps. Il ne gêne presque pas quand tu dois courir.',
   },
   valise_cabine: {
     nom: 'Valise cabine', slot: 'sac', poids: 3.0, espace: 11, contenance: 40, protection: 0, chaleur: 0, portage: 9, agilite: -2,
@@ -327,7 +327,7 @@ export const CLOTHES = {
   },
   sac_expedition: {
     nom: 'Sac d\'expédition', slot: 'sac', poids: 2.9, espace: 14, contenance: 70, protection: 0, chaleur: 0, portage: 12, agilite: -2,
-    desc: '80 litres. Le sac de quelqu\'un qui partait pour un mois dans les Alpes. Une maison sur le dos — et lourde.',
+    desc: '70 litres. Le sac de quelqu\'un qui partait pour un mois dans les Alpes. Une maison sur le dos — et lourde.',
   },
 };
 

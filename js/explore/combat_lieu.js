@@ -64,7 +64,7 @@ export function finArene(raison) {
   if (!v || !v.arene) return;
   if (raison === 'nettoye') { // tous à terre : on peut fouiller les corps puis reprendre la route
     v.hud.route.classList.remove('cache');
-    message('Plus rien ne bouge. Fouille les corps si tu veux, puis reprends la route (ou sors par un bord).', 4200);
+    message('Plus rien ne bouge. Fouille les corps si tu veux, puis reprends la route — ou quitte les lieux par un bord de la carte.', 4200);
     v.areneVictoire = true;
     return;
   }

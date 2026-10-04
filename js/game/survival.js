@@ -583,7 +583,7 @@ export function dormir(heures, opts = {}) {
   const p = normaliserJoueur(joueur()); if (!p) return { ok: false };
   const SO = S().SOMMEIL;
   if (p.fatigue >= SO.FATIGUE_MAX_POUR_DORMIR && !opts.force) return { ok: false, raison: 'Tu n\'as pas sommeil.' };
-  if (G.mode !== 'solo' && !opts.force) return { ok: false, raison: 'À deux, le sommeil se décide ensemble (intégrateur).' };
+  if (G.mode !== 'solo' && !opts.force) return { ok: false, raison: 'À deux, vous devez décider ensemble de dormir.' };
   const sur = opts.sur ?? contexte.lieuSur;
   const risque = sur || opts.mortsPresents === false ? 0 : SO.RISQUE_H.base + SO.RISQUE_H.parDanger * (opts.danger || 0);
   const total = Math.round(heures * 60);
