@@ -14,7 +14,7 @@ import { dessinerObjet, spriteHaut } from './objets.js';
 import { dessinerHumain, dessinerMort, dessinerCadavre } from './personnages.js';
 import { creerLumiere, ambiance, SUB } from './lumiere.js';
 import { creerEffets } from './effets.js';
-import { textureToit } from './textures.js';
+import { textureToit, chargerSolsPhoto, surSolsPrets } from './textures.js';
 import { K } from '../carte/catalogue.js';
 import { CONSTRUCTIONS, tailleConstruction } from '../data/construction.js';
 import { ZOMBIES } from '../data/zombies.js';
@@ -37,6 +37,9 @@ export function creerRendu(cv, niveau) {
   const toitsA = new Map();        // E.id:k → alpha courant
   let sangTraite = 0;
   const rConstr = new Map();       // uid → objet de rendu d'une construction (graine stable)
+  // sols photoréalistes : dès qu'ils arrivent, les blocs pré-rendus sont refaits
+  const offSols = surSolsPrets(() => { blocs.clear(); toitsCache.clear(); });
+  chargerSolsPhoto();
 
   function resize() {
     const r = cv.getBoundingClientRect();
@@ -665,7 +668,7 @@ export function creerRendu(cv, niveau) {
     cam, resize, dessiner, ecranVersMonde, mondeVersEcran, suivre, recaler, setZoom, effets,
     zoom: () => cam.zoom, taille: () => ({ W, H }),
     viderCache() { blocs.clear(); toitsCache.clear(); },
-    fermer() { blocs.clear(); toitsCache.clear(); grain = null; vignette = null; carteCv = null; lumiere.fermer(); effets.fermer(); anim.clear(); },
+    fermer() { offSols(); blocs.clear(); toitsCache.clear(); grain = null; vignette = null; carteCv = null; lumiere.fermer(); effets.fermer(); anim.clear(); },
   };
 }
 

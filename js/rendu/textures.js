@@ -268,13 +268,45 @@ export function textureSol(idx) {
   cache.set(cle, t);
   return t;
 }
+// ---------- Sols PHOTORÉALISTES (img/sols/*.jpg) ----------
+// Rendus dans Blender à partir de matières Poly Haven (CC0) : vue de dessus, lumière du haut-gauche, normales et occlusion
+// (pipeline : D:\projects 3D\OneMoreDay\omd_textures_sol.blend). img/sols/sols.json : { sol: { asset, m (mètres par tuile) } }.
+// Chargés en arrière-plan ; tant qu'une image manque, la texture procédurale sert. PX_PAR_M : 1 case (0,8 m) = TS px.
+const PX_PAR_M = TS / 0.8;
+const photos = new Map();          // id de sol → canvas à l'échelle ; 'toit:' + type → toit
+const prets = new Set();
+let attenteSols = null;
+function chargerDossier(dossier, index, prefixe) {
+  const base = new URL(`../../img/${dossier}/`, import.meta.url);
+  return fetch(new URL(index, base)).then(r => r.json()).then(meta => Promise.all(Object.entries(meta).map(([id, d]) => new Promise((ok) => {
+    const im = new Image();
+    im.onload = () => {
+      const px = Math.max(96, Math.min(640, Math.round((d.m || 2) * PX_PAR_M)));
+      const cv = canvas(px, px); const c = cv.getContext('2d');
+      c.imageSmoothingQuality = 'high'; c.drawImage(im, 0, 0, px, px);
+      photos.set(prefixe + id, cv); ok();
+    };
+    im.onerror = () => ok();
+    im.src = new URL(id + '.jpg', base).href;
+  })))).catch(() => {});
+}
+export function chargerSolsPhoto() {
+  if (attenteSols || typeof Image === 'undefined') return attenteSols;
+  attenteSols = Promise.all([chargerDossier('sols', 'sols.json', ''), chargerDossier('toits', 'toits.json', 'toit:')])
+    .then(() => { motifs.clear(); for (const k of [...cache.keys()]) if (k.startsWith('toit:')) cache.delete(k); for (const f of prets) try { f(); } catch (e) {} });
+  return attenteSols;
+}
+// Appelé quand les sols photo sont prêts (le rendu vide alors ses blocs pré-rendus).
+export function surSolsPrets(f) { prets.add(f); return () => prets.delete(f); }
+
 // Motif (pattern) d'une texture, pour remplir des formes en coordonnées monde.
 const motifs = new Map();
 export function motif(ctx, idx) {
   const cle = idx;
   let m = motifs.get(cle);
   if (m && m.ctx === ctx) return m.p;
-  const p = ctx.createPattern(textureSol(idx), 'repeat');
+  const photo = photos.get(SOLS_IDS[idx]);
+  const p = ctx.createPattern(photo || textureSol(idx), 'repeat');
   motifs.set(cle, { ctx, p });
   return p;
 }
@@ -340,6 +372,7 @@ export function textureMur(style) {
 // ---------- Toits ----------
 export function textureToit(type) {
   const cle = 'toit:' + type;
+  if (photos.has(cle)) return photos.get(cle);       // toit photoréaliste (img/toits)
   let t = cache.get(cle);
   if (t) return t;
   t = canvas(TEX, TEX);

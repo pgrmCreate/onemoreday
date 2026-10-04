@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v26';
+const CACHE = 'onemoreday-v27';
 const FICHIERS = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const FICHIERS = [
   './js/cine/effets.js',
   './js/cine/lecteur.js',
   './js/cine/lib.js',
+  './js/cine/photos.js',
   './js/cine/scenes/ba701_tarmac.js',
   './js/cine/scenes/cales_falaises.js',
   './js/cine/scenes/cales_grande_salle.js',
@@ -225,6 +226,32 @@ const FICHIERS = [
   './zombies/gonfleur.png',
   './zombies/hurleur.png',
   './zombies/rampant.png',
+  './img/sols/beton.jpg',
+  './img/sols/bitume.jpg',
+  './img/sols/boue.jpg',
+  './img/sols/carrelage.jpg',
+  './img/sols/dalles.jpg',
+  './img/sols/debris.jpg',
+  './img/sols/gravier.jpg',
+  './img/sols/herbe.jpg',
+  './img/sols/herbe_seche.jpg',
+  './img/sols/lino.jpg',
+  './img/sols/marbre.jpg',
+  './img/sols/metal.jpg',
+  './img/sols/parquet.jpg',
+  './img/sols/paves.jpg',
+  './img/sols/planches.jpg',
+  './img/sols/sable.jpg',
+  './img/sols/sols.json',
+  './img/sols/terre.jpg',
+  './img/sols/tomettes.jpg',
+  './img/sols/trottoir.jpg',
+  './img/toits/ardoise.jpg',
+  './img/toits/terrasse.jpg',
+  './img/toits/toits.json',
+  './img/toits/tole.jpg',
+  './img/toits/tuiles.jpg',
+  './img/toits/zinc.jpg',
 ];
 
 self.addEventListener('install', (e) => {

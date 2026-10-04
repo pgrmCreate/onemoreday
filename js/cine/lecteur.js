@@ -38,6 +38,7 @@
 import { chargerDecor } from './scenes/index.js';
 import { creerEffets } from './effets.js';
 import { H, F, RATIO } from './lib.js';
+import { appliquerPhoto } from './photos.js';
 
 let courant = null;
 let genrerFn = t => t;
@@ -150,7 +151,10 @@ export function jouerScript(def, opts = {}) {
       monde.textContent = '';
       monde.style.background = mod.fond || '#0b0b0c';
       const couches = [];
-      for (const cd of mod.couches || []) {
+      // décor photoréaliste (js/cine/photos.js) : plaque photo au fond, couches proches en silhouettes
+      const ph = appliquerPhoto(id, mod.couches);
+      const liste = ph ? [ph.photo, ...ph.couches] : (mod.couches || []);
+      for (const cd of liste) {
         const p = Math.max(0, cd.profondeur ?? 0.5);
         const L = Math.round(F + (Wd - F) * vitesse(p));
         let contenu = '';
@@ -158,7 +162,8 @@ export function jouerScript(def, opts = {}) {
         const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         el.setAttribute('viewBox', `0 0 ${L} ${H}`);
         el.setAttribute('preserveAspectRatio', 'none');
-        el.setAttribute('class', 'cine-couche');
+        el.setAttribute('class', 'cine-couche' + (ph && !cd.photo ? ' cine-silhouette' : ''));
+        if (ph && !cd.photo) el.style.filter = `brightness(${ph.ombre}) saturate(0.2) contrast(1.15)${cd.profondeur >= 0.9 ? '' : ' blur(0.6px)'}`;
         el.innerHTML = contenu;
         monde.appendChild(el);
         const sMax = 1 + (zMax * 1.04 - 1) * facteurZoom(p);

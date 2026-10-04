@@ -1,0 +1,22 @@
+{
+ "tuiles": {
+  "asset": "ceramic_roof_01",
+  "m": 3.5
+ },
+ "ardoise": {
+  "asset": "roof_slates_03",
+  "m": 3.0
+ },
+ "zinc": {
+  "asset": "corrugated_iron",
+  "m": 1.12
+ },
+ "tole": {
+  "asset": "box_profile_metal_sheet",
+  "m": 2.0
+ },
+ "terrasse": {
+  "asset": "bitumen",
+  "m": 20.0
+ }
+}

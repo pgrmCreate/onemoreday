@@ -55,3 +55,14 @@ Règles d'or :
 
 Vérifications : `node tools/valider_niveaux.mjs` · `node dev/test_combat.mjs` · `node dev/test_ui_regles.mjs` ·
 `node tools/verifier_gameplay.mjs` · `node tools/verifier_histoire.mjs` · après ajout de fichiers : `node tools/generer_sw.mjs`.
+
+## Graphismes photoréalistes (Blender + Poly Haven, CC0)
+
+- `img/sols/*.jpg`, `img/toits/*.jpg` : tuiles sans couture rendues dans Blender (vue de dessus, lumière du haut-gauche, normales,
+  rugosité, occlusion) à partir de matières Poly Haven ; `sols.json` / `toits.json` donnent la taille réelle d'une tuile (m).
+  Chargées par `js/rendu/textures.js` (`chargerSolsPhoto`) ; le procédural sert tant qu'elles ne sont pas arrivées.
+- `img/cine/<décor>.webp` : plaques photographiques des cinématiques, rendues avec une caméra panoramique dans un HDRI Poly Haven
+  (vraie photo 360°), cadrées et étalonnées par ambiance ; `js/cine/photos.js` dit quelles couches dessinées elles remplacent
+  (les couches proches restent, en silhouettes). Non préchargées par le service worker (6 Mo, chargées à la demande).
+- Sources Blender (hors dépôt) : `D:\projects 3D\OneMoreDay\omd_textures_sol.blend`, `omd_cine.blend`, `plaques.json`
+  (décor → HDRI, angle, inclinaison, étalonnage).
