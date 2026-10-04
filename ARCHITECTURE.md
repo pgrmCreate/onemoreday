@@ -12,6 +12,7 @@ js/carte/               ★ LE FORMAT DES CARTES (sans DOM, utilisable sous Node
   catalogue.js            tout ce qu'on peut poser : SOLS, MURS, OBJETS, DECALS, LUMIERES, TOITS
   plan.js                 l'API de construction par couches : plan(meta, (p) => { const e = p.etage(…); e.piece(…); e.objet(…) })
   ascii.js                ancien format ASCII → couches (les 45 plans historiques en profitent sans réécriture)
+  abords.js               abords générés (×4) autour de chaque plan ASCII : rues, maisons, parkings, champs (NIVEAUX §7 bis)
   compiler.js             couches → niveau jouable (grilles, pièces, meubles, portes, escaliers, lumières cuites, toits)
 
 js/rendu/               ★ LE MOTEUR DE RENDU (canvas 2D)
@@ -26,7 +27,7 @@ js/rendu/               ★ LE MOTEUR DE RENDU (canvas 2D)
   effets.js               particules (sang, braises, fumée, feuilles, éclaboussures), calque de sang persistant, traînées
 
 js/explore/             Temps 1 : l'exploration — et le combat sur place
-  vue.js                  le cœur de l'écran : entrer/sortir, boucle, déplacement, ruée, micro-arrêt, caméra, guide d'objectif
+  vue.js                  le cœur de l'écran : entrer/sortir, boucle, déplacement, micro-arrêt, caméra, guide d'objectif
   interactions.js         la touche E : portes (et portes « à deux »), fouille, PNJ, documents, déclencheurs, escaliers, relever
   butin.js                fouille en temps réel, fenêtre de butin, sol
   combat_vue.js           gestes du joueur (tape, enchaînement, charge, esquive, poussée, tir) et retours d'impact

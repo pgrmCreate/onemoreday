@@ -65,6 +65,7 @@ export function creerSimLieu(opts) {
 
   // ---------- Création / restauration ----------
   const etat = opts.etat && opts.etat.v ? opts.etat : null;
+  if (etat) migrerAbords(etat, niveau.abords);
   if (etat) {
     uidSeq = etat.uid || 1;
     for (const [cle, s] of Object.entries(etat.portes || {})) if (portes[cle]) Object.assign(portes[cle], s);
@@ -84,7 +85,7 @@ export function creerSimLieu(opts) {
       if (z) zombies.push(z);
     }
     const mult = (paramsJour(jour).mortsMult || 1) * (diff.mortsLieux || 1) * (coop ? REGLAGES.coop.MORTS_MULT : 1);
-    const n = Math.round((mortsN[0] + Math.floor(r() * (mortsN[1] - mortsN[0] + 1))) * mult);
+    const n = Math.round((mortsN[0] + Math.floor(r() * (mortsN[1] - mortsN[0] + 1))) * mult * ((niveau.abords && niveau.abords.mortsMult) || 1));
     placerProceduraux(n, r);
     for (const o of niveau.sol) sol.push({ uid: uidSeq++, etage: o.etage, x: o.x + 0.5, y: o.y + 0.5, ...(o.doc ? { doc: o.doc } : { id: o.id, qty: o.qty }) });
   }
@@ -1112,7 +1113,7 @@ export function creerSimLieu(opts) {
     const cc = {};
     for (const k in conteneurs) cc[k] = { items: conteneurs[k].items, progres: conteneurs[k].progres };
     return {
-      v: 1, minutes: m, uid: uidSeq,
+      v: 1, minutes: m, uid: uidSeq, abords: niveau.abords ? { version: niveau.abords.version, dx: niveau.abords.dx, dy: niveau.abords.dy } : null,
       zombies: zombies.map(z => ({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: +z.x.toFixed(2), y: +z.y.toFixed(2), dir: +z.dir.toFixed(2),
         etat: z.etat === 'chasse' || z.etat === 'alerte' ? 'erre' : z.etat, base: z.base, hp: z.hp, proc: z.proc })),
       portes: pp, conteneurs: cc, sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })), joues: joues.slice(),
@@ -1159,4 +1160,17 @@ export function creerSimLieu(opts) {
     estJoue: (i) => joues.includes(i),
     zombies: () => zombies,
   };
+}
+
+// Une sauvegarde faite avant les abords (ou avec un autre décalage) : tout ce qui a une position est décalé d'autant.
+export function migrerAbords(etat, ab) {
+  const avant = etat.abords || { dx: 0, dy: 0 };
+  const dx = (ab ? ab.dx : 0) - (avant.dx || 0), dy = (ab ? ab.dy : 0) - (avant.dy || 0);
+  if (!dx && !dy) return etat;
+  const bouge = (o) => { if (o && o.x != null) { o.x += dx; o.y += dy; } };
+  (etat.zombies || []).forEach(bouge); (etat.sol || []).forEach(bouge); (etat.cadavres || []).forEach(bouge);
+  const cles = (obj) => { const out = {}; for (const [k, v] of Object.entries(obj || {})) { const m = /^(.*):(-?\d+),(-?\d+)$/.exec(k); out[m ? `${m[1]}:${+m[2] + dx},${+m[3] + dy}` : k] = v; } return out; };
+  etat.portes = cles(etat.portes); etat.conteneurs = cles(etat.conteneurs);
+  etat.abords = ab ? { version: ab.version, dx: ab.dx, dy: ab.dy } : null;
+  return etat;
 }

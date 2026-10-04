@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banc d'essai — Abords</title>
+<style>
+  html, body { margin: 0; background: #111; color: #ddd; font: 14px system-ui, sans-serif; }
+  header { padding: 8px 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  select, button { font: inherit; background: #222; color: #ddd; border: 1px solid #555; padding: 4px 8px; }
+  #info { color: #aaa; }
+  canvas { display: block; margin: 0 12px 12px; image-rendering: pixelated; max-width: calc(100vw - 24px); }
+</style>
+</head>
+<body>
+<header>
+  <strong>Abords générés</strong>
+  <select id="lieu"></select>
+  <label><input type="checkbox" id="brut"> plan d'origine</label>
+  <span id="info"></span>
+</header>
+<canvas id="cv"></canvas>
+<script type="module">
+  // Vue d'ensemble d'un lieu agrandi (js/carte/abords.js) : une couleur par caractère. ?lieu=id
+  import { agrandirDef } from '../js/carte/abords.js';
+  const IDS = ['aerodrome', 'aurons', 'ba701', 'berre', 'cales', 'canourgues', 'carrefour_morgan', 'casino_shop', 'cineplanet', 'commissariat',
+    'cornillon', 'emperi', 'eyguieres', 'gare', 'gendarmerie', 'grans', 'hopital', 'hotel_de_ville', 'hotel_poste', 'intermarche', 'istres',
+    'jean_moulin', 'la_barben', 'lancon', 'leclerc', 'lycee', 'mallemort', 'marius_fabre', 'mediatheque', 'miramas', 'miramas_le_vieux',
+    'nostradamus', 'pelissanne', 'pharmacie_carnot', 'place_crousillat', 'place_de_gaulle', 'pompiers', 'saint_chamas', 'saint_laurent',
+    'saint_michel', 'senas', 'tour_horloge', 'vernegues', 'weldom'];
+  const COUL = {
+    ' ': '#000', '#': '#6b5a48', '|': '#7fb0d0', '+': '#d0a040', '/': '#d0a040', 'ϗ': '#c05030', 'E': '#ff3040',
+    ',': '#3c3c3e', '"': '#3d5a2c', ':': '#7a6f5a', '.': '#8a7a60', '~': '#2a4a7a', 'β': '#5a5650', 'α': '#8c8a84', 'γ': '#6a4a2c',
+    'δ': '#7a7a3c', 'ε': '#9a9488', 'τ': '#707070', 'ω': '#a0603a', 'ψ': '#8a6a40', 'χ': '#b0b0a8', 'ϕ': '#808080', 'ϑ': '#9a9a80',
+    'ϖ': '#4a2020', 'ϙ': '#1e3a14', 'ζ': '#2a7a2a', 'η': '#1a5a3a', 'θ': '#6a8a4a', 'ι': '#104a20', 'κ': '#2a6a1a', 'λ': '#ffe080',
+    'v': '#4080c0', 'ϛ': '#305070', 'ξ': '#4060a0', 'μ': '#507050', 'σ': '#a08050', 'ϟ': '#806040', 'ο': '#60a0c0',
+  };
+  const sel = document.getElementById('lieu');
+  for (const id of IDS) sel.append(new Option(id, id));
+  const q = new URLSearchParams(location.search); sel.value = q.get('lieu') || 'place_crousillat';
+  async function dessiner() {
+    const def = (await import(`../js/data/niveaux/${sel.value}.js`)).default;
+    const d = document.getElementById('brut').checked ? def : agrandirDef(def);
+    const ed = d.etages.reduce((a, e) => ((e.plan.join('').match(/E/g) || []).length > (a.plan.join('').match(/E/g) || []).length ? e : a), d.etages[0]);
+    const H = ed.plan.length, W = ed.plan[0].length, s = Math.max(2, Math.floor(Math.min(1400 / W, 900 / H)));
+    const cv = document.getElementById('cv'); cv.width = W * s; cv.height = H * s;
+    const c = cv.getContext('2d');
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const ch = ed.plan[y][x]; c.fillStyle = COUL[ch] || '#c8a0c8'; c.fillRect(x * s, y * s, s, s); }
+    if (d.abords) { const k = d.abords.coeur; c.strokeStyle = '#ff0'; c.lineWidth = 1; c.strokeRect(k.x * s + 0.5, k.y * s + 0.5, k.w * s, k.h * s); }
+    document.getElementById('info').textContent = `${W} × ${H}${d.abords ? ` · milieu ${d.abords.milieu} · morts ×${d.abords.mortsMult.toFixed(2)}` : ''}`;
+  }
+  sel.onchange = () => { history.replaceState(null, '', `?lieu=${sel.value}`); dessiner(); };
+  document.getElementById('brut').onchange = dessiner;
+  dessiner();
+</script>
+</body>
+</html>

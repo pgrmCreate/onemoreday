@@ -109,7 +109,11 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   // position de départ
   let pos = null;
   const P = G.player.position;
-  if (!entree && P && P.mode === 'lieu' && P.lieu === lieuId && P.etage && P.x != null && niveau.etageIdx[P.etage] != null) pos = { etage: P.etage, x: P.x, y: P.y };
+  if (!entree && P && P.mode === 'lieu' && P.lieu === lieuId && P.etage && P.x != null && niveau.etageIdx[P.etage] != null) {
+    const ab = niveau.abords, avant = P.abords || { dx: 0, dy: 0 };     // position sauvée avant les abords : décalée
+    const dx = ab ? ab.dx - (avant.dx || 0) : 0, dy = ab ? ab.dy - (avant.dy || 0) : 0;
+    pos = { etage: P.etage, x: P.x + dx, y: P.y + dy };
+  }
   if (!pos) {
     const e = (entree && (niveau.entrees[entree] || caseLibrePres(niveau, niveau.marqueurs[entree]))) || niveau.entrees.defaut;
     if (entree && !niveau.entrees[entree] && !niveau.marqueurs[entree]) console.warn(`[explore] entrée « ${entree} » inconnue dans ${idNiveau}`);
@@ -173,7 +177,7 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     if (!V || !V.canal.sauver || V.arene) return;
     const etat = V.canal.sauver(G.world.minutes);
     if (etat) G.world.lieux[V.lieuId] = { ...(G.world.lieux[V.lieuId] || {}), etat };
-    G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: V.j.etage, x: +V.j.x.toFixed(2), y: +V.j.y.toFixed(2) };
+    G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: V.j.etage, x: +V.j.x.toFixed(2), y: +V.j.y.toFixed(2), abords: abordsDe(V) };
   }));
   // météo : la pluie se voit dehors (et s'entend étouffée sous un toit), le mistral pousse les feuilles
   import('../game/meteo.js').then(m => { if (V) { V.pluie = m.pluie(); V.vent = m.vent ? m.vent() : 0.3; } }).catch(() => {});
@@ -222,7 +226,7 @@ export function sortir() {
   if (!v.arene) try {
     const etat = v.canal.sauver ? v.canal.sauver(G.world.minutes) : null;
     if (etat) G.world.lieux[v.lieuId] = { ...(G.world.lieux[v.lieuId] || {}), etat };
-    G.player.position = { mode: 'lieu', lieu: v.lieuId, etage: v.j.etage, x: +v.j.x.toFixed(2), y: +v.j.y.toFixed(2) };
+    G.player.position = { mode: 'lieu', lieu: v.lieuId, etage: v.j.etage, x: +v.j.x.toFixed(2), y: +v.j.y.toFixed(2), abords: abordsDe(v) };
   } catch (e) { console.error(e); }
   for (const f of v.off) { try { f(); } catch (e) {} }
   try { v.entrees && v.entrees.fermer(); } catch (e) {}
@@ -397,7 +401,7 @@ function image(t, dt) {
   if (V.action) avancerAction(dt);
   if (V.butin && Math.hypot(V.butin.x - j.x, V.butin.y - j.y) > 1.9) fermerButin();
   V.tPnj -= dt; if (V.tPnj <= 0) { V.tPnj = 800; majPnj(); }
-  V.tPos -= dt; if (V.tPos <= 0) { V.tPos = 2000; if (!V.arene) G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2) }; tension(); }
+  V.tPos -= dt; if (V.tPos <= 0) { V.tPos = 2000; if (!V.arene) G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2), abords: abordsDe(V) }; tension(); }
   V.tGuide -= dt; if (V.tGuide <= 0) { V.tGuide = 700; majObjectif(); majCoopHud(pairs); }
   // --- HUD ---
   let menace = false;
@@ -598,3 +602,5 @@ function echap() {
   if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); return; }
   emit('echap', { temps: 'exploration' });
 }
+// Décalage des abords du niveau courant (gardé avec la position du joueur).
+function abordsDe(v) { const a = v && v.niveau && v.niveau.abords; return a ? { dx: a.dx, dy: a.dy } : null; }

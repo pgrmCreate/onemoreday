@@ -72,8 +72,8 @@ export function asciiVersPlan(def, avert = () => {}) {
         if (!d) { avert(`${ed.id} (${x},${y}) : caractère inconnu « ${ch} » (traité comme sol)`); d = { k: K.SOL }; }
         desc[i] = d;
         e.classeSol[i] = CLASSE[ch] || 0;
-        e.int[i] = ch === '.' ? 1 : EXT.has(ch) ? 0 : 2;
         const L = d.leg;
+        e.int[i] = ch === '.' || (L && L.comme === '.') ? 1 : EXT.has(ch) || (L && EXT.has(L.comme)) ? 0 : 2;
         if (L && L.sol && SOL_IDX[L.sol] != null) e.solForce.set(i, SOL_IDX[L.sol]);
         if (L && (L.bloque != null || L.opaque != null)) e.force.set(i, { bloque: L.bloque, opaque: L.opaque });
         switch (d.k) {
@@ -158,8 +158,8 @@ export function asciiVersPlan(def, avert = () => {}) {
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-        const c = car[ny * w + nx];
-        if (EXT.has(c)) dehors = true; else if (c === '.') dedans = true;
+        const c = car[ny * w + nx], iv = e.int[ny * w + nx];
+        if (EXT.has(c) || iv === 0) dehors = true; else if (c === '.' || iv === 1) dedans = true;
       }
       const style = dehors ? murExt : dedans ? murInt : (ext ? murExt : murInt);
       e.mur[i] = MUR_IDX[style] || 1;

@@ -150,6 +150,29 @@ rectangle. Avec `marqueur`, c'est une zone-marqueur : le déclencheur `quand: 'm
   vous voit une fois la porte ouverte, il chasse. Un mort en chasse, lui, **enfonce** les portes (PV).
 - `fait_le_mort` : immobile, se relève si on passe à 1,5 case.
 
+## 7 bis. Abords générés (×4) — `js/carte/abords.js`
+
+Chaque plan ASCII (sauf le cimetière du prologue et les plans `_test`) est posé au CENTRE d'une carte 4 fois plus large et
+plus haute (max 300 × 200) ; autour, des abords générés selon le **milieu** du lieu (`milieuDe(id)`, ou `milieu` dans le plan) :
+
+| Milieu | Lieux | Abords |
+|---|---|---|
+| `centre` | vieille ville (place Crousillat, Empéri, Horloge…) | ruelles pavées, maisons mitoyennes (ruelle toutes les 3), placettes à fontaine, platanes |
+| `ville` | autour du centre, gare, hôpital, cités | rues, immeubles, pavillons, parkings, jardins, friches |
+| `zone` | grandes surfaces, caserne, base, triage, poudrerie | larges avenues, hangars à rayonnages, grands parkings, friches |
+| `village` | villages du pays salonais | rues étroites, maisons à jardin, puis oliveraies et champs |
+| `campagne` | Vernègues, Calès, La Barben, Jean-Moulin | pistes de terre, garrigue, champs, oliveraies, un mas ou deux |
+
+- Une rocade fait le tour du cœur ; les anciennes sorties `E` deviennent de la rue ; les nouvelles sont **au bout des rues, sur le
+  bord** de la grande carte. Tous les étages sont décalés d'autant (`abords.dx/dy`) : escaliers alignés.
+- Maisons : 70 % closes (on ne voit que le toit, intérieur non marchable `ϖ`), sinon fermées à clé (`ϗ`, pied-de-biche) ou
+  ouvertes, avec cuisine, table, frigo, lit, armoire. 80 % des voitures générées sont déjà fouillées (`ϛ`).
+- Une passe d'accessibilité change toute poche fermée en fourré (`ϙ`) : `valider_niveaux` ne trouve aucune case orpheline.
+- Morts procéduraux × `abords.mortsMult` (≤ 3). Anciennes sauvegardes : positions et clés décalées à la volée (`migrerAbords`).
+- Caractères grecs réservés aux abords (légende ajoutée) : ne pas les utiliser dans un plan écrit à la main.
+- Banc d'essai : `dev/abords.html?lieu=<id>` (vue d'ensemble en couleurs ; case « plan d'origine »). `abords: false` dans un plan
+  pour le garder tel quel.
+
 ## 8. Pièges fréquents
 
 1. **Lignes de longueurs différentes** : le validateur le signale ligne par ligne. Complétez avec des espaces (néant).

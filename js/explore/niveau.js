@@ -7,6 +7,7 @@
 import { K, SOLS_IDS, SOL_IDX, OBJETS } from '../carte/catalogue.js';
 import { compilerPlan, accessibilite as acces, marchable, cleCase as cle, DECOS as DEC } from '../carte/compiler.js';
 import { asciiVersPlan, CARS_GLOBAUX as CARS } from '../carte/ascii.js';
+import { agrandirDef } from '../carte/abords.js';
 
 export { K };
 export const MATIERES = SOLS_IDS;            // index = valeur stockée dans etage.sol
@@ -21,8 +22,10 @@ export function parserNiveau(def) {
   if (!def || typeof def !== 'object') def = { etages: [] };
   if (def.format === 'couches' && def.plan) return compilerPlan(def.plan, def);
   const avert = [];
+  def = agrandirDef(def);              // abords générés (×4) autour du plan d'origine
   const plan = asciiVersPlan(def, (m) => avert.push(m));
   const niv = compilerPlan(plan, def);
+  niv.abords = def.abords || null;
   if (!(def.etages || []).length) avert.push('aucun étage');
   niv.avertissements.unshift(...avert);
   niv.format = 'ascii';
