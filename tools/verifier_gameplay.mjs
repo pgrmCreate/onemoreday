@@ -31,6 +31,7 @@ const mClothes = await charger('js/data/clothing.js');
 const mZ = await charger('js/data/zombies.js');
 const mRec = await charger('js/data/recipes.js');
 const mButin = await charger('js/data/butin.js');
+const mCons = await charger('js/data/construction.js');
 const mLieux = await charger('js/data/lieux.js');
 const mLG = await charger('js/data/lieux_gameplay.js');
 const mZones = await charger('js/data/zones.js');
@@ -411,6 +412,15 @@ for (const id of Object.keys(SCENES_R)) if (!scenesAtteintes.has(id)) W(`scène 
 
 // ─────────────────────────── ÉCONOMIE : objets jamais obtenables ───────────────────────────
 for (const r of RECIPES) if (r.resultat) obtenables.add(r.resultat.id);
+// Construction : le potager donne des légumes ; démonter un meuble rend planches, ressorts, visserie…
+if (mCons) {
+  for (const d of Object.values(mCons.CONSTRUCTIONS)) if (d.potager) obtenables.add('legumes');
+  for (const d of Object.values(mCons.DEMONTABLES)) for (const id of Object.keys(d)) if (id !== 'ms') obtenables.add(id);
+  for (const [k, d] of Object.entries(mCons.CONSTRUCTIONS)) {
+    for (const x of d.ingredients || []) if (!ITEMS[x.id]) E(`construction ${k} : ingrédient inconnu « ${x.id} »`);
+    if (!d.t || !d.nom || !d.dessin) E(`construction ${k} : t, nom ou dessin manquant`);
+  }
+}
 for (const z of Object.values(ZOMBIES)) for (const b of z.butin || []) obtenables.add(b.id);
 const collecterEffets = (ef) => { if (!ef) return; if (ef.objet && ef.objet[1] > 0) obtenables.add(ef.objet[0]); for (const p of ef.objets || []) if (p[1] > 0) obtenables.add(p[0]); };
 for (const sc of Object.values(SCENES_R)) for (const c of sc.choix || []) { collecterEffets(c.effets); collecterEffets(c.reussite?.effets); collecterEffets(c.echec?.effets); }

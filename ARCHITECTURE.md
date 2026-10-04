@@ -12,6 +12,7 @@ js/carte/               ★ LE FORMAT DES CARTES (sans DOM, utilisable sous Node
   catalogue.js            tout ce qu'on peut poser : SOLS, MURS, OBJETS, DECALS, LUMIERES, TOITS
   plan.js                 l'API de construction par couches : plan(meta, (p) => { const e = p.etage(…); e.piece(…); e.objet(…) })
   ascii.js                ancien format ASCII → couches (les 45 plans historiques en profitent sans réécriture)
+  (construction)          js/data/construction.js (catalogue), js/game/construction.js (matériaux, XP), js/explore/construction.js (placement, gestes)
   abords.js               abords générés (×4) autour de chaque plan ASCII : rues, maisons, parkings, champs (NIVEAUX §7 bis)
   compiler.js             couches → niveau jouable (grilles, pièces, meubles, portes, escaliers, lumières cuites, toits)
 

@@ -26,8 +26,9 @@ import { genererEmbuscade } from './embuscade.js';
 import { creerHud } from './hud_explore.js';
 import { mod, chargerOptionnels, lierCommun, vib, sfx, sfxA, posPorte, verifierCondition, compter, niv, message, afficherLieu, caseLibrePres } from './commun.js';
 import { lierButin, avancerFouille, interrompreFouille, fermerButin, fournisseurSol } from './butin.js';
-import { lierInteractions, chercherCible, majInvite, interagir, avancerAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
+import { lierInteractions, chercherCible, majInvite, interagir, interagirSecondaire, avancerAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
 import { lierCombatLieu, combatIci as combatIci_, embuscade as embuscade_, suivreCombat, finArene } from './combat_lieu.js';
+import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, majConstruction, feuxCommeLampes, fantome } from './construction.js';
 
 export { verifierCondition };
 const RX = REGLAGES.exploration, RL = REGLAGES.lumiere;
@@ -127,6 +128,7 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     emit('lieu:entre', { lieu: lieuId });
   }
   V.snap = V.canal.instantane(); V.tSnap = performance.now(); majInterp(true);
+  V.off.push(on('construction:placer', ({ type }) => { if (V) demarrerPlacement(type); }));
 
   // rendu + entrées
   V.rendu = creerRendu(canvas, niveau);
@@ -135,7 +137,9 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     interagir: (o) => interagir(o), lampe: basculerLampe, inventaire: ouvrirInventaire,
     carte: () => { V.carte = !V.carte; }, echap, zoom: (f) => { V.zoom = clamp(V.zoom * f, 0.55, 2); V.rendu.setZoom(V.zoom * (V.zoomCbt || 1)); setPref('zoomExplore', V.zoom); },
     accroupi: () => {}, aide: () => V && V.hud.basculerAide(),
-    frapper: (appui, annule) => { if (!V || !V.cbt || V.occupe) return; if (appui) stopperActions(); V.cbt.frapper(appui, annule); },
+    frapper: (appui, annule) => { if (!V || !V.cbt || V.occupe) return; if (enPlacement()) { if (appui) poserPlacement(); return; } if (appui) stopperActions(); V.cbt.frapper(appui, annule); },
+    secondaire: () => interagirSecondaire(),
+    tourner: () => tournerPlacement(),
     pousser: () => { if (!V || !V.cbt || V.occupe) return; stopperActions(); V.cbt.pousser(); },
     recharger: () => V && V.cbt && V.cbt.recharger(),
     echangerMains: () => V && V.cbt && V.cbt.echangerMains(),
@@ -208,6 +212,7 @@ function lierTout(v) {
   lierCommun(v); lierButin(v);
   lierInteractions(v, { changerEtage, sortir, finArene, scene: (id) => crochets.scene(id), coop: crochets.coop });
   lierCombatLieu(v, { entrer, sortir, vue });
+  lierConstruction(v);
 }
 function stopperActions() { if (V.fouille || V.butin || V.action) { interrompreFouille(); fermerButin(); V.action = null; V.hud.barre.classList.add('cache'); } }
 function ajouterJoueurSim(pos) {
@@ -375,6 +380,7 @@ function image(t, dt) {
     V.lampes[V.nLampes++] = { x: p.x, y: p.y, dir: p.dir, forme: S2.forme, angle: S2.angle, portee: S2.portee, sec: true };
     if (V.nLampes >= 4) break;
   }
+  V.nLampes = feuxCommeLampes(V.lampes, V.nLampes);       // feux de camp construits : ils éclairent pour de vrai
   const opaque = V.canal.grilles ? V.canal.grilles(E.id).opaque : E.opaque;
   calculerLOS(C, opaque, j.x, j.y, 17);
   calculerVision(C, E, jour, j.x, j.y, V.lampes, V.nLampes);
@@ -399,6 +405,8 @@ function image(t, dt) {
   if (V.tCible <= 0) { V.tCible = 90; V.cible = chercherCible(); majInvite(); zones(); piece(); }
   if (V.fouille) avancerFouille(dt);
   if (V.action) avancerAction(dt);
+  majConstruction(dt);
+  if (V._placeVu !== enPlacement()) { V._placeVu = enPlacement(); V.entrees.setPlacement && V.entrees.setPlacement(V._placeVu); }
   if (V.butin && Math.hypot(V.butin.x - j.x, V.butin.y - j.y) > 1.9) fermerButin();
   V.tPnj -= dt; if (V.tPnj <= 0) { V.tPnj = 800; majPnj(); }
   V.tPos -= dt; if (V.tPos <= 0) { V.tPos = 2000; if (!V.arene) G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2), abords: abordsDe(V) }; tension(); }
@@ -430,6 +438,7 @@ function image(t, dt) {
   Sc.soi = Sc.soi || {}; Sc.soi.x = j.x; Sc.soi.y = j.y;
   V.hud.sang.style.opacity = (J.cbt.flash * 0.85 + (G.player.pv < 30 ? 0.25 + 0.1 * Math.sin(t / 300) : 0) + (G.player.agonie ? 0.45 : 0)).toFixed(3);
   Sc.pairs = pairs; Sc.zombies = V.zListe; Sc.portes = snap.portes; Sc.sol = snap.sol; Sc.cadavres = snap.cadavres; Sc.pnj = V.pnj;
+  Sc.constructions = snap.constructions || []; Sc.placement = fantome(); Sc.minutes = G.world.minutes;
   Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.carte = V.carte; Sc.objectif = V.objectif || null;
   const Fo = Sc.fouille;
   if (V.fouille) { Fo.x = V.fouille.x; Fo.y = V.fouille.y; Fo.frac = V.fouille.p; Fo.n = V.fouille.items.length; Sc.fouilleOn = true; }
@@ -596,6 +605,7 @@ async function ouvrirInventaire() {
   if (mod.panneaux && mod.panneaux.ouvrirPanneau) { try { mod.panneaux.ouvrirPanneau('inventaire'); } catch (e) { console.warn(e); } }
 }
 function echap() {
+  if (annulerPlacement()) { message('Construction : arrêtée.', 1200); return; }
   if (V.carte) { V.carte = false; return; }
   if (V.cbt && V.cbt.etat.charge) { V.cbt.frapper(false, true); return; }
   if (V.butin || V.fouille) { interrompreFouille(); fermerButin(); return; }

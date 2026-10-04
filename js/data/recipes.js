@@ -18,7 +18,7 @@
 //   apprise_par   NOUVEAU — [ids d'objets type 'livre'] : lire l'un d'eux apprend la recette.
 //   apprise_niveau NOUVEAU — { competence: niveau, … } : atteindre L'UN de ces niveaux apprend la recette.
 //                 (Une recette non connue reste cachée ; on voit « ??? — à découvrir » dans sa catégorie.)
-//   special       'reparer' | 'feu_camp' | 'barricade' (resultat null) :
+//   special       'reparer' | 'feu_camp' | 'barricade' (resultat null) — feu de camp et barricades : voir js/data/construction.js :
 //                   reparer   : cible [familles] (items.reparation), gain (fraction de la durabilité max rendue) ;
 //                   feu_camp  : pose un feu (poste 'feu', lumière, chaleur) pour craft.FEU_CAMP_MIN minutes ;
 //                   barricade : barricade la porte la plus proche (PV → exploration.PORTES.PV_BARRICADEE).
@@ -339,20 +339,6 @@ export const RECIPES = [
   },
 
   // ======================== SURVIE ========================
-  {
-    id: 'r_feu_camp', cat: 'survie', nom: 'Faire un feu',
-    special: 'feu_camp', resultat: null,
-    ingredients: [{ id: 'planche', qty: 2 }, { id: 'journal_papier', qty: 1 }],
-    outils: ['allumer'], poste: null, skill: null, tempsMin: 10, xp: {}, connue: true,
-    desc: 'Casser le bois, froisser le papier, protéger la flamme de la main. Deux heures de chaleur, de cuisine — et de lumière qu\'on voit de loin.',
-  },
-  {
-    id: 'r_barricade', cat: 'survie', nom: 'Barricader une porte',
-    special: 'barricade', resultat: null,
-    ingredients: [{ id: 'planche', qty: 2 }, { id: 'clous', qty: 4 }],
-    outils: ['marteler'], poste: null, skill: null, tempsMin: 20, xp: { construction: 10 }, connue: true,
-    desc: 'Clouer deux planches en travers du chambranle. Le bruit te fait grincer des dents, mais derrière, on dort.',
-  },
   {
     id: 'r_piege_sonore', cat: 'survie', nom: 'Piège sonore',
     resultat: { id: 'piege_sonore', qty: 1 },

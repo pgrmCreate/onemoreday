@@ -310,7 +310,7 @@ export const BUTIN = {
     etagere: plus(OUTILLAGE, [
       L('piles', 1, 2, 0.15), L('lampe_torche', 1, 1, 0.07), L('lampe_frontale', 1, 1, 0.04), L('cartouche_gaz', 1, 2, 0.08),
       L('rechaud_camping', 1, 1, 0.03), L('hache_pompier', 1, 1, 0.015), L('pelle', 1, 1, 0.05), L('machette', 1, 1, 0.03),
-      L('essence', 1, 1, 0.04), L('manuel_bricolage', 1, 1, 0.04), L('ceinture_outils', 1, 1, 0.04),
+      L('essence', 1, 1, 0.04), L('manuel_bricolage', 1, 1, 0.04), L('ceinture_outils', 1, 1, 0.04), L('graines', 1, 3, 0.1),
     ]),
     comptoir: plus(D.comptoir, [L('scotch', 1, 2, 0.15), L('piles', 1, 1, 0.1)]),
     caisse: D.caisse,
@@ -332,7 +332,7 @@ export const BUTIN = {
       L('fil_de_fer', 1, 2, 0.15), L('clous', 3, 8, 0.15), L('herbes_simples', 1, 2, 0.1), L('huile_olive', 1, 1, 0.08),
       L('fusil_chasse', 1, 1, 0.012), L('cartouches', 2, 6, 0.05), L('canne_peche', 1, 1, 0.05), L('jumelles', 1, 1, 0.025),
       L('carnet_chasseur', 1, 1, 0.02), L('collet', 1, 1, 0.04), L('essence', 1, 1, 0.04), L('pierre_aiguiser', 1, 1, 0.06), L('appat', 1, 3, 0.05),
-      L('bouteille_vide', 1, 2, 0.12), L('alcool_fort', 1, 1, 0.08),
+      L('bouteille_vide', 1, 2, 0.12), L('alcool_fort', 1, 1, 0.08), L('graines', 1, 2, 0.12),
     ],
     vetements: plus(D.vetements, [L('bottes_caoutchouc', 1, 1, 0.08), L('manteau_hiver', 1, 1, 0.06), L('gants_cuir', 1, 1, 0.06)]),
     voiture: plus(D.voiture, [L('corde', 1, 1, 0.05)]),

@@ -38,6 +38,7 @@ export function creerHud(racine, { arene = false } = {}) {
     el('div', { class: 'ex-aide-g' },
       el('div', {}, el('h4', {}, 'Bouger'), ligne('ZQSD', 'se déplacer'), ligne('Maj', 'courir'), ligne('C', 'accroupi (discret)'), ligne('Souris', 'regarder / viser')),
       el('div', {}, el('h4', {}, 'Se battre'), ligne('Clic', 'frapper — 3 clics en rythme : enchaînement'), ligne('Clic maintenu', 'coup chargé'), ligne('Clic droit · Espace', 'repousser')),
+      el('div', {}, el('h4', {}, 'Construire'), ligne('Sac → Fabrication', 'onglet Construire'), ligne('Clic', 'poser'), ligne('T', 'tourner'), ligne('G', 'démonter / barricader')),
       el('div', {}, el('h4', {}, 'Faire'), ligne('E', 'interagir / fouiller'), ligne('F', 'lampe'), ligne('I', 'sac'), ligne('Tab', 'plan du lieu'), ligne('X / B', 'mains / dos'))),
   );
   racine.append(h.sang, h.lieu, h.guide, h.coop, h.msg, h.invite, h.etat, h.barre, h.butin, h.mains, h.degage, h.route, h.aide);

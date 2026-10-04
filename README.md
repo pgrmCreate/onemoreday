@@ -59,7 +59,7 @@ personnage et **arrive auprès de l'hôte**. Chacun se déplace librement ; dans
 - Agents Claude du projet : `.claude/agents/scenariste.md`, `.claude/agents/game-designer.md`
 - Bancs d'essai : `dev/explore.html` (combat compris), `dev/carte.html`, `dev/cine.html`, `dev/ui.html`
 - Vérifications : `node tools/valider_niveaux.mjs`, `node tools/verifier_gameplay.mjs`, `node tools/verifier_histoire.mjs`,
-  `node dev/test_combat.mjs`, `node dev/test_ui_regles.mjs`
+  `node dev/test_combat.mjs`, `node dev/test_ui_regles.mjs`, `node dev/test_construction.mjs`
 - Après ajout de fichiers : `node tools/generer_sw.mjs` (liste hors-ligne du service worker)
 
 Carte : © contributeurs OpenStreetMap (ODbL). Polices : Oswald, EB Garamond, Special Elite, Caveat (OFL).

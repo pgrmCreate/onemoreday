@@ -26,6 +26,7 @@ import * as vueExplore from '../explore/vue.js';
 import { REGLAGES } from '../data/reglages.js';
 import { SERVEUR_EN_LIGNE } from '../data/serveur.js';
 import { majDisponible, appliquerMaj } from '../version.js';
+import { appliquerConstructions } from '../data/construction.js';
 
 const ID_HOTE = 'hote', ID_INVITE = 'invite';
 const RC = REGLAGES.coop;
@@ -176,7 +177,7 @@ function envoyerMonde() {
 }
 
 const invite = { lieu: null, canal: null, offs: [] };
-const EVTS_RELAIS = ['porte', 'bruit', 'hurlement', 'sol', 'conteneur', 'charge', 'zombie',
+const EVTS_RELAIS = ['porte', 'construction', 'meuble', 'bruit', 'hurlement', 'sol', 'conteneur', 'charge', 'zombie',
   'telegraphe', 'fente', 'attaque', 'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule'];
 function quitterLieuInvite() {
   invite.offs.forEach(f => f()); invite.offs = [];
@@ -296,7 +297,13 @@ function canalDistant(lieuId, niveau) {
     joueurId: ID_INVITE, niveau, lieu: lieuId, local: false,
     _snap(s) {
       snap = { ...snap, ...s };          // instantané léger : on garde portes, sol, cadavres du dernier complet
-      if (s.portes) for (const p of niveau.portes) {
+      if (s.constructions || s.retires) { // grilles recalculées comme chez l'hôte : niveau → meubles démontés → portes → constructions
+        niveau.etages.forEach((E, k) => { dyn[k].bloque.set(E.bloque); dyn[k].opaque.set(E.opaque); });
+        for (const cle of snap.retires || []) { const m = niveau.meubleParCle[cle]; if (m) for (const i of m.cases) { dyn[niveau.etageIdx[m.etage]].bloque[i] = 0; dyn[niveau.etageIdx[m.etage]].opaque[i] = 0; } }
+        const tout = { ...snap.portes };
+        for (const p of niveau.portes) { const st = tout[p.cle]; const E = niveau.etages[niveau.etageIdx[p.etage]]; const i = p.y * E.w + p.x; const ferme = st ? (st.etat === 'fermee' || st.etat === 'verrouillee') : (p.etat === 'fermee' || p.etat === 'verrouillee'); dyn[E.idx].bloque[i] = ferme ? 1 : 0; dyn[E.idx].opaque[i] = ferme ? 1 : 0; }
+        appliquerConstructions(niveau, dyn, snap.constructions || []);
+      } else if (s.portes) for (const p of niveau.portes) {
         const st = s.portes[p.cle]; if (!st) continue;
         const E = niveau.etages[niveau.etageIdx[p.etage]]; const i = p.y * E.w + p.x;
         const ferme = st.etat === 'fermee' || st.etat === 'verrouillee';
@@ -316,6 +323,10 @@ function canalDistant(lieuId, niveau) {
     fouiller: (cle) => appel('fouiller', [cle]).then(r => r || { items: [], dureeMs: 0 }),
     arreterFouille: (p) => { appel('arreterFouille', [p]); },
     prendre: (cle, i, qty) => appel('prendre', [cle, i, qty]),
+    construire: (o) => appel('construire', [o]).then(r => r || { ok: false, raison: 'réseau' }),
+    agirConstruction: (uid, a, patch) => appel('agirConstruction', [uid, a, patch]).then(r => r || { ok: false, raison: 'réseau' }),
+    ranger: (cle, item) => appel('ranger', [cle, item]).then(r => r || { ok: false, raison: 'réseau' }),
+    demonterMeuble: (cle) => appel('demonterMeuble', [cle]).then(r => r || { ok: false, raison: 'réseau' }),
     deposer: (pos, item) => appel('deposer', [pos, item]),
     action(a) { if (majTimer) { clearTimeout(majTimer); majTimer = null; if (majEnAttente) envoyer({ t: 'x:maj', lieu: lieuId, p: majEnAttente }); majEnAttente = null; } envoyer({ t: 'x:act', lieu: lieuId, a }); return Promise.resolve({ ok: true }); },
     faireApparaitre: (l, o) => appel('faireApparaitre', [l, o]).then(r => r || []),

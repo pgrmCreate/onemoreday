@@ -45,6 +45,8 @@ export function creerEntrees({ racine, canvas, actions }) {
     else if (c === 'KeyB') actions.dos && actions.dos();
     else if (/^Digit[1-4]$/.test(c)) actions.rapide && actions.rapide(+c.slice(5) - 1);
     else if (c === 'KeyF') actions.lampe && actions.lampe();
+    else if (c === 'KeyG') actions.secondaire && actions.secondaire();
+    else if (c === 'KeyT') actions.tourner && actions.tourner();
     else if (c === 'KeyI') actions.inventaire && actions.inventaire();
     else if (c === 'KeyH') actions.aide && actions.aide();
     else if (c === 'Escape') actions.echap && actions.echap();
@@ -96,7 +98,12 @@ export function creerEntrees({ racine, canvas, actions }) {
   const bPousser = el('button', { class: 'ex-btn ex-btn-pousser', type: 'button', 'aria-label': 'Pousser' },
     el('span', { class: 'ex-frap-ico', html: SVG_P }), el('span', { class: 'ex-frap-l' }, 'Pousser'), el('i', { class: 'ex-cd' }));
   const bRecharger = el('button', { class: 'ex-btn ex-btn-petit ex-btn-recharger cache', type: 'button' }, 'Recharger');
-  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bAccr, bCourse), bInter,
+  // geste secondaire (démonter, barricader) et mode placement (construction) : petits boutons au-dessus d'Interagir
+  const bSecond = el('button', { class: 'ex-btn ex-btn-petit ex-btn-second cache', type: 'button' }, el('span', { class: 'ex-btn-l' }, ''));
+  const bTourner = el('button', { class: 'ex-btn ex-btn-petit cache', type: 'button' }, 'Tourner');
+  const bAnnuler = el('button', { class: 'ex-btn ex-btn-petit cache', type: 'button' }, 'Arrêter');
+  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bAccr, bCourse),
+    el('div', { class: 'ex-pad-ligne ex-pad-place' }, bTourner, bAnnuler), bSecond, bInter,
     el('div', { class: 'ex-pad-combat' }, bRecharger, bPousser, bFrapper));
   racine.append(zoneJoy, pad);
 
@@ -157,7 +164,10 @@ export function creerEntrees({ racine, canvas, actions }) {
   relacher(bFrapper, () => { if (!doigtFrappe) return; doigtFrappe = false; actions.frapper && actions.frapper(false); });
   presser(bPousser, () => { etat.tactile = true; actions.pousser && actions.pousser(); }); relacher(bPousser);
   presser(bRecharger, () => actions.recharger && actions.recharger()); relacher(bRecharger);
-  for (const b of [bInter, bCourse, bAccr, bLampe, bInv, bFrapper, bPousser, bRecharger]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
+  presser(bSecond, () => actions.secondaire && actions.secondaire()); relacher(bSecond);
+  presser(bTourner, () => actions.tourner && actions.tourner()); relacher(bTourner);
+  presser(bAnnuler, () => actions.echap && actions.echap()); relacher(bAnnuler);
+  for (const b of [bInter, bCourse, bAccr, bLampe, bInv, bFrapper, bPousser, bRecharger, bSecond, bTourner, bAnnuler]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
 
   function majBoutons() {
     bAccr.classList.toggle('on', etat.accroupi);
@@ -165,6 +175,16 @@ export function creerEntrees({ racine, canvas, actions }) {
   }
   return {
     etat,
+    setSecondaire(libelle) {
+      const l = bSecond.firstChild; if (l.textContent !== (libelle || '')) l.textContent = libelle || '';
+      bSecond.classList.toggle('cache', !libelle);
+    },
+    // Mode placement (construction) : le gros bouton devient « Poser », Tourner et Arrêter apparaissent.
+    setPlacement(on) {
+      bTourner.classList.toggle('cache', !on); bAnnuler.classList.toggle('cache', !on);
+      const l = bFrapper.lastChild; if (on && l.textContent !== 'Poser') l.textContent = 'Poser';
+      bFrapper.classList.toggle('placement', !!on);
+    },
     setInteragir(libelle) {
       const l = bInter.firstChild;
       if (l.textContent !== (libelle || 'Interagir')) l.textContent = libelle || 'Interagir';
@@ -178,7 +198,7 @@ export function creerEntrees({ racine, canvas, actions }) {
     setVisible(nom, v) { const b = { lampe: bLampe, course: bCourse, accroupi: bAccr, recharger: bRecharger }[nom]; if (b) b.classList.toggle('cache', !v); },
     // État du bouton Frapper : libellé (Frapper / Tirer / Dégage-toi), charge 0..1, menace proche, poussée en recharge.
     setCombat({ libelle, charge = 0, proche = false, pousseeCd = 0, empoigne = false, combo = -1 } = {}) {
-      const l = bFrapper.lastChild; if (libelle && l.textContent !== libelle) l.textContent = libelle;
+      const l = bFrapper.lastChild; if (libelle && l.textContent !== libelle && !bFrapper.classList.contains('placement')) l.textContent = libelle;
       bFrapper.style.setProperty('--charge', charge.toFixed(3));
       bFrapper.classList.toggle('charge', charge > 0);
       bFrapper.classList.toggle('proche', !!proche);

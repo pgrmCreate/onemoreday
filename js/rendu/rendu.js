@@ -16,6 +16,7 @@ import { creerLumiere, ambiance, SUB } from './lumiere.js';
 import { creerEffets } from './effets.js';
 import { textureToit } from './textures.js';
 import { K } from '../carte/catalogue.js';
+import { CONSTRUCTIONS, tailleConstruction } from '../data/construction.js';
 import { ZOMBIES } from '../data/zombies.js';
 
 const MAX_BLOCS = 40;
@@ -35,6 +36,7 @@ export function creerRendu(cv, niveau) {
   const toitsCache = new Map();    // E.id:k → sprite
   const toitsA = new Map();        // E.id:k → alpha courant
   let sangTraite = 0;
+  const rConstr = new Map();       // uid → objet de rendu d'une construction (graine stable)
 
   function resize() {
     const r = cv.getBoundingClientRect();
@@ -65,7 +67,7 @@ export function creerRendu(cv, niveau) {
     const x0 = bx * CHUNK, y0 = by * CHUNK, x1 = Math.min(E.w - 1, x0 + CHUNK - 1), y1 = Math.min(E.h - 1, y0 + CHUNK - 1);
     c.save(); c.translate(-x0 * TS, -y0 * TS);
     peindreSol(c, niveau, E, x0, y0, x1, y1);
-    const objets = (E.rendu ? E.rendu.objets : []).filter(R => R.x + R.w >= x0 - 1 && R.x <= x1 + 1 && R.y + R.h >= y0 - 1 && R.y <= y1 + 2);
+    const objets = (E.rendu ? E.rendu.objets : []).filter(R => !R.retire && R.x + R.w >= x0 - 1 && R.x <= x1 + 1 && R.y + R.h >= y0 - 1 && R.y <= y1 + 2);
     // décor plat (tapis, corps, débris, housses) sous les murs
     const plat = (R) => R.d && R.d.decor;
     for (const R of objets) if (plat(R)) { R.E_w = E.w; dessinerObjet(c, R); }
@@ -154,6 +156,27 @@ export function creerRendu(cv, niveau) {
       const s = S.portes[p.cle]; if (!s) continue;
       dessinerPorte(ctx, E, p, s, t, dt);
     }
+    // constructions (murs, caisses, feux, potager…) et fantôme du placement
+    for (const c of S.constructions || []) {
+      if (c.etage !== E.id) continue;
+      const d = CONSTRUCTIONS[c.type]; if (!d) continue;
+      const [w, h] = tailleConstruction(c.type, c.rot);
+      if (c.x + w < vx0 - 1 || c.x > vx1 + 1 || c.y + h < vy0 - 1 || c.y > vy1 + 1) continue;
+      if (!vuCase(c.x + w / 2, c.y + h / 2)) continue;
+      const R = rConstr.get(c.uid) || { variante: graine(String(c.uid)) % 1000 };
+      Object.assign(R, { type: d.dessin, x: c.x, y: c.y, w, h, rot: 0, c, d, minutes: S.minutes });
+      rConstr.set(c.uid, R);
+      dessinerObjet(ctx, R);
+    }
+    if (S.placement && S.placement.etage === E.id) {
+      const P = S.placement;
+      ctx.globalAlpha = 0.5;
+      dessinerObjet(ctx, { type: P.dessin, x: P.x, y: P.y, w: P.w, h: P.h, rot: 0, variante: 1 });
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = P.ok ? 'rgba(110,230,120,0.95)' : 'rgba(240,80,70,0.95)'; ctx.lineWidth = 3;
+      ctx.setLineDash([6, 4]); ctx.strokeRect(P.x * TS + 1.5, P.y * TS + 1.5, P.w * TS - 3, P.h * TS - 3); ctx.setLineDash([]);
+      ctx.fillStyle = P.ok ? 'rgba(110,230,120,0.12)' : 'rgba(240,80,70,0.14)'; ctx.fillRect(P.x * TS, P.y * TS, P.w * TS, P.h * TS);
+    }
     // arcs d'attaque des morts (au sol, sous les corps)
     for (const z of S.zombies) {
       if (z.etage !== E.id || !z.atk || !z._vu) continue;
@@ -201,7 +224,7 @@ export function creerRendu(cv, niveau) {
     const objs = E.rendu ? E.rendu.objets : [];
     const vent = S.vent || 0.3;
     for (const R of objs) {
-      if (!R.haut) continue;
+      if (!R.haut || R.retire) continue;
       const cx = R.x + R.w / 2, cy = R.y + R.h / 2;
       const sp = spriteHaut(R);
       const rc = sp.rayon / TS;

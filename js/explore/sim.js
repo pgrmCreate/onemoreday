@@ -19,6 +19,7 @@ import { seedRng } from '../core/rng.js';
 import { K, parserNiveau, cleCase, MATIERES } from './niveau.js';
 import { deplacer, ligneLibre, obstaclesSon } from './physique.js';
 import { profilMelee, geometrie, resoudreCoup, resoudreAttaque, tapsEmpoignade, bruitCoup } from './combat.js';
+import { CONSTRUCTIONS, DEMONTABLES, casesConstruction, appliquerConstructions, cassableC } from '../data/construction.js';
 
 const RX = REGLAGES.exploration, RP = RX.PERCEPTION, RF = REGLAGES.fouille, RC = REGLAGES.combat;
 const RAYON_JOUEUR = 0.3, RAYON_MORT = 0.3;
@@ -63,6 +64,26 @@ export function creerSimLieu(opts) {
     portes[p.cle] = { etat: p.etat, pv: pvMax, pvMax, barricadee: false };
   }
 
+  // ---------- Constructions (js/data/construction.js) et meubles démontés ----------
+  let constructions = [], consSeq = 1;
+  const retires = new Set();                                   // clés des meubles démontés
+  const consCase = niveau.etages.map(() => new Map());         // i → construction (index par case)
+  function indexerC(c, ajout) {
+    const ei = EI(c.etage); if (ei == null) return; const E = niveau.etages[ei];
+    for (const [x, y] of casesConstruction(c.type, c.x, c.y, c.rot)) {
+      if (x < 0 || y < 0 || x >= E.w || y >= E.h) continue;
+      const i = y * E.w + x;
+      if (ajout) consCase[ei].set(i, c); else if (consCase[ei].get(i) === c) consCase[ei].delete(i);
+    }
+  }
+  // Grilles dynamiques recalculées : niveau → meubles démontés → portes → constructions.
+  function recalculerDyn() {
+    niveau.etages.forEach((E, k) => { dyn[k].bloque.set(E.bloque); dyn[k].opaque.set(E.opaque); });
+    for (const cle of retires) { const m = niveau.meubleParCle[cle]; if (!m) continue; const ei = EI(m.etage); for (const i of m.cases) { dyn[ei].bloque[i] = 0; dyn[ei].opaque[i] = 0; } }
+    majPortesDyn();
+    appliquerConstructions(niveau, dyn, constructions);
+  }
+
   // ---------- Création / restauration ----------
   const etat = opts.etat && opts.etat.v ? opts.etat : null;
   if (etat) migrerAbords(etat, niveau.abords);
@@ -73,6 +94,8 @@ export function creerSimLieu(opts) {
     sol = (etat.sol || []).slice();
     cadavres = (etat.cadavres || []).slice();
     joues = (etat.joues || []).slice();
+    for (const c of etat.constructions || []) { const cc = { ...c, items: c.items ? c.items.map(i => ({ ...i })) : c.items }; constructions.push(cc); consSeq = Math.max(consSeq, (+String(c.uid).slice(1) || 0) + 1); }
+    for (const cle of etat.retires || []) retires.add(cle);
     for (const z of etat.zombies || []) { const zz = nouveauMort(z.type, z.etage, z.x, z.y, z.etat, z); if (zz) zombies.push(zz); }
     // (les anciens types rangés sont convertis par nouveauMort → typeMort)
     repeupler(etat.minutes);
@@ -89,7 +112,8 @@ export function creerSimLieu(opts) {
     placerProceduraux(n, r);
     for (const o of niveau.sol) sol.push({ uid: uidSeq++, etage: o.etage, x: o.x + 0.5, y: o.y + 0.5, ...(o.doc ? { doc: o.doc } : { id: o.id, qty: o.qty }) });
   }
-  majPortesDyn();
+  recalculerDyn();
+  for (const c of constructions) indexerC(c, true);
 
   function etatDepart(type, r) {
     const d = ZOMBIES[type]; const e = (d && d.etats) || { erre: 0.5, immobile: 0.3, dort: 0.2 };
@@ -295,7 +319,11 @@ export function creerSimLieu(opts) {
   // ---------- Chemins (BFS 8 directions sans couper les coins ; portes fermées traversables = on cogne) ----------
   const bfsBuf = niveau.etages.map(E => ({ vu: new Uint32Array(E.w * E.h), prev: new Int32Array(E.w * E.h), file: new Int32Array(E.w * E.h), stamp: 0 }));
   const D8X = [1, -1, 0, 0, 1, 1, -1, -1], D8Y = [0, 0, 1, -1, 1, -1, 1, -1];
-  function passable(E, D, i) { return !D.bloque[i] || (E.code[i] === K.PORTE && portes[niveau.portes[E.porte[i]].cle].etat !== 'ouverte'); }
+  function passable(E, D, i) {
+    if (!D.bloque[i]) return true;
+    if (E.code[i] === K.PORTE && portes[niveau.portes[E.porte[i]].cle].etat !== 'ouverte') return true;
+    const c = consCase[E.idx].get(i); return !!(c && cassableC(c));
+  }
   function chemin(z, tx, ty, maxProf = 60, aleatoire = false) {
     const E = niveau.etages[z.ei], D = dyn[z.ei], B = bfsBuf[z.ei];
     const w = E.w, h = E.h;
@@ -348,6 +376,14 @@ export function creerSimLieu(opts) {
     const E = niveau.etages[z.ei];
     if (z.ci >= z.chemin.length) return 'fini';
     const i = z.chemin[z.ci];
+    const cc = consCase[z.ei].get(i);
+    if (cc && cassableC(cc)) { // une construction lui barre la route : il cogne dessus
+      const cx = i % E.w + 0.5, cy = ((i / E.w) | 0) + 0.5, d = Math.hypot(cx - z.x, cy - z.y);
+      if (d > 1.05) { avancerVers(z, cx, cy, v, dt); return 'marche'; }
+      z.porte = null; z.cons = cc.uid; tourner(z, Math.atan2(cy - z.y, cx - z.x), dt, 6);
+      return 'porte';
+    }
+    z.cons = null;
     if (E.code[i] === K.PORTE) {
       const p = niveau.portes[E.porte[i]]; const s = portes[p.cle];
       if (s.etat === 'fermee' || s.etat === 'verrouillee') {
@@ -362,6 +398,7 @@ export function creerSimLieu(opts) {
     return 'marche';
   }
   function cogner(z, dt, degats) {
+    if (z.cons) return cognerConstruction(z, dt, degats);
     const s = portes[z.porte]; if (!s) return;
     z.tCogne += dt;
     if (z.tCogne < RX.PORTES.COGNE_PERIODE_MS) return;
@@ -372,6 +409,30 @@ export function creerSimLieu(opts) {
     s.pv = Math.max(0, s.pv - (z.def.cogne || 4)); vm++;
     if (s.pv <= 0) { setPorte(z.porte, 'cassee', 'casse', z.uid); z.porte = null; z.chemin = []; }
     else evts.push({ type: 'porte', cle: z.porte, etat: s.etat, pv: s.pv, pvMax: s.pvMax, action: 'coup', source: z.uid });
+  }
+  function cognerConstruction(z, dt, degats) {
+    const c = constructions.find(q => q.uid === z.cons); if (!c) { z.cons = null; return; }
+    z.tCogne += dt;
+    if (z.tCogne < RX.PORTES.COGNE_PERIODE_MS) return;
+    z.tCogne = 0;
+    bruit({ etage: c.etage, x: c.x + 0.5, y: c.y + 0.5, rayon: RX.BRUIT.porte, source: z.uid });
+    if (!degats) { evts.push({ type: 'construction', action: 'coup', uid: c.uid, pv: c.pv, pvMax: c.pvMax }); return; }
+    c.pv = Math.max(0, c.pv - (z.def.cogne || 4)); vm++; cache = null;
+    if (c.pv <= 0) { retirerConstruction(c, 'detruite', z.uid); z.cons = null; z.chemin = []; }
+    else evts.push({ type: 'construction', action: 'coup', uid: c.uid, pv: c.pv, pvMax: c.pvMax });
+  }
+  // Pieux : un mort qui marche dessus s'empale (dégâts, il vacille) ; le piège s'use.
+  function pieges(z) {
+    if (z.aTerre > 0 || z.etat === 'dort' || z.etat === 'fait_le_mort') return;
+    const E = niveau.etages[z.ei], c = consCase[z.ei].get(Math.floor(z.y) * E.w + Math.floor(z.x));
+    const d = c && CONSTRUCTIONS[c.type];
+    if (!d || !d.piege || (z.tPiege && T - z.tPiege < 1200)) return;
+    z.tPiege = T;
+    z.hp -= d.piege.degats; z.vacille = Math.max(z.vacille, 700); z.atk = null;
+    c.pv -= 1; vm++; cache = null;
+    evts.push({ type: 'construction', action: 'piege', uid: c.uid, zuid: z.uid, x: z.x, y: z.y, etage: z.etage, pv: c.pv });
+    if (z.hp <= 0) { lacher(z); zombies = zombies.filter(q => q !== z); cadavres.push({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: z.x, y: z.y, dir: z.dir }); evts.push({ type: 'mort_zombie', joueur: null, uid: z.uid, typeMort: z.type, sexe: z.sexe, x: z.x, y: z.y, etage: z.etage, piege: true }); }
+    if (c.pv <= 0) retirerConstruction(c, 'detruite', z.uid);
   }
   function majMort(z, dt) {
     z.vitesse = 0;
@@ -779,7 +840,7 @@ export function creerSimLieu(opts) {
     if (e.taps >= e.requis) degager(j, zombies.find(q => q.uid === e.uid));
     return { ok: true };
   }
-  function tirer(j, a) {
+  function tirerArme(j, a) {
     const st = j.stats || {}, prof = st.arme;
     if (!prof || !prof.tir) return { ok: false, raison: 'pas_arme_tir' };
     const TI = RC.TIR;
@@ -811,7 +872,7 @@ export function creerSimLieu(opts) {
       case 'marteler': return marteler(j, a);
       case 'frapper': return j.empoigne ? marteler(j, a) : frapper(j, a);
       case 'pousser': return j.empoigne ? marteler(j, a) : pousser(j, a);
-      case 'tirer': return j.empoigne ? marteler(j, a) : tirer(j, a);
+      case 'tirer': return j.empoigne ? marteler(j, a) : tirerArme(j, a);
       default: return { ok: false, raison: 'inconnue' };
     }
   }
@@ -996,6 +1057,11 @@ export function creerSimLieu(opts) {
   }
   function fouiller(joueurId, cle) {
     const j = joueurs.get(joueurId);
+    if (cle.startsWith('#c:')) { // caisse de rangement construite : on soulève le couvercle
+      const c = constructions.find(q => q.uid === cle.slice(3));
+      if (!c || !c.items) return { items: [], dureeMs: 0, progres: 1, erreur: 'pas un conteneur' };
+      return { items: c.items.map(i => ({ ...i })), dureeMs: 350, progres: 1, nom: (CONSTRUCTIONS[c.type].nom || 'la caisse').toLowerCase() };
+    }
     const m = niveau.meubleParCle[cle];
     const estCad = cle.startsWith('cad:');
     if ((!m || !m.conteneur) && !estCad) return { items: [], dureeMs: 0, progres: 1, erreur: 'pas un conteneur' };
@@ -1029,7 +1095,7 @@ export function creerSimLieu(opts) {
       evts.push({ type: 'sol', action: 'pris', uid, joueur: joueurId }); vm++;
       return o.doc ? { doc: o.doc } : etatObjet(o);
     }
-    const c = conteneurs[cle];
+    const c = cle.startsWith('#c:') ? constructions.find(q => q.uid === cle.slice(3)) : conteneurs[cle];
     if (!c || !c.items || index < 0 || index >= c.items.length) return null;
     const src = c.items[index];
     let it;
@@ -1097,6 +1163,7 @@ export function creerSimLieu(opts) {
         saisit: z.saisit, vac: z.vacille > 0, terre: z.aTerre > 0, touche: T - z.tTouche < 160 })),
       portes: pp, conteneurs: cc,
       sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })),
+      constructions: constructions.map(c => ({ ...c, items: undefined, n: c.items ? c.items.length : undefined })), retires: [...retires],
       joueurs: [...joueurs.values()].map(j => ({ id: j.id, nom: j.nom, x: j.x, y: j.y, etage: j.etage, dir: j.dir, lampe: j.lampe, lampeSource: j.lampeSource, allure: j.allure, mort: j.mort,
         aTerre: !!j.aTerre, agonie: !!j.agonie, pv: j.pv ?? null,
         geste: j.geste && T - j.geste.t < j.geste.duree ? { type: j.geste.type, p: (T - j.geste.t) / j.geste.duree, combo: j.geste.combo || 0 } : null,
@@ -1117,7 +1184,84 @@ export function creerSimLieu(opts) {
       zombies: zombies.map(z => ({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: +z.x.toFixed(2), y: +z.y.toFixed(2), dir: +z.dir.toFixed(2),
         etat: z.etat === 'chasse' || z.etat === 'alerte' ? 'erre' : z.etat, base: z.base, hp: z.hp, proc: z.proc })),
       portes: pp, conteneurs: cc, sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })), joues: joues.slice(),
+      constructions: constructions.map(c => ({ ...c, items: c.items ? c.items.map(i => ({ ...i })) : undefined })), retires: [...retires],
     };
+  }
+
+  // construire(joueurId, { type, etage, x, y, rot, minutes }) → { ok, uid?, raison? }
+  //   raison : 'inconnu' | 'hors' | 'occupe' | 'fenetre' | 'quelqu_un'. Les ingrédients sont payés par le client APRÈS { ok }.
+  function construire(joueurId, o = {}) {
+    const d = CONSTRUCTIONS[o.type], ei = EI(o.etage);
+    if (!d || ei == null) return { ok: false, raison: 'inconnu' };
+    const E = niveau.etages[ei], D = dyn[ei], x0 = o.x | 0, y0 = o.y | 0, rot = o.rot | 0;
+    for (const [x, y] of casesConstruction(o.type, x0, y0, rot)) {
+      if (x < 0 || y < 0 || x >= E.w || y >= E.h) return { ok: false, raison: 'hors' };
+      const i = y * E.w + x;
+      if (consCase[ei].has(i)) return { ok: false, raison: 'occupe' };
+      if (d.pose === 'fenetre') { if (E.code[i] !== K.FENETRE) return { ok: false, raison: 'fenetre' }; continue; }
+      if (E.code[i] !== K.SOL || D.bloque[i]) return { ok: false, raison: 'occupe' };
+      if (d.bloque && caseOccupee(o.etage, x, y)) return { ok: false, raison: 'quelqu_un' };
+    }
+    const m = o.minutes ?? minutes;
+    const c = { uid: 'c' + (consSeq++), type: o.type, etage: o.etage, x: x0, y: y0, rot, pv: d.pv, pvMax: d.pv };
+    if (d.contenance) c.items = [];
+    if (d.porte) c.ouverte = false;
+    if (d.feu) c.feuJusqua = m + d.feu.minutes;
+    if (d.eau) { c.eau = 0; c.eauT = m; }
+    if (d.potager) c.plante = m;
+    constructions.push(c); indexerC(c, true); appliquerConstructions(niveau, dyn, [c]);
+    evts.push({ type: 'construction', action: 'pose', c: { ...c }, joueur: joueurId }); vm++; cache = null;
+    return { ok: true, uid: c.uid };
+  }
+  function retirerConstruction(c, action, source) {
+    constructions = constructions.filter(q => q !== c); indexerC(c, false);
+    for (const it of c.items || []) sol.push({ uid: uidSeq++, etage: c.etage, x: c.x + 0.5, y: c.y + 0.5, ...it });
+    recalculerDyn();
+    evts.push({ type: 'construction', action, uid: c.uid, source: source || null, x: c.x + 0.5, y: c.y + 0.5, etage: c.etage }); vm++; cache = null;
+  }
+  // agirConstruction(joueurId, uid, action, patch) : 'demonter' (→ rendu : la moitié des matériaux) | 'ouvrir' | 'fermer' |
+  //   'maj' (patch : feuJusqua, eau, eauT, plante — calculés par le client, qui connaît l'heure et la météo).
+  function agirConstruction(joueurId, uid, action, patch) {
+    const c = constructions.find(q => q.uid === uid); if (!c) return { ok: false, raison: 'absente' };
+    const d = CONSTRUCTIONS[c.type];
+    if (action === 'demonter') {
+      retirerConstruction(c, 'demontee', joueurId);
+      const etat = c.pv / (c.pvMax || 1);
+      const rendu = (d.ingredients || []).map(x => ({ id: x.id, qty: Math.floor(x.qty * 0.5 * (0.5 + 0.5 * etat)) })).filter(x => x.qty > 0 && x.id !== 'graines' && x.id !== 'journal_papier');
+      return { ok: true, rendu };
+    }
+    if (action === 'ouvrir' || action === 'fermer') {
+      if (!d.porte) return { ok: false, raison: 'pas une porte' };
+      if (action === 'fermer' && caseOccupee(c.etage, c.x, c.y)) return { ok: false, raison: 'occupee' };
+      c.ouverte = action === 'ouvrir'; recalculerDyn();
+    } else if (action === 'maj') {
+      for (const k of ['feuJusqua', 'eau', 'eauT', 'plante']) if (patch && k in patch) c[k] = patch[k];
+    } else return { ok: false, raison: 'action' };
+    evts.push({ type: 'construction', action: 'maj', c: { ...c, items: undefined }, joueur: joueurId }); vm++; cache = null;
+    return { ok: true };
+  }
+  // ranger(joueurId, cle, item) : poser un objet dans une caisse construite ('#c:uid') ou un meuble déjà fouillé.
+  function ranger(joueurId, cle, item) {
+    if (!item || !item.id) return { ok: false };
+    const c = cle.startsWith('#c:') ? constructions.find(q => q.uid === cle.slice(3)) : conteneurs[cle];
+    if (!c || !c.items) return { ok: false, raison: 'pas un conteneur' };
+    const etat = Object.keys(item).some(k => k !== 'id' && k !== 'qty');
+    const pile = !etat && c.items.find(i => i.id === item.id && !Object.keys(i).some(k => k !== 'id' && k !== 'qty'));
+    if (pile) pile.qty = (pile.qty || 1) + (item.qty || 1); else c.items.push({ ...item, qty: item.qty || 1 });
+    evts.push({ type: 'conteneur', cle, reste: c.items.length, joueur: joueurId }); vm++; cache = null;
+    return { ok: true };
+  }
+  // demonterMeuble(joueurId, cle) → { ok, rendu: [{ id, qty }] } : le meuble disparaît, son contenu tombe au sol.
+  function demonterMeuble(joueurId, cle) {
+    const m = niveau.meubleParCle[cle]; const D2 = m && DEMONTABLES[m.type];
+    if (!m || !D2 || retires.has(cle)) return { ok: false, raison: 'impossible' };
+    retires.add(cle);
+    const c = conteneurs[cle];
+    if (c && c.items) for (const it of c.items) sol.push({ uid: uidSeq++, etage: m.etage, x: (m.x0 + m.x1 + 1) / 2, y: (m.y0 + m.y1 + 1) / 2, ...it });
+    delete conteneurs[cle];
+    recalculerDyn();
+    evts.push({ type: 'meuble', action: 'demonte', cle, joueur: joueurId }); vm++; cache = null;
+    return { ok: true, rendu: Object.entries(D2).filter(([k]) => k !== 'ms').map(([id, qty]) => ({ id, qty })) };
   }
 
   function tick(dtMs) {
@@ -1137,6 +1281,7 @@ export function creerSimLieu(opts) {
       tickJoueurs(dt);
       traiterBruits();
       for (const z of zombies) majMort(z, dt);
+      if (constructions.length) for (const z of zombies.slice()) pieges(z);
       separer(dt);
       separerJoueurs();
     }
@@ -1149,6 +1294,7 @@ export function creerSimLieu(opts) {
   return {
     lieuId, niveau, seed,
     ajouterJoueur, majJoueur, retirerJoueur, bruit, porte, fouiller, arreterFouille, prendre, deposer,
+    construire, agirConstruction, ranger, demonterMeuble, constructions: () => constructions,
     retirerZombies, repousserZombies, finCombat, blesserZombie, tick, instantane, sauver,
     action, faireApparaitre, viderEvenements, temps: () => T,
     // accès pratiques (hôte / vue locale)
@@ -1168,7 +1314,8 @@ export function migrerAbords(etat, ab) {
   const dx = (ab ? ab.dx : 0) - (avant.dx || 0), dy = (ab ? ab.dy : 0) - (avant.dy || 0);
   if (!dx && !dy) return etat;
   const bouge = (o) => { if (o && o.x != null) { o.x += dx; o.y += dy; } };
-  (etat.zombies || []).forEach(bouge); (etat.sol || []).forEach(bouge); (etat.cadavres || []).forEach(bouge);
+  (etat.zombies || []).forEach(bouge); (etat.sol || []).forEach(bouge); (etat.cadavres || []).forEach(bouge); (etat.constructions || []).forEach(bouge);
+  etat.retires = (etat.retires || []).map(k => { const m = /^(.*):(-?\d+),(-?\d+)$/.exec(k); return m ? `${m[1]}:${+m[2] + dx},${+m[3] + dy}` : k; });
   const cles = (obj) => { const out = {}; for (const [k, v] of Object.entries(obj || {})) { const m = /^(.*):(-?\d+),(-?\d+)$/.exec(k); out[m ? `${m[1]}:${+m[2] + dx},${+m[3] + dy}` : k] = v; } return out; };
   etat.portes = cles(etat.portes); etat.conteneurs = cles(etat.conteneurs);
   etat.abords = ab ? { version: ab.version, dx: ab.dx, dy: ab.dy } : null;

@@ -48,6 +48,13 @@ function objetsSurTable(c, x, y, w, h, r, n = 3) {
     else { c.fillStyle = pick(r, ['#8a2a2a', '#2a4a6a', '#3a3a3a']); c.save(); c.translate(ox, oy); c.rotate(r()); rr(c, -6, -4, 12, 8, 1); c.fill(); c.restore(); } // livre
   }
 }
+// Construction abîmée : fissures et éclats selon les PV restants.
+function usure(c, W, H, R) {
+  const e = R && R.c && R.c.pvMax ? R.c.pv / R.c.pvMax : 1; if (e > 0.85) return;
+  c.strokeStyle = `rgba(20,12,6,${0.5 + 0.4 * (1 - e)})`; c.lineWidth = 1.2;
+  const n = Math.ceil((1 - e) * 6);
+  for (let k = 0; k < n; k++) { const x = (k * 37 % 100) / 100 * W, y = (k * 53 % 100) / 100 * H; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 6 - k, y + 5); c.lineTo(x + 2, y + 10); c.stroke(); }
+}
 function pieds(c, x, y, w, h, coul = '#20160c') { c.fillStyle = coul; const d = 3; for (const [px, py] of [[x + d, y + d], [x + w - d, y + d], [x + d, y + h - d], [x + w - d, y + h - d]]) { cercle(c, px, py, 1.6); c.fill(); } }
 // Étagère pillée : planches nues, poussière, un emballage déchiré ou une boîte renversée de temps en temps.
 function etagereVidee(c, x, y, w, h, r) {
@@ -292,11 +299,100 @@ const DESSINS = {
     g.addColorStop(0, '#ffcf6a'); g.addColorStop(0.4, '#e0601a'); g.addColorStop(1, 'rgba(90,20,6,0.8)');
     c.fillStyle = g; cercle(c, W / 2, H / 2, Math.min(W, H) / 2 - 11); c.fill();
   },
-  feu_camp(c, W, H, r) {
+  feu_camp(c, W, H, r, R) {
     for (let k = 0; k < 9; k++) { const a = k / 9 * 6.28; c.fillStyle = teinte('#6a645a', 0.7 + r() * 0.5); cercle(c, W / 2 + Math.cos(a) * W * 0.3, H / 2 + Math.sin(a) * H * 0.3, 4); c.fill(); }
     c.fillStyle = '#1a120c'; cercle(c, W / 2, H / 2, W * 0.22); c.fill();
     c.strokeStyle = '#4a3020'; c.lineWidth = 4; for (let k = 0; k < 3; k++) { const a = r() * 6.28; c.beginPath(); c.moveTo(W / 2 - Math.cos(a) * 9, H / 2 - Math.sin(a) * 9); c.lineTo(W / 2 + Math.cos(a) * 9, H / 2 + Math.sin(a) * 9); c.stroke(); }
-    const g = c.createRadialGradient(W / 2, H / 2, 1, W / 2, H / 2, W * 0.2); g.addColorStop(0, 'rgba(255,190,90,0.9)'); g.addColorStop(1, 'rgba(160,40,10,0)'); c.fillStyle = g; cercle(c, W / 2, H / 2, W * 0.2); c.fill();
+    // construit : éteint = cendres ; allumé = flammes qui dansent
+    const eteint = R && R.c && !((R.c.feuJusqua || 0) > (R.minutes || 0));
+    if (eteint) { c.fillStyle = 'rgba(120,115,105,0.6)'; cercle(c, W / 2, H / 2, W * 0.16); c.fill(); return; }
+    const t = R && R.c ? performance.now() / 120 : 0, f = 0.85 + 0.15 * Math.sin(t) * Math.sin(t * 1.7);
+    const g = c.createRadialGradient(W / 2, H / 2, 1, W / 2, H / 2, W * 0.24 * f); g.addColorStop(0, 'rgba(255,220,120,0.95)'); g.addColorStop(0.5, 'rgba(255,140,50,0.8)'); g.addColorStop(1, 'rgba(160,40,10,0)'); c.fillStyle = g; cercle(c, W / 2, H / 2, W * 0.24 * f); c.fill();
+    if (R && R.c) for (let k = 0; k < 4; k++) { const a = t * 0.4 + k * 1.6; c.fillStyle = `rgba(255,${150 + 60 * Math.sin(t + k) | 0},60,0.8)`; ellipse(c, W / 2 + Math.cos(a) * 3, H / 2 + Math.sin(a) * 3 - 2, 3, 6 * f, a); c.fill(); }
+  },
+  // ─────────── Constructions (js/data/construction.js) ───────────
+  mur_planches(c, W, H, r, R) {
+    avecOmbre(c, 5, 3, 4, 0.55, () => { c.fillStyle = BOIS; c.fillRect(1, 1, W - 2, H - 2); });
+    const n = 4; for (let k = 0; k < n; k++) { const y = 2 + k * (H - 4) / n; c.fillStyle = teinte(BOIS_C, 0.8 + r() * 0.35); c.fillRect(2, y, W - 4, (H - 4) / n - 1.5); }
+    grainBois(c, 2, 2, W - 4, H - 4, r, 5);
+    c.fillStyle = '#9a9a9a'; for (let k = 0; k < n; k++) { const y = 2 + k * (H - 4) / n + (H - 4) / n / 2 - 1; cercle(c, 6, y, 1.3); c.fill(); cercle(c, W - 6, y, 1.3); c.fill(); }
+    usure(c, W, H, R);
+  },
+  mur_renforce(c, W, H, r, R) {
+    DESSINS.mur_planches(c, W, H, r, null);
+    c.strokeStyle = teinte(BOIS_F, 1.1); c.lineWidth = 4; c.beginPath(); c.moveTo(4, 4); c.lineTo(W - 4, H - 4); c.moveTo(W - 4, 4); c.lineTo(4, H - 4); c.stroke();
+    c.strokeStyle = 'rgba(170,170,165,0.8)'; c.lineWidth = 1; c.beginPath(); c.moveTo(2, H / 2 - 4); c.lineTo(W - 2, H / 2 - 3); c.moveTo(2, H / 2 + 4); c.lineTo(W - 2, H / 2 + 5); c.stroke();
+    usure(c, W, H, R);
+  },
+  palissade(c, W, H, r, R) {
+    const n = 4;
+    for (let k = 0; k < n; k++) {
+      const x = 3 + k * (W - 6) / n, w = (W - 6) / n - 2;
+      avecOmbre(c, 3, 2, 3, 0.5, () => { c.fillStyle = teinte(BOIS_C, 0.75 + r() * 0.4); rr(c, x, 6, w, H - 12, 1); c.fill(); });
+      c.fillStyle = teinte(BOIS_C, 1.15); c.beginPath(); c.moveTo(x, 6); c.lineTo(x + w / 2, 1); c.lineTo(x + w, 6); c.fill();
+    }
+    c.fillStyle = BOIS_F; c.fillRect(2, H / 2 - 2, W - 4, 3);
+    usure(c, W, H, R);
+  },
+  porte_planches(c, W, H, r, R) {
+    const ouverte = R && R.c && R.c.ouverte;
+    c.fillStyle = BOIS_F; c.fillRect(0, 0, 4, H); c.fillRect(W - 4, 0, 4, H);
+    if (ouverte) { avecOmbre(c, 3, 2, 3, 0.5, () => { c.fillStyle = BOIS_C; c.save(); c.translate(4, 4); c.rotate(1.2); c.fillRect(0, -3, W - 8, 6); c.restore(); }); return; }
+    avecOmbre(c, 4, 3, 4, 0.5, () => { c.fillStyle = BOIS_C; c.fillRect(4, 3, W - 8, H - 6); });
+    grainBois(c, 4, 3, W - 8, H - 6, r, 4);
+    c.strokeStyle = BOIS_F; c.lineWidth = 3; c.beginPath(); c.moveTo(6, 6); c.lineTo(W - 6, H - 6); c.stroke();
+    c.fillStyle = '#8a8a8a'; cercle(c, W - 9, H / 2, 2); c.fill();
+    usure(c, W, H, R);
+  },
+  barricade_fenetre(c, W, H, r, R) {
+    c.save(); c.translate(W / 2, H / 2);
+    for (const a of [0.55, -0.55]) { c.save(); c.rotate(a); avecOmbre(c, 3, 2, 3, 0.55, () => { c.fillStyle = teinte(BOIS_C, 0.85 + r() * 0.3); c.fillRect(-W * 0.62, -4, W * 1.24, 8); }); c.fillStyle = '#a0a0a0'; cercle(c, -W * 0.5, 0, 1.3); c.fill(); cercle(c, W * 0.5, 0, 1.3); c.fill(); c.restore(); }
+    c.restore(); usure(c, W, H, R);
+  },
+  pieux(c, W, H, r) {
+    for (let k = 0; k < 6; k++) {
+      const x = 6 + r() * (W - 12), y = 6 + r() * (H - 12), a = r() * 6.28;
+      c.save(); c.translate(x, y); c.rotate(a);
+      c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(-1, -1, 14, 4);
+      c.fillStyle = teinte(BOIS_C, 0.8 + r() * 0.4); c.beginPath(); c.moveTo(-2, -2); c.lineTo(10, -2); c.lineTo(15, 0); c.lineTo(10, 2); c.lineTo(-2, 2); c.fill();
+      c.restore();
+    }
+  },
+  caisse_bois(c, W, H, r, R) {
+    DESSINS.caisse(c, W, H, r);
+    c.strokeStyle = 'rgba(30,20,10,0.6)'; c.lineWidth = 1.5; c.strokeRect(7, 7, W - 14, H - 14);
+    if (R && R.c && R.c.n) { c.fillStyle = 'rgba(255,230,160,0.5)'; cercle(c, W - 9, 9, 2.5); c.fill(); }
+  },
+  etabli(c, W, H, r) {
+    avecOmbre(c, 6, 3, 5, 0.55, () => { boite(c, 3, 4, W - 6, H - 8, teinte(BOIS, 1.05), { r: 2 }); });
+    grainBois(c, 4, 5, W - 8, H - 10, r, 6, 0.3);
+    c.fillStyle = METAL; c.fillRect(W - 18, 6, 10, 7); c.fillStyle = '#4a4a4a'; c.fillRect(W - 15, 13, 4, 6);    // étau
+    c.fillStyle = '#7a7a7a'; c.save(); c.translate(W * 0.35, H / 2); c.rotate(0.4); c.fillRect(-9, -1.5, 14, 3); c.fillStyle = '#3a2a1a'; c.fillRect(5, -2, 8, 4); c.restore();   // marteau
+    c.fillStyle = 'rgba(210,200,170,0.5)'; for (let k = 0; k < 5; k++) c.fillRect(8 + r() * (W * 0.4), 6 + r() * (H - 14), 2, 1);   // copeaux
+  },
+  lit_fortune(c, W, H, r) {
+    avecOmbre(c, 5, 3, 4, 0.5, () => { c.fillStyle = BOIS; c.fillRect(3, 3, W - 6, H - 6); });
+    c.fillStyle = DRAP; rr(c, 5, 5, W - 10, H - 10, 4); c.fill();
+    c.fillStyle = teinte(DRAP, 0.8); for (let k = 0; k < 4; k++) { c.fillRect(6, 10 + k * (H - 20) / 4, W - 12, 1.5); }
+    c.fillStyle = '#e4ddcc'; rr(c, 7, 7, W - 14, H * 0.14, 5); c.fill();
+  },
+  recuperateur(c, W, H, r, R) {
+    avecOmbre(c, 5, 3, 4, 0.55, () => { c.fillStyle = '#2a4a6a'; rr(c, W * 0.25, H * 0.3, W * 0.5, H * 0.55, 3); c.fill(); });
+    c.fillStyle = 'rgba(140,170,190,0.55)'; c.beginPath(); c.moveTo(3, 3); c.lineTo(W - 3, 3); c.lineTo(W * 0.58, H * 0.5); c.lineTo(W * 0.42, H * 0.5); c.closePath(); c.fill();
+    c.strokeStyle = BOIS_F; c.lineWidth = 2; c.strokeRect(3, 3, W - 6, 2);
+    const plein = R && R.c && R.d && R.d.eau ? Math.min(1, (R.c.eau || 0) / R.d.eau.cap) : 0;
+    if (plein > 0.02) { c.fillStyle = 'rgba(90,150,200,0.85)'; c.fillRect(W * 0.3, H * 0.82 - H * 0.45 * plein, W * 0.4, H * 0.45 * plein); }
+  },
+  potager(c, W, H, r, R) {
+    c.fillStyle = '#4a3220'; c.fillRect(2, 2, W - 4, H - 4);
+    c.strokeStyle = BOIS_C; c.lineWidth = 4; c.strokeRect(3, 3, W - 6, H - 6);
+    c.fillStyle = 'rgba(0,0,0,0.25)'; for (let k = 1; k < 4; k++) c.fillRect(6, k * H / 4, W - 12, 2);
+    const p = R && R.c && R.d && R.c.plante != null ? Math.min(1, ((R.minutes || 0) - R.c.plante) / (R.d.potager.jours * 1440)) : 0;
+    if (p > 0) for (let k = 0; k < 3; k++) for (let i = 0; i < 6; i++) {
+      const x = 10 + i * (W - 20) / 5, y = (k + 0.6) * H / 4 + 2, s = 1.5 + p * 6;
+      c.fillStyle = p >= 1 ? '#4a8a2a' : '#5a7a2a'; cercle(c, x, y, s); c.fill();
+      if (p >= 1 && (i + k) % 2) { c.fillStyle = '#b8302a'; cercle(c, x + 2, y + 1, 2); c.fill(); }
+    }
   },
   fontaine(c, W, H) {
     avecOmbre(c, 8, 4, 6, 0.6, () => { c.fillStyle = '#8a8272'; cercle(c, W / 2, H / 2, Math.min(W, H) / 2 - 3); c.fill(); });

@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v25';
+const CACHE = 'onemoreday-v26';
 const FICHIERS = [
   './',
   './index.html',
@@ -68,6 +68,7 @@ const FICHIERS = [
   './js/data/carte_salon.js',
   './js/data/cinematiques.js',
   './js/data/clothing.js',
+  './js/data/construction.js',
   './js/data/histoire/declencheurs.js',
   './js/data/histoire/documents.js',
   './js/data/histoire/fins.js',
@@ -148,6 +149,7 @@ const FICHIERS = [
   './js/explore/combat_lieu.js',
   './js/explore/combat_vue.js',
   './js/explore/commun.js',
+  './js/explore/construction.js',
   './js/explore/embuscade.js',
   './js/explore/entrees.js',
   './js/explore/hud_explore.js',
@@ -159,6 +161,7 @@ const FICHIERS = [
   './js/explore/vue.js',
   './js/game/autorite.js',
   './js/game/conditions.js',
+  './js/game/construction.js',
   './js/game/crafting.js',
   './js/game/declencheurs.js',
   './js/game/donnees.js',
@@ -192,6 +195,7 @@ const FICHIERS = [
   './js/ui/hud.js',
   './js/ui/icons.js',
   './js/ui/panels/commun.js',
+  './js/ui/panels/construire.js',
   './js/ui/panels/corps.js',
   './js/ui/panels/fabrication.js',
   './js/ui/panels/index.js',

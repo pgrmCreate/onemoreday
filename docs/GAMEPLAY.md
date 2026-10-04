@@ -640,6 +640,37 @@ comme ça.
 
 ---
 
+## 6 bis. La construction (`js/data/construction.js`) — façon Project Zomboid
+
+On bâtit SUR PLACE, dans un lieu : **Sac → Fabrication → Construire** → « Placer ». Un fantôme suit la souris (PC) ou se
+place devant toi (tactile) : **vert** = possible, **rouge** = non (et pourquoi). Clic / bouton **Poser** : on bâtit en temps réel
+(30 min de jeu ≈ 5 s, −8 %/niv de Construction ; **bouger interrompt**, le marteau s'entend à 7 cases). **T** tourne, **Échap**
+arrête. On reste en mode placement tant qu'on a de quoi (un mur après l'autre). Les matériaux ne sont payés qu'une fois posé.
+
+| Construction | Matériaux | Outil | Niv. | Effet |
+|---|---|---|---|---|
+| Mur de planches | 3 planches, 6 clous | marteau | 0 | bloque et cache (150 PV) |
+| Mur renforcé | 4 planches, 10 clous, fil de fer | marteau | 2 | 340 PV |
+| Palissade | 2 planches, 4 clous | marteau | 0 | bloque, on voit à travers (110 PV) |
+| Porte en planches | 4 planches, 8 clous, visserie | marteau | 1 | s'ouvre et se ferme (140 PV) |
+| Barricader une fenêtre | 2 planches, 4 clous | marteau | 0 | sur une fenêtre : opaque, 160 PV |
+| Pieux | 2 planches | lame | 1 | un mort qui marche dessus s'empale (14 dégâts, il vacille ; 6 usages) |
+| Caisse de rangement | 3 planches, 6 clous | marteau | 0 | **60 L** : « Ranger… » dans la fenêtre de la caisse |
+| Établi | 4 planches, 8 clous | marteau | 1 | poste « établi » (vrai établi : temps × 0,7) |
+| Lit de fortune | 2 planches, 2 draps | — | 0 | « Dormir dans le lit » |
+| Feu de camp | 2 planches, journaux | de quoi allumer | 0 | lumière réelle, chaleur, poste « feu », 2 h ; une planche = +1 h |
+| Récupérateur d'eau | bâche, jerrican, 2 planches, 4 clous | marteau | 1 | 2,4 L par heure de pluie (météo rejouée même en ton absence), jusqu'à 20 L ; on boit ou on remplit ses contenants |
+| Potager | 4 planches, 4 clous, graines | pelle | 0 | 3 jours → 4 légumes (180 kcal) ; replanter avec un sachet de graines |
+
+- **Les morts cognent** sur une construction qui leur barre la route (comme une porte) : ses PV baissent, elle finit par céder.
+- **Démonter** (touche **G** près d'elle) rend la moitié des matériaux (moins si elle est abîmée).
+- **Meubles** : G près d'un meuble (marteau ou pied-de-biche) le démonte : chaise 1 planche, table 2, lit 2 + ressort, armoire 3,
+  étagère 2, palette 2 + clous… Le contenu tombe au sol. C'est **la source de planches**.
+- **Barricader une porte** : G près d'elle (2 planches, 4 clous, marteau) → 180 PV ; une pièce fermée et barricadée est sûre pour dormir.
+- **Contexte** (2 fois par seconde) : établi (table, bureau, machine, établi construit), feu (feu de camp allumé à ≤ 2 cases),
+  point d'eau (évier, lavabo, WC, baignoire, fontaine → eau croupie) : la fabrication et le remplissage des contenants en dépendent.
+- Tout est tenu par la simulation du lieu (l'hôte en co-op) et reste dans la sauvegarde.
+
 ## 7. Compétences et progression (`competences`)
 
 Onze compétences, niveaux 0 à 5, paliers d'XP `[0, 40, 110, 220, 380, 600]`. Au départ : Force, Dextérité et
@@ -654,7 +685,7 @@ Agilité à 20 XP (le niveau 1 est proche).
 | Visée | visée −80 ms ; précision +4 % ; recharge −6 % | tirer (3 par tir qui touche) |
 | Discrétion | bruits −10 % ; vue des morts −6 % | 5 s accroupi près d'un mort qui ne t'a pas vu (1), attaque furtive (6) |
 | Médecine | soins −10 % de temps, +10 % d'effet ; suture −20 % de douleur | chaque soin (4), suture (10), cautériser (8) |
-| Construction | recettes ; qualité des objets | fabriquer, barricader (10), démonter (2) |
+| Construction | constructions ; temps −8 %/niv ; qualité des objets | construire (3 à 10), barricader (10), démonter (2) |
 | Mécanique | crocheter −12 % ; recettes | crocheter (8), recettes |
 | Entretien | 10 %/niv de ne pas user l'arme ; réparations +8 % | réparer, aiguiser |
 | Chasse & cuisine | dépeçage +20 % ; pêche +10 % | cuisiner, pêcher, poser des collets |

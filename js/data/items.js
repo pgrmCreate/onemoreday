@@ -304,6 +304,11 @@ export const ITEMS = {
     kcal: 450, soif: -4,
     desc: 'Des picholines en saumure. Salées à en pleurer, mais elles tiennent au corps.',
   },
+  legumes: {
+    nom: 'Légumes du potager', type: 'nourriture', poids: 0.5, espace: 1, volume: 0.8,
+    kcal: 180, perissable: 72, soif: 4,
+    desc: 'Tomates fendues, courgettes tordues, une poignée de haricots verts. Ça a poussé dans ta terre : ça a un autre goût.',
+  },
   fruits_sauvages: {
     nom: 'Fruits cueillis', type: 'nourriture', poids: 0.3, espace: 1, volume: 0.5,
     kcal: 150, perissable: 24, soif: 3,
@@ -715,6 +720,10 @@ export const ITEMS = {
   boite_vide: {
     nom: 'Boîte de conserve vide', type: 'materiau', poids: 0.05, espace: 0, volume: 0.45,
     desc: 'Rincée à l\'eau croupie, le couvercle replié. Un bougeoir, un piège, une lampe.',
+  },
+  graines: {
+    nom: 'Sachet de graines', type: 'materiau', poids: 0.02, espace: 0, volume: 0.02,
+    desc: 'Tomates, courgettes, haricots : un sachet de jardinerie, la date limite dépassée de deux ans. Ça germera quand même. Il faut un potager.',
   },
   herbes_simples: {
     nom: 'Herbes médicinales', type: 'materiau', poids: 0.05, espace: 0, volume: 0.1,

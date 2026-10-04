@@ -6,6 +6,7 @@ import { emit } from '../core/bus.js';
 import { el } from '../core/util.js';
 import { DOCUMENTS } from '../data/histoire/documents.js';
 import { mod, sfx, message, nomObjet, capitaliser } from './commun.js';
+import { CONSTRUCTIONS } from '../data/construction.js';
 
 let V = null;
 export function lierButin(v) { V = v; }
@@ -75,9 +76,43 @@ export function rendreButin() {
     const f = (n) => String(n).replace('.', ',');
     h.append(el('div', { class: 'ex-butin-place' }, sac ? `${sac.nom} : ${f(b.sac.utilise)} / ${b.sac.max} L · poches ${f(b.poches.utilise)} / ${f(b.poches.max)} L` : `Pas de sac : tes poches seulement (${f(b.poches.utilise)} / ${f(b.poches.max)} L, petits objets).`));
   }
+  // Ranger : poser ses affaires dans une caisse construite (ou un meuble déjà fouillé)
+  if (B.fini && inv) {
+    if (B.ranger) {
+      const cap = capaciteRangement(B), occ = B.items.reduce((s, it) => s + inv.volumeDe(it.id) * (it.qty || 1), 0);
+      h.append(el('div', { class: 'ex-butin-place' }, `Place : ${fmt(occ)} / ${cap} L`));
+      const ul2 = el('ul', { class: 'ex-butin-l' });
+      G.player.inventaire.forEach((it, i) => {
+        const v = inv.volumeDe(it.id) * (it.qty || 1), tient = occ + v <= cap + 1e-6;
+        ul2.append(el('li', { class: tient ? '' : 'plein' }, el('span', { class: 'ex-b-nom' }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
+          el('button', { class: 'ex-b', type: 'button', disabled: tient ? null : true, onclick: () => rangerItem(i) }, tient ? 'Ranger' : 'Trop gros')));
+      });
+      if (!G.player.inventaire.length) ul2.append(el('li', { class: 'ex-butin-cache' }, 'Ton sac est vide.'));
+      h.append(ul2);
+    }
+  }
   h.append(el('div', { class: 'ex-butin-a' },
     el('button', { class: 'ex-b ex-b-p', type: 'button', disabled: B.visibles ? null : true, onclick: prendreTout }, 'Tout prendre'),
+    B.fini ? el('button', { class: 'ex-b', type: 'button', onclick: () => { B.ranger = !B.ranger; rendreButin(); } }, B.ranger ? 'Fini de ranger' : 'Ranger…') : null,
     el('button', { class: 'ex-b', type: 'button', onclick: () => { interrompreFouille(); fermerButin(); } }, 'Fermer')));
+}
+const fmt = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
+// Contenance (litres) : une caisse construite selon son plan, un meuble 30 L, un corps 10 L.
+function capaciteRangement(B) {
+  if (B.cle.startsWith('#c:')) { const c = ((V.snap && V.snap.constructions) || []).find(q => q.uid === B.cle.slice(3)); return (c && CONSTRUCTIONS[c.type] && CONSTRUCTIONS[c.type].contenance) || 60; }
+  return B.cle.startsWith('cad:') ? 10 : 30;
+}
+async function rangerItem(i) {
+  const B = V && V.butin, inv = mod.inv; if (!B || !inv) return;
+  const it = G.player.inventaire[i]; if (!it) return;
+  const sorti = inv.removeIndex(i, it.qty || 1); if (!sorti) return;
+  const r = await V.canal.ranger(B.cle, sorti);
+  if (!r || !r.ok) { const { id, qty, ...etat } = sorti; inv.addItem(id, qty || 1, etat); message('Impossible de le ranger ici.', 1800); rendreButin(); return; }
+  const pile = !Object.keys(sorti).some(k => k !== 'id' && k !== 'qty') && B.items.find(x => x.id === sorti.id && !Object.keys(x).some(k => k !== 'id' && k !== 'qty'));
+  if (pile) pile.qty = (pile.qty || 1) + (sorti.qty || 1); else B.items.push({ ...sorti });
+  B.visibles = B.items.length; B.dejaVus = B.items.length;
+  sfx('tissu_dechire', { volume: 0.4 });
+  rendreButin();
 }
 function retirerDuButin(B, i) {
   B.items.splice(i, 1); B.visibles = Math.max(0, B.visibles - 1); B.dejaVus = Math.max(0, (B.dejaVus || 0) - 1);

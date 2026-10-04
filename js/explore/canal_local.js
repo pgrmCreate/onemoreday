@@ -4,7 +4,8 @@
 //   Plusieurs canaux peuvent partager une même sim (co-op locale / tests) : un seul propriétaire.
 // Interface (identique pour le futur canal distant de l'invité) :
 //   majJoueur(patch), bruit(b), porte(cle, action) → Promise, fouiller(cle) → Promise, prendre(cle, i, qty?) → Promise,
-//   deposer(pos, item) → Promise, instantane(), pairs(), on(evt, fn) → off
+//   deposer(pos, item) → Promise, instantane(), pairs(), on(evt, fn) → off ;
+//   construire(o), agirConstruction(uid, action, patch), ranger(cle, item), demonterMeuble(cle) → Promise
 // Combat : action(a) → Promise ({ type: 'frapper'|'pousser'|'tirer'|'marteler', … }), faireApparaitre(liste, o) → Promise<uids>.
 // Extensions : ajouterJoueur(pos, info), arreterFouille(progres), blesserZombie(uid, n), retirerZombies(uids, o),
 //   repousserZombies(uids, depuis), pause(), reprise(), fermer(), niveau, joueurId, grilles(etage).
@@ -53,6 +54,12 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } 
     arreterFouille(progres) { sim.arreterFouille(joueurId, progres); },
     prendre(cle, i, qty) { return ok(sim.prendre(joueurId, cle, i, qty)); },
     deposer(pos, item) { return ok(sim.deposer(joueurId, pos, item)); },
+    // construction (js/data/construction.js)
+    construire(o) { return this._act(() => sim.construire(joueurId, o)); },
+    agirConstruction(uid, a, patch) { return this._act(() => sim.agirConstruction(joueurId, uid, a, patch)); },
+    ranger(cle, item) { return this._act(() => sim.ranger(joueurId, cle, item)); },
+    demonterMeuble(cle) { return this._act(() => sim.demonterMeuble(joueurId, cle)); },
+    _act(f) { const r = f(); const evts = sim.viderEvenements(); if (evts.length) for (const c of liste) c._recevoir(evts, false); return ok(r); },
     action(a) {
       const r = sim.action(joueurId, a);
       const evts = sim.viderEvenements();     // livrés tout de suite : le coup se voit et s'entend sans attendre le pas

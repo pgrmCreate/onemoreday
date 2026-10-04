@@ -15,6 +15,8 @@ import { K } from './niveau.js';
 import { mod, sfx, message, afficherLieu, verifierCondition, compter, niv, nomObjet, outil, caseLibrePres } from './commun.js';
 import { ouvrirSommeil } from '../game/sommeil.js';
 import { commencerFouille, interrompreFouille, fermerButin, ramasser, lireDocument, prendreTout } from './butin.js';
+import { ciblesConstruction, libelleConstruction, agirConstruction, secondaireConstruction, secondaireMeuble, secondairePorte, demonterMeuble } from './construction.js';
+import { DEMONTABLES } from '../data/construction.js';
 
 const RX = REGLAGES.exploration;
 let V = null, api = null;
@@ -48,8 +50,9 @@ export function chercherCible() {
     } else if (code === K.MEUBLE) {
       const m = n.meubles[E.meuble[i]];
       if (!m || vusMeubles.has(m.idx)) continue; vusMeubles.add(m.idx);
+      if (V.retires && V.retires.has(m.cle)) continue;          // démonté
       const decl = m.marqueur && declencheurMarqueur(m.marqueur);
-      if (!m.conteneur && !decl) continue;
+      if (!m.conteneur && !decl && !DEMONTABLES[m.type]) continue;
       proposer({ type: 'meuble', m, decl, etage: E.id, x0: m.x0, y0: m.y0, x1: m.x1 + 1, y1: m.y1 + 1, cx: x + 0.5, cy: y + 0.5 }, d, decl ? 0.2 : 0);
     } else if (code === K.ESC_MONTE || code === K.ESC_DESCEND) {
       const s = n.escaliers.find(e => e.etage === E.id && e.cases.includes(i));
@@ -99,8 +102,22 @@ export function chercherCible() {
     if (d > R) continue;
     proposer({ type: 'cadavre', cd, etage: E.id, x0: cd.x - 0.6, y0: cd.y - 0.6, x1: cd.x + 0.6, y1: cd.y + 0.6, cx: cd.x, cy: cd.y }, d);
   }
-  if (best) best.libelle = libelle(best);
+  ciblesConstruction(proposer);
+  if (best) {
+    best.libelle = libelle(best);
+    // geste secondaire (touche G / petit bouton) : démonter, barricader
+    if (best.type === 'construction') best.secondaire = secondaireConstruction(best.c);
+    else if (best.type === 'porte') best.secondaire = secondairePorte(best.p, best.s);
+    else if (best.type === 'meuble' && !best.decl && (best.m.conteneur || estLit(best.m))) best.secondaire = secondaireMeuble(best.m);
+    else best.secondaire = null;
+  }
   return best;
+}
+// Touche G : le geste secondaire de la cible (démonter, barricader).
+export function interagirSecondaire() {
+  if (!V || V.occupe || V.enPause || V.action || V.fouille) return;
+  const c = V.cible = chercherCible();
+  if (c && c.secondaire) c.secondaire.f();
 }
 function libelle(c) {
   switch (c.type) {
@@ -116,8 +133,10 @@ function libelle(c) {
       if (v.crocheter && compter('crochets_serrure') > 0) return 'Crocheter la serrure';
       return 'Porte verrouillée';
     }
+    case 'construction': return libelleConstruction(c.c);
     case 'meuble': {
       if (c.decl) return c.decl.libelle || `Examiner ${c.m.nom}`;
+      if (!c.m.conteneur && !estLit(c.m)) return `Démonter ${c.m.nom}`;
       const st = V.snap.conteneurs[c.m.cle];
       if (estLit(c.m) && (!c.m.conteneur || (st && st.progres >= 1 && st.reste === 0))) return `Dormir dans ${c.m.nom}`;
       if (st && st.progres >= 1 && st.reste === 0) return `Fouiller ${c.m.nom} (vide)`;
@@ -138,13 +157,15 @@ const LITS = new Set(['lit', 'lit_simple', 'lit_hopital', 'canape', 'brancard', 
 const estLit = (m) => LITS.has(m.type);
 export function majInvite() {
   const c = V.cible;
-  const txt = c ? c.libelle : null;
-  if (V._invite !== txt) {
-    V._invite = txt;
+  const txt = c ? c.libelle : null, sec = c && c.secondaire ? c.secondaire.libelle : null;
+  if (V._invite !== txt || V._inviteSec !== sec) {
+    V._invite = txt; V._inviteSec = sec;
     V.hud.invite.textContent = '';
     if (txt) V.hud.invite.append(el('kbd', {}, 'E'), ' ', txt);
-    V.hud.invite.classList.toggle('on', !!txt);
+    if (sec) V.hud.invite.append(el('span', { class: 'ex-inv-sec' }, ' · ', el('kbd', {}, 'G'), ' ', sec));
+    V.hud.invite.classList.toggle('on', !!(txt || sec));
     V.entrees.setInteragir(txt);
+    if (V.entrees.setSecondaire) V.entrees.setSecondaire(sec);
   }
 }
 
@@ -157,7 +178,10 @@ export async function interagir(o) {
   if (!c) return;
   switch (c.type) {
     case 'porte': return actionPorte(c);
-    case 'meuble': if (c.decl) return jouerDeclencheur(c.decl); if (c.libelle && c.libelle.startsWith('Dormir')) return ouvrirSommeil({ lit: true }); return commencerFouille(c.m.cle, c.m.nom, (c.m.x0 + c.m.x1 + 1) / 2, (c.m.y0 + c.m.y1 + 1) / 2);
+    case 'construction': return agirConstruction(c.c);
+    case 'meuble': if (c.decl) return jouerDeclencheur(c.decl); if (c.libelle && c.libelle.startsWith('Dormir')) return ouvrirSommeil({ lit: true });
+      if (!c.m.conteneur) { const s = secondaireMeuble(c.m); if (s) s.f(); return; }
+      return commencerFouille(c.m.cle, c.m.nom, (c.m.x0 + c.m.x1 + 1) / 2, (c.m.y0 + c.m.y1 + 1) / 2);
     case 'escalier': return prendreEscalier(c.s);
     case 'sortie': return sortirDuLieu(c.s);
     case 'marqueur': return jouerDeclencheur(c.decl);
