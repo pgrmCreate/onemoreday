@@ -102,7 +102,7 @@ def sonnailles(T, n):
         pass
     cams = [[(1, (-50, -13.5, 5.5), (-10, 2, 1.5)), (f1, (-28, -13.5, 6), (10, 2, 1.5))],
             [(1, (20, -13, 3.0), (34, 0, 1.8)), (f1, (30, -12, 2.6), (40, 2, 1.8))],
-            [(1, (40, -10, 9), (10, 30, 6)), (f1, (44, -6, 14), (60, 165, 30))]][n]
+            [(1, (40, -11, 8), (10, 6, 2)), (f1, (30, -14, 26), (65, 170, 30))]][n]
     T.camera(cams, lens=[28, 35, 28][n])
     return 1, f1
 
@@ -114,8 +114,9 @@ def aube_troupeau(T, n):
     rnd = random.Random(90 + n)
     S, M = statues_foule(8, 91)
     # la route d'Avignon, vers le nord : la foule s'étire dans la plaine
-    pts = [(-58 + rnd.uniform(-7, 7), 184 - t * 0.11 + rnd.uniform(-2, 2)) for t in range(600)]           # derrière le berger
-    pts += [(-58 + rnd.uniform(-9, 9) + (t - 300) * 0.02, 200 + t * 0.6 + rnd.uniform(-3, 3)) for t in range(300)]   # devant, déjà loin
+    n_ = 600 if n != 1 else 220   # plan rapproché sur le berger : moins de monde (sinon le rendu traîne)
+    pts = [(-58 + rnd.uniform(-7, 7), 184 - t * 0.11 * 600 / n_ + rnd.uniform(-2, 2)) for t in range(n_)]           # derrière le berger
+    if n != 1: pts += [(-58 + rnd.uniform(-9, 9) + (t - 300) * 0.02, 200 + t * 0.6 + rnd.uniform(-3, 3)) for t in range(300)]   # devant, déjà loin
     H.foule_statique(S, pts, f1, 0.8, (0.05, 1), rnd)
     # le berger et la petite femme à la grosse cloche, en tête
     b = H.humain('berger', 'h', 'vieux', vetements=['mindfront_knitted_sweater_01', 'mindfront_male_trousers_2', 'mindfront_shoes_biker_boots_male'], graine=92)

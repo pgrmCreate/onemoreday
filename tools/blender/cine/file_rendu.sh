@@ -8,8 +8,13 @@ MAITRES="/d/projects 3D/OneMoreDay/cine/maitres"
 mkdir -p "$MAITRES"
 for p in "$@"; do
   echo "[file] $p : rendu…"
-  "$BLENDER" -b --python "$RACINE/tools/blender/cine/tourner.py" -- "$p" > "/d/projects 3D/OneMoreDay/cine/$p.log" 2>&1
-  if [ -s "$RACINE/img/cine/clips/$p.webm" ]; then
+  for essai in 1 2; do   # une seconde tentative si Blender plante (pilote graphique, interruption)
+    rm -f "$RACINE/img/cine/clips/$p.webm"
+    "$BLENDER" -b --python "$RACINE/tools/blender/cine/tourner.py" -- "$p" > "/d/projects 3D/OneMoreDay/cine/$p.log" 2>&1
+    grep -q "terminé en" "/d/projects 3D/OneMoreDay/cine/$p.log" && break
+    echo "[file] $p : nouvelle tentative"
+  done
+  if [ -s "$RACINE/img/cine/clips/$p.webm" ] && grep -q "terminé en" "/d/projects 3D/OneMoreDay/cine/$p.log"; then
     mv -f "$RACINE/img/cine/clips/$p.webm" "$MAITRES/$p.webm"
     "$FF" -y -loglevel error -i "$MAITRES/$p.webm" -c:v libvpx-vp9 -b:v 0 -crf 38 -row-mt 1 -deadline good -cpu-used 2 -an "$RACINE/img/cine/clips/$p.webm"
     echo "[file] $p : fait ($(du -h "$RACINE/img/cine/clips/$p.webm" | cut -f1))"

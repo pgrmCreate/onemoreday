@@ -16,7 +16,7 @@ def reglages_rendu(qualite='film'):
     sc.render.engine = 'BLENDER_EEVEE'
     ee = sc.eevee
     for k, v in (('use_raytracing', qualite == 'film'), ('use_shadows', True), ('shadow_ray_count', 2), ('shadow_step_count', 8),
-                 ('taa_render_samples', 20 if qualite == 'film' else 8), ('use_volumetric_shadows', True), ('volumetric_tile_size', '4'),
+                 ('taa_render_samples', 14 if qualite == 'film' else 8), ('use_volumetric_shadows', True), ('volumetric_tile_size', '4'),
                  ('fast_gi_method', 'GLOBAL_ILLUMINATION'), ('use_fast_gi', True)):
         try: setattr(ee, k, v)
         except Exception: pass

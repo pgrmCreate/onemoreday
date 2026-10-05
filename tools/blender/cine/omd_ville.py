@@ -228,7 +228,7 @@ def lampadaire(x, y, rot=0.0, nuit=False):
     parts.append(lan); parts.append(boite(x, y, 4.86, 0.42, 0.42, 0.08, fonte, 0))
     o = joindre(parts, 'reverbere'); ranger([o])
     if nuit:
-        ld = bpy.data.lights.new('lampe', 'POINT'); ld.energy = 2400; ld.color = (1.0, 0.72, 0.42); ld.shadow_soft_size = 0.3; ld.use_shadow = False   # des dizaines de réverbères : sans ombres (rendu 10× plus rapide)
+        ld = bpy.data.lights.new('lampe', 'POINT'); ld.energy = 1200; ld.color = (1.0, 0.72, 0.42); ld.shadow_soft_size = 0.3; ld.use_shadow = False   # des dizaines de réverbères : sans ombres (rendu 10× plus rapide)
         l = bpy.data.objects.new('lampe', ld); l.location = (x, y, 4.6); coll().objects.link(l)
     return o
 
@@ -272,8 +272,8 @@ def tour_horloge(x, y):
     for k in range(12):   # les heures
         a = k / 12 * 6.283
         o.append(boite(x + math.sin(a) * 1.45, y - 4.32, 20.5 + math.cos(a) * 1.45 - 0.12, 0.07, 0.03, 0.24, noir, 0))
-    for ang, l in ((-90 + 5, 1.15), (300, 0.8)):   # neuf heures dix : la grande aiguille sur le 2, la petite sur le 9
-        a = math.radians(ang if ang > 0 else 360 + ang)
+    for ang, l in ((60, 1.15), (275, 0.8)):   # neuf heures dix : la grande aiguille sur le 2, la petite juste après le 9
+        a = math.radians(ang)                    # rotation autour de Y : positif = sens des aiguilles d'une montre vu de face
         aig = boite(x, y - 4.36, 20.5, 0.1, 0.03, l, noir, 0)
         for v in aig.data.vertices: v.co.z += l / 2      # pivot au centre du cadran
         aig.location.z = 20.5; aig.rotation_euler.y = a; o.append(aig)
