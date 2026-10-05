@@ -451,25 +451,31 @@ def ventoux(T, n):
     T.lumiere('aube' if n == 0 else 'matin')
     rnd = random.Random(211)
     N.terrain(3000, 'aerial_grass_rock', '#b8b090', 3.0, 0.02, 150)
-    bpy.ops.mesh.primitive_cone_add(vertices=96, radius1=2600, radius2=60, depth=1700, location=(0, 4200, 850))
-    mt = bpy.context.active_object
+    # le Ventoux : une longue croupe (25 km d'est en ouest), versants boisés, sommet de cailloutis blanc « comme un os »
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=1, subdivisions=6, location=(0, 5200, -350))
+    mt = bpy.context.active_object; mt.scale = (5200, 1500, 2000)
     m = bpy.data.materials.new('ventoux'); m.use_nodes = True; nt = m.node_tree; p = nt.nodes.get('Principled BSDF')
     gr = nt.nodes.new('ShaderNodeTexCoord'); sep = nt.nodes.new('ShaderNodeSeparateXYZ'); rp = nt.nodes.new('ShaderNodeValToRGB')
-    rp.color_ramp.elements[0].position = 0.55; rp.color_ramp.elements[0].color = (*V.lin('#5a6a3a'), 1); rp.color_ramp.elements[1].position = 0.72; rp.color_ramp.elements[1].color = (*V.lin('#f0ece2'), 1)
-    nt.links.new(gr.outputs['Generated'], sep.inputs[0]); nt.links.new(sep.outputs['Z'], rp.inputs['Fac']); nt.links.new(rp.outputs['Color'], p.inputs['Base Color'])
+    nz = nt.nodes.new('ShaderNodeTexNoise'); nz.inputs['Scale'].default_value = 18; mixz = nt.nodes.new('ShaderNodeMath'); mixz.operation = 'MULTIPLY_ADD'; mixz.inputs[1].default_value = 0.06
+    rp.color_ramp.elements[0].position = 0.80; rp.color_ramp.elements[0].color = (*V.lin('#4a5a34'), 1)
+    e = rp.color_ramp.elements.new(0.86); e.color = (*V.lin('#8a8a70'), 1)
+    rp.color_ramp.elements[-1].position = 0.9; rp.color_ramp.elements[-1].color = (*V.lin('#f2efe6'), 1)
+    nt.links.new(gr.outputs['Generated'], sep.inputs[0]); nt.links.new(gr.outputs['Generated'], nz.inputs['Vector'])
+    nt.links.new(nz.outputs['Fac'], mixz.inputs[0]); nt.links.new(sep.outputs['Z'], mixz.inputs[2]); nt.links.new(mixz.outputs[0], rp.inputs['Fac'])
+    nt.links.new(rp.outputs['Color'], p.inputs['Base Color']); p.inputs['Roughness'].default_value = 0.9
     mt.data.materials.append(m)
+    tx = bpy.data.textures.new('ventoux', 'CLOUDS'); tx.noise_scale = 0.25
+    d = mt.modifiers.new('relief', 'DISPLACE'); d.texture = tx; d.strength = 0.08
     with bpy.context.temp_override(object=mt, active_object=mt, selected_objects=[mt], selected_editable_objects=[mt]): bpy.ops.object.shade_smooth()
-    tx = bpy.data.textures.new('ventoux', 'CLOUDS'); tx.noise_scale = 0.3
-    s = mt.modifiers.new('sub', 'SUBSURF'); s.levels = 3; s.subdivision_type = 'SIMPLE'; d = mt.modifiers.new('relief', 'DISPLACE'); d.texture = tx; d.strength = 120
     S, M = statues_foule(6, 212)
     H.foule_statique(S, points_bande(rnd, -40, 40, 20, 160, 700), f1, 0.4, (0, 1), rnd)
     if n == 1:
         r = H.doubler(M[0], 'revenu'); r.location = (2, 18, 0); H.orienter(r, math.pi)
         for f in range(1, f1 + 1, 3):
             t = min(1, f / (f1 * 0.7)); H.poser(r, 'genoux' if t < 0.4 else 'debout', {'head': [(H.X, 20 * (1 - t))]}); H.figer(r, f)
-    cams = [[(1, (-30, -40, 3), (0, 4000, 500)), (f1, (-10, -30, 4), (0, 4000, 800))],
+    cams = [[(1, (-30, -40, 3), (0, 4000, 300)), (f1, (-10, -30, 4), (0, 4000, 500))],
             [(1, (6, 12, 1.6), (2, 18, 0.9)), (f1, (5, 13, 1.8), (2, 18, 1.4))],
-            [(1, (0, -20, 3), (0, 3000, 900)), (f1, (0, -10, 3), (0, 4200, 1650))]][n]
+            [(1, (0, -20, 3), (0, 3700, 700)), (f1, (0, -10, 3), (300, 4400, 1400))]][n]
     T.camera(cams, lens=[26, 40, 60][n])
     return 1, f1
 
