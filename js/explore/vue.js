@@ -169,6 +169,8 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   for (const t of EVTS_COMBAT) V.off.push(V.canal.on(t, (e) => { if (V && V.cbt) V.cbt.surEvt(e); }));
   V.off.push(on('mort', () => { if (!V) return; V.cbt.mourir(); V.entrees.actif(false); }));
   V.off.push(on('inventaire', () => { if (!V) return; V.cbt.majStats(); V.hud.majMains(V, mod.inv); }));
+  // enfiler / retirer un vêtement, un sac : le froissement du tissu (l'arme et la lampe ont leurs propres gestes)
+  V.off.push(on('inventaire', (e) => { const s = e && (e.equip || e.desequip); if (s && !['arme', 'mainG', 'lampe'].includes(s)) sfx('vetement'); }));
   V.hud.majMains(V, mod.inv);
   // HUD des mains : main droite → la ranger d'où elle vient ; dos → sortir / remettre ; ⇄ → échanger les mains ;
   // cases de ceinture → sortir / remettre (comme les touches 1-4).

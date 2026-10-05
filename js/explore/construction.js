@@ -237,11 +237,13 @@ export async function agirConstruction(c) {
     const bois = COMBUSTIBLES.find(([id]) => compter(id) > 0);
     if (!bois) { message(feuAllume(c) ? 'Il faudrait du bois pour l\'entretenir (bûche, planche, branche).' : 'Il faut du bois (et de quoi allumer).'); return; }
     if (!feuAllume(c) && !(mod.inv && mod.inv.hasTag('allumer'))) { message('Il faut un briquet ou des allumettes.'); return; }
+    // rallumer : le briquet si on en a un, sinon les allumettes ; remettre du bois : le feu qui reprend
+    const sonFeu = feuAllume(c) ? 'allumer' : compter('briquet') > 0 ? 'briquet' : compter('allumettes') > 0 ? 'allumette' : 'allumer';
     return lancerAction(feuAllume(c) ? 'Remettre du bois…' : 'Rallumer…', 1600, c.x + 0.5, c.y + 0.5, async () => {
       const gain = Math.round(bois[1] * (d.feu.bois / 60));
       const fin = Math.max(minutes(), c.feuJusqua || 0) + gain;
       const r = await C.agirConstruction(c.uid, 'maj', { feuJusqua: Math.min(fin, minutes() + 8 * 60) });
-      if (r && r.ok) { mod.inv.removeItem(bois[0], 1); sfx('allumer'); message(`Le feu reprend (${mod.inv.nomObjet(bois[0]).toLowerCase()}).`); }
+      if (r && r.ok) { mod.inv.removeItem(bois[0], 1); sfx(sonFeu); message(`Le feu reprend (${mod.inv.nomObjet(bois[0]).toLowerCase()}).`); }
     });
   }
   if (d.eau) {

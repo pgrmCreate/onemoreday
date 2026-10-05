@@ -75,6 +75,18 @@ const BANQUE_SFX = {
   boire:            { f: ['action/drink-gulp.mp3'], vol: 0.6 },
   clouer:           { f: ['effect/hammer-nail.mp3'], vol: 0.6 },
   sac_zip:          { f: ['effect/bag-zip.mp3'], vol: 0.45 },
+  loot:             { f: ['effect/item-pickup.mp3'], vol: 0.5 },   // un objet glissé dans le sac
+  vetement:         { f: ['effect/cloth-rustle.mp3'], vol: 0.45 }, // enfiler, retirer, passer dans le dos
+  tir:              { f: ['effect/pistol-shot.mp3'], vol: 1.0 },
+  alerte:           { f: ['monster/zombie-alert-1.mp3', 'monster/zombie-alert-2.mp3'], vol: 0.6 }, // un mort t'a vu
+  saisie:           { f: ['monster/zombie-grab.mp3'], vol: 0.8 },  // il t'agrippe : lutte + grognement
+  soin:             { f: ['effect/bandage-rip.mp3'], vol: 0.55 },
+  briquet:          { f: ['effect/lighter.mp3'], vol: 0.55 },
+  allumette:        { f: ['effect/match-strike.mp3'], vol: 0.55 },
+  craft:            { f: ['effect/craft-tools.mp3'], vol: 0.5 },
+  // Bruits ponctuels d'ambiance (stingers) : un fichier « amb_<nom> » remplace la synthèse du même nom.
+  amb_corbeau:      { f: ['environnement/crow-1.mp3', 'environnement/crow-2.mp3', 'environnement/crow-3.mp3'], vol: 0.4 },
+  amb_chien:        { f: ['environnement/dog-distant.mp3'], vol: 0.35 },
 };
 // Hordes lointaines : des boucles posées SOUS l'ambiance quand beaucoup de morts
 // rôdent dans le quartier (voir setHorde). « calme » = gémissements longs et
@@ -996,6 +1008,9 @@ const STINGERS = {
 };
 
 function jouerStinger(nom) {
+  // un fichier pour ce bruit ? Joué d'un côté ou de l'autre, jamais pile au centre (le monde est autour)
+  const f = sons['amb_' + nom];
+  if (f && f.length) { jouerSonFichier(f[Math.floor(Math.random() * f.length)], { volume: 0.6 + Math.random() * 0.4, pan: (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.5) }); return; }
   const fn = STINGERS[nom];
   if (fn) fn(ctx.currentTime + 0.02);
 }

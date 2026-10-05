@@ -407,6 +407,7 @@ export function soigner(p, blessureIndex, objetId, opts = {}) {
   if (objetId !== 'cauteriser' && !opts.horsSac) inv.removeItem(objetId, 1, p);
   if (action !== 'antidouleur' && action !== 'vitamines') gagnerXps(xp, 1, p);
   emit('blessure', { soin: action, index: blessureIndex });
+  if (action === 'bander' || action === 'attelle') son('soin'); // la bande qu'on déchire
   emit('toast', { texte, type: 'bon' });
   passerTemps(dureeSoin(action === 'antibio' ? 'antibio' : action, p));
   return { ok: true, texte };

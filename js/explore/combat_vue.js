@@ -214,7 +214,7 @@ export function creerCombatVue(o) {
     const r = p.equip.dos ? o.inv.dosVersMain() : p.equip.arme ? o.inv.mainVersDos('arme') : { ok: false, raison: 'Rien à passer dans le dos.' };
     if (!r.ok) { o.message(r.raison, 1600); return; }
     S.geste = { type: 'change', t0: now(), duree: REGLAGES.inventaire.CHANGER_MAIN_MS, dir: o.j().dir };
-    o.sfx('tissu_dechire', { volume: 0.4 }); majStats();
+    o.sfx('vetement', { volume: 0.6 }); majStats();
   }
   // Accès rapide (1-4, ou les cases de ceinture du HUD) : sortir l'objet de la ceinture en main ; réappuyer le remet.
   // Ce que la main tenait retourne d'où il vient (dans le dos s'il en sortait).
@@ -238,7 +238,7 @@ export function creerCombatVue(o) {
     S.charge = null;
     S.geste = { type: 'change', t0: now(), duree: REGLAGES.inventaire.CHANGER_MAIN_MS, dir: o.j().dir };
     o.message({ dos: 'Remis dans le dos.', ceinture: 'Remis à la ceinture.', sac: 'Rangé dans le sac.' }[r.ou] || 'Rangé.', 1100);
-    o.sfx(r.ou === 'dos' ? 'tissu_dechire' : 'clic', { volume: 0.4 }); majStats();
+    o.sfx(r.ou === 'dos' ? 'vetement' : 'clic', { volume: r.ou === 'dos' ? 0.6 : 0.4 }); majStats();
   }
 
   // ---------- Pas de jeu ----------
@@ -355,7 +355,7 @@ export function creerCombatVue(o) {
         S.empoigne = { uid: e.uid, requis: e.requis, taps: 0, t0: now(), duree: e.duree, fin: now() + e.duree };
         S.charge = null;
         o.message(`${nomMort(e.typeMort, e.sexe)} t'agrippe ! Martèle Frapper (${e.requis} fois).`, 2200);
-        o.sfx('alerte_contact'); o.vib([40, 30, 40]);
+        o.sfx('saisie'); o.vib([40, 30, 40]);
         S.secousse = Math.max(S.secousse, 0.55);
       } break;
       case 'martele': if (e.joueur === moi && S.empoigne) S.empoigne.taps = e.taps; break;
