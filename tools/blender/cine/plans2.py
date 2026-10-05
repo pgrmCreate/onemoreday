@@ -73,7 +73,7 @@ def souvenir(T, n):
             gb.location = (0, yy, 0); jo.location = (0, yy - 0.1, 0.9); att.location = (0.12, yy + 0.4, 0.9)
             for o in (gb, jo, att): o.keyframe_insert('location', frame=f)
         H.marcher(inf, 1, f1, (0, 4.6), (0, 2.2), 'traine', base='debout')
-        T.camera([(1, (0.1, -1.6, 1.1), (0, 2.5, 1.0)), (f1, (0.1, -1.5, 1.05), (0, 1.0, 0.95))], lens=28)
+        T.camera([(1, (1.9, -0.6, 1.6), (0, 2.6, 0.95)), (f1, (1.6, -0.9, 1.5), (0, 1.1, 0.95))], lens=28)
     else:         # son visage, tout près : « Jo. »
         jo = H.humain('jo', 'h', 'adulte', graine=303, vetements=['male_casualsuit03'], cheveux='short03')
         jo.location = (0, 0.6, 0.95); H.coucher(jo, True, 0)
@@ -125,7 +125,7 @@ def aube_troupeau(T, n):
     H.marcher(r, 1, f1, (-56.5, 185), (-55.5, 185 + f1 / 24 * 0.9), 'traine', base='mains_bouche')
     bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=0.18, radius2=0.1, depth=0.3); cl = bpy.context.active_object
     cl.data.materials.append(A.mat_uni(V.lin('#8a6a32'), 0.35, 1.0)); cl.parent = r; cl.parent_type = 'BONE'; cl.parent_bone = 'spine01'; cl.location = (0, 0.25, -0.2)
-    cams = [[(1, (62, 187.5, 38.8), (10, 240, 0)), (f1, (56, 187.5, 39.2), (-50, 260, 0))],
+    cams = [[(1, (62, 187.5, 38.8), (0, 520, 20)), (f1, (56, 187.5, 39.2), (-60, 560, 15))],
             [(1, (-50, 175, 14), (-57, 192, 1)), (f1, (-52, 180, 9), (-56, 196, 1))],
             [(1, (58, 187.5, 39), (-50, 240, 0)), (f1, (58, 187.5, 40), (-60, 330, 0))]][n]
     T.camera(cams, lens=[30, 45, 35][n])
@@ -155,6 +155,9 @@ def jean_moulin(T):
     drap.scale = (abs(mg.x - md.x), 1.8, 1); drap.rotation_euler = (math.pi / 2, 0, 0); drap.data.materials.append(A.mat_tex('rough_linen', 1, teinte=V.lin('#f4f2ea')))
     s = drap.modifiers.new('sub', 'SUBSURF'); s.levels = 3; s.subdivision_type = 'SIMPLE'
     w = drap.modifiers.new('vent', 'WAVE'); w.height = 0.18; w.width = 0.9; w.speed = 0.35; w.use_normal = True
+    so = drap.modifiers.new('epaisseur', 'SOLIDIFY'); so.thickness = 0.02
+    drap.data.materials.clear(); drap.data.materials.append(A.mat_uni(V.lin('#ecebe4'), 0.9))
+    drap.location.y -= 0.6
     for k in range(10): V.platane(-30 + k * 12, -12, 1.0, k)
     T.camera([(1, (5, 2, 1.6), (0, 18, 7)), (f1, (2.5, 8, 2.0), (0, 18, 10))], lens=24)
     return 1, f1
