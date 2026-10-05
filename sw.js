@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v31';
+const CACHE = 'onemoreday-v32';
 const FICHIERS = [
   './',
   './index.html',
@@ -230,6 +230,15 @@ const FICHIERS = [
   './zombies/gonfleur.png',
   './zombies/hurleur.png',
   './zombies/rampant.png',
+  './img/murs/beton.jpg',
+  './img/murs/bois.jpg',
+  './img/murs/brique.jpg',
+  './img/murs/crepi.jpg',
+  './img/murs/murs.json',
+  './img/murs/pierre.jpg',
+  './img/murs/platre.jpg',
+  './img/murs/rocher.jpg',
+  './img/murs/tole.jpg',
   './img/objets/abri_branches_0.webp',
   './img/objets/alarme_conserves_0.webp',
   './img/objets/ambulance_0.webp',

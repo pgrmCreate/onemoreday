@@ -7,6 +7,7 @@ import { K, MURS, MURS_IDS } from '../carte/catalogue.js';
 
 export const FACE = 0.42;      // hauteur de la face avant d'un mur, en cases (dessinée sur la case du dessous)
 const motifsMur = new Map();
+export function viderMotifsMur() { motifsMur.clear(); }
 function motifMur(c, style) {
   let m = motifsMur.get(style);
   if (m && m.c === c) return m.p;

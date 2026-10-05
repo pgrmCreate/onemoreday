@@ -45,21 +45,23 @@ def souvenir(T, n):
     rnd = random.Random(70 + n)
     for f in range(1, f1 + 1, rnd.choice([3, 5])):   # le néon hésite
         nd.energy = 260 if rnd.random() > 0.25 else 15; nd.keyframe_insert('energy', frame=f)
-    # le lit à sangles (on y est attaché·e) : vu de dessus à la première personne
-    lit = C.lit_hopital(0, rnd); g = A.regrouper(lit); g.location = (0, -1.2, 0); g.rotation_euler.z = 0
-    for k in range(3): V.boite(0, -1.9 + k * 0.6, 0.78, 1.0, 0.09, 0.03, A.mat_uni(V.lin('#3a3a34'), 0.7))
+    if n == 1:   # le lit à sangles (on y est attaché·e) : vu à la première personne
+        lit = C.lit_hopital(0, rnd); g = A.regrouper(lit); g.location = (0, 0, 0)
+        for k in range(3): V.boite(0, -0.7 + k * 0.5, 0.86, 1.0, 0.09, 0.03, A.mat_uni(V.lin('#3a3a34'), 0.7))
     if n == 0:   # une main qui agite une clochette dans l'embrasure
         inf = H.humain('infirmiere', 'f', 'adulte', vetements=['female_casualsuit02', 'toigo_flats'], cheveux='bob01', graine=301)
-        inf.location = (1.2, 2.4, 0); H.orienter(inf, math.pi)
+        inf.location = (0.9, 2.6, 0); H.orienter(inf, 0.2)
+        bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=0.045, radius2=0.022, depth=0.07); cl = bpy.context.active_object
+        cl.data.materials.append(A.mat_uni(V.lin('#b08a3a'), 0.3, 1.0)); cl.parent = inf; cl.parent_type = 'BONE'; cl.parent_bone = 'wrist.R'; cl.location = (0, 0.12, 0.03)
         for f in range(1, f1 + 1, 2):
             H.poser(inf, 'debout', {'upperarm01.R': [(H.X, -70)], 'lowerarm01.R': [(H.X, -40 + 25 * math.sin(f * 1.3))]}); H.figer(inf, f)
-        T.camera([(1, (0.4, -0.6, 1.0), (1.0, 2.2, 1.55)), (f1, (0.4, -0.55, 1.0), (1.05, 2.2, 1.6))], lens=50, f_dof=True, ouverture=1.8)
+        T.camera([(1, (0.2, -0.8, 1.15), (0.9, 2.5, 1.45)), (f1, (0.25, -0.6, 1.15), (0.95, 2.5, 1.5))], lens=45, f_dof=True, ouverture=2.2)
     elif n == 1:  # baisser les yeux : les sangles, des bras gris qui tirent
         moi = H.humain('moi', 'h', 'adulte', graine=302, zombie=True, vetements=['elvs_crude_t-shirt_male', 'mindfront_male_trousers_1'])
-        H.poser(moi, 'debout'); H.coucher(moi, True, math.pi); moi.location = (0, -1.25, 0.72)
+        H.poser(moi, 'debout'); H.coucher(moi, True, 0); moi.location = (0, -0.85, 0.66)
         for f in range(1, f1 + 1, 4):
             H.poser(moi, 'debout', {'upperarm01.L': [(H.X, -6 * abs(math.sin(f * 0.4)))], 'upperarm01.R': [(H.X, -6 * abs(math.cos(f * 0.5)))]}); H.figer(moi, f)
-        T.camera([(1, (0, 0.55, 1.05), (0, -1.5, 0.75)), (f1, (0.05, 0.5, 1.02), (0, -1.6, 0.7))], lens=24)
+        T.camera([(1, (0, 0.78, 1.0), (0, -1.2, 0.55)), (f1, (0.04, 0.74, 0.98), (0, -1.3, 0.5))], lens=22)
     elif n == 2:  # on pousse un brancard vers toi ; un homme dessus, la jambe dans une attelle
         b = C.brancard(0, rnd); gb = A.regrouper(b)
         jo = H.humain('jo', 'h', 'adulte', graine=303, vetements=['male_casualsuit03'], cheveux='short03')
@@ -76,6 +78,7 @@ def souvenir(T, n):
         jo = H.humain('jo', 'h', 'adulte', graine=303, vetements=['male_casualsuit03'], cheveux='short03')
         jo.location = (0, 0.6, 0.95); H.coucher(jo, True, 0)
         H.respirer(jo, 1, f1, 'debout', ampl=0.4, graine=9)
+        bpy.context.scene.frame_set(1); bpy.context.view_layer.update()
         tete = jo.matrix_world @ jo.pose.bones['head'].head
         T.camera([(1, (0.55, tete.y + 0.25, tete.z + 0.15), (tete.x, tete.y, tete.z + 0.05)), (f1, (0.38, tete.y + 0.2, tete.z + 0.1), (tete.x, tete.y, tete.z + 0.05))], lens=60, f_dof=True, ouverture=1.6)
     return 1, f1
@@ -111,7 +114,8 @@ def aube_troupeau(T, n):
     rnd = random.Random(90 + n)
     S, M = statues_foule(8, 91)
     # la route d'Avignon, vers le nord : la foule s'étire dans la plaine
-    pts = [(rnd.uniform(-70, -40) + t * 0.15, 200 + t * 3.2 + rnd.uniform(-6, 6)) for t in range(600) for _ in [0]]
+    pts = [(-58 + rnd.uniform(-7, 7), 184 - t * 0.11 + rnd.uniform(-2, 2)) for t in range(600)]           # derrière le berger
+    pts += [(-58 + rnd.uniform(-9, 9) + (t - 300) * 0.02, 200 + t * 0.6 + rnd.uniform(-3, 3)) for t in range(300)]   # devant, déjà loin
     H.foule_statique(S, pts, f1, 0.8, (0.05, 1), rnd)
     # le berger et la petite femme à la grosse cloche, en tête
     b = H.humain('berger', 'h', 'vieux', vetements=['mindfront_knitted_sweater_01', 'mindfront_male_trousers_2', 'mindfront_shoes_biker_boots_male'], graine=92)
@@ -121,9 +125,9 @@ def aube_troupeau(T, n):
     H.marcher(r, 1, f1, (-56.5, 185), (-55.5, 185 + f1 / 24 * 0.9), 'traine', base='mains_bouche')
     bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=0.18, radius2=0.1, depth=0.3); cl = bpy.context.active_object
     cl.data.materials.append(A.mat_uni(V.lin('#8a6a32'), 0.35, 1.0)); cl.parent = r; cl.parent_type = 'BONE'; cl.parent_bone = 'spine01'; cl.location = (0, 0.25, -0.2)
-    cams = [[(1, (68, 162, 37), (20, 220, 0)), (f1, (62, 162, 37.5), (-40, 260, 0))],
+    cams = [[(1, (62, 187.5, 38.8), (10, 240, 0)), (f1, (56, 187.5, 39.2), (-50, 260, 0))],
             [(1, (-50, 175, 14), (-57, 192, 1)), (f1, (-52, 180, 9), (-56, 196, 1))],
-            [(1, (66, 162, 37), (-50, 240, 0)), (f1, (66, 162, 38), (-60, 330, 0))]][n]
+            [(1, (58, 187.5, 39), (-50, 240, 0)), (f1, (58, 187.5, 40), (-60, 330, 0))]][n]
     T.camera(cams, lens=[30, 45, 35][n])
     return 1, f1
 
@@ -136,21 +140,23 @@ def jean_moulin(T):
     N.collines(rnd, 10)
     V.boite(0, 0, -0.02, 400, 9, 0.04, A.mat_tex('asphalt_floor', 0.25))
     A.cylindre(0, 18, 0, 9, 0.35, A.mat_tex('gravelly_sand', 0.3), 48)
-    V.boite(0, 18, 0.35, 2.4, 2.4, 3.6, A.mat_tex('white_sandstone_blocks_02', 0.5))
+    V.boite(0, 18, 0.35, 3.2, 3.2, 4.2, A.mat_tex('white_sandstone_blocks_02', 0.5))
     # la statue : un homme de bronze, les bras levés au ciel ; un drap blanc noué aux poignets
     st = H.humain('statue', 'h', 'adulte', vetements=['male_elegantsuit01'], cheveux='short02', graine=102)
-    st.location = (0, 18, 3.95)
+    st.location = (0, 18, 4.55); st.scale = (2.3, 2.3, 2.3)
     H.poser(st, 'debout', {'upperarm01.L': [(H.Y, -60)], 'upperarm01.R': [(H.Y, 60)], 'lowerarm01.L': [(H.X, -20)], 'lowerarm01.R': [(H.X, -20)], 'head': [(H.X, -15)]}); H.figer(st, 1)
     bronze = A.mat_uni(V.lin('#5a4a34'), 0.35, 1.0)
     for o in H.membres(st):
         if o.type == 'MESH':
             for sl in o.material_slots: sl.material = bronze
-    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 18.3, 9.6)); drap = bpy.context.active_object
-    drap.scale = (2.2, 1, 1.4); drap.rotation_euler = (math.pi / 2, 0, 0); drap.data.materials.append(A.mat_tex('rough_linen', 1, teinte=V.lin('#f4f2ea')))
+    bpy.context.view_layer.update()
+    mg = st.matrix_world @ st.pose.bones['wrist.L'].head; md = st.matrix_world @ st.pose.bones['wrist.R'].head
+    bpy.ops.mesh.primitive_plane_add(size=1, location=((mg.x + md.x) / 2, 18.4, (mg.z + md.z) / 2 - 0.9)); drap = bpy.context.active_object
+    drap.scale = (abs(mg.x - md.x), 1.8, 1); drap.rotation_euler = (math.pi / 2, 0, 0); drap.data.materials.append(A.mat_tex('rough_linen', 1, teinte=V.lin('#f4f2ea')))
     s = drap.modifiers.new('sub', 'SUBSURF'); s.levels = 3; s.subdivision_type = 'SIMPLE'
     w = drap.modifiers.new('vent', 'WAVE'); w.height = 0.18; w.width = 0.9; w.speed = 0.35; w.use_normal = True
     for k in range(10): V.platane(-30 + k * 12, -12, 1.0, k)
-    T.camera([(1, (6, -4, 1.6), (0, 18, 6)), (f1, (3, 6, 2.2), (0, 18, 10))], lens=26)
+    T.camera([(1, (5, 2, 1.6), (0, 18, 7)), (f1, (2.5, 8, 2.0), (0, 18, 10))], lens=24)
     return 1, f1
 
 def plaine_route(T):
@@ -159,7 +165,7 @@ def plaine_route(T):
     rnd = random.Random(111)
     N.terrain(1500, 'aerial_grass_rock', '#c8bc8a', 0.6, 0.03, 120)
     N.collines(rnd, 9, 500, 1100)
-    N.oliveraie(-60, -20, 20, 9, 7, rnd)
+    N.oliveraie(-60, 18, 20, 9, 7, rnd)
     M = foule_modeles(6, 112)
     for k in range(12):   # la file : enfants et adultes, sacs, bidons
         x0 = -40 + k * 2.4
@@ -171,7 +177,7 @@ def plaine_route(T):
 
 def cales(T, n):
     f1 = frames([8000, 6000][n])
-    T.lumiere('aube' if n == 0 else 'voile')
+    T.lumiere('aube' if n == 0 else 'mistral')
     rnd = random.Random(121)
     N.terrain(1500, 'aerial_grass_rock', '#c8bc96', 1.0, 0.03, 120)
     N.collines(rnd, 8, 600, 1200)
@@ -290,6 +296,30 @@ def ligne_de_feu(T, variante):
     return 1, f1
 
 # ───────────────────────── LE PONT DE MALLEMORT ─────────────────────────
+def ecrans(T):
+    """En une nuit, la vidéo fait le tour du monde : Salon de nuit, vu d'en haut, où des milliers d'écrans s'allument."""
+    f1 = frames(7000)
+    V.construire_salon('nuit', 7, arbres=(-6, 7))
+    T.lumiere('nuit')
+    rnd = random.Random(175)
+    lum = A.mat_uni((0.02, 0.03, 0.05), 0.3, emission=(0.6, 0.75, 1.0, 0.0))
+    p = next(n for n in lum.node_tree.nodes if n.type == 'BSDF_PRINCIPLED')
+    # chaque écran : un petit rectangle bleuté dans une fenêtre, sur une terrasse, dans la rue ; ils s'allument en vague
+    ecr = []
+    for k in range(1600):
+        x = rnd.uniform(-110, 110); y = rnd.choice([rnd.uniform(-15.2, -14.9), rnd.uniform(14.9, 15.2), rnd.uniform(40, 140), rnd.uniform(-12, 12)])
+        z = rnd.choice([1.0, 3.8, 6.8, 9.8, 12.8]) if abs(y) > 14 else (rnd.uniform(9, 20) if y > 30 else 1.2)
+        ecr.append(V.boite(x, y, z, 0.35, 0.35, 0.25, None, 0))
+    groupes = 8
+    for g in range(groupes):
+        mg = lum.copy(); pg = next(n for n in mg.node_tree.nodes if n.type == 'BSDF_PRINCIPLED')
+        f_on = 1 + int(f1 * 0.8 * g / groupes)
+        pg.inputs['Emission Strength'].default_value = 0.0; pg.inputs['Emission Strength'].keyframe_insert('default_value', frame=max(1, f_on - 1))
+        pg.inputs['Emission Strength'].default_value = 14.0; pg.inputs['Emission Strength'].keyframe_insert('default_value', frame=f_on + 6)
+        for o in ecr[g::groupes]: o.data.materials.append(mg)
+    T.camera([(1, (-30, -60, 70), (0, 30, 0)), (f1, (-10, -95, 120), (0, 40, 0))], lens=30)
+    return 1, f1
+
 def durance(T, variante):
     f1 = frames({'vibre': 7000, 'colonne': 7000, 'herse': 7000, 'telephone': 5000, 'ecrans': 7000, 'conteneurs': 7000}[variante])
     T.lumiere('mistral' if variante in ('vibre', 'colonne', 'conteneurs') else 'voile')
@@ -323,13 +353,16 @@ def durance(T, variante):
         ld = bpy.data.lights.new('explosion', 'POINT'); ld.color = (1.0, 0.6, 0.3); ld.shadow_soft_size = 30
         l = bpy.data.objects.new('explosion', ld); l.location = (600, 200, 20); bpy.context.scene.collection.objects.link(l)
         for f, e in ((1, 0), (90, 0), (96, 8e7), (130, 1e7), (f1, 2e6)): ld.energy = e; ld.keyframe_insert('energy', frame=f)
-    if variante == 'telephone':   # un téléphone dans une main : « Vidéo envoyée. »
-        V.boite(0, -0.05, 10.6, 0.075, 0.008, 0.155, A.mat_uni((0.02, 0.02, 0.02), 0.2, 0.5))
-        V.boite(0, -0.06, 10.61, 0.068, 0.002, 0.145, A.mat_uni((0.6, 0.75, 1.0), 0.2, emission=(0.7, 0.85, 1.0, 3.0)))
+    if variante == 'telephone':   # le téléphone posé sur les planches du pont : « Vidéo envoyée. »
+        tel = V.boite(0, 0, 9.4, 0.075, 0.155, 0.009, A.mat_uni((0.02, 0.02, 0.02), 0.2, 0.5))
+        ecran = V.boite(0, 0, 9.409, 0.068, 0.145, 0.001, A.mat_uni((0.05, 0.07, 0.1), 0.2, emission=(0.35, 0.45, 0.6, 0.6)))
+        bpy.ops.object.text_add(location=(-0.026, -0.005, 9.4105)); tx = bpy.context.active_object; tx.data.body = 'Vidéo envoyée'
+        tx.data.size = 0.0085; tx.data.materials.append(A.mat_uni((1, 1, 1), 0.3, emission=(1, 1, 1, 2.0)))
+        coche = V.boite(0, 0.02, 9.4105, 0.012, 0.012, 0.0005, A.mat_uni((0.1, 0.8, 0.3), 0.3, emission=(0.2, 1.0, 0.4, 2.0)))
     cams = {'vibre': [(1, (-150, -60, 6), (-110, 0, 18)), (f1, (-140, -40, 5), (0, 0, 10))],
             'colonne': [(1, (-60, -14, 11), (0, 0, 10)), (f1, (-30, -12, 11), (40, 0, 10))],
             'herse': [(1, (80, -20, 11), (108, 0, 13)), (f1, (70, -24, 12), (300, 120, 15))],
-            'telephone': [(1, (0, -0.35, 10.62), (0, -0.05, 10.62)), (f1, (0, -0.28, 10.62), (0, -0.05, 10.62))],
+            'telephone': [(1, (0.02, -0.22, 9.62), (0, 0.0, 9.41)), (f1, (0.015, -0.17, 9.56), (0, 0.0, 9.41))],
             'ecrans': [(1, (0, -40, 30), (0, 60, 10)), (f1, (0, -80, 60), (0, 80, 0))],
             'conteneurs': [(1, (60, -30, 14), (105, 0, 10)), (f1, (40, -34, 16), (90, 0, 10))]}[variante]
     T.camera(cams, lens=30 if variante != 'telephone' else 50, f_dof=variante == 'telephone', ouverture=2.0)
@@ -345,14 +378,16 @@ def camp(T, n):
     N.eau(0, 120, 1500, 140, z=0.1, coul='#5a6a6a')
     for i in range(12):
         for j in range(8): N.tente_camp(-60 + i * 9 + rnd.uniform(-1, 1), -20 + j * 9 + rnd.uniform(-1, 1), rnd.choice([0, math.pi / 2]), rnd)
-    V.boite(30, 60, 0, 10, 16, 8, A.mat_tex('white_sandstone_blocks_02', 0.4))           # la chapelle, son clocher
-    V.boite(30, 54, 0, 3, 3, 15, A.mat_tex('white_sandstone_blocks_02', 0.4))
+    _, cloche = N.chapelle(30, 62, 0.0)                                                    # la chapelle et sa cloche
+    if n == 1:
+        cloche.rotation_mode = 'XYZ'
+        for f in range(1, f1 + 1, 3): cloche.rotation_euler.x = math.radians(25 * math.sin(f / 24 * 2.4)); cloche.keyframe_insert('rotation_euler', frame=f)
     M = foule_modeles(6, 182)
     for k in range(10):
         r = H.doubler(M[k % len(M)], f'refugie{k}'); x0, y0 = rnd.uniform(-50, 30), rnd.uniform(-20, 40)
         H.marcher(r, 1, f1, (x0, y0), (x0 + rnd.uniform(-5, 5), y0 + rnd.uniform(-5, 5)), 'traine', phase=k)
     cams = [[(1, (-80, -50, 10), (-10, 20, 0)), (f1, (-40, -50, 8), (20, 30, 0))],
-            [(1, (10, 20, 3), (30, 54, 12)), (f1, (18, 34, 2.4), (30, 54, 14))]][n]
+            [(1, (14, 26, 2.0), (30, 54, 8)), (f1, (22, 38, 1.8), (30, 54, 9))]][n]
     T.camera(cams, lens=[28, 30][n])
     return 1, f1
 
@@ -403,8 +438,8 @@ def troupeau_feu(T, n):
     cams = [[(1, (0, -20, 6), (0, 40, 2)), (f1, (0, -10, 4), (0, 40, 3))],
             [(1, (4, 18, 1.8), (0, 30, 1.4)), (f1, (4, 26, 1.8), (0, 40, 1.4))],
             [(1, (0, 16, 1.6), (0, 60, 4)), (f1, (0, 22, 1.7), (0, 70, 8))],
-            [(1, (0.8, 29.2, 0.6), (0, 30, 0.2)), (f1, (0.6, 29.4, 0.5), (0, 30, 0.2))]][n]
-    T.camera(cams, lens=[28, 35, 30, 50][n], f_dof=n == 3, ouverture=2.0)
+            [(1, (1.7, 28.2, 1.0), (0, 30, 0.2)), (f1, (1.4, 28.5, 0.85), (0, 30, 0.2))]][n]
+    T.camera(cams, lens=[28, 35, 30, 40][n], f_dof=n == 3, ouverture=2.8)
     return 1, f1
 
 def ventoux(T, n):
@@ -419,6 +454,7 @@ def ventoux(T, n):
     rp.color_ramp.elements[0].position = 0.55; rp.color_ramp.elements[0].color = (*V.lin('#5a6a3a'), 1); rp.color_ramp.elements[1].position = 0.72; rp.color_ramp.elements[1].color = (*V.lin('#f0ece2'), 1)
     nt.links.new(gr.outputs['Generated'], sep.inputs[0]); nt.links.new(sep.outputs['Z'], rp.inputs['Fac']); nt.links.new(rp.outputs['Color'], p.inputs['Base Color'])
     mt.data.materials.append(m)
+    with bpy.context.temp_override(object=mt, active_object=mt, selected_objects=[mt], selected_editable_objects=[mt]): bpy.ops.object.shade_smooth()
     tx = bpy.data.textures.new('ventoux', 'CLOUDS'); tx.noise_scale = 0.3
     s = mt.modifiers.new('sub', 'SUBSURF'); s.levels = 3; s.subdivision_type = 'SIMPLE'; d = mt.modifiers.new('relief', 'DISPLACE'); d.texture = tx; d.strength = 120
     S, M = statues_foule(6, 212)
@@ -427,7 +463,7 @@ def ventoux(T, n):
         r = H.doubler(M[0], 'revenu'); r.location = (2, 18, 0); H.orienter(r, math.pi)
         for f in range(1, f1 + 1, 3):
             t = min(1, f / (f1 * 0.7)); H.poser(r, 'genoux' if t < 0.4 else 'debout', {'head': [(H.X, 20 * (1 - t))]}); H.figer(r, f)
-    cams = [[(1, (-30, -40, 3), (0, 400, 300)), (f1, (-10, -30, 4), (0, 1000, 500))],
+    cams = [[(1, (-30, -40, 3), (0, 4000, 500)), (f1, (-10, -30, 4), (0, 4000, 800))],
             [(1, (6, 12, 1.6), (2, 18, 0.9)), (f1, (5, 13, 1.8), (2, 18, 1.4))],
             [(1, (0, -20, 3), (0, 3000, 900)), (f1, (0, -10, 3), (0, 4200, 1650))]][n]
     T.camera(cams, lens=[26, 40, 60][n])
@@ -444,7 +480,7 @@ PLANS.update({
     'le_mistral_1': lambda T: crau(T, 0), 'le_mistral_2': lambda T: crau(T, 1, colonne=True), 'le_mistral_3': lambda T: ligne_de_feu(T, 'avions'),
     'pont_mallemort_1': lambda T: durance(T, 'vibre'), 'pont_mallemort_2': lambda T: durance(T, 'colonne'), 'pont_mallemort_3': lambda T: ligne_de_feu(T, 'troupeau'),
     'fin_cautere_1': lambda T: durance(T, 'herse'), 'fin_cautere_2': lambda T: ligne_de_feu(T, 'berger'), 'fin_cautere_3': lambda T: camp(T, 0), 'fin_cautere_4': lambda T: camp(T, 1),
-    'fin_voix_1': lambda T: durance(T, 'telephone'), 'fin_voix_2': lambda T: durance(T, 'ecrans'), 'fin_voix_3': lambda T: gymnase(T, 0), 'fin_voix_4': lambda T: gymnase(T, 1),
+    'fin_voix_1': lambda T: durance(T, 'telephone'), 'fin_voix_2': ecrans, 'fin_voix_3': lambda T: gymnase(T, 0), 'fin_voix_4': lambda T: gymnase(T, 1),
     'fin_transhumance_feu_1': lambda T: troupeau_feu(T, 0), 'fin_transhumance_feu_2': lambda T: troupeau_feu(T, 1),
     'fin_transhumance_feu_3': lambda T: troupeau_feu(T, 2), 'fin_transhumance_feu_4': lambda T: troupeau_feu(T, 3),
     'fin_transhumance_estive_1': lambda T: durance(T, 'conteneurs'), 'fin_transhumance_estive_2': lambda T: ventoux(T, 0),

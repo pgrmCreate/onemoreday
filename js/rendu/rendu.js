@@ -9,7 +9,7 @@
 //   recaler, setZoom, zoom, taille, viderCache, fermer, effets }
 import { TS, CHUNK, canvas, rng, graine, cercle, ellipse, rr, clamp, angDiff } from './outils.js';
 import { peindreSol } from './sols.js';
-import { peindreMurs, FACE } from './murs.js';
+import { peindreMurs, FACE, viderMotifsMur } from './murs.js';
 import { dessinerObjet, spriteHaut, chargerObjetsPhoto, surObjetsPrets, viderSprites } from './objets.js';
 import { dessinerHumain, dessinerMort, dessinerCadavre } from './personnages.js';
 import { creerLumiere, ambiance, SUB } from './lumiere.js';
@@ -38,7 +38,7 @@ export function creerRendu(cv, niveau) {
   let sangTraite = 0;
   const rConstr = new Map();       // uid → objet de rendu d'une construction (graine stable)
   // sols photoréalistes : dès qu'ils arrivent, les blocs pré-rendus sont refaits
-  const offSols = surSolsPrets(() => { blocs.clear(); toitsCache.clear(); });
+  const offSols = surSolsPrets(() => { viderMotifsMur(); blocs.clear(); toitsCache.clear(); });
   chargerSolsPhoto();
   // meubles et objets photoréalistes (Blender) : même principe
   const offObjets = surObjetsPrets(() => { blocs.clear(); viderSprites(); });

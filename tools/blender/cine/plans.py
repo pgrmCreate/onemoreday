@@ -166,19 +166,19 @@ def foule_morts(M, n, zone, f1, regard=None, rnd=None, marche=0, vers=None, pose
     rnd = rnd or random.Random(n)
     out = []
     for k in range(n):
-        r = H.doubler(M[k % len(M)], f'z{k}')
         x, y = rnd.uniform(zone[0], zone[2]), rnd.uniform(zone[1], zone[3])
         if k < marche and vers:
+            r = H.doubler(M[k % len(M)], f'z{k}')
             tx, ty = vers[0] + rnd.uniform(-4, 4), vers[1] + rnd.uniform(-3, 3)
             d = math.hypot(tx - x, ty - y); v = rnd.uniform(0.5, 0.9)
             fin = min(f1, int(d / v * 24))
             H.marcher(r, 1, max(24, fin), (x, y), (x + (tx - x) * min(1, f1 / 24 * v / max(d, 0.1)), y + (ty - y) * min(1, f1 / 24 * v / max(d, 0.1))), 'traine', phase=rnd.random() * 6, bras_tendus=k % 3 == 0)
-        else:
-            r.location = (x, y, 0)
+        else:   # immobile : une statue (maillage figé partagé), visage levé si regard
+            m = M[k % len(M)]
+            extra = {'neck01': [(H.X, -18)], 'head': [(H.X, -22)]} if regard else {}
+            st = H.statue_posee(m, pose, extra, cle=(m.name, pose, bool(regard)))
             ang = math.atan2((regard or (0, 44))[1] - y, (regard or (0, 44))[0] - x) + math.pi / 2
-            H.orienter(r, ang + rnd.uniform(-0.3, 0.3))
-            extra = {'neck01': [(H.X, -18)], 'head': [(H.X, -22 + rnd.uniform(-6, 6))]} if regard else {}
-            H.poser(r, pose, extra); H.figer(r, 1)
+            r = H.instance(st, x, y, ang + rnd.uniform(-0.3, 0.3))
         out.append(r)
     return out
 

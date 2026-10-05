@@ -103,7 +103,7 @@ def galets(rnd, zone, n=400):
 # ---------------------------------------------------------------- eau, falaises, pont
 def eau(x, y, sx, sy, z=0.0, coul='#3a5a52'):
     m = bpy.data.materials.new('eau'); m.use_nodes = True
-    p = m.node_tree.nodes.get('Principled BSDF'); p.inputs['Base Color'].default_value = (*lin(coul), 1); p.inputs['Roughness'].default_value = 0.04
+    p = m.node_tree.nodes.get('Principled BSDF'); p.inputs['Base Color'].default_value = (*lin(coul), 1); p.inputs['Roughness'].default_value = 0.12; p.inputs['Specular IOR Level'].default_value = 0.3
     nt = m.node_tree; tc = nt.nodes.new('ShaderNodeTexCoord'); nz = nt.nodes.new('ShaderNodeTexNoise'); nz.inputs['Scale'].default_value = 0.6
     bm = nt.nodes.new('ShaderNodeBump'); bm.inputs['Strength'].default_value = 0.25
     nt.links.new(tc.outputs['Object'], nz.inputs['Vector']); nt.links.new(nz.outputs['Fac'], bm.inputs['Height']); nt.links.new(bm.outputs['Normal'], p.inputs['Normal'])
@@ -249,3 +249,25 @@ def housse_blanche(x, y, rot, rnd):
     o = coussin(x, y, 0, 0.6, 1.75, 0.2, m, 0.3)
     t = coussin(x, y + 0.72, 0.08, 0.3, 0.32, 0.14, m, 0.5)
     return [o, t]
+
+def chapelle(x, y, rot=0.0):
+    """Chapelle de Provence : nef de pierre blonde, toit de tuiles à deux pentes, porte en arc, oculus, clocher-mur et sa cloche."""
+    pierre = mat_tex('white_sandstone_blocks_02', 0.35)
+    toit = mat_tex('clay_roof_tiles', 1.2)
+    noir = mat_uni((0.02, 0.018, 0.016), 0.8)
+    o = [boite(0, 0, 0, 9, 16, 7, pierre, 0)]
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 8.4)); t = bpy.context.active_object; t.scale = (10, 17, 2.8)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    for v in t.data.vertices:
+        if v.co.z > 0: v.co.x *= 0.02
+    t.data.materials.append(toit); o.append(t)
+    o.append(boite(0, -8.05, 0, 2.2, 0.2, 3.2, noir, 0))                                     # la porte
+    c = cylindre(0, -8.05, 0, 1.1, 0.2, noir, 24); c.rotation_euler.x = math.pi / 2; c.location = (0, -8.05, 3.2); o.append(c)
+    oc = cylindre(0, -8.05, 0, 0.6, 0.2, noir, 24); oc.rotation_euler.x = math.pi / 2; oc.location = (0, -8.05, 5.6); o.append(oc)
+    # clocher-mur au-dessus de la façade, une baie, la cloche
+    o.append(boite(0, -7.6, 7, 3.4, 0.9, 4.6, pierre, 0))
+    o.append(boite(0, -7.6, 8.2, 1.4, 1.0, 2.0, noir, 0))
+    bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=0.55, radius2=0.3, depth=0.8, location=(0, -7.6, 8.9))
+    b = bpy.context.active_object; b.data.materials.append(mat_uni(lin('#8a6a32'), 0.35, 1.0)); o.append(b)
+    g = A.regrouper(o); g.location = (x, y, 0); g.rotation_euler.z = rot
+    return o, b

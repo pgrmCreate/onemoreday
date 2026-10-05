@@ -24,8 +24,8 @@ VETEMENTS_F = [
 ]
 CHAUSSURES_H = ['shoes01', 'shoes02', 'shoes03', 'shoes05', 'toigo_ankle_boots_male', 'mindfront_shoes_biker_boots_male', 'toigo_mj_cloth_shoes']
 CHAUSSURES_F = ['shoes04', 'shoes06', 'toigo_ballet_flats', 'toigo_flats', 'toigo_ankle_boots_female', 'punkduck_female_half-boots']
-CHEVEUX_H = ['short01', 'short02', 'short03', 'short04', 'culturalibre_hair_11', None]
-CHEVEUX_F = ['bob01', 'bob02', 'long01', 'ponytail01', 'braid01', 'culturalibre_hair_12', 'culturalibre_hair_14', 'o4saken_curly01']
+CHEVEUX_H = ['short01', 'short02', 'short03', 'short04', None]
+CHEVEUX_F = ['bob01', 'bob02', 'long01', 'ponytail01', 'braid01']
 PEAUX = {
     ('h', 'jeune'): ['young_caucasian_male', 'young_caucasian_male2', 'toigo_light_skin_male_bronze', 'young_african_male', 'young_asian_male'],
     ('h', 'adulte'): ['middleage_caucasian_male', 'middleage_african_male', 'onlytheghosts_old_eurasian_male', 'toigo_light_skin_male_freckles'],
@@ -290,3 +290,22 @@ def foule_statique(statues, points, f1=None, vitesse=0.0, direction=(0.0, -1.0),
                 o.keyframe_insert('location', frame=f)
         out.append(o)
     return out
+
+_statues = {}
+def statue_posee(rig, pose='debout', extra=None, cle=None):
+    """Le personnage dans une pose fixe → maillage statique (mis en cache par clé) : pour les foules immobiles."""
+    cle = cle or (rig.name, pose, str(extra))
+    st = _statues.get(cle)
+    if st and st.name in bpy.data.objects: return st
+    loc = tuple(rig.location); rot = tuple(rig.rotation_euler)
+    rig.location = (0, 0, 0); orienter(rig, 0)
+    poser(rig, pose, extra); bpy.context.view_layer.update()
+    st = figer_maillage(rig, 'statue_' + str(len(_statues))); st.hide_render = True; st.hide_viewport = True; st.location = (0, 0, -900)
+    rig.location = loc; rig.rotation_euler = rot
+    _statues[cle] = st
+    return st
+
+def instance(statue, x, y, angle):
+    o = bpy.data.objects.new('m', statue.data); bpy.context.scene.collection.objects.link(o)
+    o.location = (x, y, 0); o.rotation_euler = (0, 0, angle)
+    return o

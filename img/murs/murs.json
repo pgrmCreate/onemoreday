@@ -1,0 +1,34 @@
+{
+ "platre": {
+  "asset": "white_stucco",
+  "m": 2.0
+ },
+ "crepi": {
+  "asset": "yellow_plaster",
+  "m": 2.0
+ },
+ "pierre": {
+  "asset": "old_stone_wall",
+  "m": 2.0
+ },
+ "brique": {
+  "asset": "red_brick",
+  "m": 1.6
+ },
+ "beton": {
+  "asset": "concrete",
+  "m": 2.0
+ },
+ "bois": {
+  "asset": "weathered_planks",
+  "m": 1.6
+ },
+ "rocher": {
+  "asset": "sandstone_cracks",
+  "m": 2.5
+ },
+ "tole": {
+  "asset": "rusty_metal_sheet",
+  "m": 2.0
+ }
+}

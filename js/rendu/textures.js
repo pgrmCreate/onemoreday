@@ -292,8 +292,8 @@ function chargerDossier(dossier, index, prefixe) {
 }
 export function chargerSolsPhoto() {
   if (attenteSols || typeof Image === 'undefined') return attenteSols;
-  attenteSols = Promise.all([chargerDossier('sols', 'sols.json', ''), chargerDossier('toits', 'toits.json', 'toit:')])
-    .then(() => { motifs.clear(); for (const k of [...cache.keys()]) if (k.startsWith('toit:')) cache.delete(k); for (const f of prets) try { f(); } catch (e) {} });
+  attenteSols = Promise.all([chargerDossier('sols', 'sols.json', ''), chargerDossier('toits', 'toits.json', 'toit:'), chargerDossier('murs', 'murs.json', 'mur:')])
+    .then(() => { motifs.clear(); for (const k of [...cache.keys()]) if (k.startsWith('toit:') || k.startsWith('mur:')) cache.delete(k); for (const f of prets) try { f(); } catch (e) {} });
   return attenteSols;
 }
 // Appelé quand les sols photo sont prêts (le rendu vide alors ses blocs pré-rendus).
@@ -359,8 +359,10 @@ const PEINTRES_MUR = {
   tole(c, S) { fond(c, S, MURS_T.tole.sombre, MURS_T.tole.clair, { base: 3, oct: 3, grain: 6, k: 48 }); for (let x = 0; x < S; x += 6) { c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(x, 0, 2, S); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x + 3, 0, 2, S); } },
   haie(c, S, r) { fond(c, S, '#121c0c', '#22301a', { base: 5, oct: 3, grain: 8, k: 49 }); for (let i = 0; i < 420; i++) { const x = r() * S, y = r() * S, t = 3 + r() * 6, f = 0.6 + r() * 0.7; c.fillStyle = rgb([40 * f, 62 * f, 30 * f]); enBoucle(S, x, y, t, (X, Y) => { cercle(c, X, Y, t); c.fill(); }); } },
 };
+// Murs : matière photo (img/murs, tools/murs_photo.py) dès qu'elle est arrivée, sinon le dessin procédural.
 export function textureMur(style) {
   const cle = 'mur:' + style;
+  if (photos.has(cle)) return photos.get(cle);
   let t = cache.get(cle);
   if (t) return t;
   t = canvas(TEX, TEX);

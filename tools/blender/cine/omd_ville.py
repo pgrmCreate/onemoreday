@@ -145,8 +145,9 @@ def sol_cours():
         for k in range(-60, 60): o.append(boite(k * 6.0, sy, 0.001, 3.0, 0.12, 0.003, blanc, 0))
     # place Crousillat (pavés) et au-delà, la vieille ville
     o.append(boite(0, 30, 0, 30, 32, 0.08, mat_tex('cobblestone_floor_04', 0.5), 0))
-    o.append(boite(0, 200, -0.1, 600, 340, 0.1, mat_tex('cobblestone_floor_04', 0.3), 0))
-    o.append(boite(0, -200, -0.1, 600, 340, 0.1, mat_tex('asphalt_floor', 0.2), 0))
+    o.append(boite(0, 90, -0.1, 300, 130, 0.1, mat_tex('cobblestone_floor_04', 0.3), 0))      # la vieille ville
+    o.append(boite(0, -60, -0.1, 300, 90, 0.1, mat_tex('asphalt_floor', 0.2), 0))             # les quartiers au sud
+    o.append(boite(-58, 400, -0.15, 7, 480, 0.1, mat_tex('asphalt_floor', 0.2), 0))            # la route d'Avignon, vers le nord
     return ranger([joindre(o, 'sol_cours')])
 
 _platane_modele = None
@@ -227,7 +228,7 @@ def lampadaire(x, y, rot=0.0, nuit=False):
     parts.append(lan); parts.append(boite(x, y, 4.86, 0.42, 0.42, 0.08, fonte, 0))
     o = joindre(parts, 'reverbere'); ranger([o])
     if nuit:
-        ld = bpy.data.lights.new('lampe', 'POINT'); ld.energy = 2400; ld.color = (1.0, 0.72, 0.42); ld.shadow_soft_size = 0.3
+        ld = bpy.data.lights.new('lampe', 'POINT'); ld.energy = 2400; ld.color = (1.0, 0.72, 0.42); ld.shadow_soft_size = 0.3; ld.use_shadow = False   # des dizaines de réverbères : sans ombres (rendu 10× plus rapide)
         l = bpy.data.objects.new('lampe', ld); l.location = (x, y, 4.6); coll().objects.link(l)
     return o
 

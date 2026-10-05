@@ -138,9 +138,9 @@ LUMIERES = {
     # matin de marché : soleil bas d'est, ciel clair, un peu de poussière dans l'air
     'matin': lambda: (monde_ciel(0.9, 24, -40, poussiere=2.0), soleil(24, -40, 4.5, (1.0, 0.88, 0.72)), brume(0.0025, (1.0, 0.92, 0.8))),
     # ciel voilé, couleurs lavées (la panique)
-    'voile': lambda: (monde_ciel(0.6, 35, 140, air=2.0, poussiere=6.0), soleil(35, 140, 1.6, (1.0, 0.97, 0.92), 8), brume(0.004, (0.85, 0.85, 0.82))),
+    'voile': lambda: (monde_ciel(0.38, 35, 140, air=1.6, poussiere=4.0), soleil(35, 140, 1.6, (1.0, 0.97, 0.92), 8), brume(0.004, (0.85, 0.85, 0.82))),
     # mistral : bleu dur, soleil haut, aucune brume, ombres nettes
-    'mistral': lambda: (monde_ciel(0.55, 48, 200, air=0.6, poussiere=0.2), soleil(48, 200, 4.0, (1.0, 0.97, 0.92), 0.6)),
+    'mistral': lambda: (monde_ciel(0.32, 48, 200, air=0.8, poussiere=0.4), soleil(48, 200, 3.6, (1.0, 0.97, 0.92), 0.6)),
     # nuit : lune froide, lampadaires orangés (posés par le décor)
     'nuit': lambda: (monde_uni((0.03, 0.04, 0.075), 1.0), soleil(35, 250, 0.3, (0.6, 0.7, 1.0), 2), brume(0.006, (0.55, 0.6, 0.75))),
     # incendie : ciel bas, brun-roux, la lumière vient du feu
@@ -161,7 +161,7 @@ def camera(cles, lens=35, f_dof=None, ouverture=None):
     if not c:
         c = bpy.data.objects.new('cam_plan', bpy.data.cameras.new('cam_plan')); sc.collection.objects.link(c)
     c.animation_data_clear()
-    c.data.lens = lens; c.data.clip_start = 0.1; c.data.clip_end = 2000; c.data.sensor_width = 36
+    c.data.lens = lens; c.data.clip_start = 0.1; c.data.clip_end = 20000; c.data.sensor_width = 36
     cible = bpy.data.objects.get('cam_cible')
     if not cible:
         cible = bpy.data.objects.new('cam_cible', None); sc.collection.objects.link(cible)
