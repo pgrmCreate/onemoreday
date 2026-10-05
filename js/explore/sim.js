@@ -69,6 +69,7 @@ export function creerSimLieu(opts) {
   // ---------- Constructions (js/data/construction.js) et meubles démontés ----------
   let constructions = [], consSeq = 1;
   const retires = new Set();                                   // clés des meubles démontés
+  const eauReste = {};                                         // clé d'un point d'eau déjà entamé → litres restants
   const consCase = niveau.etages.map(() => new Map());         // i → construction (index par case)
   function indexerC(c, ajout) {
     const ei = EI(c.etage); if (ei == null) return; const E = niveau.etages[ei];
@@ -96,6 +97,7 @@ export function creerSimLieu(opts) {
     joues = (etat.joues || []).slice();
     for (const c of etat.constructions || []) { const cc = { ...c, items: c.items ? c.items.map(i => ({ ...i })) : c.items }; constructions.push(cc); consSeq = Math.max(consSeq, (+String(c.uid).slice(1) || 0) + 1); }
     for (const cle of etat.retires || []) retires.add(cle);
+    Object.assign(eauReste, etat.eau || {});
     for (const z of etat.zombies || []) { const zz = nouveauMort(z.type, z.etage, z.x, z.y, z.etat, z); if (zz) zombies.push(zz); }
     // (les anciens types rangés sont convertis par nouveauMort → typeMort)
     repeupler(etat.minutes);
@@ -1184,7 +1186,7 @@ export function creerSimLieu(opts) {
         saisit: z.saisit, vac: z.vacille > 0, terre: z.aTerre > 0, touche: T - z.tTouche < 160 })),
       portes: pp, conteneurs: cc,
       sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })),
-      constructions: constructions.map(c => ({ ...c, items: undefined, n: c.items ? c.items.length : undefined })), retires: [...retires],
+      constructions: constructions.map(c => ({ ...c, items: undefined, n: c.items ? c.items.length : undefined })), retires: [...retires], eau: { ...eauReste },
       joueurs: [...joueurs.values()].map(j => ({ id: j.id, nom: j.nom, x: j.x, y: j.y, etage: j.etage, dir: j.dir, lampe: j.lampe, lampeSource: j.lampeSource, allure: j.allure, mort: j.mort,
         aTerre: !!j.aTerre, agonie: !!j.agonie, pv: j.pv ?? null,
         geste: j.geste && T - j.geste.t < j.geste.duree ? { type: j.geste.type, p: (T - j.geste.t) / j.geste.duree, combo: j.geste.combo || 0 } : null,
@@ -1206,6 +1208,7 @@ export function creerSimLieu(opts) {
         etat: z.etat === 'chasse' || z.etat === 'alerte' ? 'erre' : z.etat, base: z.base, hp: z.hp, proc: z.proc })),
       portes: pp, conteneurs: cc, sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })), joues: joues.slice(),
       constructions: constructions.map(c => ({ ...c, items: c.items ? c.items.map(i => ({ ...i })) : undefined })), retires: [...retires],
+      eau: { ...eauReste },
     };
   }
 
@@ -1288,6 +1291,27 @@ export function creerSimLieu(opts) {
     return { ok: true, rendu: Object.entries(D2).filter(([k]) => k !== 'ms').map(([id, qty]) => ({ id, qty })) };
   }
 
+  // ---------- Points d'eau (réglages exploration.EAU) ----------
+  // Réserve d'un meuble tirée de la graine : WC, baignoire, lavabo, évier ont une chance d'être à sec ; fontaine, puits et
+  // meuble marqué eau ne tarissent pas. puiserEau(joueurId, cle, L) → { ok, L, reste } (reste null = inépuisable).
+  const TYPE_EAU = { wc: 'wc', baignoire: 'baignoire', lavabo: 'lavabo', cuisine: 'evier', fontaine: 'fontaine' };
+  function reserveEau(cle) {
+    const m = niveau.meubleParCle[cle]; if (!m || retires.has(cle)) return 0;
+    const R = m.eau ? RX.EAU.fontaine : RX.EAU[TYPE_EAU[m.type]]; if (!R) return 0;
+    if (R.L == null) return Infinity;
+    if (cle in eauReste) return eauReste[cle];
+    const r = seedRng(`${seed}:eau:${lieuId}:${cle}`);
+    return r() < R.p ? Math.round(R.L * (0.5 + 0.5 * r()) * 100) / 100 : 0;
+  }
+  function puiserEau(joueurId, cle, L) {
+    const avant = reserveEau(cle);
+    if (avant === Infinity) return { ok: true, L: Math.max(0, +L || 0), reste: null };
+    const pris = Math.round(Math.min(avant, Math.max(0, +L || 0)) * 100) / 100;
+    eauReste[cle] = Math.round((avant - pris) * 100) / 100;
+    evts.push({ type: 'eau', cle, reste: eauReste[cle], joueur: joueurId }); vm++; cache = null;
+    return { ok: pris > 0, L: pris, reste: eauReste[cle] };
+  }
+
   function tick(dtMs) {
     cache = null;
     let reste = Math.min(Math.max(0, dtMs || 0), 500);
@@ -1318,7 +1342,7 @@ export function creerSimLieu(opts) {
   return {
     lieuId, niveau, seed,
     ajouterJoueur, majJoueur, retirerJoueur, bruit, porte, fouiller, arreterFouille, prendre, deposer,
-    construire, agirConstruction, ranger, demonterMeuble, constructions: () => constructions,
+    construire, agirConstruction, ranger, demonterMeuble, puiserEau, constructions: () => constructions,
     retirerZombies, repousserZombies, finCombat, blesserZombie, tick, instantane, sauver,
     action, faireApparaitre, viderEvenements, temps: () => T,
     // accès pratiques (hôte / vue locale)

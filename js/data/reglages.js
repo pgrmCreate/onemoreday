@@ -189,12 +189,16 @@ export const REGLAGES = {
       BARRICADE: 0,             // une pièce entièrement barricadée n'est jamais repeuplée.
     },
     // --- POINTS D'EAU (l'eau croupie s'obtient ici ; l'eau propre se fabrique : bouillir / filtrer) ---
-    EAU: {                      // il faut un contenant (bouteille, gourde, jerrican, casserole, canette)
-      wc:        { L: 1.5, p: 0.8, fois: 1 },   // 'w' : le réservoir de la chasse d'eau (80 % encore plein), une fois.
-      baignoire: { L: 5,   p: 0.3, fois: 1 },   // 'h' : 30 % des baignoires ont été remplies avant la coupure.
-      evier:     { L: 0.5, p: 0.4, fois: 1 },   // 'k' cuisine : fond de tuyauterie.
-      fontaine:  { L: null, p: 1, fois: null },  // marqueur de niveau 'eau' (Fontaine Moussue, canal, puits) : inépuisable.
-      REMPLIR_MIN: 2,           // remplir un contenant : 2 min, bruit 1.
+    // Il faut un contenant (bouteille, gourde, jerrican, casserole, canette) ; « Remplir » depuis le sac, à côté du point d'eau.
+    // Meubles : réserve tirée de la graine (même chose chez les deux joueurs) — p = chance qu'il en reste, sinon « plus rien
+    // ne coule » ; L = litres au mieux (tirés entre 50 et 100 %). Une fois vidée, la réserve ne revient pas.
+    EAU: {
+      wc:        { L: 1.5, p: 0.8 },   // le réservoir de la chasse d'eau.
+      baignoire: { L: 5,   p: 0.3 },   // 30 % des baignoires ont été remplies avant la coupure.
+      lavabo:    { L: 0.5, p: 0.4 },   // salle de bain : fond de tuyauterie.
+      evier:     { L: 0.5, p: 0.4 },   // meuble 'cuisine' : fond de tuyauterie.
+      fontaine:  { L: null, p: 1 },    // fontaine, puits, meuble marqué eau, cases d'eau (rivière, canal, étang, lac) : inépuisable.
+      PORTEE: 1.6,              // distance (m) au point d'eau pour pouvoir remplir.
     },
     // --- PÊCHE, COLLETS (marqueurs de niveau 'eau' / 'terrier', ou rencontres) ---
     CHASSE_PECHE: {

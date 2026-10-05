@@ -237,7 +237,7 @@ function actionsSac(index, it, p, racine, api) {
   if (it.eau && it.eau.L > 0) a.push({ label: 'Boire une gorgée', icone: 'boire', principal: true, f: () => res(surv.boire(index)) });
   if (d.contenance) {
     const src = surv.contexteSurvie().sourceEau;
-    if (src) a.push({ label: `Remplir (${src === 'propre' ? 'eau propre' : 'eau croupie'})`, icone: 'remplir', f: () => res(inv.remplir(index, src)) });
+    if (src) a.push({ label: `Remplir (${src === 'propre' ? 'eau propre' : 'eau croupie'})`, icone: 'remplir', f: () => import('../../explore/construction.js').then(m => m.remplirAuPointEau(index)).then(res) });
     if (it.eau) a.push({ label: 'Vider', icone: 'vider', f: () => { inv.vider(index); apres(); } });
   }
   if (d.type === 'soin') {

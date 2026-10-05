@@ -22,7 +22,7 @@ import { lancerAction } from './interactions.js';
 import { commencerFouille } from './butin.js';
 
 let V = null;
-export function lierConstruction(v) { V = v; if (v) { v.placement = null; v.retiresVus = ''; } }
+export function lierConstruction(v) { V = v; pointEau = null; if (v) { v.placement = null; v.retiresVus = ''; } }
 
 const minutes = () => (G ? G.world.minutes : 0);
 const defDe = (c) => CONSTRUCTIONS[c.type];
@@ -140,6 +140,35 @@ export function feuxCommeLampes(lampes, n, max = 6) {
   }
   return n;
 }
+// ---------- Points d'eau : WC, baignoire, lavabo, évier (réserve, parfois à sec), fontaine, puits, rivière (inépuisables) ----------
+const TYPES_EAU = new Set(['wc', 'baignoire', 'lavabo', 'cuisine', 'fontaine']);
+let pointEau = null;
+// remplirAuPointEau(index) : « Remplir » sur un contenant du sac → { ok, raison? }. La réserve est tenue par la simulation
+// (partagée en co-op) ; l'eau est toujours croupie.
+export async function remplirAuPointEau(index) {
+  const it = G.player.inventaire[index], src = pointEau;
+  if (!it) return { ok: false };
+  if (!V || !src) return { ok: false, raison: 'Pas d\'eau à portée.' };
+  const cap = mod.inv.contenance(it.id), avant = it.eau ? it.eau.L : 0, voulu = Math.round((cap - avant) * 100) / 100;
+  if (voulu <= 0) return { ok: false, raison: 'Déjà plein.' };
+  let L = voulu;
+  if (src.cle) {
+    const r = await V.canal.puiserEau(src.cle, voulu);
+    V.snap = V.canal.instantane();
+    if (!r || !r.ok) {
+      if (r && r.raison === 'réseau') return { ok: false, raison: 'Pas de réponse de l\'autre joueur.' };
+      majContexte();
+      return { ok: false, raison: /toilettes/i.test(src.nom) ? 'Tu actionnes la chasse : le réservoir est vide.' : /baignoire/i.test(src.nom) ? 'La baignoire est sèche.' : 'Le robinet hoquette. Rien ne coule.' };
+    }
+    L = r.L;
+  }
+  const res = mod.inv.remplir(index, 'croupie', L);
+  if (res && res.ok !== false) {
+    sfx('remplir'); majContexte();
+    message(src.infini ? 'Plein. L\'eau est trouble — à faire bouillir.' : L < voulu - 0.01 ? `Les dernières gouttes : ${String(Math.round(L * 10) / 10).replace('.', ',')} L. C'est tout ce qu'il y avait.` : 'Rempli. L\'eau a un goût de tuyau.', 2800);
+  }
+  return res;
+}
 function pres(x, y, r) { return Math.hypot(V.j.x - x, V.j.y - y) <= r; }
 function majContexte() {
   const E = V.E, j = V.j;
@@ -163,13 +192,27 @@ function majContexte() {
     vusM.add(mi);
     if (['table', 'table_ronde', 'bureau', 'machine', 'comptoir'].includes(m.type)) etabli = true;
     if (m.marqueur === 'etabli') etabliVrai = etabli = true;
-    if (['wc', 'baignoire', 'lavabo', 'cuisine'].includes(m.type) || m.eau) eau = eau || 'croupie';
+    if (TYPES_EAU.has(m.type) || m.eau) {   // réserve à sec (déjà vidée, ou rien n'en coule) : on cherche ailleurs
+      const reste = V.snap && V.snap.eau ? V.snap.eau[m.cle] : undefined;
+      if (!(reste <= 0.01) && (!eau || !eau.infini)) eau = { cle: m.cle, nom: m.nom, infini: m.type === 'fontaine' || !!m.eau };
+    }
   }
-  for (const mk of Object.values(V.niveau.marqueurs || {})) if (mk && mk.eau && mk.etage === E.id && pres(mk.x + 0.5, mk.y + 0.5, 2)) eau = 'croupie';
+  // cases d'eau (rivière, canal, étang, bassin) et marqueurs d'eau : inépuisables
+  const portee = REGLAGES.exploration.EAU.PORTEE;
+  if (!eau || !eau.infini) {
+    for (let dy = -2 * FIN; dy <= 2 * FIN && !(eau && eau.infini); dy++) for (let dx = -2 * FIN; dx <= 2 * FIN; dx++) {
+      const x = Math.floor(j.x * FIN) + dx, y = Math.floor(j.y * FIN) + dy;
+      if (x < 0 || y < 0 || x >= E.w || y >= E.h || E.code[y * E.w + x] !== K.EAU) continue;
+      if (Math.hypot((x + 0.5) / FIN - j.x, (y + 0.5) / FIN - j.y) > portee) continue;
+      eau = { cle: null, nom: 'l\'eau', infini: true }; break;
+    }
+  }
+  for (const mk of Object.values(V.niveau.marqueurs || {})) if (mk && mk.eau && mk.etage === E.id && pres(mk.x + 0.5, mk.y + 0.5, 2)) eau = { cle: null, nom: 'l\'eau', infini: true };
+  pointEau = eau;
   const ij = icase(E, j.x, j.y), pi = ij >= 0 ? E.piece[ij] : -1, P = pi >= 0 ? V.niveau.pieces[pi] : null;
 
   try { setContexteFabrication({ etabli, etabliVrai, feu, lieu: V.lieuId }); } catch (e) {}
-  try { mod.survie && mod.survie.setContexteSurvie && mod.survie.setContexteSurvie({ exterieur: P ? !!P.exterieur : !!V.niveau.exterieur, feuProche, sourceEau: eau }); } catch (e) {}
+  try { mod.survie && mod.survie.setContexteSurvie && mod.survie.setContexteSurvie({ exterieur: P ? !!P.exterieur : !!V.niveau.exterieur, feuProche, sourceEau: eau ? 'croupie' : null }); } catch (e) {}
 }
 
 // ---------- Cibles (touche E / G) ----------
