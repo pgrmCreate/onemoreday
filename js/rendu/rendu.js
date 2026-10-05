@@ -14,6 +14,7 @@ import { dessinerObjet, spriteHaut, chargerObjetsPhoto, surObjetsPrets, viderSpr
 import { dessinerHumain, dessinerMort, dessinerCadavre } from './personnages.js';
 import { creerLumiere, ambiance, SUB } from './lumiere.js';
 import { creerEffets } from './effets.js';
+import { creerAtmosphere } from './atmosphere.js';
 import { textureToit, chargerSolsPhoto, surSolsPrets } from './textures.js';
 import { K, FIN, icase } from '../carte/catalogue.js';
 import { CONSTRUCTIONS, tailleConstruction, RECOLTES } from '../data/construction.js';
@@ -28,6 +29,7 @@ export function creerRendu(cv, niveau) {
   const blocs = new Map();
   const lumiere = creerLumiere();
   const effets = creerEffets();
+  const atmo = creerAtmosphere();
   let grain = null, vignette = null, carteCv = null, carteT = 0, premier = false;
   const anim = new Map();          // uid → { x, y, ph }
   const portesA = new Map();       // cle → { o (0..1), t }
@@ -141,6 +143,8 @@ export function creerRendu(cv, niveau) {
       ctx.drawImage(b, Math.floor(ecranX(bx * CHUNK)), Math.floor(ecranY(by * CHUNK)), Math.ceil(s) + 1, Math.ceil(s) + 1);
     }
     premier = true;
+    // 1 bis) ombres du soleil (dehors, selon l'heure et le ciel) — sous les corps et les objets posés
+    atmo.ombresSoleil(ctx, S, niveau, E, W, H, ecranX, ecranY, pxc, [vx0, vy0, vx1, vy1], dpr);
     // 2) monde dynamique en px monde
     const k = pxc / TS;
     ctx.save();
@@ -233,6 +237,7 @@ export function creerRendu(cv, niveau) {
     const srcVis = lumiere.visibles();
     effets.flammes(ctx, srcVis, t, E.id, visCase, dt);
     effets.dessiner(ctx, t, E.id, visCase);
+    atmo.poussieres(ctx, S, t);
     for (const f of S.fx || []) {
       if (f.type !== 'eclat') continue;
       const q = f.age / f.duree, d = Math.min(1, f.age / 260);
@@ -278,8 +283,11 @@ export function creerRendu(cv, niveau) {
       else { const dm = (L.angle || 60) * Math.PI / 360 + 0.15; ctx.moveTo(gx, gy); ctx.arc(gx, gy, R, L.dir - dm, L.dir + dm); ctx.closePath(); }
       ctx.fill(); ctx.restore();
     }
-    // 6) toits
+    // 6) toits, puis le ciel : ombres des nuages, brume
     dessinerToits(S, E, C, pxc, vx0, vy0, vx1, vy1, dt);
+    atmo.nuages(ctx, S, W, H, ecranX, ecranY, pxc, t, dpr);
+    atmo.brume(ctx, S, W, H, ecranX, ecranY, pxc, t, dpr);
+    atmo.mouille(ctx, S, W, H);
     // repères lisibles
     reperes(S, E, C, pxc, t);
     // météo, étalonnage, grain, vignette
@@ -606,13 +614,18 @@ export function creerRendu(cv, niveau) {
   }
 
   // ---------- Météo, étalonnage ----------
+  // Le vent emporte ce que le biome lui donne : poussière et brins secs dans la Crau, papiers en ville, feuilles ailleurs.
+  const COUL_VENT = { sec: ['#a08a5a', '#8a7448', '#b8a070', '#6a5a3a'], ville: ['#d8d2c0', '#c9c2ae', '#7a5a26', '#8a6a2a'], vert: ['#7a5a26', '#8a6a2a', '#5a4a22', '#4e6a2a'] };
   function meteo(S, E, t, dt) {
-    const dehors = S.dehors;
-    if (dehors && (S.vent || 0) > 0.35) effets.vent(E.id, S.joueur.x, S.joueur.y, S.vent, dt);
+    const dehors = S.dehors, v = S.vent || 0, biome = S.biome || 'ville';
+    if (dehors && v > 0.35) {
+      const pal = COUL_VENT[biome] || COUL_VENT.ville;
+      effets.vent(E.id, S.joueur.x, S.joueur.y, v, dt, pal[(t / 97 | 0) % pal.length]);
+      if (biome === 'sec' && v > 0.7) poussiereVent(t, v);
+    }
     if (S.pluie > 0 && dehors) {
       effets.eclaboussures(E.id, S.joueur.x, S.joueur.y, S.pluie, dt);
       ctx.save();
-      ctx.fillStyle = `rgba(40,55,75,${0.1 * S.pluie})`; ctx.fillRect(0, 0, W, H);
       ctx.strokeStyle = `rgba(190,205,220,${0.2 + 0.18 * S.pluie})`; ctx.lineWidth = 1;
       ctx.beginPath();
       const n = Math.round(110 * S.pluie * (W * H) / (1280 * 720)) + 20;
@@ -626,7 +639,23 @@ export function creerRendu(cv, niveau) {
       ctx.stroke(); ctx.restore();
     }
   }
+  // Mistral sur la Crau : de longues traînées de poussière filent au ras du sol.
+  function poussiereVent(t, v) {
+    ctx.save();
+    ctx.strokeStyle = `rgba(190,170,130,${(0.08 + 0.1 * v).toFixed(3)})`; ctx.lineCap = 'round';
+    const n = Math.round(26 * (W * H) / (1280 * 720)) + 8;
+    for (let k = 0; k < n; k++) {
+      const vit = 0.55 + ((k * 53) % 10) / 14;
+      const y0 = ((k * 7919) % 1000) / 1000 * (H + 60) - 30;
+      const x = ((t * vit * v + k * 811) % (W + 400)) - 200;
+      const y = y0 + Math.sin(t / 900 + k) * 8;
+      ctx.lineWidth = 1 + (k % 3);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 60 - (k % 5) * 18, y - 6); ctx.stroke();
+    }
+    ctx.restore();
+  }
   function etalonnage(amb, S) {
+
     // teinte d'ensemble : soir orangé, nuit bleutée (soft-light, discret)
     const r = amb.lr, g = amb.lg, b = amb.lb;
     const ecart = Math.abs(r - g) + Math.abs(g - b);

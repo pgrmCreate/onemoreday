@@ -9,7 +9,11 @@ js/game/                flow (enchaîne les temps), données fusionnées, condit
                         autorité co-op, personnage (player, survival, inventory, crafting, stats_combat), météo
 
 js/carte/               ★ LE FORMAT DES CARTES (sans DOM, utilisable sous Node)
-  catalogue.js            tout ce qu'on peut poser : SOLS, MURS, OBJETS, DECALS, LUMIERES, TOITS
+  catalogue.js            tout ce qu'on peut poser : SOLS, MURS, OBJETS, DECALS, LUMIERES, TOITS ; GRILLE FINE (FIN = 2) :
+                          les plans s'écrivent en UNITÉS (0,8 m), le compilateur découpe chaque unité en 2 × 2 petites cases
+                          (0,4 m) — murs minces (treillis haut-gauche), portes d'une unité, empreintes réelles (tf) ;
+                          positions, réglages et sauvegardes restent en unités, seules les grilles d'un étage sont fines
+                          (icase(E, x, y), sousCases, cxCase/cyCase)
   plan.js                 l'API de construction par couches : plan(meta, (p) => { const e = p.etage(…); e.piece(…); e.objet(…) })
   ascii.js                ancien format ASCII → couches (les 45 plans historiques en profitent sans réécriture)
   (construction)          js/data/construction.js (catalogue), js/game/construction.js (matériaux, XP), js/explore/construction.js (placement, gestes)
@@ -26,6 +30,8 @@ js/rendu/               ★ LE MOTEUR DE RENDU (canvas 2D)
   personnages.js          squelettes animés : vivants (armes, gestes, enchaînements), morts (5 types), cadavres
   lumiere.js              masque d'obscurité COLORÉ : jour, sources fixes qui vacillent (feu, néon, gyrophare), lampes
   effets.js               particules (sang, braises, fumée, feuilles, éclaboussures), calque de sang persistant, traînées
+  atmosphere.js           le soleil (ombres portées selon l'heure), ombres des nuages, brume, sol mouillé, vent selon le
+                          biome (ville / sec / vert), poussière dans le faisceau de la lampe
 
 js/explore/             Temps 1 : l'exploration — et le combat sur place
   vue.js                  le cœur de l'écran : entrer/sortir, boucle, déplacement, micro-arrêt, caméra, guide d'objectif
@@ -38,7 +44,9 @@ js/explore/             Temps 1 : l'exploration — et le combat sur place
   sim.js                  la simulation du lieu (headless) : IA des morts, jetons d'attaque, fente, équilibre, portes, butin
   combat.js               règles pures du combat · niveau.js : point d'entrée des plans · vision, physique, entrées, canal_local
 
-js/travel/              Temps 2 : géographie réelle, carte illustrée SVG, voyage et rencontres
+js/travel/              Temps 2 : géographie réelle, carte illustrée SVG, voyage et rencontres ; brouillard de la carte
+                        (geo.js : zonesVues, reveler — le plan de Salon dévoile le centre, la carte routière le pays salonais,
+                        chaque trajet un couloir ; G.world.brouillard / carteVue)
 js/cine/                cinématiques en parallaxe (36 décors) ; lib.js : personnages dessinés comme des corps (membres galbés,
                         pieds, mains, visage de profil, vraie foulée) ; main.js : main articulée (doigts, pouce, ongles)
                         de l'hôpital ; banc d'essai dev/humains.html

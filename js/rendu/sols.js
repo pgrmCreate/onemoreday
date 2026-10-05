@@ -58,6 +58,8 @@ export function peindreSol(c, niv, E, x0, y0, x1, y1) {
     if (mur(1, 0)) ao(px + TF, py, px + TF - L * 0.7, py, 0.28, px + TF - L * 0.7, py, L * 0.7, TF);
     if (mur(0, 1)) ao(px, py + TF, px, py + TF - L * 0.6, 0.24, px, py + TF - L * 0.6, TF, L * 0.6);
   }
+  // 4 bis) détails du terrain : herbes folles au pied des murs, touffes, cailloux, fissures, taches, mousse
+  details(c, E, X0, Y0, X1, Y1);
   // 5) décals fixes (sang séché, feuilles, papiers…) — en unités
   const D = E.rendu ? E.rendu.decals : [];
   const ux0 = x0 / FIN, uy0 = y0 / FIN, ux1 = (x1 + 1) / FIN, uy1 = (y1 + 1) / FIN;
@@ -67,7 +69,85 @@ export function peindreSol(c, niv, E, x0, y0, x1, y1) {
   }
 }
 
+// Détails du terrain, déterministes (hash de la petite case) : le sol cesse d'être une texture qui se répète.
+//   - au pied des murs, dehors : herbes folles (vertes sur sol frais, paille sur sol sec), mousse sur les pavés ;
+//   - herbe : touffes plus hautes, quelques fleurs ; herbe sèche : brins de paille ;
+//   - terre, sable, gravier, boue : cailloux avec leur ombre ;
+//   - bitume, béton, trottoir : fissures, taches d'huile, mégots et papiers ;
+//   - dedans : moutons de poussière et petits débris, rares.
+const SEC = new Set(['herbe_seche', 'terre', 'sable', 'gravier'].map(id => SOLS_IDS.indexOf(id)));
+const MATS = Object.fromEntries(SOLS_IDS.map((id, i) => [i, id]));
+function brins(c, x, y, n, l, a0, ecart, couls, r) {
+  c.lineCap = 'round';
+  for (let k = 0; k < n; k++) {
+    const a = a0 + (r() - 0.5) * ecart, L = l * (0.5 + r() * 0.7), bx = x + (r() - 0.5) * 4, by = y + (r() - 0.5) * 3;
+    c.strokeStyle = couls[k % couls.length]; c.lineWidth = 0.9 + r() * 0.5;
+    c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + Math.cos(a) * L * 0.5 + (r() - 0.5) * 2, by + Math.sin(a) * L * 0.5, bx + Math.cos(a) * L, by + Math.sin(a) * L); c.stroke();
+  }
+}
+function details(c, E, X0, Y0, X1, Y1) {
+  const w = E.w, h = E.h;
+  for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
+    const i = y * w + x;
+    if (E.code[i] !== K.SOL) continue;
+    const s = E.sol[i], mat = MATS[s], dehors = EXT[s], hh = hash(x, y, 91);
+    const px = x * TF, py = y * TF;
+    const r = rng((x * 73856093) ^ (y * 19349663) ^ 0x5bd1);
+    // mur voisin (dehors) : de quel côté ?
+    let cote = -1;
+    if (dehors) for (let d = 0; d < 4 && cote < 0; d++) {
+      const nx = x + (d === 0 ? 1 : d === 1 ? -1 : 0), ny = y + (d === 2 ? 1 : d === 3 ? -1 : 0);
+      if (nx >= 0 && ny >= 0 && nx < w && ny < h && estMurHaut(E, ny * w + nx)) cote = d;
+    }
+    if (cote >= 0 && hh < 0.5 && mat !== 'eau') {
+      // herbes folles le long du mur, couchées vers la case
+      const sec = SEC.has(s) || mat === 'bitume' || mat === 'trottoir';
+      const couls = sec ? ['#8a7a4a', '#a08c58', '#6a6a38'] : ['#3e5a26', '#56723a', '#4a6a2e'];
+      const bx = cote === 0 ? px + TF - 2 : cote === 1 ? px + 2 : px + TF * (0.2 + r() * 0.6);
+      const by = cote === 2 ? py + TF - 2 : cote === 3 ? py + 2 : py + TF * (0.2 + r() * 0.6);
+      const a0 = cote === 0 ? Math.PI : cote === 1 ? 0 : cote === 2 ? -Math.PI / 2 : Math.PI / 2;
+      brins(c, bx, by, 4 + (r() * 4 | 0), 5 + r() * 5, a0, 1.6, couls, r);
+      if ((mat === 'paves' || mat === 'dalles') && r() < 0.6) { c.fillStyle = 'rgba(70,90,40,0.35)'; ellipse(c, bx, by, 4 + r() * 3, 2 + r() * 2, r() * 3); c.fill(); }
+      continue;
+    }
+    switch (mat) {
+      case 'herbe':
+        if (hh < 0.2) brins(c, px + r() * TF, py + r() * TF, 6 + (r() * 5 | 0), 5 + r() * 4, -Math.PI / 2, 2.4, ['#3a5222', '#5a783a', '#486a2c'], r);
+        else if (hh < 0.23) { for (let k = 0; k < 3; k++) { c.fillStyle = ['#e8e4d0', '#e0c84a', '#c8a0d8'][(r() * 3) | 0]; cercle(c, px + r() * TF, py + r() * TF, 1); c.fill(); } }
+        break;
+      case 'herbe_seche':
+        if (hh < 0.24) brins(c, px + r() * TF, py + r() * TF, 5 + (r() * 4 | 0), 4 + r() * 4, -Math.PI / 2 + (r() - 0.5), 2.8, ['#9a8650', '#b09a62', '#7a6a3a'], r);
+        break;
+      case 'terre': case 'sable': case 'gravier': case 'boue':
+        if (hh < (mat === 'gravier' ? 0.3 : 0.16)) for (let k = 0, n = 1 + (r() * 3 | 0); k < n; k++) {
+          const cx = px + r() * TF, cy = py + r() * TF, t = 1 + r() * (mat === 'gravier' ? 1.6 : 2.6), f = 0.75 + r() * 0.5;
+          c.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(c, cx + 0.8, cy + 0.9, t, t * 0.75, 0); c.fill();
+          c.fillStyle = mat === 'sable' ? `rgb(${178 * f | 0},${160 * f | 0},${122 * f | 0})` : `rgb(${128 * f | 0},${120 * f | 0},${106 * f | 0})`;
+          ellipse(c, cx, cy, t, t * 0.75, r() * 3); c.fill();
+          c.fillStyle = 'rgba(255,245,220,0.18)'; ellipse(c, cx - t * 0.3, cy - t * 0.3, t * 0.4, t * 0.3, 0); c.fill();
+        }
+        break;
+      case 'bitume': case 'beton': case 'trottoir':
+        if (hh < 0.045) {
+          c.strokeStyle = 'rgba(12,11,10,0.55)'; c.lineWidth = 0.9; c.beginPath();
+          let qx = px + r() * TF, qy = py + r() * TF; c.moveTo(qx, qy);
+          for (let k = 0; k < 4; k++) { qx += (r() - 0.5) * TF * 0.9; qy += (r() - 0.5) * TF * 0.9; c.lineTo(qx, qy); }
+          c.stroke();
+          if (r() < 0.5) brins(c, qx, qy, 3, 3 + r() * 3, -Math.PI / 2, 2.6, ['#4a5a2a', '#6a7a3a'], r);   // une herbe pousse dans la fissure
+        } else if (hh < 0.07) { c.fillStyle = `rgba(10,10,12,${0.12 + r() * 0.15})`; ellipse(c, px + r() * TF, py + r() * TF, 3 + r() * 6, 2 + r() * 4, r() * 3); c.fill(); }
+        else if (hh < 0.085) { c.fillStyle = r() < 0.5 ? '#d8d0bc' : '#c8a070'; c.save(); c.translate(px + r() * TF, py + r() * TF); c.rotate(r() * 3); c.fillRect(-1.6, -0.5, 3.2, 1); c.restore(); }
+        break;
+      case 'paves': case 'dalles':
+        if (hh < 0.05) { c.fillStyle = 'rgba(66,84,40,0.3)'; ellipse(c, px + r() * TF, py + r() * TF, 2 + r() * 3, 1 + r() * 2, r() * 3); c.fill(); }
+        break;
+      default:
+        if (!dehors && hh < 0.025) { c.fillStyle = 'rgba(120,112,100,0.35)'; for (let k = 0; k < 4; k++) { cercle(c, px + r() * TF, py + r() * TF, 0.6 + r()); c.fill(); } }
+    }
+  }
+}
+
 // Variations de grande échelle : un calque à 1 pixel par petite case, agrandi avec lissage. Trois bruits superposés :
+
 // grandes salissures sombres, plaques plus claires (usure, soleil), et un voile plus froid et plus sombre au pied des
 // murs (humidité, crasse qui s'accumule) ; rien sur le néant.
 let tmpVar = null;

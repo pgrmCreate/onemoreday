@@ -21,6 +21,7 @@ import { creerCanalLocal } from './canal_local.js';
 import { creerChamp, calculerLOS, calculerVision, lumiereLampe } from './vision.js';
 import { deplacer } from './physique.js';
 import { creerRendu } from '../rendu/rendu.js';
+import { biomeAutour } from '../rendu/atmosphere.js';
 import { creerEntrees } from './entrees.js';
 import { creerCombatVue } from './combat_vue.js';
 import { genererEmbuscade } from './embuscade.js';
@@ -205,8 +206,8 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: V.j.etage, x: +V.j.x.toFixed(2), y: +V.j.y.toFixed(2), abords: abordsDe(V) };
   }));
   // météo : la pluie se voit dehors (et s'entend étouffée sous un toit), le mistral pousse les feuilles
-  import('../game/meteo.js').then(m => { if (V) { V.pluie = m.pluie(); V.vent = m.vent ? m.vent() : 0.3; } }).catch(() => {});
-  V.off.push(on('meteo', (e) => { if (V) { V.pluie = e.pluie || 0; if (e.vent != null) V.vent = e.vent; } }));
+  import('../game/meteo.js').then(m => { if (V) { V.pluie = m.pluie(); V.vent = m.vent ? m.vent() : 0.3; V.meteo = m.meteo ? m.meteo() : 'clair'; } }).catch(() => {});
+  V.off.push(on('meteo', (e) => { if (V) { V.pluie = e.pluie || 0; if (e.vent != null) V.vent = e.vent; if (e.type) V.meteo = e.type; } }));
   V.dehorsSon = null;
   const majBoutonLampe = () => {
     if (!V) return;
@@ -459,7 +460,8 @@ function image(t, dt) {
   const snap = V.snap, Sc = V.scene || (V.scene = { joueur: {}, fouille: { x: 0, y: 0, frac: 0, n: 0 } });
   Sc.E = E; Sc.C = C; Sc.jour = jour; Sc.t = V.tVis; Sc.dt = dtv; Sc.heure = clock.heureDecimale(); Sc.hitstop = ech < 1 ? 1 : 0;
   { const ii = icase(E, V.j.x, V.j.y), pi = ii >= 0 ? E.piece[ii] : -1; const P = pi >= 0 ? V.niveau.pieces[pi] : null; Sc.dehors = P ? !!P.exterieur : !!V.niveau.exterieur; }
-  Sc.pluie = V.pluie || 0; Sc.vent = V.vent ?? 0.3;
+  Sc.pluie = V.pluie || 0; Sc.vent = V.vent ?? 0.3; Sc.meteo = V.meteo || 'clair';
+  if (!V.tBiome || t - V.tBiome > 1000) { V.tBiome = t; Sc.biome = biomeAutour(E, V.j.x, V.j.y); }   // ville, sec (Crau), vert
   if (V.dehorsSon !== Sc.dehors) { V.dehorsSon = Sc.dehors; try { mod.audio && mod.audio.setPluieInterieur && mod.audio.setPluieInterieur(!Sc.dehors); } catch (e) {} }
   const J = Sc.joueur;
   J.x = j.x; J.y = j.y; J.dir = j.dir; J.marche = j.marche; J.lampe = !!la; J.lampeMain = !!(la && (RL.SOURCES[la.id] || {}).mains); J.allure = j.allure;
