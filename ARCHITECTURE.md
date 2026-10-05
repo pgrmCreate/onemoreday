@@ -76,3 +76,24 @@ Vérifications : `node tools/valider_niveaux.mjs` · `node dev/test_combat.mjs` 
   `A.tout_rendre(types=['mon_type'])` dans Blender. Échelle : 1 case = 0,8 m ; dos de l'objet en haut de l'image.
 - Sources Blender (hors dépôt) : `D:\projects 3D\OneMoreDay\omd_textures_sol.blend`, `omd_cine.blend`, `plaques.json`
   (décor → HDRI, angle, inclinaison, étalonnage).
+
+## Cinématiques TOURNÉES dans Blender (`tools/blender/cine/`)
+
+Une cinématique reste un script de plans (`js/data/cinematiques.js`) ; un plan qui porte `clip: 'intro_1'` joue la vidéo
+`img/cine/clips/intro_1.webm` (VP9, 1280 × 536, 24 i/s) à la place du décor dessiné ; sous-titres, titres, effets, fondus et
+bouton Passer restent ceux du lecteur (`js/cine/lecteur.js`). Si la vidéo manque ou ne se lit pas : repli sur le décor dessiné.
+
+Faire un plan :
+1. une fonction dans `tools/blender/cine/plans.py` (ou `plans2.py`) : décor + lumière + caméra + acteurs, renvoie (f0, f1) ;
+2. vérifier le cadre sur une image : `blender -b --python tools/blender/cine/tourner.py -- <plan> --image --brouillon`
+   (aperçu dans `D:\projects 3D\OneMoreDaypercus\<plan>.jpg`) ;
+3. tourner : `bash tools/blender/cine/file_rendu.sh <plan> …` (rendu Eevee, maître gardé hors dépôt, clip léger réencodé) ;
+4. ajouter `clip: '<plan>'` au plan du script.
+
+Briques : `omd_ville.py` (le centre de Salon : cours et platanes, façades provençales, place Crousillat et Fontaine Moussue,
+Tour de l'Horloge à 21 h 10, vieille ville, château de l'Empéri, campagne et collines), `omd_interieurs.py` (couloir de
+l'hôpital, intérieur de la housse), `omd_nature.py` (Crau, oliviers, cyprès, pins en cartes de feuillage, falaises de Calès,
+Durance et pont de Mallemort, front de feu, Alpha Jets, camp, gymnase, Ventoux, ruines), `omd_humains.py` (humains MPFB :
+vêtements, peaux, cheveux, morts grisés ; poses, marche, course, foules « figées » par milliers), `omd_tournage.py`
+(lumières : matin, voile, mistral, nuit, aube, incendie ; caméra ; sortie vidéo). Cartes de feuillage :
+`D:\projects 3D\OneMoreDay\cartes`.

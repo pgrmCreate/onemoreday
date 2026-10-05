@@ -33,6 +33,11 @@
 //   S (contexte d'animation) : { q(sel) → [éléments] (mis en cache), attr(el, nom, val), decaler(nom, dx, dy), p (avancement du plan),
 //     tp (secondes depuis le début du plan), dt, plan, etat (objet libre, propre au décor), couches: [{ L, el }] }.
 //
+// PLANS TOURNÉS (Blender, tools/blender/cine/) : un plan peut porter `clip: 'intro_1'` → img/cine/clips/intro_1.webm est joué
+//   à la place du décor dessiné (la caméra du plan est alors celle du tournage). Sous-titres, titre, effets et transitions
+//   restent ceux du lecteur. La vidéo tient sa dernière image si le plan dure plus longtemps. Si le clip manque ou que le
+//   navigateur ne sait pas le lire, le décor dessiné (decor) sert de repli : on ne perd jamais une cinématique.
+//
 // Effets globaux (js/cine/effets.js) : grain, vignette_pulse, flash_rouge, fondu_noir, fondu_blanc, fumee, braises,
 //   cendres, poussiere, mistral, chaleur, lueur_lampe, brouillard_bas, etoiles, secousse, pluie.
 
@@ -89,6 +94,7 @@ export function jouerScript(def, opts = {}) {
     racine.innerHTML = `
       <div class="cine-cadre">
         <div class="cine-monde"></div>
+        <div class="cine-clips"></div>
         <canvas class="cine-effets"></canvas>
         <div class="cine-vignette"></div>
         <div class="cine-teinte"></div>
@@ -106,6 +112,44 @@ export function jouerScript(def, opts = {}) {
     const rideau = $('.cine-rideau'), titre = $('.cine-titre'), sous = $('.cine-soustitre');
     const btnPasser = $('.cine-passer'), btnCont = $('.cine-continuer'), noir = $('.cine-noir');
     const effets = creerEffets({ canvas, vignette: $('.cine-vignette'), teinte: $('.cine-teinte'), voile: $('.cine-voile'), monde });
+    // ---------- Plans tournés (vidéo) ----------
+    const zoneClips = $('.cine-clips');
+    const clips = new Map();   // nom → { v: <video>, ok: bool|null }
+    const BASE_CLIPS = new URL('../../img/cine/clips/', import.meta.url);
+    function clipDe(nom) {
+      let c = clips.get(nom);
+      if (c) return c;
+      const v = document.createElement('video');
+      v.className = 'cine-clip'; v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto';
+      c = { v, ok: null };
+      v.addEventListener('canplay', () => { c.ok = true; }, { once: true });
+      v.addEventListener('error', () => { c.ok = false; if (clipCourant === c && plans[iPlan]) basculerRepli(plans[iPlan]); });
+      v.src = new URL(`${nom}.webm`, BASE_CLIPS).href;
+      zoneClips.appendChild(v);
+      clips.set(nom, c);
+      return c;
+    }
+    let clipCourant = null;
+    function montrerClip(plan, tDebut) {
+      for (const c of clips.values()) { if (c !== clipCourant) { c.v.classList.remove('visible'); } }
+      if (!plan.clip) { if (clipCourant) { clipCourant.v.pause(); clipCourant.v.classList.remove('visible'); } clipCourant = null; monde.style.visibility = ''; return false; }
+      const c = clipDe(plan.clip);
+      if (c.ok === false) { clipCourant = null; monde.style.visibility = ''; return false; }
+      if (clipCourant && clipCourant !== c) { clipCourant.v.pause(); clipCourant.v.classList.remove('visible'); }
+      clipCourant = c;
+      try { c.v.currentTime = Math.max(0, (tDebut || 0) / 1000); } catch (e) {}
+      c.v.classList.add('visible');
+      monde.style.visibility = 'hidden';
+      if (!pause) { const pr = c.v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      return true;
+    }
+    function basculerRepli(plan) {
+      if (clipCourant) clipCourant.v.classList.remove('visible');
+      clipCourant = null; monde.style.visibility = '';
+      if (!decorCourant || decorCourant.id !== plan.decor) { construireDecor(plan.decor); effets.regler(plan.effets || [], decorCourant.def.reglages); }
+    }
+    // précharger les clips du script (le suivant est prêt quand on y arrive)
+    for (const p of plans) if (p.clip) clipDe(p.clip);
 
     // ---------- État ----------
     const decors = new Map(); // id → module de décor
@@ -249,8 +293,10 @@ export function jouerScript(def, opts = {}) {
     function demarrerPlan(i, tDebut = 0) {
       iPlan = i; tPlan = tDebut;
       const plan = plans[i];
+      const enClip = montrerClip(plan, tDebut);
       if (!decorCourant || decorCourant.id !== plan.decor) { construireDecor(plan.decor); effets.regler(plan.effets || [], decorCourant.def.reglages); effets.immediat(); }
       else effets.regler(plan.effets || [], decorCourant.def.reglages);
+      if (enClip) monde.style.visibility = 'hidden';
       preparerTexte(plan.texte, plan.duree || 6000);
       preparerTitre(plan.titre);
       btnCont.classList.remove('visible');
@@ -286,6 +332,7 @@ export function jouerScript(def, opts = {}) {
       window.removeEventListener('resize', mettreEnPage);
       window.removeEventListener('keydown', clavier, true);
       effets.detruire();
+      for (const c of clips.values()) { try { c.v.pause(); c.v.removeAttribute('src'); c.v.load(); } catch (e) {} }
       racine.remove();
       courant = null;
       try { opts.surFin && opts.surFin({ passe }); } catch (e) {}

@@ -79,3 +79,9 @@
   .cine-mot { transition: opacity .4s; transform: none; filter: none; }
   .cine-titre { transition: opacity 1s; filter: none; }
 }
+
+/* plans tournés dans Blender : la vidéo remplit le cadre 2,39:1, sous les effets et le texte */
+.cine-clips { position: absolute; inset: 0; overflow: hidden; background: #000; pointer-events: none; }
+.cine-clips:not(:has(.visible)) { background: transparent; }
+.cine-clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s linear; }
+.cine-clip.visible { opacity: 1; }

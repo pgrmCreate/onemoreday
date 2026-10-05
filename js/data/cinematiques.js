@@ -2,9 +2,11 @@
 // Écrit par le scénariste, mis en images par l'agent cinématiques (js/cine/). Chaque `decor` est un id de scène en
 // parallaxe (js/cine/scenes/<id>.js) décrit dans docs/HISTOIRE.md, section « Briefs des décors ».
 //
-// Plan : { decor, camera: { de: {x, y?, zoom}, vers: {x, y?, zoom} }, duree (ms), effets: [...], anim: [...],
+// Plan : { clip?, decor, camera: { de: {x, y?, zoom}, vers: {x, y?, zoom} }, duree (ms), effets: [...], anim: [...],
 //          texte (sous-titre), attendre (bool : bouton « Continuer » à la fin du plan), titre? (carton de titre, optionnel) }
 //   x, y : 0..1 (position du centre de la caméra dans le décor) ; zoom : 1 = décor entier.
+//   clip : plan TOURNÉ dans Blender (img/cine/clips/<clip>.webm, tools/blender/cine/plans.py) joué à la place du décor dessiné ;
+//          le décor dessiné reste le repli si la vidéo manque.
 // Effets globaux (communs à tous les décors) : grain, vignette_pulse, flash_rouge, fondu_noir, fondu_blanc, fumee,
 //   braises, cendres, poussiere, mistral, chaleur, lueur_lampe, brouillard_bas, etoiles, secousse.
 // Animations : propres à chaque décor (liste dans HISTOIRE.md). Musique : titre | calme | sombre | tension | combat | mort | refuge.
@@ -27,59 +29,59 @@ export const CINEMATIQUES = {
 
   // ─────────── Nouvelle partie ───────────
   intro: { musique: 'titre', plans: [
-    { decor: 'salon_marche', camera: { de: { x: 0.08, zoom: 1.35 }, vers: { x: 0.55, zoom: 1.1 } }, duree: 9000,
+    { clip: 'intro_1', decor: 'salon_marche', camera: { de: { x: 0.08, zoom: 1.35 }, vers: { x: 0.55, zoom: 1.1 } }, duree: 9000,
       effets: ['grain'], anim: ['foule_marche', 'platanes_brise', 'pigeons_envol', 'fontaine_coule'],
       texte: 'Salon-de-Provence. Mercredi 2 septembre, jour de grand marché.' },
-    { decor: 'salon_mercredi', camera: { de: { x: 0.3, zoom: 1.2 }, vers: { x: 0.7, zoom: 1.4 } }, duree: 8000,
+    { clip: 'intro_2', decor: 'salon_mercredi', camera: { de: { x: 0.3, zoom: 1.2 }, vers: { x: 0.7, zoom: 1.4 } }, duree: 8000,
       effets: ['grain', 'secousse'], anim: ['foule_court', 'etals_renverses', 'silhouette_penchee'],
       texte: 'À 10 h 40, sur le cours Carnot, une femme mord son mari. Les gens mordus meurent en quelques heures… puis se relèvent, et mordent à leur tour.' },
-    { decor: 'couloir_hopital', camera: { de: { x: 0.2, y: 0.5, zoom: 1.5 }, vers: { x: 0.6, y: 0.95, zoom: 1.3 } }, duree: 8400,
+    { clip: 'intro_3', decor: 'couloir_hopital', camera: { de: { x: 0.2, y: 0.5, zoom: 1.5 }, vers: { x: 0.6, y: 0.95, zoom: 1.3 } }, duree: 8400,
       effets: ['grain', 'vignette_pulse'], anim: ['neon_clignote', 'clochette_tremble', 'main_billet'],
       texte: 'À l’hôpital, une médecin nourrit ses malades au son d’une clochette. Puis elle glisse un mot plié dans la poche d’un mort.' },
-    { decor: 'salon_mistral_vide', camera: { de: { x: 0.1, zoom: 1.1 }, vers: { x: 0.9, zoom: 1.15 } }, duree: 9000,
+    { clip: 'intro_4', decor: 'salon_mistral_vide', camera: { de: { x: 0.1, zoom: 1.1 }, vers: { x: 0.9, zoom: 1.15 } }, duree: 9000,
       effets: ['grain', 'poussiere'], anim: ['platanes_vent', 'journal_vole', 'drone_passe'],
       texte: 'Trois semaines plus tard, Salon est une ville morte. L’armée a reculé au nord, derrière la Durance. Elle attend le vent.' },
-    { decor: 'housse_noir', camera: { de: { x: 0.5, zoom: 1.0 }, vers: { x: 0.5, zoom: 1.25 } }, duree: 7000,
+    { clip: 'intro_5', decor: 'housse_noir', camera: { de: { x: 0.5, zoom: 1.0 }, vers: { x: 0.5, zoom: 1.25 } }, duree: 7000,
       effets: ['vignette_pulse'], anim: ['fermeture_eclair', 'souffle_plastique'],
       texte: 'Au cimetière, dans une housse mortuaire, un cœur arrêté depuis des jours se remet à battre. C’est le tien.', attendre: true },
-    { decor: 'housse_noir', camera: { de: { x: 0.5, zoom: 1.25 }, vers: { x: 0.5, zoom: 1.25 } }, duree: 4000,
+    { clip: 'intro_6', decor: 'housse_noir', camera: { de: { x: 0.5, zoom: 1.25 }, vers: { x: 0.5, zoom: 1.25 } }, duree: 4000,
       effets: ['fondu_noir'], anim: [], titre: 'One More Day', texte: '', attendre: true },
   ] },
 
   // ─────────── Prologue ───────────
   pro_cloches: { musique: 'tension', plans: [
-    { decor: 'place_crousillat_nuit', camera: { de: { x: 0.5, y: 0.8, zoom: 1.5 }, vers: { x: 0.5, y: 0.25, zoom: 1.2 } }, duree: 6000,
+    { clip: 'pro_cloches_1', decor: 'place_crousillat_nuit', camera: { de: { x: 0.5, y: 0.8, zoom: 1.5 }, vers: { x: 0.5, y: 0.25, zoom: 1.2 } }, duree: 6000,
       effets: ['lueur_lampe'], anim: ['cloches_balancent', 'fontaine_coule'],
       texte: 'La première cloche sonne si fort que tu la sens vibrer dans tes dents.' },
-    { decor: 'place_crousillat_nuit', camera: { de: { x: 0.2, zoom: 1.1 }, vers: { x: 0.8, zoom: 1.05 } }, duree: 7000,
+    { clip: 'pro_cloches_2', decor: 'place_crousillat_nuit', camera: { de: { x: 0.2, zoom: 1.1 }, vers: { x: 0.8, zoom: 1.05 } }, duree: 7000,
       effets: ['grain'], anim: ['cloches_balancent', 'silhouettes_convergent'],
       texte: 'Puis la deuxième, puis la troisième : des tonnes de bronze qui appellent tout Salon.' },
-    { decor: 'place_crousillat_nuit', camera: { de: { x: 0.5, zoom: 1.05 }, vers: { x: 0.5, y: 0.6, zoom: 1.5 } }, duree: 6000,
+    { clip: 'pro_cloches_3', decor: 'place_crousillat_nuit', camera: { de: { x: 0.5, zoom: 1.05 }, vers: { x: 0.5, y: 0.6, zoom: 1.5 } }, duree: 6000,
       effets: ['vignette_pulse'], anim: ['silhouettes_convergent', 'porte_entrouverte'],
       texte: 'Les morts sortent des rues, des porches, des terrasses. Ils viennent tous vers le bruit.', attendre: true },
   ] },
 
   pro_sommet: { musique: 'sombre', plans: [
-    { decor: 'horloge_sommet', camera: { de: { x: 0.1, zoom: 1.3 }, vers: { x: 0.5, zoom: 1.1 } }, duree: 8000,
+    { clip: 'pro_sommet_1', decor: 'horloge_sommet', camera: { de: { x: 0.1, zoom: 1.3 }, vers: { x: 0.5, zoom: 1.1 } }, duree: 8000,
       effets: ['etoiles'], anim: ['foule_immobile', 'cloches_immobiles'],
       texte: 'Sous la tour, la foule des morts ne repart pas. Des centaines de visages restent levés vers les cloches, qui se sont tues.' },
-    { decor: 'horloge_sommet', camera: { de: { x: 0.5, zoom: 1.1 }, vers: { x: 0.85, zoom: 1.25 } }, duree: 8000,
+    { clip: 'pro_sommet_2', decor: 'horloge_sommet', camera: { de: { x: 0.5, zoom: 1.1 }, vers: { x: 0.85, zoom: 1.25 } }, duree: 8000,
       effets: ['etoiles', 'fumee'], anim: ['incendie_lointain'],
       texte: 'Plus loin, sur son rocher, le château de l’Empéri. Une seule fenêtre est éclairée : là-bas, il y a des vivants.' },
-    { decor: 'horloge_sommet', camera: { de: { x: 0.85, zoom: 1.25 }, vers: { x: 0.98, zoom: 1.45 } }, duree: 6000,
+    { clip: 'pro_sommet_3', decor: 'horloge_sommet', camera: { de: { x: 0.85, zoom: 1.25 }, vers: { x: 0.98, zoom: 1.45 } }, duree: 6000,
       effets: ['etoiles'], anim: ['cadran_21h10'],
       texte: 'L’horloge marque neuf heures dix. Elle s’est arrêtée le premier soir, et elle ne repartira plus.', attendre: true },
   ] },
 
   // ─────────── Chapitre 1 ───────────
   ch1_intro: { musique: 'calme', plans: [
-    { decor: 'salon_aube_toits', camera: { de: { x: 0.05, zoom: 1.3 }, vers: { x: 0.45, zoom: 1.1 } }, duree: 8000,
+    { clip: 'ch1_intro_1', decor: 'salon_aube_toits', camera: { de: { x: 0.05, zoom: 1.3 }, vers: { x: 0.45, zoom: 1.1 } }, duree: 8000,
       effets: ['brouillard_bas'], anim: ['martinets', 'fumees_droites'], titre: 'Chapitre 1 — Les vivants',
       texte: 'Mercredi 23 septembre. Trois semaines jour pour jour après le Mercredi, le jour où tout a commencé.' },
-    { decor: 'salon_aube_toits', camera: { de: { x: 0.45, zoom: 1.1 }, vers: { x: 0.8, zoom: 1.2 } }, duree: 8000,
+    { clip: 'ch1_intro_2', decor: 'salon_aube_toits', camera: { de: { x: 0.45, zoom: 1.1 }, vers: { x: 0.8, zoom: 1.2 } }, duree: 8000,
       effets: ['brouillard_bas'], anim: ['martinets', 'linge_emperi'],
       texte: 'Il ne reste à Salon qu’une trentaine de vivants, tous réfugiés dans le château de l’Empéri.' },
-    { decor: 'salon_aube_toits', camera: { de: { x: 0.8, zoom: 1.2 }, vers: { x: 0.97, zoom: 1.4 } }, duree: 7000,
+    { clip: 'ch1_intro_3', decor: 'salon_aube_toits', camera: { de: { x: 0.8, zoom: 1.2 }, vers: { x: 0.97, zoom: 1.4 } }, duree: 7000,
       effets: [], anim: ['platanes_immobiles'],
       texte: 'Et le vent, pour l’instant, ne souffle pas.', attendre: true },
   ] },

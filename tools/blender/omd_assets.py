@@ -175,7 +175,7 @@ def boite(x, y, z, sx, sy, sz, mat=None, biseau=0.01, nom='boite'):
     """Boîte de taille (sx, sy, sz) m dont le coin bas est en (x - sx/2, y - sy/2, z) : centrée en x, y, posée sur z."""
     bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z + sz / 2))
     o = bpy.context.active_object; o.name = nom; o.scale = (sx, sy, sz)
-    bpy.ops.object.transform_apply(scale=True)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     if biseau > 0:
         b = o.modifiers.new('biseau', 'BEVEL'); b.width = min(biseau, sx / 2.2, sy / 2.2, sz / 2.2); b.segments = 3; b.limit_method = 'ANGLE'
     if mat: o.data.materials.append(mat)
