@@ -2,3 +2,5 @@
 # Le dossier log/ et son README sont suivis ; les journaux eux-mêmes restent locaux.
 /log/*.txt
 !/log/README.txt
+__pycache__/
+*.pyc
