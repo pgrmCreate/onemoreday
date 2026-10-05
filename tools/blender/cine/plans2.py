@@ -399,7 +399,7 @@ def gymnase(T, n):
     f1 = frames([9000, 6000][n])
     T.monde_uni((0.03, 0.035, 0.04), 0.3)
     rnd = random.Random(191)
-    salle(-20, 20, -12, 12, 9, mur='concrete_wall_003', teinte='#d8dcdc', sol='old_wooden_floor_01')
+    salle(-20, 20, -12, 12, 9, mur='concrete', teinte='#e4e6e2', sol='old_wooden_floor_01')   # béton peint, parquet de salle de sport
     for i in range(6):
         for j in range(3): neon(-15 + i * 6, -8 + j * 8, 9, 900)
     for i in range(40):

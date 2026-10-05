@@ -193,6 +193,7 @@ def front_de_feu(x0, x1, y, rnd, hauteur=11, n=110, lumieres=10, fumee=True):
         p = bpy.context.active_object; p.scale = (rnd.uniform(4, 9), h, 1); p.rotation_euler = (math.pi / 2, 0, rnd.uniform(-0.4, 0.4)); p.data.materials.append(m); o.append(p)
     for k in range(lumieres):
         ld = bpy.data.lights.new('feu', 'POINT'); ld.energy = 2e5; ld.color = (1.0, 0.42, 0.12); ld.shadow_soft_size = 4
+        ld.use_shadow = k in (lumieres // 3, 2 * lumieres // 3)   # deux seulement font des ombres (sinon le rendu s'effondre)
         l = bpy.data.objects.new('feu', ld); l.location = (x0 + (x1 - x0) * (k + 0.5) / lumieres, y, 4); bpy.context.scene.collection.objects.link(l)
         for fr in range(1, 500, 4): ld.energy = 2e5 * (0.7 + 0.3 * math.sin(fr * 0.8 + k) * math.sin(fr * 0.27 + k)); ld.keyframe_insert('energy', frame=fr)
     if fumee:
