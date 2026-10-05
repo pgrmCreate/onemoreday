@@ -10,7 +10,8 @@
 import { G } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { REGLAGES } from '../data/reglages.js';
-import { CONSTRUCTIONS, DEMONTABLES, COMBUSTIBLES, casesConstruction, tailleConstruction } from '../data/construction.js';
+import { CONSTRUCTIONS, DEMONTABLES, COMBUSTIBLES, casesConstruction, casesFinesConstruction, tailleConstruction } from '../data/construction.js';
+import { FIN, icase, sousCases } from '../carte/catalogue.js';
 import * as cons from '../game/construction.js';
 import { setContexteFabrication } from '../game/crafting.js';
 import { meteoCourante } from '../travel/rencontres_voyage.js';
@@ -54,13 +55,13 @@ function verifier(P) {
   const E = V.E, d = CONSTRUCTIONS[P.type];
   const bl = V.canal.grilles ? V.canal.grilles(E.id).bloque : E.bloque;
   const occ = new Set();
-  for (const c of consListe()) if (c.etage === E.id) for (const [x, y] of casesConstruction(c.type, c.x, c.y, c.rot)) occ.add(y * E.w + x);
+  for (const c of consListe()) if (c.etage === E.id) for (const i of casesFinesConstruction(E, c)) occ.add(i);
   for (const [x, y] of casesConstruction(P.type, P.x, P.y, P.rot)) {
-    if (x < 0 || y < 0 || x >= E.w || y >= E.h) return 'hors de la carte';
-    const i = y * E.w + x;
-    if (occ.has(i)) return 'déjà construit';
-    if (d.pose === 'fenetre') { if (E.code[i] !== K.FENETRE) return 'il faut une fenêtre'; continue; }
-    if (E.code[i] !== K.SOL || bl[i]) return 'pas la place';
+    if (x < 0 || y < 0 || x * FIN >= E.w || y * FIN >= E.h) return 'hors de la carte';
+    const sous = sousCases(E, x, y);       // les petites cases de l'unité (grille fine)
+    if (sous.some(i => occ.has(i))) return 'déjà construit';
+    if (d.pose === 'fenetre') { if (!sous.some(i => E.code[i] === K.FENETRE)) return 'il faut une fenêtre'; continue; }
+    if (sous.some(i => E.code[i] !== K.SOL || bl[i])) return 'pas la place';
     if (d.bloque) {
       if (Math.hypot(V.j.x - x - 0.5, V.j.y - y - 0.5) < 0.8) return 'tu es dessus';
       for (const z of V.zListe) if (z.etage === E.id && Math.hypot(z.x - x - 0.5, z.y - y - 0.5) < 0.8) return 'quelqu\'un est là';
@@ -151,18 +152,22 @@ function majContexte() {
     if (d.poste === 'table' && pres(cx, cy, 1.6)) etabli = true;
     if (feuAllume(c)) { if (pres(cx, cy, 2.2)) feu = true; if (pres(cx, cy, 3.5)) feuProche = true; }
   }
-  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
-    const x = Math.floor(j.x) + dx, y = Math.floor(j.y) + dy;
+  const vusM = new Set();
+  for (let dy = -2 * FIN; dy <= 2 * FIN; dy++) for (let dx = -2 * FIN; dx <= 2 * FIN; dx++) {
+    const x = Math.floor(j.x * FIN) + dx, y = Math.floor(j.y * FIN) + dy;
     if (x < 0 || y < 0 || x >= E.w || y >= E.h) continue;
     const mi = E.meuble ? E.meuble[y * E.w + x] : -1;
-    if (mi == null || mi < 0) continue;
+    if (mi == null || mi < 0 || vusM.has(mi)) continue;
     const m = V.niveau.meubles[mi]; if (!m || (V.retires && V.retires.has(m.cle))) continue;
-    if (Math.hypot(x + 0.5 - j.x, y + 0.5 - j.y) <= 1.6 && ['table', 'table_ronde', 'bureau', 'machine', 'comptoir'].includes(m.type)) etabli = true;
+    if (Math.hypot((x + 0.5) / FIN - j.x, (y + 0.5) / FIN - j.y) > 1.6) continue;
+    vusM.add(mi);
+    if (['table', 'table_ronde', 'bureau', 'machine', 'comptoir'].includes(m.type)) etabli = true;
     if (m.marqueur === 'etabli') etabliVrai = etabli = true;
     if (['wc', 'baignoire', 'lavabo', 'cuisine'].includes(m.type) || m.eau) eau = eau || 'croupie';
   }
   for (const mk of Object.values(V.niveau.marqueurs || {})) if (mk && mk.eau && mk.etage === E.id && pres(mk.x + 0.5, mk.y + 0.5, 2)) eau = 'croupie';
-  const pi = E.piece[Math.floor(j.y) * E.w + Math.floor(j.x)], P = pi >= 0 ? V.niveau.pieces[pi] : null;
+  const ij = icase(E, j.x, j.y), pi = ij >= 0 ? E.piece[ij] : -1, P = pi >= 0 ? V.niveau.pieces[pi] : null;
+
   try { setContexteFabrication({ etabli, etabliVrai, feu, lieu: V.lieuId }); } catch (e) {}
   try { mod.survie && mod.survie.setContexteSurvie && mod.survie.setContexteSurvie({ exterieur: P ? !!P.exterieur : !!V.niveau.exterieur, feuProche, sourceEau: eau }); } catch (e) {}
 }

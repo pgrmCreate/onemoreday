@@ -17,6 +17,7 @@
 //   Fonctions : porte (s'ouvre / se ferme), contenance (litres : caisse de rangement), poste ('etabli' | 'feu'),
 //   lit (on y dort), feu { minutes } (lumière, chaleur, cuisine ; on remet du bois), eau { cap } (récupérateur : se remplit
 //   quand il pleut), potager { jours, recolte } (on plante des graines), piege { degats } (les morts s'y empalent).
+import { FIN, K } from '../carte/catalogue.js';
 export const CONSTRUCTIONS = {
   // ─────────── Murs et clôtures ───────────
   mur_planches: {
@@ -234,6 +235,19 @@ export function casesConstruction(type, x, y, rot = 0) {
   const out = []; for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) out.push([xx, yy]);
   return out;
 }
+// Petites cases (grille fine, catalogue.js FIN) couvertes par une construction c = { type, x, y, rot } posée sur l'étage E.
+// Une barricade de fenêtre ne couvre que la fenêtre (pas la moitié de mur libérée à côté).
+export function casesFinesConstruction(E, c) {
+  const d = CONSTRUCTIONS[c.type], out = [];
+  for (const [x, y] of casesConstruction(c.type, c.x, c.y, c.rot)) for (let dy = 0; dy < FIN; dy++) for (let dx = 0; dx < FIN; dx++) {
+    const fx = x * FIN + dx, fy = y * FIN + dy;
+    if (fx < 0 || fy < 0 || fx >= E.w || fy >= E.h) continue;
+    const i = fy * E.w + fx;
+    if (d && d.pose === 'fenetre' && E.code && E.code[i] !== K.FENETRE) continue;
+    out.push(i);
+  }
+  return out;
+}
 export function tailleConstruction(type, rot = 0) { const d = CONSTRUCTIONS[type]; return d ? (rot % 2 ? [d.t[1], d.t[0]] : d.t.slice()) : [1, 1]; }
 // Bloque-t-elle (une porte ouverte laisse passer) ?
 export const bloqueC = (c, d = CONSTRUCTIONS[c.type]) => !!(d && d.bloque && !(d.porte && c.ouverte));
@@ -247,10 +261,9 @@ export function appliquerConstructions(niveau, dyn, constructions) {
   for (const c of constructions || []) {
     const ei = niveau.etageIdx[c.etage]; if (ei == null) continue;
     const E = niveau.etages[ei], D = dyn[ei], d = CONSTRUCTIONS[c.type];
-    for (const [x, y] of casesConstruction(c.type, c.x, c.y, c.rot)) {
-      if (x < 0 || y < 0 || x >= E.w || y >= E.h) continue;
-      const i = y * E.w + x;
+    for (const i of casesFinesConstruction(E, c)) {
       if (bloqueC(c, d)) D.bloque[i] = 1;
+
       if (opaqueC(c, d)) D.opaque[i] = 1;
     }
   }

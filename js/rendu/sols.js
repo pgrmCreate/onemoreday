@@ -1,6 +1,8 @@
 // ============ Couche SOL : matières, transitions irrégulières, variations, occlusion au pied des murs, décals ============
-// peindreSol(c, niv, E, x0, y0, x1, y1) — c est en coordonnées MONDE (1 case = TS px), déjà translaté.
-import { TS, hash, bruit, cercle, ellipse, rr, rng } from './outils.js';
+// peindreSol(c, niv, E, x0, y0, x1, y1) — c est en coordonnées MONDE (1 unité = TS px), déjà translaté ;
+// (x0, y0, x1, y1) : PETITES cases (grille fine, TF px chacune). Les décals sont en unités.
+import { TS, TF, hash, bruit, cercle, ellipse, rr, rng, canvas } from './outils.js';
+import { FIN } from '../carte/catalogue.js';
 import { motif } from './textures.js';
 import { K, SOLS, SOLS_IDS, MURS, MURS_IDS } from '../carte/catalogue.js';
 
@@ -23,19 +25,14 @@ export function peindreSol(c, niv, E, x0, y0, x1, y1) {
       const m = E.sol[i]; let x2 = x;
       while (x2 + 1 <= X1 && !vide(E, y * w + x2 + 1) && E.sol[y * w + x2 + 1] === m) x2++;
       c.fillStyle = motif(c, m);
-      c.fillRect(x * TS, y * TS, (x2 - x + 1) * TS, TS);
+      c.fillRect(x * TF, y * TF, (x2 - x + 1) * TF, TF);
       x = x2 + 1;
     }
   }
-  // 2) variations de grande échelle (salissures, zones plus claires) — aucune case ne ressemble à sa voisine
-  for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
-    const i = y * w + x; if (vide(E, i)) continue;
-    const v = bruit(x / 7, y / 7, 4096, 3) * 0.65 + bruit(x / 2.5, y / 2.5, 4096, 4) * 0.35 - 0.5;
-    if (Math.abs(v) < 0.04) continue;
-    c.fillStyle = v > 0 ? `rgba(0,0,0,${Math.min(0.28, v * 0.5)})` : `rgba(255,236,200,${Math.min(0.07, -v * 0.14)})`;
-    c.fillRect(x * TS, y * TS, TS, TS);
-  }
-  // 3) transitions : la matière la plus « haute » déborde, bord irrégulier
+  // 2) variations de grande échelle (salissures, zones plus claires, sol plus humide) : une petite image (1 pixel par
+  //    petite case) agrandie AVEC lissage → des nuances continues, sans aucun carré visible
+  variations(c, E, X0, Y0, X1, Y1);
+  // 3) transitions : la matière la plus « haute » déborde, bord irrégulier (bruit continu en unités)
   for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
     const i = y * w + x; if (vide(E, i) || E.code[i] === K.MUR) continue;
     const m = E.sol[i];
@@ -52,33 +49,62 @@ export function peindreSol(c, niv, E, x0, y0, x1, y1) {
   // 4) occlusion : ombre douce au pied des murs (plus forte côté haut-gauche, d'où vient la lumière)
   for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
     const i = y * w + x; if (vide(E, i) || E.code[i] === K.MUR) continue;
-    const px = x * TS, py = y * TS;
+    const px = x * TF, py = y * TF;
     const mur = (dx, dy) => { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= h) return false; const j = ny * w + nx; return estMurHaut(E, j) || (E.code[j] === K.MEUBLE && E.opaque[j]); };
     const ao = (x0g, y0g, x1g, y1g, a, rx, ry, rw, rh) => { const g = c.createLinearGradient(x0g, y0g, x1g, y1g); g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(rx, ry, rw, rh); };
-    const L = TS * 0.46;
-    if (mur(0, -1)) ao(px, py, px, py + L * 1.25, 0.62, px, py, TS, L * 1.25);   // le mur du haut a sa face avant : ombre de contact
-    if (mur(-1, 0)) ao(px, py, px + L, py, 0.5, px, py, L, TS);
-    if (mur(1, 0)) ao(px + TS, py, px + TS - L * 0.7, py, 0.3, px + TS - L * 0.7, py, L * 0.7, TS);
-    if (mur(0, 1)) ao(px, py + TS, px, py + TS - L * 0.6, 0.26, px, py + TS - L * 0.6, TS, L * 0.6);
+    const L = TF * 0.9;
+    if (mur(0, -1)) ao(px, py, px, py + L * 1.25, 0.6, px, py, TF, L * 1.25);   // le mur du haut a sa face avant : ombre de contact
+    if (mur(-1, 0)) ao(px, py, px + L, py, 0.46, px, py, L, TF);
+    if (mur(1, 0)) ao(px + TF, py, px + TF - L * 0.7, py, 0.28, px + TF - L * 0.7, py, L * 0.7, TF);
+    if (mur(0, 1)) ao(px, py + TF, px, py + TF - L * 0.6, 0.24, px, py + TF - L * 0.6, TF, L * 0.6);
   }
-  // 5) décals fixes (sang séché, feuilles, papiers…)
+  // 5) décals fixes (sang séché, feuilles, papiers…) — en unités
   const D = E.rendu ? E.rendu.decals : [];
+  const ux0 = x0 / FIN, uy0 = y0 / FIN, ux1 = (x1 + 1) / FIN, uy1 = (y1 + 1) / FIN;
   for (const dc of D) {
-    if (dc.x < x0 - 2 || dc.x > x1 + 3 || dc.y < y0 - 2 || dc.y > y1 + 3) continue;
+    if (dc.x < ux0 - 2 || dc.x > ux1 + 2 || dc.y < uy0 - 2 || dc.y > uy1 + 2) continue;
     dessinerDecal(c, dc);
   }
 }
 
-// Bord irrégulier de la matière n qui déborde sur la case (x, y) par le côté d (0 droite, 1 gauche, 2 bas, 3 haut).
+// Variations de grande échelle : un calque à 1 pixel par petite case, agrandi avec lissage. Trois bruits superposés :
+// grandes salissures sombres, plaques plus claires (usure, soleil), et un voile plus froid et plus sombre au pied des
+// murs (humidité, crasse qui s'accumule) ; rien sur le néant.
+let tmpVar = null;
+function variations(c, E, X0, Y0, X1, Y1) {
+  const w = E.w, cw = X1 - X0 + 3, ch = Y1 - Y0 + 3;
+  if (!tmpVar || tmpVar.width < cw || tmpVar.height < ch) tmpVar = canvas(Math.max(cw, tmpVar ? tmpVar.width : 0), Math.max(ch, tmpVar ? tmpVar.height : 0));
+  const g = tmpVar.getContext('2d');
+  const im = g.createImageData(cw, ch), d = im.data;
+  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+    const gx = X0 - 1 + x, gy = Y0 - 1 + y, o = (y * cw + x) * 4;
+    if (gx < 0 || gy < 0 || gx >= w || gy >= E.h) continue;
+    const i = gy * w + gx;
+    if (vide(E, i) || E.code[i] === K.MUR) continue;
+    const ux = gx / FIN, uy = gy / FIN;
+    const v = bruit(ux / 7, uy / 7, 4096, 3) * 0.6 + bruit(ux / 2.5, uy / 2.5, 4096, 4) * 0.3 + bruit(ux * 1.3, uy * 1.3, 4096, 5) * 0.1 - 0.5;
+    // près d'un mur : plus sombre (la crasse s'accumule dans les coins)
+    let pres = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = gx + dx, ny = gy + dy; if (nx >= 0 && ny >= 0 && nx < w && ny < E.h && estMurHaut(E, ny * w + nx)) pres++; }
+    if (v > 0 || pres) { d[o] = 6; d[o + 1] = 5; d[o + 2] = 4; d[o + 3] = Math.min(150, Math.max(0, v) * 140 + pres * 9); }
+    else { d[o] = 255; d[o + 1] = 236; d[o + 2] = 200; d[o + 3] = Math.min(20, -v * 40); }
+  }
+  g.putImageData(im, 0, 0);
+  c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  c.drawImage(tmpVar, 0, 0, cw, ch, (X0 - 1) * TF, (Y0 - 1) * TF, cw * TF, ch * TF);
+  c.restore();
+}
+
+// Bord irrégulier de la matière n qui déborde sur la petite case (x, y) par le côté d (0 droite, 1 gauche, 2 bas, 3 haut).
 function bord(c, x, y, d, n) {
-  const px = x * TS, py = y * TS, S = TS;
+  const px = x * TF, py = y * TF, S = TF;
   // points de profondeur le long du côté (bruit continu entre cases voisines : bord cohérent)
   const pts = [];
-  const N = 5;
+  const N = 4;
   for (let k = 0; k <= N; k++) {
     const t = k / N;
     const gx = d < 2 ? (d === 0 ? x + 1 : x) : x + t, gy = d < 2 ? y + t : (d === 2 ? y + 1 : y);
-    const prof = S * (0.12 + 0.3 * bruit(gx * 3.1, gy * 3.1, 4096, 7 + d % 2));
+    const prof = S * (0.15 + 0.55 * bruit(gx * 1.6, gy * 1.6, 4096, 7 + d % 2));
     pts.push([t, prof]);
   }
   c.save();
@@ -103,7 +129,8 @@ function bord(c, x, y, d, n) {
   if (HERBE.has(n)) {
     c.lineWidth = 1; c.lineCap = 'round';
     const r = rng((x * 73856093) ^ (y * 19349663) ^ d);
-    for (let k = 0; k < 9; k++) {
+    for (let k = 0; k < 5; k++) {
+
       const t = r(); const pi = Math.min(N - 1, Math.floor(t * N)); const p = pts[pi][1] + (pts[pi + 1][1] - pts[pi][1]) * (t * N - pi);
       const [qx, qy] = P(t, p);
       const l = 2 + r() * 4, a = (d === 0 ? Math.PI : d === 1 ? 0 : d === 2 ? -Math.PI / 2 : Math.PI / 2) + (r() - 0.5) * 1.4;

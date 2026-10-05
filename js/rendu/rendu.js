@@ -7,7 +7,7 @@
 //   6. toits (vus de dehors), repères lisibles (cible, objectif, coéquipier, ondes, chiffres), météo, étalonnage, grain
 // API conservée : creerRendu(canvas, niveau) → { cam, resize, dessiner(S), ecranVersMonde, mondeVersEcran, suivre,
 //   recaler, setZoom, zoom, taille, viderCache, fermer, effets }
-import { TS, CHUNK, canvas, rng, graine, cercle, ellipse, rr, clamp, angDiff } from './outils.js';
+import { TS, TF, CHUNK, canvas, rng, graine, cercle, ellipse, rr, clamp, angDiff } from './outils.js';
 import { peindreSol } from './sols.js';
 import { peindreMurs, FACE, viderMotifsMur } from './murs.js';
 import { dessinerObjet, spriteHaut, chargerObjetsPhoto, surObjetsPrets, viderSprites } from './objets.js';
@@ -15,7 +15,7 @@ import { dessinerHumain, dessinerMort, dessinerCadavre } from './personnages.js'
 import { creerLumiere, ambiance, SUB } from './lumiere.js';
 import { creerEffets } from './effets.js';
 import { textureToit, chargerSolsPhoto, surSolsPrets } from './textures.js';
-import { K } from '../carte/catalogue.js';
+import { K, FIN, icase } from '../carte/catalogue.js';
 import { CONSTRUCTIONS, tailleConstruction, RECOLTES } from '../data/construction.js';
 import { ZOMBIES } from '../data/zombies.js';
 
@@ -71,10 +71,13 @@ export function creerRendu(cv, niveau) {
     const S = CHUNK * TS;
     const b = canvas(S, S), c = b.getContext('2d');
     c.fillStyle = '#000'; c.fillRect(0, 0, S, S);
-    const x0 = bx * CHUNK, y0 = by * CHUNK, x1 = Math.min(E.w - 1, x0 + CHUNK - 1), y1 = Math.min(E.h - 1, y0 + CHUNK - 1);
-    c.save(); c.translate(-x0 * TS, -y0 * TS);
+    // le bloc couvre CHUNK unités = CHUNK × FIN petites cases
+    const CF = CHUNK * FIN;
+    const x0 = bx * CF, y0 = by * CF, x1 = Math.min(E.w - 1, x0 + CF - 1), y1 = Math.min(E.h - 1, y0 + CF - 1);
+    const ux0 = bx * CHUNK, uy0 = by * CHUNK, ux1 = ux0 + CHUNK, uy1 = uy0 + CHUNK;
+    c.save(); c.translate(-ux0 * TS, -uy0 * TS);
     peindreSol(c, niveau, E, x0, y0, x1, y1);
-    const dans = (R) => R.x + R.w >= x0 - 1 && R.x <= x1 + 1 && R.y + R.h >= y0 - 1 && R.y <= y1 + 2;
+    const dans = (R) => R.x + R.w >= ux0 - 1 && R.x <= ux1 + 1 && R.y + R.h >= uy0 - 1 && R.y <= uy1 + 2;
     const objets = (E.rendu ? E.rendu.objets : []).filter(R => !R.retire && dans(R));
     // un arbre abattu laisse sa souche
     for (const R of (E.rendu ? E.rendu.objets : [])) if (R.retire && dans(R) && RECOLTES[R.type] && RECOLTES[R.type].souche) dessinerObjet(c, { ...R, type: 'souche', E_w: E.w });
@@ -127,7 +130,8 @@ export function creerRendu(cv, niveau) {
     const vx0 = cam.x - W / 2 / pxc, vy0 = cam.y - H / 2 / pxc, vx1 = cam.x + W / 2 / pxc, vy1 = cam.y + H / 2 / pxc;
     // 1) blocs
     const bx0 = Math.max(0, Math.floor(vx0 / CHUNK)), by0 = Math.max(0, Math.floor(vy0 / CHUNK));
-    const bx1 = Math.min(Math.ceil(E.w / CHUNK) - 1, Math.floor(vx1 / CHUNK)), by1 = Math.min(Math.ceil(E.h / CHUNK) - 1, Math.floor(vy1 / CHUNK));
+    const nbx = Math.ceil(E.w / FIN / CHUNK), nby = Math.ceil(E.h / FIN / CHUNK);
+    const bx1 = Math.min(nbx - 1, Math.floor(vx1 / CHUNK)), by1 = Math.min(nby - 1, Math.floor(vy1 / CHUNK));
     let neufs = 0;
     for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
       let b = bloc(E, bx, by, false);
@@ -141,8 +145,8 @@ export function creerRendu(cv, niveau) {
     const k = pxc / TS;
     ctx.save();
     ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (W / 2 + sx0 - cam.x * pxc), dpr * (H / 2 + sy0 - cam.y * pxc));
-    const visCase = (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); if (cx < 0 || cy < 0 || cx >= E.w || cy >= E.h) return 0; const i = cy * E.w + cx; return C.los[i] === C.stamp ? C.vis[i] : 0; };
-    const vuCase = (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); if (cx < 0 || cy < 0 || cx >= E.w || cy >= E.h) return 0; return C.vu[cy * E.w + cx]; };
+    const visCase = (x, y) => { const i = icase(E, x, y); if (i < 0) return 0; return C.los[i] === C.stamp ? C.vis[i] : 0; };
+    const vuCase = (x, y) => { const i = icase(E, x, y); if (i < 0) return 0; return C.vu[i]; };
     // sang des combats (liste de l'ancien combat_vue) → calque persistant
     if (S.sang && S.sang.length) {
       if (sangTraite > S.sang.length) sangTraite = 0;
@@ -255,12 +259,12 @@ export function creerRendu(cv, niveau) {
     }
     ctx.restore();
 
-    // 5) obscurité
-    const rx0 = Math.floor(vx0) - 1, ry0 = Math.floor(vy0) - 1;
-    const cols = Math.ceil(vx1) - rx0 + 2, rows = Math.ceil(vy1) - ry0 + 2;
+    // 5) obscurité (une valeur par petite case, agrandie avec lissage)
+    const rx0 = Math.floor(vx0 * FIN) - 2, ry0 = Math.floor(vy0 * FIN) - 2;
+    const cols = Math.ceil(vx1 * FIN) - rx0 + 3, rows = Math.ceil(vy1 * FIN) - ry0 + 3;
     const amb = ambiance(S.heure ?? 12);
     S.amb = amb;
-    lumiere.masquer(ctx, S, rx0, ry0, cols, rows, (m, mw, mh) => { ctx.imageSmoothingEnabled = true; ctx.drawImage(m, 0, 0, mw, mh, ecranX(rx0), ecranY(ry0), cols * pxc, rows * pxc); });
+    lumiere.masquer(ctx, S, rx0, ry0, cols, rows, (m, mw, mh) => { ctx.imageSmoothingEnabled = true; ctx.drawImage(m, 0, 0, mw, mh, ecranX(rx0 / FIN), ecranY(ry0 / FIN), cols * pxc / FIN, rows * pxc / FIN); });
     lumiere.halos(ctx, S, ecranX, ecranY, pxc);
     // lueur chaude des lampes (soft-light : le noir reste noir)
     for (let q = 0; q < S.nLampes; q++) {
@@ -291,7 +295,7 @@ export function creerRendu(cv, niveau) {
     if (S.carte) dessinerCarte(S);
     // pré-rendu des blocs restants quand il reste du temps
     if (performance.now() - t0 < 6) {
-      for (let by = 0; by < Math.ceil(E.h / CHUNK); by++) for (let bx = 0; bx < Math.ceil(E.w / CHUNK); bx++) {
+      for (let by = 0; by < Math.ceil(E.h / FIN / CHUNK); by++) for (let bx = 0; bx < Math.ceil(E.w / FIN / CHUNK); bx++) {
         const kk = E.idx * 100000 + by * 1000 + bx;
         if (!blocs.has(kk) && blocs.size < MAX_BLOCS) { bloc(E, bx, by, true); return; }
       }
@@ -304,7 +308,8 @@ export function creerRendu(cv, niveau) {
     const cible = s.etat === 'ouverte' ? 1 : 0;
     if (!a) { a = { o: cible }; portesA.set(p.cle, a); }
     a.o += (cible - a.o) * (1 - Math.exp(-dt / 70));
-    const x = p.x * TS, y = p.y * TS, h = p.orient === 'h';
+    // une unité de large, une petite case d'épaisseur : (x, y) = coin d'une boîte TS × TS centrée sur la porte
+    const x = (p.x + 0.5) * TS - TS / 2, y = (p.y + 0.5) * TS - TS / 2, h = p.orient === 'h';
     const metal = p.style === 'metal' || (p.exterieure && p.style !== 'bois' && /grille/.test(p.nom || ''));
     const grille = p.style === 'grille' || /grille/.test(p.nom || '');
     if (s.etat === 'cassee') {
@@ -315,7 +320,7 @@ export function creerRendu(cv, niveau) {
       return;
     }
     // charnière à gauche (porte horizontale) / en haut (verticale) ; s'ouvre vers +y / +x
-    const L = TS * 0.86, e = grille ? 3 : 5.5;
+    const L = TS * 0.86, e = grille ? 2.6 : 4.2;
     const ang = (h ? 0 : Math.PI / 2) + a.o * (Math.PI / 2) * (h ? 1 : -1);
     const hx = h ? x + TS * 0.07 : x + TS / 2, hy = h ? y + TS / 2 : y + TS * 0.07;
     c.save(); c.translate(hx, hy); c.rotate(ang);
@@ -368,7 +373,9 @@ export function creerRendu(cv, niveau) {
     if (s) return s;
     const pid = T.piece;
     const dansPiece = (i) => pid >= 0 && E.piece[i] === pid;
-    const x0 = Math.max(0, T.x), y0 = Math.max(0, T.y), x1 = Math.min(E.w - 1, T.x + T.w - 1), y1 = Math.min(E.h - 1, T.y + T.h - 1);
+    // rectangle du toit (unités) → petites cases
+    const x0 = Math.max(0, Math.round(T.x * FIN)), y0 = Math.max(0, Math.round(T.y * FIN));
+    const x1 = Math.min(E.w - 1, Math.round((T.x + T.w) * FIN) - 1), y1 = Math.min(E.h - 1, Math.round((T.y + T.h) * FIN) - 1);
     const masque = [];
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
       const i = y * E.w + x;
@@ -386,10 +393,10 @@ export function creerRendu(cv, niveau) {
       if (touche && ok) masque.push([x, y]);
     }
     if (!masque.length) { toitsCache.set(cle, null); return null; }
-    const Wp = (x1 - x0 + 1) * TS, Hp = (y1 - y0 + 1) * TS;
+    const Wp = (x1 - x0 + 1) * TF, Hp = (y1 - y0 + 1) * TF;
     const cvs = canvas(Wp, Hp), c = cvs.getContext('2d');
     c.save();
-    c.beginPath(); for (const [x, y] of masque) c.rect((x - x0) * TS - 0.5, (y - y0) * TS - 0.5, TS + 1, TS + 1);
+    c.beginPath(); for (const [x, y] of masque) c.rect((x - x0) * TF - 0.5, (y - y0) * TF - 0.5, TF + 1, TF + 1);
     c.clip();
     c.fillStyle = c.createPattern(textureToit(T.type || 'tuiles'), 'repeat'); c.fillRect(0, 0, Wp, Hp);
     // deux pans : faîtage le long du grand côté, pan du bas plus sombre
@@ -404,20 +411,20 @@ export function creerRendu(cv, niveau) {
       c.fillStyle = 'rgba(255,220,190,0.15)'; if (horiz) c.fillRect(0, Hp / 2 - 2, Wp, 1); else c.fillRect(Wp / 2 - 2, 0, 1, Hp);
     }
     const r = rng(graine(cle));
-    if (r() < 0.6 && T.type !== 'verriere') { const cx = TS * (0.6 + r() * ((x1 - x0) - 0.4)), cy = TS * (0.6 + r() * ((y1 - y0) - 0.4)); c.fillStyle = 'rgba(0,0,0,0.5)'; c.fillRect(cx + 3, cy + 4, TS * 0.4, TS * 0.4); c.fillStyle = '#6a5a4a'; c.fillRect(cx, cy, TS * 0.4, TS * 0.4); c.fillStyle = '#1a1410'; c.fillRect(cx + 4, cy + 4, TS * 0.4 - 8, TS * 0.4 - 8); }
-    if (T.type === 'terrasse' && r() < 0.7) { const cx = TS * (0.5 + r() * ((x1 - x0) - 1)), cy = TS * (0.5 + r() * ((y1 - y0) - 1)); c.fillStyle = '#8a8a86'; rr(c, cx, cy, TS * 0.8, TS * 0.6, 3); c.fill(); c.strokeStyle = '#4a4a48'; c.beginPath(); c.arc(cx + TS * 0.4, cy + TS * 0.3, TS * 0.2, 0, 7); c.stroke(); }
+    if (r() < 0.6 && T.type !== 'verriere') { const cx = TF * (1.2 + r() * Math.max(0, (x1 - x0) - 2.4)), cy = TF * (1.2 + r() * Math.max(0, (y1 - y0) - 2.4)); c.fillStyle = 'rgba(0,0,0,0.5)'; c.fillRect(cx + 3, cy + 4, TS * 0.4, TS * 0.4); c.fillStyle = '#6a5a4a'; c.fillRect(cx, cy, TS * 0.4, TS * 0.4); c.fillStyle = '#1a1410'; c.fillRect(cx + 4, cy + 4, TS * 0.4 - 8, TS * 0.4 - 8); }
+    if (T.type === 'terrasse' && r() < 0.7) { const cx = TF * (1 + r() * Math.max(0, (x1 - x0) - 3)), cy = TF * (1 + r() * Math.max(0, (y1 - y0) - 3)); c.fillStyle = '#8a8a86'; rr(c, cx, cy, TS * 0.8, TS * 0.6, 3); c.fill(); c.strokeStyle = '#4a4a48'; c.beginPath(); c.arc(cx + TS * 0.4, cy + TS * 0.3, TS * 0.2, 0, 7); c.stroke(); }
     c.restore();
     // bord du toit (génoise) : arête sombre tout autour
     c.strokeStyle = 'rgba(10,6,4,0.8)'; c.lineWidth = 2;
+    const dansMasque = new Set(masque.map(([a, b]) => a + ',' + b));
     for (const [x, y] of masque) {
       const bords = [[0, -1], [0, 1], [-1, 0], [1, 0]];
       for (const [dx, dy] of bords) {
-        const n = masque.find(([a, b]) => a === x + dx && b === y + dy);
-        if (n) continue;
-        const px = (x - x0) * TS, py = (y - y0) * TS;
+        if (dansMasque.has((x + dx) + ',' + (y + dy))) continue;
+        const px = (x - x0) * TF, py = (y - y0) * TF;
         c.beginPath();
-        if (dy === -1) { c.moveTo(px, py + 1); c.lineTo(px + TS, py + 1); } else if (dy === 1) { c.moveTo(px, py + TS - 1); c.lineTo(px + TS, py + TS - 1); }
-        else if (dx === -1) { c.moveTo(px + 1, py); c.lineTo(px + 1, py + TS); } else { c.moveTo(px + TS - 1, py); c.lineTo(px + TS - 1, py + TS); }
+        if (dy === -1) { c.moveTo(px, py + 1); c.lineTo(px + TF, py + 1); } else if (dy === 1) { c.moveTo(px, py + TF - 1); c.lineTo(px + TF, py + TF - 1); }
+        else if (dx === -1) { c.moveTo(px + 1, py); c.lineTo(px + 1, py + TF); } else { c.moveTo(px + TF - 1, py); c.lineTo(px + TF - 1, py + TF); }
         c.stroke();
       }
     }
@@ -428,7 +435,7 @@ export function creerRendu(cv, niveau) {
   function dessinerToits(S, E, C, pxc, vx0, vy0, vx1, vy1, dt) {
     const T = E.rendu ? E.rendu.toits : [];
     if (!T.length) return;
-    const ici = E.piece[Math.floor(S.joueur.y) * E.w + Math.floor(S.joueur.x)];
+    const ij = icase(E, S.joueur.x, S.joueur.y), ici = ij >= 0 ? E.piece[ij] : -1;
     const lum = 0.16 + 0.84 * (S.jour ?? 1);
     for (let k = 0; k < T.length; k++) {
       const tt = T[k];
@@ -443,12 +450,12 @@ export function creerRendu(cv, niveau) {
       let a = toitsA.get(cle); if (a == null) a = cible;
       a += (cible - a) * (1 - Math.exp(-dt / 160)); toitsA.set(cle, a);
       if (a < 0.02) continue;
-      const X = ecranX(sp.x0), Y = ecranY(sp.y0), Wd = sp.cv.width / TS * pxc, Hd = sp.cv.height / TS * pxc;
+      const X = ecranX(sp.x0 / FIN), Y = ecranY(sp.y0 / FIN), Wd = sp.cv.width / TS * pxc, Hd = sp.cv.height / TS * pxc;
       ctx.globalAlpha = a;
       ctx.drawImage(sp.cv, X, Y, Wd, Hd);
       // éclairage du ciel (nuit : toit sombre) + liseré lunaire
       ctx.fillStyle = `rgba(0,0,${S.jour < 0.5 ? 8 : 0},${(1 - lum) * (enVue ? 1 : 1.05)})`;
-      ctx.save(); ctx.beginPath(); for (const [x, y] of sp.masque) ctx.rect(ecranX(x) - 0.5, ecranY(y) - 0.5, pxc + 1, pxc + 1); ctx.clip(); ctx.fillRect(X, Y, Wd, Hd); ctx.restore();
+      ctx.save(); ctx.beginPath(); for (const [x, y] of sp.masque) ctx.rect(ecranX(x / FIN) - 0.5, ecranY(y / FIN) - 0.5, pxc / FIN + 1, pxc / FIN + 1); ctx.clip(); ctx.fillRect(X, Y, Wd, Hd); ctx.restore();
       ctx.globalAlpha = 1;
     }
   }
@@ -541,7 +548,7 @@ export function creerRendu(cv, niveau) {
     for (const p of S.pairs) {
       if (p.etage !== E.id) continue;
       const x = ecranX(p.x), y = ecranY(p.y);
-      const v = C.los[Math.floor(p.y) * E.w + Math.floor(p.x)] === C.stamp;
+      const ip = icase(E, p.x, p.y), v = ip >= 0 && C.los[ip] === C.stamp;
       const d = Math.hypot(p.x - S.joueur.x, p.y - S.joueur.y);
       if (x > 30 && y > 30 && x < W - 30 && y < H - 30) {
         etiquette(x, y - pxc * 0.85, (p.nom || 'Coéquipier') + (p.agonie ? ' — à terre !' : ''), p.agonie ? '#ff6a6a' : '#7cc8ff', !v);
@@ -662,13 +669,15 @@ export function creerRendu(cv, niveau) {
       }
       g.putImageData(im, 0, 0);
     }
-    const s = Math.min((W * 0.7) / E.w, (H * 0.75) / E.h);
-    const x = (W - E.w * s) / 2, y = (H - E.h * s) / 2;
-    ctx.fillStyle = 'rgba(8,8,9,0.9)'; rr(ctx, x - 14, y - 34, E.w * s + 28, E.h * s + 48, 6); ctx.fill();
+    const s0 = Math.min((W * 0.7) / E.w, (H * 0.75) / E.h);
+    const x = (W - E.w * s0) / 2, y = (H - E.h * s0) / 2;
+    const s = s0 * FIN;          // échelle des positions (unités)
+    ctx.fillStyle = 'rgba(8,8,9,0.9)'; rr(ctx, x - 14, y - 34, E.w * s0 + 28, E.h * s0 + 48, 6); ctx.fill();
     ctx.fillStyle = '#e6dfcc'; ctx.font = '600 15px Oswald, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.fillText(`${niveau.nom} — ${E.nom}`, x, y - 12);
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(carteCv, x, y, E.w * s, E.h * s);
+    ctx.drawImage(carteCv, x, y, E.w * s0, E.h * s0);
+
     ctx.imageSmoothingEnabled = true;
     for (const p of S.pairs) if (p.etage === E.id) { ctx.fillStyle = '#7cc8ff'; cercle(ctx, x + p.x * s, y + p.y * s, Math.max(3, s * 0.6)); ctx.fill(); }
     if (S.objectif && S.objectif.etage === E.id) { ctx.strokeStyle = '#e8c45a'; ctx.lineWidth = 2; ctx.strokeRect(x + S.objectif.x * s - 4, y + S.objectif.y * s - 4, 8, 8); }

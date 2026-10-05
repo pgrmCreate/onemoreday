@@ -2,7 +2,7 @@
 // dessinerObjet(c, R) : R = { type, x, y, w, h, rot, variante, couleur, cases? } en cases ; c en coordonnées monde.
 // Les houppiers d'arbres, têtes de lampadaires (partie « haut ») sont dessinés à part, AU-DESSUS des personnages
 // (spriteHaut), pour qu'on passe dessous.
-import { TS, rng, canvas, rr, cercle, ellipse, avecOmbre, boite, teinte, hex, rgb } from './outils.js';
+import { TS, TF, rng, canvas, rr, cercle, ellipse, avecOmbre, boite, teinte, hex, rgb } from './outils.js';
 
 const BOIS = '#5d4128', BOIS_C = '#7a5838', BOIS_F = '#3b2819', METAL = '#6e7272', BLANC = '#c9c4b6', DRAP = '#b9b2a0';
 const pick = (r, a) => a[Math.floor(r() * a.length)];
@@ -97,8 +97,9 @@ export function dessinerObjet(c, R) {
   }
   if (R.irregulier) {
     // forme irrégulière (ancien format) : une boîte par case, du type de l'objet
+    // (cases : petites cases de la grille fine, TF px)
     const w = R.E_w;
-    for (const j of R.cases) { const x = (j % w) * TS, y = ((j / w) | 0) * TS; c.save(); c.translate(x, y); D(c, TS, TS, r, R); c.restore(); }
+    for (const j of R.cases) { const x = (j % w) * TF, y = ((j / w) | 0) * TF; c.save(); c.translate(x, y); D(c, TF, TF, r, R); c.restore(); }
     return;
   }
   const rot = R.rot || 0, quart = rot % 2 === 1;

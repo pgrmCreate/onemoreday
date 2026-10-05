@@ -301,13 +301,15 @@ function canalDistant(lieuId, niveau) {
         niveau.etages.forEach((E, k) => { dyn[k].bloque.set(E.bloque); dyn[k].opaque.set(E.opaque); });
         for (const cle of snap.retires || []) { const m = niveau.meubleParCle[cle]; if (m) for (const i of m.cases) { dyn[niveau.etageIdx[m.etage]].bloque[i] = 0; dyn[niveau.etageIdx[m.etage]].opaque[i] = 0; } }
         const tout = { ...snap.portes };
-        for (const p of niveau.portes) { const st = tout[p.cle]; const E = niveau.etages[niveau.etageIdx[p.etage]]; const i = p.y * E.w + p.x; const ferme = st ? (st.etat === 'fermee' || st.etat === 'verrouillee') : (p.etat === 'fermee' || p.etat === 'verrouillee'); dyn[E.idx].bloque[i] = ferme ? 1 : 0; dyn[E.idx].opaque[i] = ferme ? 1 : 0; }
+        for (const p of niveau.portes) { const st = tout[p.cle]; const E = niveau.etages[niveau.etageIdx[p.etage]]; const ferme = st ? (st.etat === 'fermee' || st.etat === 'verrouillee') : (p.etat === 'fermee' || p.etat === 'verrouillee'); const op = ferme && !(p.style === 'grille' || p.style === 'vitree') ? 1 : 0; for (const i of p.cases) { dyn[E.idx].bloque[i] = ferme ? 1 : 0; dyn[E.idx].opaque[i] = op; } }
         appliquerConstructions(niveau, dyn, snap.constructions || []);
       } else if (s.portes) for (const p of niveau.portes) {
         const st = s.portes[p.cle]; if (!st) continue;
-        const E = niveau.etages[niveau.etageIdx[p.etage]]; const i = p.y * E.w + p.x;
+        const E = niveau.etages[niveau.etageIdx[p.etage]];
         const ferme = st.etat === 'fermee' || st.etat === 'verrouillee';
-        dyn[E.idx].bloque[i] = ferme ? 1 : 0; dyn[E.idx].opaque[i] = ferme ? 1 : 0;
+        const op = ferme && !(p.style === 'grille' || p.style === 'vitree') ? 1 : 0;
+        for (const i of p.cases) { dyn[E.idx].bloque[i] = ferme ? 1 : 0; dyn[E.idx].opaque[i] = op; }
+
       }
       (s.joues || []).forEach(i => joues.add(i));
       diffuser('tick', { t: performance.now() });

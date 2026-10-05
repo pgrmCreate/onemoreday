@@ -18,7 +18,7 @@ export function creerEffets() {
   function calque(E) {
     let k = calques.get(E.id);
     if (!k) {
-      const cv = canvas(E.w * TS * ECH_SANG, E.h * TS * ECH_SANG);
+      const cv = canvas((E.uw || E.w) * TS * ECH_SANG, (E.uh || E.h) * TS * ECH_SANG);
       k = { cv, c: cv.getContext('2d'), n: 0 };
       calques.set(E.id, k);
     }
@@ -90,7 +90,7 @@ export function creerEffets() {
   function dessinerCalqueSang(c, E) {
     const k = calques.get(E.id);
     if (!k || !k.n) return;
-    c.drawImage(k.cv, 0, 0, E.w * TS, E.h * TS);
+    c.drawImage(k.cv, 0, 0, (E.uw || E.w) * TS, (E.uh || E.h) * TS);
   }
 
   // Particules et traînées de l'étage (en px monde). vu(x, y) → 0..1 : visibilité de la case (on ne voit rien dans le noir).

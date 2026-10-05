@@ -63,14 +63,44 @@ export const MURS = {
 export const MURS_IDS = Object.keys(MURS);
 export const MUR_IDX = Object.fromEntries(MURS_IDS.map((id, i) => [id, i]));
 
+// Murs « minces » : sur la grille fine, ils n'occupent qu'une petite case d'épaisseur (0,4 m) au lieu d'une unité.
+// Les autres (rocher, haie, néant) restent des masses pleines.
+export const MURS_MINCES = new Set(['platre', 'brique', 'pierre', 'crepi', 'beton', 'bois', 'tole', 'muret', 'grille', 'vitrine']);
+
 // ---------- 3. Ouvertures (codes de cases, hérités de l'ancien format) ----------
 export const K = { VIDE: 0, MUR: 1, SOL: 2, EAU: 3, PORTE: 4, FENETRE: 5, ESC_MONTE: 6, ESC_DESCEND: 7, SORTIE: 8, MEUBLE: 9 };
+
+// ---------- Grille fine ----------
+// Les plans s'écrivent en UNITÉS (1 unité = 0,8 m : l'ancienne « case ») ; le compilateur découpe chaque unité en
+// FIN × FIN petites cases (0,4 m) : murs fins, ouvertures nettes, empreintes d'objets plus justes.
+// Les POSITIONS (joueurs, morts, objets au sol, entrées, marqueurs, constructions) et tous les réglages en « cases »
+// restent en unités ; seules les grilles d'un étage compilé (code, sol, bloque, opaque, piece…) sont fines.
+//   E.w, E.h : dimensions FINES ; une position (x, y) en unités tombe dans la petite case icase(E, x, y).
+export const FIN = 2;
+export const icase = (E, x, y) => {
+  const cx = Math.floor(x * FIN), cy = Math.floor(y * FIN);
+  return cx < 0 || cy < 0 || cx >= E.w || cy >= E.h ? -1 : cy * E.w + cx;
+};
+// Centre (en unités) de la petite case i.
+export const cxCase = (E, i) => (i % E.w + 0.5) / FIN;
+export const cyCase = (E, i) => (((i / E.w) | 0) + 0.5) / FIN;
+// Les FIN × FIN petites cases de l'unité (ux, uy) (hors plan : ignorées).
+export function sousCases(E, ux, uy) {
+  const out = [];
+  for (let dy = 0; dy < FIN; dy++) for (let dx = 0; dx < FIN; dx++) {
+    const x = ux * FIN + dx, y = uy * FIN + dy;
+    if (x >= 0 && y >= 0 && x < E.w && y < E.h) out.push(y * E.w + x);
+  }
+  return out;
+}
 
 // ---------- 4. Objets ----------
 // t: [w, h] taille par défaut (cases, orientation 0 = horizontale) ; cat : catégorie de butin (null = pas fouillable) ;
 // bloque / opaque ; nom (avec article) ; haut : partie dessinée AU-DESSUS des personnages (houppier, auvent) ;
 // lumiere : id de LUMIERES émise ; decor : ne bloque pas (on marche dessus) ; bruit : bruit des pas dessus (×).
 // c : caractère de l'ancien format ASCII (compatibilité).
+// tf : [w, h] empreinte réelle en PETITES cases (grille fine), plus petite que t : le tronc d'un pin, un poteau. L'objet
+//      est dessiné centré sur cette empreinte, à sa taille habituelle.
 export const OBJETS = {
   // — mobilier d'intérieur —
   table:      { c: 't', cat: 'table', bloque: 1, t: [2, 1], nom: 'la table' },
@@ -94,7 +124,7 @@ export const OBJETS = {
   lavabo:     { c: 'w', cat: 'salle_de_bain', bloque: 1, t: [1, 1], nom: 'le lavabo' },
   wc:         { cat: 'salle_de_bain', bloque: 1, t: [1, 1], nom: 'les toilettes' },
   baignoire:  { c: 'h', cat: 'salle_de_bain', bloque: 1, t: [1, 2], nom: 'la baignoire' },
-  chaise:     { c: 'c', cat: null, bloque: 0, t: [1, 1], nom: 'la chaise', decor: 1 },
+  chaise:     { c: 'c', cat: null, bloque: 0, t: [1, 1], tf: [1, 1], nom: 'la chaise', decor: 1 },
   tapis:      { cat: null, bloque: 0, t: [3, 2], nom: 'le tapis', decor: 1, sol: 1 },
   piano:      { cat: null, bloque: 1, t: [2, 1], nom: 'le piano' },
   cheminee:   { cat: null, bloque: 1, t: [2, 1], nom: 'la cheminée' },
@@ -114,17 +144,17 @@ export const OBJETS = {
   gravats:    { c: 'x', cat: null, bloque: 1, t: [1, 1], nom: 'les gravats' },
   arbre:      { c: 'T', cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'l\'arbre', haut: 'houppier' },
   platane:    { cat: null, bloque: 1, opaque: 0, t: [1, 1], nom: 'le platane', haut: 'platane' },
-  cypres:     { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'le cyprès', haut: 'cypres' },
-  pin:        { cat: null, bloque: 1, opaque: 0, t: [1, 1], nom: 'le pin', haut: 'pin' },
-  olivier:    { cat: null, bloque: 1, opaque: 0, t: [1, 1], nom: 'l\'olivier', haut: 'olivier' },
+  cypres:     { cat: null, bloque: 1, opaque: 1, t: [1, 1], tf: [1, 1], nom: 'le cyprès', haut: 'cypres' },
+  pin:        { cat: null, bloque: 1, opaque: 0, t: [1, 1], tf: [1, 1], nom: 'le pin', haut: 'pin' },
+  olivier:    { cat: null, bloque: 1, opaque: 0, t: [1, 1], tf: [1, 1], nom: 'l\'olivier', haut: 'olivier' },
   buisson:    { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'le buisson' },
-  figuier:    { cat: null, bloque: 1, opaque: 0, t: [1, 1], nom: 'le figuier', haut: 'figuier' },
-  amandier:   { cat: null, bloque: 1, opaque: 0, t: [1, 1], nom: 'l\'amandier', haut: 'amandier' },
+  figuier:    { cat: null, bloque: 1, opaque: 0, t: [1, 1], tf: [1, 1], nom: 'le figuier', haut: 'figuier' },
+  amandier:   { cat: null, bloque: 1, opaque: 0, t: [1, 1], tf: [1, 1], nom: 'l\'amandier', haut: 'amandier' },
   roncier:    { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'le roncier' },
   cannier:    { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'les cannes de Provence' },
-  lampadaire: { cat: null, bloque: 1, t: [1, 1], nom: 'le lampadaire', haut: 'lampadaire' },
-  poteau:     { cat: null, bloque: 1, t: [1, 1], nom: 'le poteau' },
-  borne:      { cat: null, bloque: 1, t: [1, 1], nom: 'la borne' },
+  lampadaire: { cat: null, bloque: 1, t: [1, 1], tf: [1, 1], nom: 'le lampadaire', haut: 'lampadaire' },
+  poteau:     { cat: null, bloque: 1, t: [1, 1], tf: [1, 1], nom: 'le poteau' },
+  borne:      { cat: null, bloque: 1, t: [1, 1], tf: [1, 1], nom: 'la borne' },
   benne:      { cat: 'poubelle', bloque: 1, opaque: 1, t: [2, 1], nom: 'la benne' },
   barriere:   { cat: null, bloque: 1, t: [2, 1], nom: 'la barrière' },
   sacs_sable: { cat: null, bloque: 1, t: [2, 1], nom: 'les sacs de sable' },

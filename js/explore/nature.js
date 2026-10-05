@@ -7,7 +7,7 @@
 // cueillir (mûres, figues, pignons… en saison, une fois tous les 3 jours). L'arbre abattu laisse une souche.
 import { G } from '../core/state.js';
 import { REGLAGES } from '../data/reglages.js';
-import { SOLS_IDS } from '../carte/catalogue.js';
+import { SOLS_IDS, FIN } from '../carte/catalogue.js';
 import { RECOLTES } from '../data/construction.js';
 import { RECHERCHE, CATEGORIE_SOL, TABLES_RECHERCHE } from '../data/recherche.js';
 import { meteoCourante } from '../travel/rencontres_voyage.js';
@@ -61,7 +61,8 @@ export function majRecherche(dt) {
   let x = -1, y = -1, i = -1;
   for (let essai = 0; essai < 8; essai++) {
     const a = Math.random() * Math.PI * 2, d = 0.4 + Math.sqrt(Math.random()) * R;
-    const xx = Math.floor(j.x + Math.cos(a) * d), yy = Math.floor(j.y + Math.sin(a) * d);
+    const xx = Math.floor((j.x + Math.cos(a) * d) * FIN), yy = Math.floor((j.y + Math.sin(a) * d) * FIN);
+
     if (xx < 0 || yy < 0 || xx >= E.w || yy >= E.h) continue;
     const ii = yy * E.w + xx;
     if (C.los[ii] !== C.stamp || E.bloque[ii] || E.code[ii] !== 2) continue;
@@ -80,7 +81,7 @@ export function majRecherche(dt) {
   if (Math.random() >= p) return;
   const [id, , qty = 1] = tirer(table, Math.random);
   const n = qty > 1 ? 1 + Math.floor(Math.random() * qty) : 1;
-  const pos = { etage: E.id, x: x + 0.3 + Math.random() * 0.4, y: y + 0.3 + Math.random() * 0.4 };
+  const pos = { etage: E.id, x: (x + 0.25 + Math.random() * 0.5) / FIN, y: (y + 0.25 + Math.random() * 0.5) / FIN };
   Promise.resolve(V.canal.deposer(pos, { id, qty: n })).catch(() => {});
   if (V.ondes.length < 24) V.ondes.push({ x: pos.x, y: pos.y, etage: E.id, age: 0, duree: 2600, trouve: true });
   sfx('loot', { volume: 0.25 });

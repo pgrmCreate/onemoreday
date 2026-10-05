@@ -15,6 +15,7 @@ import { REGLAGES, presetDifficulte } from '../data/reglages.js';
 import { ZOMBIES } from '../data/zombies.js';
 import { QUETES } from '../data/histoire/quetes.js';
 import { parserNiveau } from './niveau.js';
+import { FIN, icase } from '../carte/catalogue.js';
 import { creerSimLieu } from './sim.js';
 import { creerCanalLocal } from './canal_local.js';
 import { creerChamp, calculerLOS, calculerVision, lumiereLampe } from './vision.js';
@@ -410,7 +411,7 @@ function image(t, dt) {
   const opaque = V.canal.grilles ? V.canal.grilles(E.id).opaque : E.opaque;
   calculerLOS(C, opaque, j.x, j.y, 17);
   calculerVision(C, E, jour, j.x, j.y, V.lampes, V.nLampes);
-  const ci = Math.floor(j.y) * E.w + Math.floor(j.x);
+  const ci = Math.max(0, icase(E, j.x, j.y));
   let lumJ = (E.lumBase[ci] || 0) * jour + (E.lumStat ? E.lumStat[ci] || 0 : 0);
   for (let q = 0; q < V.nLampes; q++) lumJ = Math.max(lumJ, lumiereLampe(V.lampes[q], j.x, j.y) * 0.5);
   j.lumiere = Math.min(1, lumJ);
@@ -455,7 +456,7 @@ function image(t, dt) {
   V.rendu.suivre(j.x, j.y, dt, Math.cos(j.dir) * av * (vReelle > 0.2 || I.viseeSouris ? 1 : 0.5), Math.sin(j.dir) * av * (vReelle > 0.2 || I.viseeSouris ? 1 : 0.5));
   const snap = V.snap, Sc = V.scene || (V.scene = { joueur: {}, fouille: { x: 0, y: 0, frac: 0, n: 0 } });
   Sc.E = E; Sc.C = C; Sc.jour = jour; Sc.t = V.tVis; Sc.dt = dtv; Sc.heure = clock.heureDecimale(); Sc.hitstop = ech < 1 ? 1 : 0;
-  { const pi = E.piece[Math.floor(V.j.y) * E.w + Math.floor(V.j.x)]; const P = pi >= 0 ? V.niveau.pieces[pi] : null; Sc.dehors = P ? !!P.exterieur : !!V.niveau.exterieur; }
+  { const ii = icase(E, V.j.x, V.j.y), pi = ii >= 0 ? E.piece[ii] : -1; const P = pi >= 0 ? V.niveau.pieces[pi] : null; Sc.dehors = P ? !!P.exterieur : !!V.niveau.exterieur; }
   Sc.pluie = V.pluie || 0; Sc.vent = V.vent ?? 0.3;
   if (V.dehorsSon !== Sc.dehors) { V.dehorsSon = Sc.dehors; try { mod.audio && mod.audio.setPluieInterieur && mod.audio.setPluieInterieur(!Sc.dehors); } catch (e) {} }
   const J = Sc.joueur;
@@ -490,7 +491,7 @@ function grilleBloque() {
   if (V.canal.grilles) return V.canal.grilles(V.E.id).bloque;
   const E = V.E;
   if (!V._bl || V._blE !== E.id) { V._bl = Uint8Array.from(E.bloque); V._blE = E.id; }
-  for (const p of V.niveau.portes) if (p.etage === E.id) { const s = V.snap.portes[p.cle]; if (s) V._bl[p.y * E.w + p.x] = s.etat === 'fermee' || s.etat === 'verrouillee' ? 1 : 0; }
+  for (const p of V.niveau.portes) if (p.etage === E.id) { const s = V.snap.portes[p.cle]; if (s) { const b = s.etat === 'fermee' || s.etat === 'verrouillee' ? 1 : 0; for (const i of p.cases) V._bl[i] = b; } }
   return V._bl;
 }
 function majInterp(init) {
@@ -528,7 +529,7 @@ function ecouter() {
   const j = V.j, now = performance.now();
   for (const z of V.zListe) {
     if (z.etage !== j.etage) continue;
-    { const cx = Math.floor(z.x1), cy = Math.floor(z.y1), i = cy * V.E.w + cx; if (z._vu || (i >= 0 && V.C.los[i] === V.C.stamp && V.C.vis[i] > 0.3)) continue; }
+    { const i = icase(V.E, z.x1, z.y1); if (z._vu || (i >= 0 && V.C.los[i] === V.C.stamp && V.C.vis[i] > 0.3)) continue; }
     const d = Math.hypot(z.x1 - j.x, z.y1 - j.y);
     const chasse = z.etat === 'chasse';
     const portee = chasse ? Math.max(RX.PERCEPTION.OUIE_JOUEUR, Math.min(12, (ZOMBIES[z.type] || {}).grogne || 8)) : RX.PERCEPTION.OUIE_JOUEUR;
@@ -584,7 +585,8 @@ function sortieProche() {
   let best = null, bd = Infinity;
   for (const s of V.niveau.sorties) {
     const Es = V.niveau.etages[V.niveau.etageIdx[s.etage]];
-    for (const i of s.cases) { const x = i % Es.w, y = (i / Es.w) | 0; const d = Math.hypot(x - V.j.x, y - V.j.y) + (s.etage === V.j.etage ? 0 : 1000); if (d < bd) { bd = d; best = { etage: s.etage, x, y }; } }
+    for (const i of s.cases) { const x = (i % Es.w + 0.5) / FIN - 0.5, y = (((i / Es.w) | 0) + 0.5) / FIN - 0.5; const d = Math.hypot(x + 0.5 - V.j.x, y + 0.5 - V.j.y) + (s.etage === V.j.etage ? 0 : 1000); if (d < bd) { bd = d; best = { etage: s.etage, x, y }; } }
+
   }
   return best;
 }

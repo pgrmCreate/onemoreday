@@ -1,11 +1,20 @@
 // ============ Compilateur — Plan (couches) → niveau jouable ============
 // compilerPlan(plan, def) → niveau : la structure lue par la simulation (sim.js), la vision, l'IA et le rendu.
-// Champs historiques conservés à l'identique (code, sol, bloque, opaque, piece, meuble, porte, deco, lumBase,
-// pieces, meubles, portes, escaliers, entrees, sorties, marqueurs, spawns, pnj, sol, declencheurs) + le rendu :
+// Champs historiques conservés (code, sol, bloque, opaque, piece, meuble, porte, deco, lumBase, pieces, meubles, portes,
+// escaliers, entrees, sorties, marqueurs, spawns, pnj, sol, declencheurs) + le rendu :
 //   E.mur (style de mur par case), E.int (intérieur), E.rendu = { objets, decals, sources (lumières cuites), toits },
 //   E.lumStat (lumière des sources fixes, 0..1, pour la vision et la détection par les morts).
+//
+// GRILLE FINE (catalogue.js, FIN) : le plan est écrit en unités ; chaque unité devient FIN × FIN petites cases.
+// Les murs « minces » ne gardent qu'une petite case d'épaisseur, collée en haut à gauche de leur unité (un treillis :
+// un mur vertical garde sa colonne de gauche, un mur horizontal sa rangée du haut) ; la moitié libérée revient au sol
+// voisin. Une porte fait FIN petites cases de large (une unité), une seule d'épaisseur.
+// Les grilles de E sont FINES (E.w = largeur × FIN) ; tout ce qui est une POSITION reste en unités, avec la convention
+// historique « (x + 0,5, y + 0,5) est le centre » : entrées, morts, PNJ, objets au sol, marqueurs, portes (p.x, p.y),
+// arrivées d'escalier. Meubles : x0..x1 / y0..y1 en unités (centre = (x0 + x1 + 1) / 2). Clés (cle) : en unités, comme
+// avant la grille fine (les sauvegardes restent valables).
 // Aucune dépendance au DOM.
-import { K, SOLS_IDS, SOL_IDX, SOL_AUCUN, MURS, MURS_IDS, MUR_IDX, OBJETS, LUMIERES, DECALS } from './catalogue.js';
+import { K, SOLS_IDS, SOL_IDX, SOL_AUCUN, MURS, MURS_IDS, MUR_IDX, OBJETS, LUMIERES, DECALS, FIN, MURS_MINCES } from './catalogue.js';
 import { creerChamp, calculerLOS } from '../explore/vision.js';
 import { solsAscii } from './ascii.js';
 
@@ -13,33 +22,103 @@ export const DECOS = ['chaise', 'cadavre', 'debris'];
 export const cleCase = (etage, x, y) => `${etage}:${x},${y}`;
 const DX4 = [1, -1, 0, 0], DY4 = [0, 0, 1, -1];
 const PIECE_SOMBRE_DEF = { 0: 1, 1: 0.45, 2: 0 };
+const MINCE = MURS_IDS.map(id => MURS_MINCES.has(id));
+
+// ---------- Découpe d'un étage en petites cases ----------
+// Renvoie un « plan fin » : mêmes champs que l'EtagePlan (sol, mur, ouv, int, force, portes, sorties) à la résolution
+// fine, + src (unité d'origine de chaque petite case), portesG (une entrée par porte : ses petites cases) et, pour
+// l'ancien format, classeSol / solForce / car.
+export function affiner(P) {
+  const F = FIN, w = P.w, h = P.h, W = w * F, H = h * F, N = W * H;
+  const FP = {
+    id: P.id, w: W, h: H, uw: w, uh: h,
+    sol: new Uint8Array(N), mur: new Uint8Array(N), ouv: new Uint8Array(N), int: new Uint8Array(N), src: new Int32Array(N),
+    force: new Map(), portes: new Map(), sorties: new Map(), portesG: [],
+  };
+  const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? -1 : y * w + x);
+  // une unité « trait » : mur mince, porte ou fenêtre (hors plan : compte comme un trait, les bords restent fermés)
+  const trait = (i) => i < 0 || P.ouv[i] === K.PORTE || P.ouv[i] === K.FENETRE || (!P.ouv[i] && P.mur[i] > 0 && MINCE[P.mur[i]]);
+  const bloc = (i) => i < 0 || P.ouv[i] === K.PORTE || P.ouv[i] === K.FENETRE || (!P.ouv[i] && P.mur[i] > 0) || (P.sol[i] === SOL_AUCUN && !P.ouv[i]);
+  const copier = (k, j) => { FP.sol[k] = P.sol[j]; FP.mur[k] = P.mur[j]; FP.ouv[k] = P.ouv[j]; FP.int[k] = P.int[j]; FP.src[k] = j; };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    const fi = (dx, dy) => (y * F + dy) * W + x * F + dx;
+    if (!trait(i)) { for (let dy = 0; dy < F; dy++) for (let dx = 0; dx < F; dx++) copier(fi(dx, dy), i); continue; }
+    const iD = at(x + 1, y), iB = at(x, y + 1), iDB = at(x + 1, y + 1);
+    let garde; // garde(dx, dy) : la petite case reste mur / ouverture
+    if (P.ouv[i] === K.PORTE) {
+      const horiz = bloc(at(x - 1, y)) && bloc(iD);
+      const vert = bloc(at(x, y - 1)) && bloc(iB);
+      const h2 = horiz || !vert;
+      garde = (dx, dy) => (h2 ? dy === 0 : dx === 0);
+      const cases = [];
+      for (let dy = 0; dy < F; dy++) for (let dx = 0; dx < F; dx++) if (garde(dx, dy)) cases.push(fi(dx, dy));
+      FP.portesG.push({ pd: P.portes.get(i) || {}, ux: x, uy: y, cases, orient: h2 ? 'h' : 'v' });
+    } else {
+      const tD = trait(iD), tB = trait(iB), tDB = trait(iDB);
+      garde = (dx, dy) => (dx === 0 || tD) && (dy === 0 || tB) && (dx === 0 || dy === 0 || tDB);
+    }
+    // donneur de la moitié libérée : le voisin de droite, du dessous ou en diagonale qui n'est pas un trait
+    const donneur = (dx, dy) => {
+      const cand = dx && dy ? [iDB, iD, iB] : dx ? [iD, iDB] : [iB, iDB];
+      for (const j of cand) if (j >= 0 && !trait(j)) return j;
+      return -1;
+    };
+    for (let dy = 0; dy < F; dy++) for (let dx = 0; dx < F; dx++) {
+      const k = fi(dx, dy);
+      if (garde(dx, dy)) { copier(k, i); continue; }
+      const j = donneur(dx, dy);
+      if (j < 0) copier(k, i); else copier(k, j);
+      if (P.ouv[i] === K.PORTE && FP.ouv[k] === K.PORTE) FP.ouv[k] = 0;   // seule la porte elle-même reste une porte
+    }
+  }
+  for (let k = 0; k < N; k++) {
+    const j = FP.src[k];
+    const f = P.force.get(j); if (f) FP.force.set(k, f);
+    if (FP.ouv[k] === K.SORTIE) FP.sorties.set(k, P.sorties.get(j) || { echelle: null });
+  }
+  for (const g of FP.portesG) for (const k of g.cases) FP.portes.set(k, g.pd);
+  if (P.classeSol) {
+    FP.classeSol = new Uint8Array(N); FP.solForce = new Map(); FP.car = P.car ? new Array(N) : null;
+    for (let k = 0; k < N; k++) {
+      const j = FP.src[k];
+      FP.classeSol[k] = P.classeSol[j];
+      if (P.solForce && P.solForce.has(j)) FP.solForce.set(k, P.solForce.get(j));
+      if (FP.car) FP.car[k] = P.car[j];
+    }
+  }
+  return FP;
+}
 
 export function compilerPlan(plan, def = {}) {
   const meta = plan.meta || {};
+  const F = FIN;
   const avertissements = [];
   const avert = (m) => avertissements.push(m);
   const niv = {
-    id: meta.id, nom: meta.nom || meta.id, exterieur: !!meta.exterieur,
+    id: meta.id, nom: meta.nom || meta.id, exterieur: !!meta.exterieur, fin: F,
     typeButin: meta.typeButin || null, pool: meta.pool || null, morts: meta.morts || null, def,
     etages: [], etageIdx: {}, pieces: [], meubles: [], meubleParCle: {}, portes: [], porteParCle: {},
     escaliers: [], entrees: {}, sorties: [], marqueurs: {}, spawns: [], pnj: [], sol: [], declencheurs: [],
     avertissements, format: 'couches',
   };
+  const FPs = plan.etages.map(affiner);
 
   // ---------- 1. Grilles de base ----------
   plan.etages.forEach((P, idx) => {
-    const { w, h } = P, n = w * h;
+    const FP = FPs[idx];
+    const { w, h } = FP, n = w * h;
     const E = {
-      id: P.id, nom: P.nom, idx, w, h, monte: P.monte, descend: P.descend, def: P,
+      id: P.id, nom: P.nom, idx, w, h, uw: P.w, uh: P.h, monte: P.monte, descend: P.descend, def: FP,
       code: new Uint8Array(n), sol: new Uint8Array(n), bloque: new Uint8Array(n), opaque: new Uint8Array(n),
       piece: new Int16Array(n).fill(-1), meuble: new Int32Array(n).fill(-1), porte: new Int32Array(n).fill(-1),
       deco: new Uint8Array(n), lumBase: new Float32Array(n), lumStat: new Float32Array(n),
-      mur: Uint8Array.from(P.mur), int: Uint8Array.from(P.int), car: null,
+      mur: Uint8Array.from(FP.mur), int: Uint8Array.from(FP.int), car: null,
       rendu: { objets: [], decals: [], sources: [], toits: [] },
     };
     niv.etageIdx[E.id] = idx; niv.etages.push(E);
     for (let i = 0; i < n; i++) {
-      const o = P.ouv[i], m = P.mur[i], s = P.sol[i];
+      const o = FP.ouv[i], m = FP.mur[i], s = FP.sol[i];
       let k;
       if (o) k = o;
       else if (m) k = MURS_IDS[m] === 'vide' ? K.VIDE : K.MUR;
@@ -51,21 +130,50 @@ export function compilerPlan(plan, def = {}) {
       if (k === K.VIDE) { bl = 1; op = 1; }
       else if (k === K.MUR) { const M = MURS[MURS_IDS[m]] || {}; bl = M.bloque ?? 1; op = M.opaque ?? 1; }
       else if (k === K.FENETRE || k === K.EAU) { bl = 1; op = 0; }
-      else if (k === K.PORTE) { const pd = P.portes.get(i) || {}; const ouv = pd.etat === 'ouverte'; bl = ouv ? 0 : 1; op = ouv ? 0 : (pd.style === 'grille' || pd.style === 'vitree' ? 0 : 1); }
+      else if (k === K.PORTE) { const pd = FP.portes.get(i) || {}; const ouv = pd.etat === 'ouverte'; bl = ouv ? 0 : 1; op = ouv ? 0 : (pd.style === 'grille' || pd.style === 'vitree' ? 0 : 1); }
       E.bloque[i] = bl; E.opaque[i] = op;
     }
   });
 
   // ---------- 2. Objets (avant les pièces : ils comptent pour l'intérieur/extérieur) ----------
   plan.etages.forEach((P, idx) => {
-    const E = niv.etages[idx];
+    const E = niv.etages[idx], FP = FPs[idx];
+    const { w, h } = E;
+    const sol = (x, y) => x >= 0 && y >= 0 && x < w && y < h && E.code[y * w + x] === K.SOL && !E.bloque[y * w + x];
+    const mur = (x, y) => x >= 0 && y >= 0 && x < w && y < h && (E.code[y * w + x] === K.MUR || E.code[y * w + x] === K.FENETRE);
     for (const ob of P.objets) {
       const d = OBJETS[ob.type] || OBJETS.caisson;
-      const cases = ob.cases ? ob.cases.slice() : [];
-      if (!cases.length) for (let y = ob.y; y < ob.y + ob.h; y++) for (let x = ob.x; x < ob.x + ob.w; x++) if (x >= 0 && y >= 0 && x < E.w && y < E.h) cases.push(y * E.w + x);
+      const R = { ...ob, d };
+      let cases = [];
+      if (ob.cases && ob.cases.length) {
+        // forme irrégulière (ancien format) : cases en unités → petites cases
+        for (const j of ob.cases) { const ux = j % P.w, uy = (j / P.w) | 0; for (let dy = 0; dy < F; dy++) for (let dx = 0; dx < F; dx++) cases.push((uy * F + dy) * w + ux * F + dx); }
+        R.irregulier = true; R.cle0 = [ob.cases[0] % P.w, (ob.cases[0] / P.w) | 0];
+      } else {
+        let fx = Math.round(ob.x * F), fy = Math.round(ob.y * F);
+        const fw = Math.max(1, Math.round(ob.w * F)), fh = Math.max(1, Math.round(ob.h * F));
+        R.cle0 = [Math.floor(ob.x), Math.floor(ob.y)];
+        // un meuble posé contre un mur du haut ou de gauche s'y colle (la moitié du mur libérée ne laisse pas un vide derrière)
+        if (!d.decor || ob.conteneur || ob.marqueur) {
+          let ok = true; for (let y = fy; y < fy + fh && ok; y++) ok = sol(fx - 1, y) && mur(fx - 2, y);
+          if (ok) fx -= 1;
+          ok = true; for (let x = fx; x < fx + fw && ok; x++) ok = sol(x, fy - 1) && mur(x, fy - 2);
+          if (ok) fy -= 1;
+        }
+        // empreinte réelle plus petite (tronc, poteau) : centrée ; le dessin garde sa taille, centré sur elle
+        let ex = fx, ey = fy, ew = fw, eh = fh;
+        if (d.tf && !ob.w && !ob.h || d.tf && ob.w === d.t[0] && ob.h === d.t[1]) {
+          const q = (ob.rot || 0) % 2 === 1;
+          const tw = Math.min(fw, q ? d.tf[1] : d.tf[0]), th = Math.min(fh, q ? d.tf[0] : d.tf[1]);
+          ex = fx + Math.floor((fw - tw) / 2); ey = fy + Math.floor((fh - th) / 2); ew = tw; eh = th;
+        }
+        for (let y = ey; y < ey + eh; y++) for (let x = ex; x < ex + ew; x++) if (x >= 0 && y >= 0 && x < w && y < h) cases.push(y * w + x);
+        // boîte de dessin (unités) : centrée sur l'empreinte, à la taille du plan
+        R.x = (ex + ew / 2) / F - ob.w / 2; R.y = (ey + eh / 2) / F - ob.h / 2;
+      }
       const bloque = ob.bloque != null ? (ob.bloque ? 1 : 0) : (d.bloque || 0);
       const opaque = ob.opaque != null ? (ob.opaque ? 1 : 0) : (d.opaque || 0);
-      const R = { ...ob, d, cases, irregulier: !!(ob.cases && ob.cases.length), bloque, opaque, haut: ob.haut ?? d.haut ?? null, lumiere: ob.lumiere ?? d.lumiere ?? null };
+      Object.assign(R, { cases, bloque, opaque, haut: ob.haut ?? d.haut ?? null, lumiere: ob.lumiere ?? d.lumiere ?? null });
       E.rendu.objets.push(R);
       // Un objet de décor (chaise, corps, débris, tapis, housse) reste du sol — sauf s'il a un contenu ou un marqueur.
       const meuble = !d.decor || !!ob.conteneur || !!ob.marqueur;
@@ -83,7 +191,7 @@ export function compilerPlan(plan, def = {}) {
       R._meuble = meuble && cases.some(i => E.code[i] === K.MEUBLE);
     }
     // forçages de légende
-    for (const [i, f] of P.force) { if (f.bloque != null) E.bloque[i] = f.bloque ? 1 : 0; if (f.opaque != null) E.opaque[i] = f.opaque ? 1 : 0; }
+    for (const [i, f] of FP.force) { if (f.bloque != null) E.bloque[i] = f.bloque ? 1 : 0; if (f.opaque != null) E.opaque[i] = f.opaque ? 1 : 0; }
   });
 
   // ---------- 3. Pièces : remplissage (murs, portes et fenêtres séparent) ----------
@@ -113,19 +221,23 @@ export function compilerPlan(plan, def = {}) {
         }
       }
       Pc.exterieur = nExt > nInt || (niv.exterieur && nInt === 0);
+      Pc.n = Pc.n / (F * F);      // surface en unités (comme avant la grille fine)
     }
   }
   // pièces nommées
   plan.etages.forEach((P, idx) => {
-    const E = niv.etages[idx];
-    for (const pd of P.nommages) {
-      if (pd.x < 0 || pd.y < 0 || pd.x >= E.w || pd.y >= E.h) { avert(`pièce « ${pd.nom} » : position hors plan`); continue; }
-      let pid = E.piece[pd.y * E.w + pd.x];
-      if (pid < 0) { // la case tombe sur un meuble collé au mur : cherche une case voisine
-        for (let r = 1; r <= 2 && pid < 0; r++) for (let dy = -r; dy <= r && pid < 0; dy++) for (let dx = -r; dx <= r && pid < 0; dx++) {
-          const x = pd.x + dx, y = pd.y + dy; if (x >= 0 && y >= 0 && x < E.w && y < E.h) pid = E.piece[y * E.w + x];
-        }
+    const E = niv.etages[idx], FP = FPs[idx];
+    const pieceEn = (ux, uy) => { // la pièce de l'unité (ux, uy) : son centre, sinon une de ses petites cases, sinon autour
+      for (let r = 0; r <= 2 * F; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x = Math.floor((ux + 0.5) * F) + dx, y = Math.floor((uy + 0.5) * F) + dy;
+        if (x >= 0 && y >= 0 && x < E.w && y < E.h && E.piece[y * E.w + x] >= 0) return E.piece[y * E.w + x];
       }
+      return -1;
+    };
+    for (const pd of P.nommages) {
+      if (pd.x < 0 || pd.y < 0 || pd.x >= P.w || pd.y >= P.h) { avert(`pièce « ${pd.nom} » : position hors plan`); continue; }
+      const pid = pieceEn(pd.x, pd.y);
       if (pid < 0) { avert(`pièce « ${pd.nom} » : (${pd.x},${pd.y}) sur ${E.id} n'est pas dans une pièce (mur, porte ?)`); continue; }
       const Pc = niv.pieces[pid];
       if (pd.nom) Pc.nom = pd.nom;
@@ -133,22 +245,22 @@ export function compilerPlan(plan, def = {}) {
       if (pd.sombre != null) Pc.sombre = pd.sombre;
       if (pd.exterieur != null) Pc.exterieur = !!pd.exterieur;
     }
-    // toits : rattachés à la pièce de leur case de référence
+    // toits : rattachés à la pièce de leur case de référence (rectangles en unités)
     for (const t of P.toits) {
       const [rx, ry] = t.ref || [t.x + 1, t.y + 1];
-      const pid = rx >= 0 && ry >= 0 && rx < E.w && ry < E.h ? E.piece[ry * E.w + rx] : -1;
+      const pid = rx >= 0 && ry >= 0 && rx < P.w && ry < P.h ? pieceEn(rx, ry) : -1;
       E.rendu.toits.push({ x: t.x, y: t.y, w: t.w, h: t.h, type: t.type, piece: pid });
       if (pid >= 0) niv.pieces[pid].toit = t.type;
     }
     // ancien format : matières selon la pièce, toits automatiques sur les intérieurs d'un lieu extérieur
-    if (P.classeSol) solsAscii(niv, E, P, plan.solDefaut || 'parquet');
-    if (P.car) E.car = P.car;
+    if (FP.classeSol) solsAscii(niv, E, FP, plan.solDefaut || 'parquet');
+    if (FP.car) E.car = FP.car;
     if (plan.toitsAuto && niv.exterieur) {
       for (const Pc of niv.pieces) {
         if (Pc.etage !== E.id || Pc.exterieur || Pc.toit || Pc.n < 3) continue;
         const k = (Pc.x0 * 7 + Pc.y0 * 13) % 10;
         Pc.toit = k < 7 ? 'tuiles' : k < 9 ? 'terrasse' : 'zinc';
-        E.rendu.toits.push({ x: Pc.x0 - 1, y: Pc.y0 - 1, w: Pc.x1 - Pc.x0 + 3, h: Pc.y1 - Pc.y0 + 3, type: Pc.toit, piece: Pc.id });
+        E.rendu.toits.push({ x: (Pc.x0 - 1) / F, y: (Pc.y0 - 1) / F, w: (Pc.x1 - Pc.x0 + 3) / F, h: (Pc.y1 - Pc.y0 + 3) / F, type: Pc.toit, piece: Pc.id });
       }
     }
   });
@@ -159,8 +271,10 @@ export function compilerPlan(plan, def = {}) {
 
   // ---------- 5. Meubles, portes, escaliers, sorties ----------
   plan.etages.forEach((P, idx) => {
-    const E = niv.etages[idx];
+    const E = niv.etages[idx], FP = FPs[idx];
     const { w, h } = E;
+    // petites cases d'une unité (pour retrouver un meuble ou une porte posés « sur » une unité)
+    const dansUnite = (ux, uy, grille) => { for (let dy = 0; dy < F; dy++) for (let dx = 0; dx < F; dx++) { const x = ux * F + dx, y = uy * F + dy; if (x < w && y < h && grille[y * w + x] >= 0) return grille[y * w + x]; } return -1; };
     for (const R of E.rendu.objets) {
       if (!R._meuble) continue;
       const cases = R.cases.filter(i => E.code[i] === K.MEUBLE);
@@ -169,10 +283,11 @@ export function compilerPlan(plan, def = {}) {
       for (const j of cases) { const cx = j % w, cy = (j / w) | 0; if (cx < x0) x0 = cx; if (cy < y0) y0 = cy; if (cx > x1) x1 = cx; if (cy > y1) y1 = cy; }
       const cont = R.conteneur;
       const d = R.d;
-      const cle = cleCase(E.id, cases[0] % w, (cases[0] / w) | 0);
+      let cle = cleCase(E.id, R.cle0[0], R.cle0[1]);
+      if (niv.meubleParCle[cle]) cle = cleCase(E.id, (x0 / F).toFixed(1), (y0 / F).toFixed(1));
       const m = {
         cle, idx: niv.meubles.length, etage: E.id, type: R.type, car: R.car || null, cat: (cont && cont.categorie) || R.cat || d.cat || null,
-        cases, x0, y0, x1, y1, taille: cases.length,
+        cases, x0: x0 / F, y0: y0 / F, x1: (x1 + 1) / F - 1, y1: (y1 + 1) / F - 1, taille: Math.max(1, Math.round(cases.length / (F * F))),
         conteneur: cont === false ? false : !!(cont || R.cat || d.cat),
         nom: (cont && cont.nom) ? cont.nom : R.nom || d.nom || 'le meuble',
         items: cont && Array.isArray(cont.items) ? cont.items.map(it => ({ id: it.id, qty: it.qty || 1 })) : null,
@@ -184,21 +299,36 @@ export function compilerPlan(plan, def = {}) {
       R.meuble = m.idx;
       niv.meubles.push(m); niv.meubleParCle[cle] = m;
       for (const j of cases) E.meuble[j] = m.idx;
-      if (m.marqueur) ajouterMarqueur(niv, m.marqueur, { etage: E.id, x: cases[0] % w, y: (cases[0] / w) | 0, meuble: cle, def: R }, avert);
+      if (m.marqueur) ajouterMarqueur(niv, m.marqueur, { etage: E.id, x: R.cle0[0], y: R.cle0[1], meuble: cle, def: R }, avert);
     }
-    for (const [i, pd] of P.portes) {
-      const x = i % w, y = (i / w) | 0;
-      const horiz = murOuBloc(E, x - 1, y) && murOuBloc(E, x + 1, y);
-      const verrou = normaliserVerrou(pd);
+    for (const g of FP.portesG) {
+      const pd = g.pd, verrou = normaliserVerrou(pd);
+      let bx0 = w, by0 = h, bx1 = 0, by1 = 0;
+      for (const j of g.cases) { const cx = j % w, cy = (j / w) | 0; if (cx < bx0) bx0 = cx; if (cy < by0) by0 = cy; if (cx > bx1) bx1 = cx; if (cy > by1) by1 = cy; }
+      const pieces = new Set();
+      let ext = !!pd.exterieure;
+      for (const j of g.cases) {
+        const x = j % w, y = (j / w) | 0;
+        for (let d = 0; d < 4; d++) {
+          const nx = x + DX4[d], ny = y + DY4[d];
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const pp = E.piece[ny * w + nx];
+          if (pp >= 0) { pieces.add(pp); if (niv.pieces[pp].exterieur) ext = true; }
+        }
+      }
       const p = {
-        cle: cleCase(E.id, x, y), idx: niv.portes.length, etage: E.id, x, y,
-        etat: pd.etat, verrou, exterieure: !!pd.exterieure || bordExterieur(niv, E, x, y),
-        orient: horiz ? 'h' : 'v', marqueur: pd.marqueur || null, nom: pd.nom || null, style: pd.style || null,
+        cle: cleCase(E.id, g.ux, g.uy), idx: niv.portes.length, etage: E.id,
+        // centre de la porte (unités) = (x + 0,5, y + 0,5) ; boîte du battant en unités
+        x: (bx0 + bx1 + 1) / (2 * F) - 0.5, y: (by0 + by1 + 1) / (2 * F) - 0.5,
+        bx: bx0 / F, by: by0 / F, bw: (bx1 - bx0 + 1) / F, bh: (by1 - by0 + 1) / F, cases: g.cases, pieces: [...pieces],
+        etat: pd.etat || 'fermee', verrou, exterieure: ext,
+        orient: g.orient, marqueur: pd.marqueur || null, nom: pd.nom || null, style: pd.style || null,
         deux: !!(pd.deux || (verrou && verrou.deux)),
       };
       if (p.etat === 'verrouillee' && !p.verrou) p.verrou = { forcer: 'pied_de_biche' };
-      niv.portes.push(p); niv.porteParCle[p.cle] = p; E.porte[i] = p.idx;
-      if (p.marqueur) ajouterMarqueur(niv, p.marqueur, { etage: E.id, x, y, porte: p.cle, def: pd }, avert);
+      niv.portes.push(p); niv.porteParCle[p.cle] = p;
+      for (const j of g.cases) E.porte[j] = p.idx;
+      if (p.marqueur) ajouterMarqueur(niv, p.marqueur, { etage: E.id, x: g.ux, y: g.uy, porte: p.cle, def: pd }, avert);
     }
     const vu = new Uint8Array(w * h);
     for (let i = 0; i < w * h; i++) {
@@ -208,14 +338,14 @@ export function compilerPlan(plan, def = {}) {
       if (k === K.ESC_MONTE || k === K.ESC_DESCEND) {
         const cases = groupe(E, i, (j) => E.code[j] === k, vu);
         niv.escaliers.push({ cle: cleCase(E.id, x, y), etage: E.id, sens: k === K.ESC_MONTE ? 'monte' : 'descend', cases,
-          cx: moy(cases, w, 0), cy: moy(cases, w, 1), vers: k === K.ESC_MONTE ? E.monte : E.descend, arrivee: null });
+          cx: moy(cases, w, 0) / F, cy: moy(cases, w, 1) / F, vers: k === K.ESC_MONTE ? E.monte : E.descend, arrivee: null });
       } else if (k === K.SORTIE) {
         const cases = groupe(E, i, (j) => E.code[j] === K.SORTIE, vu);
-        let ech = null; for (const j of cases) { const s = P.sorties.get(j); if (s && s.echelle) ech = s.echelle; }
-        niv.sorties.push({ cle: cleCase(E.id, x, y), etage: E.id, cases, cx: moy(cases, w, 0), cy: moy(cases, w, 1), echelle: ech });
+        let ech = null; for (const j of cases) { const s = FP.sorties.get(j); if (s && s.echelle) ech = s.echelle; }
+        niv.sorties.push({ cle: cleCase(E.id, x, y), etage: E.id, cases, cx: moy(cases, w, 0) / F, cy: moy(cases, w, 1) / F, echelle: ech });
       }
     }
-    // entrées, morts, PNJ, objets au sol, marqueurs, déclencheurs
+    // entrées, morts, PNJ, objets au sol, marqueurs, déclencheurs (positions en unités)
     for (const [nom, e] of Object.entries(P.entrees)) {
       if (niv.entrees[nom]) { avert(`entrée « ${nom} » définie deux fois`); continue; }
       niv.entrees[nom] = { etage: E.id, x: e.x | 0, y: e.y | 0 };
@@ -224,10 +354,11 @@ export function compilerPlan(plan, def = {}) {
     for (const q of P.pnj) niv.pnj.push({ id: q.id, etage: E.id, x: q.x | 0, y: q.y | 0, si: q.si, marqueur: q.marqueur, nom: q.nom });
     for (const o of P.solItems) niv.sol.push(o.doc ? { etage: E.id, x: o.x | 0, y: o.y | 0, doc: o.doc, marqueur: o.marqueur || null } : { etage: E.id, x: o.x | 0, y: o.y | 0, id: o.id, qty: o.qty || 1 });
     for (const mk of P.marqueurs) {
-      const x = mk.x | 0, y = mk.y | 0, i = y * w + x;
+      const x = mk.x | 0, y = mk.y | 0;
       const info = { etage: E.id, x, y, def: mk, eau: mk.eau || null, pnj: mk.pnj || null, doc: mk.document || null };
-      if (E.meuble[i] >= 0 && mk.meuble !== false) { const m = niv.meubles[E.meuble[i]]; info.meuble = m.cle; if (!m.marqueur) m.marqueur = mk.id; }
-      else if (E.porte[i] >= 0) { const p = niv.portes[E.porte[i]]; info.porte = p.cle; if (!p.marqueur) p.marqueur = mk.id; }
+      const mi = dansUnite(x, y, E.meuble), pi = dansUnite(x, y, E.porte);
+      if (mi >= 0 && mk.meuble !== false) { const m = niv.meubles[mi]; info.meuble = m.cle; if (!m.marqueur) m.marqueur = mk.id; }
+      else if (pi >= 0) { const p = niv.portes[pi]; info.porte = p.cle; if (!p.marqueur) p.marqueur = mk.id; }
       if (mk.document) niv.sol.push({ etage: E.id, x, y, doc: mk.document, marqueur: mk.id });
       if (mk.objet) { const ob = Array.isArray(mk.objet) ? { id: mk.objet[0], qty: mk.objet[1] || 1 } : { id: mk.objet, qty: 1 }; niv.sol.push({ etage: E.id, x, y, ...ob }); }
       ajouterMarqueur(niv, mk.id, info, avert);
@@ -254,7 +385,7 @@ export function compilerPlan(plan, def = {}) {
   if (!niv.entrees.defaut) {
     const nom = Object.keys(niv.entrees)[0];
     if (nom) niv.entrees.defaut = niv.entrees[nom];
-    else if (niv.sorties[0]) { const s = niv.sorties[0]; const E = niv.etages[niv.etageIdx[s.etage]]; niv.entrees.defaut = { etage: s.etage, x: s.cases[0] % E.w, y: (s.cases[0] / E.w) | 0 }; }
+    else if (niv.sorties[0]) { const s = niv.sorties[0]; const E = niv.etages[niv.etageIdx[s.etage]]; niv.entrees.defaut = { etage: s.etage, x: Math.floor((s.cases[0] % E.w) / F), y: Math.floor(((s.cases[0] / E.w) | 0) / F) }; }
     else if (niv.etages[0]) niv.entrees.defaut = { etage: niv.etages[0].id, x: 1, y: 1 };
   }
   return niv;
@@ -275,20 +406,6 @@ export function groupe(E, i0, ok, vu) {
   }
   return out;
 }
-function murOuBloc(E, x, y) {
-  if (x < 0 || y < 0 || x >= E.w || y >= E.h) return true;
-  const c = E.code[y * E.w + x];
-  return c === K.MUR || c === K.FENETRE || c === K.VIDE || c === K.PORTE;
-}
-function bordExterieur(niv, E, x, y) {
-  for (let d = 0; d < 4; d++) {
-    const nx = x + DX4[d], ny = y + DY4[d];
-    if (nx < 0 || ny < 0 || nx >= E.w || ny >= E.h) continue;
-    const p = E.piece[ny * E.w + nx];
-    if (p >= 0 && niv.pieces[p].exterieur) return true;
-  }
-  return false;
-}
 export function normaliserVerrou(L) {
   if (!L) return null;
   let v = L.verrou;
@@ -303,19 +420,41 @@ function ajouterMarqueur(niv, id, info, avert) {
   if (niv.marqueurs[id]) { if (!niv.marqueurs[id].meuble || !info.meuble || niv.marqueurs[id].meuble !== info.meuble) avert(`marqueur « ${id} » placé plusieurs fois (le premier fait foi)`); return; }
   niv.marqueurs[id] = { id, ...info };
 }
+// Arrivée d'un escalier : une petite case libre à côté, dont le CENTRE est (x + 0,5, y + 0,5) en unités.
 function caseArrivee(niv, esc) {
   const E = niv.etages[niv.etageIdx[esc.etage]];
+  const F = FIN, cx = esc.cx * F, cy = esc.cy * F;
   let best = null, bd = Infinity;
   for (const j of esc.cases) {
     const x = j % E.w, y = (j / E.w) | 0;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -F; dy <= F; dy++) for (let dx = -F; dx <= F; dx++) {
       if (!dx && !dy) continue;
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= E.w || ny >= E.h) continue;
+      // il faut la place d'un corps : la petite case et ses voisines libres
+      let libre = true;
+      for (let ey = -1; ey <= 1 && libre; ey++) for (let ex = -1; ex <= 1 && libre; ex++) {
+        const qx = nx + ex, qy = ny + ey;
+        if (qx < 0 || qy < 0 || qx >= E.w || qy >= E.h) { libre = false; break; }
+        const k = qy * E.w + qx;
+        if (E.bloque[k] && E.code[k] !== K.PORTE) libre = false;
+      }
       const k = ny * E.w + nx;
-      if (E.bloque[k] || E.code[k] === K.ESC_MONTE || E.code[k] === K.ESC_DESCEND || E.code[k] === K.SORTIE || E.code[k] === K.PORTE) continue;
-      const dd = (nx + 0.5 - esc.cx) ** 2 + (ny + 0.5 - esc.cy) ** 2 + (dx && dy ? 0.5 : 0);
-      if (dd < bd) { bd = dd; best = { etage: E.id, x: nx, y: ny }; }
+      if (!libre || E.code[k] === K.ESC_MONTE || E.code[k] === K.ESC_DESCEND || E.code[k] === K.SORTIE || E.code[k] === K.PORTE) continue;
+      const dd = (nx + 0.5 - cx) ** 2 + (ny + 0.5 - cy) ** 2 + (dx && dy ? 0.5 : 0);
+      if (dd < bd) { bd = dd; best = { etage: E.id, x: (nx + 0.5) / F - 0.5, y: (ny + 0.5) / F - 0.5 }; }
+    }
+  }
+  if (!best) { // repli : la case libre la plus proche, même étroite
+    for (const j of esc.cases) {
+      const x = j % E.w, y = (j / E.w) | 0;
+      for (let dy = -F; dy <= F; dy++) for (let dx = -F; dx <= F; dx++) {
+        const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= E.w || ny >= E.h) continue;
+        const k = ny * E.w + nx;
+        if (E.bloque[k] || E.code[k] === K.ESC_MONTE || E.code[k] === K.ESC_DESCEND || E.code[k] === K.SORTIE || E.code[k] === K.PORTE) continue;
+        const dd = (nx + 0.5 - cx) ** 2 + (ny + 0.5 - cy) ** 2;
+        if (dd < bd) { bd = dd; best = { etage: E.id, x: (nx + 0.5) / F - 0.5, y: (ny + 0.5) / F - 0.5 }; }
+      }
     }
   }
   return best;
@@ -324,7 +463,7 @@ function caseArrivee(niv, esc) {
 // Lumière ambiante de base (0..1, AVANT × lumiereJour) : pièces extérieures 1, fenêtres, pénombre, noir.
 function calculerLumiere(niv, E, R = {}) {
   const PS = R.PIECE_SOMBRE || PIECE_SOMBRE_DEF;
-  const portee = R.FENETRE_PORTEE || 5;
+  const portee = (R.FENETRE_PORTEE || 5) * FIN;
   const { w, h } = E;
   const fen = new Float32Array(w * h), dist = new Int16Array(w * h).fill(-1), file = new Int32Array(w * h);
   let a = 0, b = 0;
@@ -387,7 +526,7 @@ function cuireSources(niv, E, P) {
     const cases = [], vals = [];
     for (let k = 0; k < C.n; k++) {
       const i = C.liste[k];
-      const x = i % E.w + 0.5, y = ((i / E.w) | 0) + 0.5;
+      const x = (i % E.w + 0.5) / FIN, y = (((i / E.w) | 0) + 0.5) / FIN;
       const d = Math.hypot(x - L.x, y - L.y);
       if (d > r) continue;
       const v = I * Math.pow(1 - d / r, 1.35);
@@ -409,14 +548,15 @@ export function accessibilite(niv) {
   const acc = {};
   for (const E of niv.etages) acc[E.id] = new Uint8Array(E.w * E.h);
   const file = [];
-  const pousser = (etage, x, y) => {
+  const pousser = (etage, i) => {
     const E = niv.etages[niv.etageIdx[etage]];
-    if (!E) return;
-    const i = y * E.w + x;
+    if (!E || i < 0 || i >= E.w * E.h) return;
     if (acc[etage][i] || !marchable(E, i)) return;
     acc[etage][i] = 1; file.push([etage, i]);
   };
-  for (const e of Object.values(niv.entrees)) pousser(e.etage, e.x, e.y);
+  // un point (x + 0,5, y + 0,5) en unités → sa petite case
+  const fine = (etage, x, y) => { const E = niv.etages[niv.etageIdx[etage]]; if (!E) return -1; const fx = Math.floor((x + 0.5) * FIN), fy = Math.floor((y + 0.5) * FIN); return fx < 0 || fy < 0 || fx >= E.w || fy >= E.h ? -1 : fy * E.w + fx; };
+  for (const e of Object.values(niv.entrees)) pousser(e.etage, fine(e.etage, e.x, e.y));
   const escParCase = {};
   for (const s of niv.escaliers) for (const j of s.cases) escParCase[s.etage + ':' + j] = s;
   for (let a = 0; a < file.length; a++) {
@@ -425,10 +565,10 @@ export function accessibilite(niv) {
     const x = i % E.w, y = (i / E.w) | 0;
     for (let d = 0; d < 4; d++) {
       const nx = x + DX4[d], ny = y + DY4[d];
-      if (nx >= 0 && ny >= 0 && nx < E.w && ny < E.h) pousser(et, nx, ny);
+      if (nx >= 0 && ny >= 0 && nx < E.w && ny < E.h) pousser(et, ny * E.w + nx);
     }
     const s = escParCase[et + ':' + i];
-    if (s && s.arrivee) pousser(s.arrivee.etage, s.arrivee.x, s.arrivee.y);
+    if (s && s.arrivee) pousser(s.arrivee.etage, fine(s.arrivee.etage, s.arrivee.x, s.arrivee.y));
   }
   return acc;
 }

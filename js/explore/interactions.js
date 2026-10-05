@@ -14,6 +14,7 @@ import { DECLENCHEURS } from '../data/histoire/declencheurs.js';
 import { DOCUMENTS } from '../data/histoire/documents.js';
 import { PNJ } from '../data/histoire/pnj.js';
 import { K } from './niveau.js';
+import { FIN, icase } from '../carte/catalogue.js';
 import { mod, sfx, message, afficherLieu, verifierCondition, compter, niv, nomObjet, outil, caseLibrePres } from './commun.js';
 import { ouvrirSommeil } from '../game/sommeil.js';
 import { commencerFouille, interrompreFouille, fermerButin, ramasser, lireDocument, prendreTout } from './butin.js';
@@ -39,38 +40,44 @@ export function chercherCible() {
     c._s = s; cands.push(c);
     if (s < bs) { bs = s; best = c; }
   };
-  const x0 = Math.floor(j.x - R - 0.5), x1 = Math.floor(j.x + R + 0.5), y0 = Math.floor(j.y - R - 0.5), y1 = Math.floor(j.y + R + 0.5);
-  const vusMeubles = new Set();
+  // grille fine : on parcourt les petites cases en vue ; une porte, un meuble, un escalier ou une sortie n'est proposé
+  // qu'une fois, à la distance de sa petite case la plus proche
+  const F = FIN, t = 1 / F;
+  const x0 = Math.floor((j.x - R - 0.5) * F), x1 = Math.floor((j.x + R + 0.5) * F), y0 = Math.floor((j.y - R - 0.5) * F), y1 = Math.floor((j.y + R + 0.5) * F);
+  const plusProche = new Map();       // clé → { c, d, bonus }
+  const garder = (cle, d, bonus, fabrique) => { const a = plusProche.get(cle); if (!a) plusProche.set(cle, { c: fabrique(), d, bonus }); else if (d < a.d) { a.d = d; a.c = fabrique(); } };
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     if (x < 0 || y < 0 || x >= E.w || y >= E.h) continue;
     const i = y * E.w + x;
     if (C.los[i] !== C.stamp) continue;
-    const dx = Math.max(x - j.x, 0, j.x - x - 1), dy = Math.max(y - j.y, 0, j.y - y - 1);
+    const ux = x * t, uy = y * t;
+    const dx = Math.max(ux - j.x, 0, j.x - ux - t), dy = Math.max(uy - j.y, 0, j.y - uy - t);
     const d = Math.hypot(dx, dy);
     if (d > R) continue;
     const code = E.code[i];
     if (code === K.PORTE) {
       const p = n.portes[E.porte[i]]; const s = snap.portes[p.cle];
-      if (s && s.etat !== 'cassee') proposer({ type: 'porte', p, s, etage: E.id, x0: x, y0: y, x1: x + 1, y1: y + 1, cx: x + 0.5, cy: y + 0.5 }, d);
+      if (s && s.etat !== 'cassee') garder('p' + p.idx, d, 0, () => ({ type: 'porte', p, s, etage: E.id, x0: p.bx, y0: p.by, x1: p.bx + p.bw, y1: p.by + p.bh, cx: p.x + 0.5, cy: p.y + 0.5 }));
     } else if (code === K.MEUBLE) {
       const m = n.meubles[E.meuble[i]];
-      if (!m || vusMeubles.has(m.idx)) continue; vusMeubles.add(m.idx);
+      if (!m || plusProche.has('m' + m.idx) && plusProche.get('m' + m.idx).d <= d) continue;
       if (V.retires && V.retires.has(m.cle)) continue;          // démonté
       const decl = m.marqueur && declencheurMarqueur(m.marqueur);
       if (!m.conteneur && !decl && !DEMONTABLES[m.type] && !recoltable(m)) continue;
-      proposer({ type: 'meuble', m, decl, etage: E.id, x0: m.x0, y0: m.y0, x1: m.x1 + 1, y1: m.y1 + 1, cx: x + 0.5, cy: y + 0.5 }, d, decl ? 0.2 : 0);
+      garder('m' + m.idx, d, decl ? 0.2 : 0, () => ({ type: 'meuble', m, decl, etage: E.id, x0: m.x0, y0: m.y0, x1: m.x1 + 1, y1: m.y1 + 1, cx: ux + t / 2, cy: uy + t / 2 }));
     } else if (code === K.ESC_MONTE || code === K.ESC_DESCEND) {
       const s = n.escaliers.find(e => e.etage === E.id && e.cases.includes(i));
-      if (s && s.arrivee) proposer({ type: 'escalier', s, etage: E.id, x0: x, y0: y, x1: x + 1, y1: y + 1, cx: x + 0.5, cy: y + 0.5 }, d, 0.1);
+      if (s && s.arrivee) garder('e' + s.cle, d, 0.1, () => ({ type: 'escalier', s, etage: E.id, x0: ux, y0: uy, x1: ux + t, y1: uy + t, cx: ux + t / 2, cy: uy + t / 2 }));
     } else if (code === K.SORTIE) {
       const s = n.sorties.find(e => e.etage === E.id && e.cases.includes(i));
-      proposer({ type: 'sortie', s, etage: E.id, x0: x, y0: y, x1: x + 1, y1: y + 1, cx: x + 0.5, cy: y + 0.5 }, d);
+      garder('s' + (s ? s.cle : i), d, 0, () => ({ type: 'sortie', s, etage: E.id, x0: ux, y0: uy, x1: ux + t, y1: uy + t, cx: ux + t / 2, cy: uy + t / 2 }));
     }
   }
+  for (const { c, d, bonus } of plusProche.values()) proposer(c, d, bonus);
   for (const m of Object.values(n.marqueurs)) {
     if (m.etage !== E.id || m.meuble || m.porte) continue;
     const d = Math.hypot(m.x + 0.5 - j.x, m.y + 0.5 - j.y);
-    if (d > R + 0.5 || C.los[m.y * E.w + m.x] !== C.stamp) continue;
+    if (d > R + 0.5 || C.los[icase(E, m.x + 0.5, m.y + 0.5)] !== C.stamp) continue;
     const decl = declencheurMarqueur(m.id);
     const doc = docDuMarqueur(m.id);
     const pnj = V.pnj.find(q => q.marqueur === m.id);
@@ -147,6 +154,8 @@ function cleCible(c) {
     case 'pnj': return 'n:' + c.q.id;
     case 'relever': return 'r:' + c.p.id;
     case 'marqueur': case 'doc': return 'q:' + (c.m ? c.m.id : '') + (c.p ? c.p.cle : '');
+    case 'escalier': return 'e:' + c.s.cle;
+    case 'sortie': return 's:' + (c.s ? c.s.cle : c.x0 + ',' + c.y0);
     default: return c.type + ':' + c.x0 + ',' + c.y0;
   }
 }
@@ -416,8 +425,9 @@ async function sortirDuLieu(s) {
   await flow.ouvrirCarte({ echelle, depuis: id });
 }
 export function piece() {
-  const i = Math.floor(V.j.y) * V.E.w + Math.floor(V.j.x);
-  const p = V.E.piece[i];
+  const i = icase(V.E, V.j.x, V.j.y);
+  const p = i >= 0 ? V.E.piece[i] : -1;
+
   if (p < 0 || p === V.piece) return;
   V.piece = p;
   const P = V.niveau.pieces[p];

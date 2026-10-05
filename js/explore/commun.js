@@ -5,6 +5,7 @@ import { pref } from '../core/prefs.js';
 import { objet } from '../game/donnees.js';
 import { niveauDepuisXp } from '../data/reglages.js';
 import { K } from './niveau.js';
+import { FIN } from '../carte/catalogue.js';
 
 // Modules optionnels (tolère leur absence : bancs d'essai)
 export const mod = { inv: null, player: null, audio: null, survie: null, panneaux: null };
@@ -49,13 +50,25 @@ export function message(t, ms = 2600) { if (!V) return; V.hud.msg.textContent = 
 export function afficherLieu(t) { if (!V) return; const h = V.hud.lieu; h.textContent = t; h.classList.remove('on'); void h.offsetWidth; h.classList.add('on'); }
 
 // Case libre la plus proche d'un marqueur (PNJ posé sur un meuble, entrée sur un objet…).
+// m.x, m.y en unités (centre = x + 0,5) ; renvoie le même format (positions possiblement non entières).
 export function caseLibrePres(niveau, m) {
   if (!m) return null;
   const E = niveau.etages[niveau.etageIdx[m.etage]];
-  if (!E.bloque[m.y * E.w + m.x]) return m;
-  for (let r = 1; r < 4; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-    const x = m.x + dx, y = m.y + dy;
-    if (x >= 0 && y >= 0 && x < E.w && y < E.h && !E.bloque[y * E.w + x] && E.code[y * E.w + x] === K.SOL) return { etage: m.etage, x, y };
+  const cx = Math.floor((m.x + 0.5) * FIN), cy = Math.floor((m.y + 0.5) * FIN);
+  // il faut la place d'un corps : la petite case et ses voisines libres
+  const libre = (x, y) => {
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const qx = x + dx, qy = y + dy; if (qx < 0 || qy < 0 || qx >= E.w || qy >= E.h) return false;
+      const i = qy * E.w + qx; if (E.bloque[i] || (E.code[i] !== K.SOL && E.code[i] !== K.MEUBLE)) return false;
+    }
+    return true;
+  };
+  if (libre(cx, cy)) return m;
+  for (let r = 1; r < 4 * FIN; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+    const x = cx + dx, y = cy + dy;
+    if (libre(x, y)) return { etage: m.etage, x: (x + 0.5) / FIN - 0.5, y: (y + 0.5) / FIN - 0.5 };
   }
   return null;
 }
+

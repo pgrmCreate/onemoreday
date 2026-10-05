@@ -4,7 +4,7 @@
 //   - ancien format ASCII (plan: ['####', …] + legende) — converti en couches (js/carte/ascii.js).
 // validerNiveau(def, ctx?) → [erreurs] (chaînes lisibles). Aucune dépendance au DOM : utilisable sous Node.
 // Un plan mal formé ne fait jamais planter : parserNiveau collecte des avertissements (niveau.avertissements).
-import { K, SOLS_IDS, SOL_IDX, OBJETS } from '../carte/catalogue.js';
+import { K, SOLS_IDS, SOL_IDX, OBJETS, FIN } from '../carte/catalogue.js';
 import { compilerPlan, accessibilite as acces, marchable, cleCase as cle, DECOS as DEC } from '../carte/compiler.js';
 import { asciiVersPlan, CARS_GLOBAUX as CARS } from '../carte/ascii.js';
 import { agrandirDef } from '../carte/abords.js';
@@ -87,28 +87,40 @@ export function validerNiveau(def, ctx = {}) {
   if (!niv.sorties.length) err.push('aucune sortie E');
   for (const s of niv.escaliers) {
     const E = niv.etages[niv.etageIdx[s.etage]];
-    const x = s.cases[0] % E.w, y = (s.cases[0] / E.w) | 0;
+    const x = Math.floor((s.cases[0] % E.w) / FIN), y = Math.floor(((s.cases[0] / E.w) | 0) / FIN);
     if (!s.vers) err.push(`escalier ${s.sens === 'monte' ? '<' : '>'} en (${x},${y}) sur « ${s.etage} » : l'étage n'a pas de « ${s.sens} »`);
     else if (!s.cible) err.push(`escalier ${s.sens === 'monte' ? '<' : '>'} en (${x},${y}) sur « ${s.etage} » : aucun escalier ${s.sens === 'monte' ? '>' : '<'} sur « ${s.vers} » qui revienne ici`);
     else if (!s.arrivee) err.push(`escalier en (${x},${y}) sur « ${s.etage} » : pas de case libre à l'arrivée`);
   }
   for (const d of niv.declencheurs) {
     const E = niv.etages[niv.etageIdx[d.etage]];
-    if (E && (d.x < 0 || d.y < 0 || d.x + (d.w || 1) > E.w || d.y + (d.h || 1) > E.h)) err.push(`déclencheur (${d.x},${d.y}) sur « ${d.etage} » : hors plan`);
+    if (E && (d.x < 0 || d.y < 0 || d.x + (d.w || 1) > E.uw || d.y + (d.h || 1) > E.uh)) err.push(`déclencheur (${d.x},${d.y}) sur « ${d.etage} » : hors plan`);
     if (!d.scene && !d.cinematique && !d.marqueur) err.push(`déclencheur (${d.x},${d.y}) : ni scene, ni cinematique, ni marqueur`);
     if (d.scene && ctx.scenes && !ctx.scenes[d.scene]) err.push(`déclencheur : scène inconnue « ${d.scene} »`);
   }
   // Connexité : tout l'espace marchable relié à une entrée
   const acc = acces(niv);
+  // (en unités ; on ignore les recoins trop étroits pour un corps : il faut 2 × 2 petites cases marchables)
   const isoles = [];
   for (const E of niv.etages) {
-    const A = acc[E.id];
-    for (let i = 0; i < E.w * E.h; i++) if (marchable(E, i) && !A[i]) isoles.push(`${E.id} (${i % E.w},${(i / E.w) | 0})`);
+    const A = acc[E.id], vues = new Set();
+    const libre = (j) => marchable(E, j) && !A[j];
+    for (let i = 0; i < E.w * E.h; i++) {
+      if (!libre(i) || (i % E.w) + 1 >= E.w || i + E.w + 1 >= E.w * E.h) continue;
+      if (!libre(i + 1) || !libre(i + E.w) || !libre(i + E.w + 1)) continue;
+
+      const ux = Math.floor((i % E.w) / FIN), uy = Math.floor(((i / E.w) | 0) / FIN), k = ux + ',' + uy;
+      if (vues.has(k)) continue; vues.add(k);
+      let atteinte = false;
+      for (let dy = 0; dy < FIN; dy++) for (let dx = 0; dx < FIN; dx++) { const j = (uy * FIN + dy) * E.w + ux * FIN + dx; if (A[j]) atteinte = true; }
+      if (!atteinte) isoles.push(`${E.id} (${ux},${uy})`);
+    }
   }
   if (isoles.length) err.push(`${isoles.length} case(s) marchable(s) inaccessible(s) depuis l'entrée, ex. ${isoles.slice(0, 4).join(', ')}`);
   for (const [nom, e] of Object.entries(niv.entrees)) {
     const E = niv.etages[niv.etageIdx[e.etage]];
-    if (E && E.bloque[e.y * E.w + e.x]) err.push(`entrée « ${nom} » sur une case bloquante`);
+    if (E && E.bloque[Math.floor((e.y + 0.5) * FIN) * E.w + Math.floor((e.x + 0.5) * FIN)]) err.push(`entrée « ${nom} » sur une case bloquante`);
   }
+
   return err;
 }

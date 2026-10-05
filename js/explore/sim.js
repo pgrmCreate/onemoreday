@@ -12,14 +12,16 @@
 // Options en plus du contrat (toutes facultatives) : minutes (horloge de jeu), typeButin, mortsN [min,max],
 // repeuplement (morts/jour), coop (bool), difficulte (preset reglages.difficulte), jour, mult (× butin),
 // getFlag(k) (drapeaux du monde : portes à drapeau), rng (graine des tirages non persistants).
+// Grilles FINES (petites cases, catalogue.js FIN) ; positions, distances et vitesses en UNITÉS (0,8 m).
 import { REGLAGES, paramsJour } from '../data/reglages.js';
 import { ZOMBIES, typeMort, sexeMort } from '../data/zombies.js';
 import { tirerButin, tirerButinTable, tirerLignes } from '../data/butin.js';
 import { seedRng } from '../core/rng.js';
 import { K, parserNiveau, cleCase, MATIERES } from './niveau.js';
+import { FIN, icase, cxCase, cyCase } from '../carte/catalogue.js';
 import { deplacer, ligneLibre, obstaclesSon } from './physique.js';
 import { profilMelee, geometrie, resoudreCoup, resoudreAttaque, tapsEmpoignade, bruitCoup } from './combat.js';
-import { CONSTRUCTIONS, DEMONTABLES, RECOLTES, casesConstruction, appliquerConstructions, cassableC } from '../data/construction.js';
+import { CONSTRUCTIONS, DEMONTABLES, RECOLTES, casesConstruction, casesFinesConstruction, appliquerConstructions, cassableC } from '../data/construction.js';
 
 const RX = REGLAGES.exploration, RP = RX.PERCEPTION, RF = REGLAGES.fouille, RC = REGLAGES.combat;
 const RAYON_JOUEUR = 0.3, RAYON_MORT = 0.3;
@@ -70,9 +72,7 @@ export function creerSimLieu(opts) {
   const consCase = niveau.etages.map(() => new Map());         // i → construction (index par case)
   function indexerC(c, ajout) {
     const ei = EI(c.etage); if (ei == null) return; const E = niveau.etages[ei];
-    for (const [x, y] of casesConstruction(c.type, c.x, c.y, c.rot)) {
-      if (x < 0 || y < 0 || x >= E.w || y >= E.h) continue;
-      const i = y * E.w + x;
+    for (const i of casesFinesConstruction(E, c)) {
       if (ajout) consCase[ei].set(i, c); else if (consCase[ei].get(i) === c) consCase[ei].delete(i);
     }
   }
@@ -146,9 +146,13 @@ export function creerSimLieu(opts) {
     // loin des entrées ET des arrivées d'escalier (on ne tombe pas nez à nez en changeant d'étage)
     const entrees = Object.values(niveau.entrees).concat(niveau.escaliers.filter(s => s.arrivee).map(s => s.arrivee));
     niveau.etages.forEach((E) => {
+      // une petite case sur FIN² (le coin d'une unité, unité entièrement libre) : autant de candidats qu'avant
       for (let i = 0; i < E.w * E.h; i++) {
+        if ((i % E.w) % FIN || ((i / E.w) | 0) % FIN) continue;
         if (E.code[i] !== K.SOL || E.bloque[i] || E.piece[i] < 0) continue;
-        const x = i % E.w + 0.5, y = ((i / E.w) | 0) + 0.5;
+        if ((i % E.w) + 1 >= E.w || i + E.w + 1 >= E.w * E.h) continue;
+        if ([i + 1, i + E.w, i + E.w + 1].some(j => E.code[j] !== K.SOL || E.bloque[j])) continue;
+        const x = (i % E.w) / FIN + 0.5, y = ((i / E.w) | 0) / FIN + 0.5;
         let loin = true;
         for (const e of entrees) if (e.etage === E.id && Math.hypot(e.x + 0.5 - x, e.y + 0.5 - y) < 6) loin = false;
         if (!loin) continue;
@@ -191,21 +195,24 @@ export function creerSimLieu(opts) {
   // ---------- Portes ----------
   function majPortesDyn() {
     for (const p of niveau.portes) {
-      const s = portes[p.cle]; const E = niveau.etages[EI(p.etage)]; const i = p.y * E.w + p.x;
+      const s = portes[p.cle]; const E = niveau.etages[EI(p.etage)];
       const ferme = s.etat === 'fermee' || s.etat === 'verrouillee';
-      dyn[E.idx].bloque[i] = ferme ? 1 : 0; dyn[E.idx].opaque[i] = ferme ? 1 : 0;
+      const op = ferme && !(p.style === 'grille' || p.style === 'vitree') ? 1 : 0;
+      for (const i of p.cases) { dyn[E.idx].bloque[i] = ferme ? 1 : 0; dyn[E.idx].opaque[i] = op; }
     }
   }
   function setPorte(cle, etatN, action, source) {
     const s = portes[cle]; const p = niveau.porteParCle[cle];
     s.etat = etatN;
-    const E = niveau.etages[EI(p.etage)]; const i = p.y * E.w + p.x;
+    const E = niveau.etages[EI(p.etage)];
     const ferme = etatN === 'fermee' || etatN === 'verrouillee';
-    dyn[E.idx].bloque[i] = ferme ? 1 : 0; dyn[E.idx].opaque[i] = ferme ? 1 : 0;
+    const op = ferme && !(p.style === 'grille' || p.style === 'vitree') ? 1 : 0;
+    for (const i of p.cases) { dyn[E.idx].bloque[i] = ferme ? 1 : 0; dyn[E.idx].opaque[i] = op; }
     evts.push({ type: 'porte', cle, etat: etatN, pv: s.pv, pvMax: s.pvMax, action, source: source || null }); vm++;
   }
+  // (x + 0,5, y + 0,5) : centre de la porte ou de la case de construction (unités)
   function caseOccupee(etage, x, y) {
-    for (const j of joueurs.values()) if (j.etage === etage && Math.floor(j.x) === x && Math.floor(j.y) === y) return true;
+    for (const j of joueurs.values()) if (j.etage === etage && Math.abs(j.x - x - 0.5) < 0.62 && Math.abs(j.y - y - 0.5) < 0.62) return true;
     for (const j of joueurs.values()) if (j.etage === etage && Math.hypot(j.x - x - 0.5, j.y - y - 0.5) < 0.75) return true;
     for (const z of zombies) if (z.etage === etage && Math.hypot(z.x - x - 0.5, z.y - y - 0.5) < 0.75) return true;
     return false;
@@ -317,6 +324,7 @@ export function creerSimLieu(opts) {
   }
 
   // ---------- Chemins (BFS 8 directions sans couper les coins ; portes fermées traversables = on cogne) ----------
+  // Sur la grille fine ; la cible (tx, ty) et la profondeur maxProf sont en UNITÉS.
   const bfsBuf = niveau.etages.map(E => ({ vu: new Uint32Array(E.w * E.h), prev: new Int32Array(E.w * E.h), file: new Int32Array(E.w * E.h), stamp: 0 }));
   const D8X = [1, -1, 0, 0, 1, 1, -1, -1], D8Y = [0, 0, 1, -1, 1, -1, 1, -1];
   function passable(E, D, i) {
@@ -327,8 +335,9 @@ export function creerSimLieu(opts) {
   function chemin(z, tx, ty, maxProf = 60, aleatoire = false) {
     const E = niveau.etages[z.ei], D = dyn[z.ei], B = bfsBuf[z.ei];
     const w = E.w, h = E.h;
-    const s = Math.floor(z.y) * w + Math.floor(z.x);
-    const t = (tx >= 0 && ty >= 0 && tx < w && ty < h) ? ty * w + tx : -1;
+    const s = icase(E, z.x, z.y); if (s < 0) return null;
+    const t = tx == null || tx < 0 ? -1 : icase(E, tx, ty);
+    maxProf *= FIN;
     B.stamp++; const st = B.stamp;
     let a = 0, b = 0;
     B.file[b++] = s; B.vu[s] = st; B.prev[s] = -1;
@@ -338,7 +347,7 @@ export function creerSimLieu(opts) {
       if (a === finNiv) { prof++; finNiv = b; if (prof > maxProf) break; }
       const i = B.file[a++];
       if (i === t) { trouve = i; break; }
-      if (cands && i !== s && !D.bloque[i]) cands.push(i);
+      if (cands && i !== s && !D.bloque[i] && prof >= FIN) cands.push(i);
       const x = i % w, y = (i / w) | 0;
       for (let k = 0; k < 8; k++) {
         const nx = x + D8X[k], ny = y + D8Y[k];
@@ -378,8 +387,8 @@ export function creerSimLieu(opts) {
     const i = z.chemin[z.ci];
     const cc = consCase[z.ei].get(i);
     if (cc && cassableC(cc)) { // une construction lui barre la route : il cogne dessus
-      const cx = i % E.w + 0.5, cy = ((i / E.w) | 0) + 0.5, d = Math.hypot(cx - z.x, cy - z.y);
-      if (d > 1.05) { avancerVers(z, cx, cy, v, dt); return 'marche'; }
+      const cx = cxCase(E, i), cy = cyCase(E, i), d = Math.hypot(cx - z.x, cy - z.y);
+      if (d > 0.8) { avancerVers(z, cx, cy, v, dt); return 'marche'; }
       z.porte = null; z.cons = cc.uid; tourner(z, Math.atan2(cy - z.y, cx - z.x), dt, 6);
       return 'porte';
     }
@@ -388,13 +397,13 @@ export function creerSimLieu(opts) {
       const p = niveau.portes[E.porte[i]]; const s = portes[p.cle];
       if (s.etat === 'fermee' || s.etat === 'verrouillee') {
         const d = Math.hypot(p.x + 0.5 - z.x, p.y + 0.5 - z.y);
-        if (d > 1.05) { avancerVers(z, p.x + 0.5, p.y + 0.5, v, dt); return 'marche'; }
+        if (d > 0.85) { avancerVers(z, p.x + 0.5, p.y + 0.5, v, dt); return 'marche'; }
         z.porte = p.cle; tourner(z, Math.atan2(p.y + 0.5 - z.y, p.x + 0.5 - z.x), dt, 6);
         return 'porte';
       }
     }
     z.porte = null;
-    if (avancerVers(z, i % E.w + 0.5, ((i / E.w) | 0) + 0.5, v, dt)) z.ci++;
+    if (avancerVers(z, cxCase(E, i), cyCase(E, i), v, dt)) z.ci++;
     return 'marche';
   }
   function cogner(z, dt, degats) {
@@ -424,7 +433,7 @@ export function creerSimLieu(opts) {
   // Pieux : un mort qui marche dessus s'empale (dégâts, il vacille) ; le piège s'use.
   function pieges(z) {
     if (z.aTerre > 0 || z.etat === 'dort' || z.etat === 'fait_le_mort') return;
-    const E = niveau.etages[z.ei], c = consCase[z.ei].get(Math.floor(z.y) * E.w + Math.floor(z.x));
+    const E = niveau.etages[z.ei], c = consCase[z.ei].get(icase(E, z.x, z.y));
     const d = c && CONSTRUCTIONS[c.type];
     if (!d || !d.piege || (z.tPiege && T - z.tPiege < 1200)) return;
     z.tPiege = T;
@@ -497,7 +506,7 @@ export function creerSimLieu(opts) {
         z.tChemin -= dt;
         if (z.tChemin <= 0 && (!z.chemin.length || z.ci >= z.chemin.length)) {
           z.tChemin = 800;
-          const c = chemin(z, Math.floor(z.cible.x), Math.floor(z.cible.y), 50);
+          const c = chemin(z, z.cible.x, z.cible.y, 50);
           z.chemin = c || []; z.ci = 0;
         }
         const r = suivreChemin(z, v, dt);
@@ -518,8 +527,8 @@ export function creerSimLieu(opts) {
             const E = niveau.etages[z.ei], D = dyn[z.ei];
             const pas = P.vitesse * dt / 1000;
             const nx = z.x + Math.cos(z.dir) * pas, ny = z.y + Math.sin(z.dir) * pas;
-            const ci = Math.floor(ny) * E.w + Math.floor(nx);
-            if (P.porte === 'enfonce' && E.code[ci] === K.PORTE && D.bloque[ci]) {
+            const ci = icase(E, nx, ny);
+            if (P.porte === 'enfonce' && ci >= 0 && E.code[ci] === K.PORTE && D.bloque[ci]) {
               const p = niveau.portes[E.porte[ci]]; portes[p.cle].pv = 0; setPorte(p.cle, 'cassee', 'enfoncee', z.uid);
               bruit({ etage: z.etage, x: nx, y: ny, rayon: RX.BRUIT.porte_forcee, source: z.uid });
             }
@@ -573,7 +582,7 @@ export function creerSimLieu(opts) {
         }
         if (z.tChemin <= 0 || z.ci >= z.chemin.length) {
           z.tChemin = 400;
-          const c = chemin(z, Math.floor(cx), Math.floor(cy), 70);
+          const c = chemin(z, cx, cy, 70);
           if (c) { z.chemin = c; z.ci = 0; }
           else { z.chemin = []; avancerVers(z, cx, cy, vC, dt); z.vitesse = vC; return; }
         }
@@ -890,7 +899,13 @@ export function creerSimLieu(opts) {
     const jx = j ? j.x : niveau.entrees.defaut.x + 0.5, jy = j ? j.y : niveau.entrees.defaut.y + 0.5, jd = j ? j.dir : 0;
     const surpris = o.surprise === 'surpris';
     const uids = [];
-    const libre = (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); if (cx < 1 || cy < 1 || cx >= E.w - 1 || cy >= E.h - 1) return false; const i = cy * E.w + cx; return !D.bloque[i] && (E.code[i] === K.SOL) && !zombies.some(q => q.etage === etage && Math.hypot(q.x - x, q.y - y) < 0.8); };
+    // un corps tient là : la petite case et ses voisines sont du sol libre
+    const libre = (x, y) => {
+      const cx = Math.floor(x * FIN), cy = Math.floor(y * FIN); if (cx < 2 || cy < 2 || cx >= E.w - 2 || cy >= E.h - 2) return false;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const i = (cy + dy) * E.w + cx + dx; if (D.bloque[i] || E.code[i] !== K.SOL) return false; }
+      return !zombies.some(q => q.etage === etage && Math.hypot(q.x - x, q.y - y) < 0.8);
+    };
+    const centre = (v) => (Math.floor(v * FIN) + 0.5) / FIN;
     (liste || []).forEach((sp, i) => {
       const type = typeof sp === 'string' ? sp : sp.type;
       let pos = null;
@@ -899,9 +914,9 @@ export function creerSimLieu(opts) {
         const ang = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.32 + i * 0.9;
         const dist = (surpris ? 1.7 : 3.4) + (i % 3) * 0.7 + Math.floor(k / 12) * 0.8;
         const x = jx + Math.cos(ang) * dist, y = jy + Math.sin(ang) * dist;
-        if (libre(x, y) && ligneLibre(E.w, E.h, D.bloque, jx, jy, x, y)) pos = { x: Math.floor(x) + 0.5, y: Math.floor(y) + 0.5 };
+        if (libre(x, y) && ligneLibre(E.w, E.h, D.bloque, jx, jy, x, y)) pos = { x: centre(x), y: centre(y) };
       }
-      if (!pos) for (let k = 0; k < 400 && !pos; k++) { const x = jx + (rngCbt() - 0.5) * 16, y = jy + (rngCbt() - 0.5) * 16; if (libre(x, y)) pos = { x: Math.floor(x) + 0.5, y: Math.floor(y) + 0.5 }; }
+      if (!pos) for (let k = 0; k < 400 && !pos; k++) { const x = jx + (rngCbt() - 0.5) * 16, y = jy + (rngCbt() - 0.5) * 16; if (libre(x, y)) pos = { x: centre(x), y: centre(y) }; }
       if (!pos) return;
       const z = nouveauMort(type, etage, pos.x, pos.y, 'chasse', { scene: o.scene || null, hp: typeof sp === 'object' ? sp.hp : undefined });
       if (!z) return;
@@ -928,7 +943,7 @@ export function creerSimLieu(opts) {
         if (j.tPas >= periode) {
           j.tPas = 0;
           const E = niveau.etages[j.ei];
-          const i = Math.floor(j.y) * E.w + Math.floor(j.x);
+          const i = Math.max(0, icase(E, j.x, j.y));
           let mat = MATIERES[E.sol[i]] || 'beton';
           if (E.deco[i] === 3) mat = 'debris';
           const kSol = RX.BRUIT_SOL[mat] ?? 1;
@@ -1200,13 +1215,15 @@ export function creerSimLieu(opts) {
     if (!d || ei == null) return { ok: false, raison: 'inconnu' };
     const E = niveau.etages[ei], D = dyn[ei], x0 = o.x | 0, y0 = o.y | 0, rot = o.rot | 0;
     for (const [x, y] of casesConstruction(o.type, x0, y0, rot)) {
-      if (x < 0 || y < 0 || x >= E.w || y >= E.h) return { ok: false, raison: 'hors' };
-      const i = y * E.w + x;
-      if (consCase[ei].has(i)) return { ok: false, raison: 'occupe' };
-      if (d.pose === 'fenetre') { if (E.code[i] !== K.FENETRE) return { ok: false, raison: 'fenetre' }; continue; }
-      if (E.code[i] !== K.SOL || D.bloque[i]) return { ok: false, raison: 'occupe' };
+      if (x < 0 || y < 0 || x * FIN >= E.w || y * FIN >= E.h) return { ok: false, raison: 'hors' };
+      const sous = [];
+      for (let dy = 0; dy < FIN; dy++) for (let dx = 0; dx < FIN; dx++) sous.push((y * FIN + dy) * E.w + x * FIN + dx);
+      if (sous.some(i => consCase[ei].has(i))) return { ok: false, raison: 'occupe' };
+      if (d.pose === 'fenetre') { if (!sous.some(i => E.code[i] === K.FENETRE)) return { ok: false, raison: 'fenetre' }; continue; }
+      if (sous.some(i => E.code[i] !== K.SOL || D.bloque[i])) return { ok: false, raison: 'occupe' };
       if (d.bloque && caseOccupee(o.etage, x, y)) return { ok: false, raison: 'quelqu_un' };
     }
+
     const m = o.minutes ?? minutes;
     const c = { uid: 'c' + (consSeq++), type: o.type, etage: o.etage, x: x0, y: y0, rot, pv: d.pv, pvMax: d.pv };
     if (d.contenance) c.items = [];

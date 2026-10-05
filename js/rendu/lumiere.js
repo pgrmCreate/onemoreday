@@ -5,8 +5,10 @@
 //   - vu : lumière ambiante (jour, fenêtres) + sources fixes (feux, néons, gyrophares, bougies) + lampes (torches).
 import { TS, clamp, hash } from './outils.js';
 import { lumiereLampe } from '../explore/vision.js';
+import { FIN, icase } from '../carte/catalogue.js';
 
-export const SUB = 2;
+// Échantillons par PETITE case (grille fine) : 1 suffit (2 par unité, comme avant la grille fine).
+export const SUB = 1;
 
 // Intensité d'une source animée à l'instant t (ms).
 export function vacillement(src, t) {
@@ -39,7 +41,7 @@ export function creerLumiere() {
   function assurer(cols, rows) {
     if (!buf || cols > bw || rows > bh) {
       bw = Math.max(cols, bw); bh = Math.max(rows, bh);
-      buf = { r: new Float32Array(bw * bh), g: new Float32Array(bw * bh), b: new Float32Array(bw * bh) };
+      buf = { r: new Float32Array(bw * bh), g: new Float32Array(bw * bh), b: new Float32Array(bw * bh), v: new Float32Array(bw * bh) };
     }
     if (!masque || cols * SUB > mw || rows * SUB > mh) {
       mw = Math.max(cols * SUB, mw); mh = Math.max(rows * SUB, mh);
@@ -54,8 +56,9 @@ export function creerLumiere() {
     buf.r.fill(0, 0, bw * bh); buf.g.fill(0, 0, bw * bh); buf.b.fill(0, 0, bw * bh);
     out.length = 0;
     const S = (E.rendu && E.rendu.sources) || [];
+    const ux0 = rx0 / FIN, uy0 = ry0 / FIN, ux1 = (rx0 + cols) / FIN, uy1 = (ry0 + rows) / FIN;
     for (const src of S) {
-      if (src.x + src.r < rx0 || src.x - src.r > rx0 + cols || src.y + src.r < ry0 || src.y - src.r > ry0 + rows) continue;
+      if (src.x + src.r < ux0 || src.x - src.r > ux1 || src.y + src.r < uy0 || src.y - src.r > uy1) continue;
       const f = Math.max(0, vacillement(src, t));
       src._f = f;
       out.push(src);
@@ -80,6 +83,21 @@ export function creerLumiere() {
     accumuler(E, rx0, ry0, cols, rows, S.t, visibles);
     const d = mdata.data, stride = mw * 4;
     const souvenir = S.souvenir ?? 0.14;
+    // visibilité brute par petite case, puis adoucie vers l'intérieur (3 × 3 pondéré, jamais au-delà de la valeur brute :
+    // aucune fuite derrière un mur) → les ombres portées perdent leurs marches d'escalier
+    const vb = buf.v;
+    for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
+      const x = rx0 + cx, y = ry0 + cy;
+      let v = 0;
+      if (x >= 0 && y >= 0 && x < E.w && y < E.h) { const i = y * E.w + x; v = C.los[i] === C.stamp ? C.vis[i] : 0; }
+      vb[cy * bw + cx] = v;
+    }
+    const lisse = (cx, cy) => {
+      const o = cy * bw + cx, v0 = vb[o];
+      if (v0 <= 0.01 || cx === 0 || cy === 0 || cx >= cols - 1 || cy >= rows - 1) return v0;
+      const a = (4 * v0 + 2 * (vb[o - 1] + vb[o + 1] + vb[o - bw] + vb[o + bw]) + vb[o - bw - 1] + vb[o - bw + 1] + vb[o + bw - 1] + vb[o + bw + 1]) / 16;
+      return a < v0 ? a : v0;
+    };
     for (let cy = 0; cy < rows; cy++) {
       const y = ry0 + cy;
       for (let cx = 0; cx < cols; cx++) {
@@ -87,14 +105,14 @@ export function creerLumiere() {
         let vis = 0, vu = 0, base = 0, i = -1, sr = 0, sg = 0, sb = 0;
         if (x >= 0 && y >= 0 && x < E.w && y < E.h) {
           i = y * E.w + x;
-          vis = C.los[i] === C.stamp ? C.vis[i] : 0; vu = C.vu[i];
+          vis = lisse(cx, cy); vu = C.vu[i];
           base = E.lumBase[i] * jour;
           const o = cy * bw + cx; sr = buf.r[o]; sg = buf.g[o]; sb = buf.b[o];
         }
         for (let sy = 0; sy < SUB; sy++) for (let sx = 0; sx < SUB; sx++) {
           const o = (cy * SUB + sy) * stride + (cx * SUB + sx) * 4;
           if (vis > 0.01) {
-            const px = x + (sx + 0.5) / SUB, py = y + (sy + 0.5) / SUB;
+            const px = (x + (sx + 0.5) / SUB) / FIN, py = (y + (sy + 0.5) / SUB) / FIN;
             let lp = 0;
             for (let q = 0; q < nL; q++) {
               const L = lampes[q];
@@ -130,10 +148,8 @@ export function creerLumiere() {
     const C = S.C, E = S.E;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     for (const src of visibles) {
-      const cx = Math.floor(src.x), cy = Math.floor(src.y);
-      if (cx < 0 || cy < 0 || cx >= E.w || cy >= E.h) continue;
-      const i = cy * E.w + cx;
-      if (C.los[i] !== C.stamp) continue;       // pas de halo à travers les murs
+      const i = icase(E, src.x, src.y);
+      if (i < 0 || C.los[i] !== C.stamp) continue;       // pas de halo à travers les murs
       const f = src._f ?? 1, R = Math.max(1, src.r * 0.85) * pxc;
       const X = ex(src.x), Y = ey(src.y);
       const g = ctx.createRadialGradient(X, Y, 0, X, Y, R);
@@ -150,8 +166,9 @@ export function creerLumiere() {
 }
 // Lumière fixe reçue en un point (pour la détection par les morts et l'interface), sans vacillement.
 export function lumiereFixe(E, x, y) {
-  const cx = Math.floor(x), cy = Math.floor(y);
-  if (!E.lumStat || cx < 0 || cy < 0 || cx >= E.w || cy >= E.h) return 0;
-  return E.lumStat[cy * E.w + cx];
+  const i = icase(E, x, y);
+  if (!E.lumStat || i < 0) return 0;
+  return E.lumStat[i];
 }
+
 void clamp; void TS;

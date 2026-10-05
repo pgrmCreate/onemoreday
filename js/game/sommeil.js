@@ -10,6 +10,7 @@ import * as clock from '../core/clock.js';
 import { el } from '../core/util.js';
 import { REGLAGES } from '../data/reglages.js';
 import { dormir } from './survival.js';
+import { icase } from '../carte/catalogue.js';
 import * as flow from './flow.js';
 
 const SO = () => REGLAGES.survie.SOMMEIL;
@@ -25,7 +26,7 @@ async function situation() {
   const j = V.j, E = V.E;
   const chasse = V.zListe.some(z => z.etage === j.etage && (z.etat === 'chasse' || (z.etat === 'alerte' && z.alerte > 0.4)));
   if (chasse) return { ok: false, raison: 'Impossible : des morts te cherchent.' };
-  const pid = E.piece[Math.floor(j.y) * E.w + Math.floor(j.x)];
+  const ij = icase(E, j.x, j.y), pid = ij >= 0 ? E.piece[ij] : -1;
   const P = pid >= 0 ? V.niveau.pieces[pid] : null;
   let sur = !!(V.L && V.L.refuge);
   let raisonRisque = '';
@@ -34,13 +35,12 @@ async function situation() {
     let ouvertes = 0;
     for (const p of V.niveau.portes) {
       if (p.etage !== E.id) continue;
-      let touche = false;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = p.x + dx, y = p.y + dy; if (x >= 0 && y >= 0 && x < E.w && y < E.h && E.piece[y * E.w + x] === pid) touche = true; }
-      if (!touche) continue;
+      if (!(p.pieces || []).includes(pid)) continue;
       const s = V.snap.portes[p.cle];
       if (!s || s.etat === 'ouverte' || s.etat === 'cassee') ouvertes++;
     }
-    const mortsIci = V.zListe.some(z => z.etage === j.etage && E.piece[Math.floor(z.y) * E.w + Math.floor(z.x)] === pid);
+    const mortsIci = V.zListe.some(z => { if (z.etage !== j.etage) return false; const i = icase(E, z.x, z.y); return i >= 0 && E.piece[i] === pid; });
+
     sur = ouvertes === 0 && !mortsIci;
     raisonRisque = mortsIci ? 'un mort est dans la pièce' : ouvertes ? `${ouvertes} porte${ouvertes > 1 ? 's' : ''} ouverte${ouvertes > 1 ? 's' : ''}` : '';
   } else if (!sur) raisonRisque = 'dehors, à découvert';

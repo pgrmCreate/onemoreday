@@ -1,8 +1,10 @@
 // ============ Outils de dessin partagés par le moteur de rendu ============
 // Canvas hors écran, hasard déterministe, bruit continu (sans couture), couleurs, formes de base.
 
-export const TS = 48;            // pixels par case dans les calques pré-rendus (1 case ≈ 0,8 m)
-export const CHUNK = 16;         // cases par côté de bloc pré-rendu
+import { FIN } from '../carte/catalogue.js';
+export const TS = 48;            // pixels par UNITÉ dans les calques pré-rendus (1 unité ≈ 0,8 m) : positions, objets, décals
+export const TF = TS / FIN;      // pixels par PETITE case (grille fine : murs, sols, ouvertures)
+export const CHUNK = 16;         // unités par côté de bloc pré-rendu
 
 export function canvas(w, h) {
   if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(Math.max(1, w | 0), Math.max(1, h | 0));

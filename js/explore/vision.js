@@ -1,10 +1,12 @@
 // ============ Champ de vision (shadowcasting récursif sur la grille) et éclairage ============
 // Tout est pré-alloué par étage : aucune allocation par image.
 import { REGLAGES } from '../data/reglages.js';
+import { FIN } from '../carte/catalogue.js';
 
 const RL = REGLAGES.lumiere;
 const OCT = [[1, 0, 0, -1, -1, 0, 0, 1], [0, 1, -1, 0, 0, -1, 1, 0], [0, 1, 1, 0, 0, -1, -1, 0], [1, 0, 0, 1, -1, 0, 0, -1]];
 
+// Grille FINE (petites cases) ; positions et portées en UNITÉS (catalogue.js, FIN).
 // Champ : buffers d'un étage. los = case en ligne de vue (stamp), vis = visibilité 0..1, lum = lumière 0..1,
 // vu = mémoire (déjà vu), liste des cases en LOS.
 export function creerChamp(E) {
@@ -49,9 +51,10 @@ function castLight(C, opaque, cx, cy, row, start, end, radius, xx, xy, yx, yy, s
     if (blocked) break;
   }
 }
-// Calcule la ligne de vue depuis (ox, oy) jusqu'à R cases.
+// Calcule la ligne de vue depuis (ox, oy) (unités) jusqu'à R unités.
 export function calculerLOS(C, opaque, ox, oy, R, secondaire = false) {
-  const cx = Math.floor(ox), cy = Math.floor(oy);
+  const cx = Math.floor(ox * FIN), cy = Math.floor(oy * FIN);
+  R *= FIN;
   if (secondaire) C.stamp2++; else { C.stamp++; C.n = 0; }
   if (cx < 0 || cy < 0 || cx >= C.w || cy >= C.h) return;
   marquer(C, cx, cy, secondaire);
@@ -90,7 +93,7 @@ export function calculerVision(C, E, jour, px, py, lampes, nLampes) {
   const w = C.w;
   for (let k = 0; k < C.n; k++) {
     const i = C.liste[k];
-    const x = i % w + 0.5, y = ((i / w) | 0) + 0.5;
+    const x = (i % w + 0.5) / FIN, y = (((i / w) | 0) + 0.5) / FIN;
     let l = E.lumBase[i] * jour + (E.lumStat ? E.lumStat[i] * (1 - E.lumBase[i] * jour * 0.6) : 0);
     for (let q = 0; q < nLampes; q++) {
       const L = lampes[q];
