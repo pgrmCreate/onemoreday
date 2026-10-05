@@ -68,6 +68,9 @@
   if (!q.get('prologue')) G.world.flags.prologue_fini = true;
   if (q.get('jumelles')) G.player.inventaire.push({ id: 'jumelles', qty: 1 });
   if (q.get('tout')) for (const id in LIEUX) G.world.lieux[id] = { decouvert: true };
+  if (q.get('plan')) G.world.flags.pro_plan_pris = true;          // le plan de Salon trouvé dans la loge
+  if (q.get('routiere')) G.world.flags.carte_routiere_lue = true;  // la carte routière du pays salonais
+  if (q.get('libre')) G.world.brouillard = false;                  // partie d'avant le brouillard
   G.world.lieux.hotel_poste = { decouvert: true, visite: true };
   G.world.quetes.q_protocole = { etape: 'emperi' };
   const depuis = q.get('depuis') || 'cimetiere';

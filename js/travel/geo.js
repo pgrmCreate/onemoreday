@@ -94,14 +94,74 @@ export function distanceM(a, b) {
   return Math.hypot(x, y);
 }
 
+// ---------------------------------------------------------------- brouillard : la carte se découvre petit à petit
+// Rien n'est connu d'avance. Ce qu'on connaît de la carte :
+//   - le PLAN DE SALON trouvé dans la loge du gardien (objet plan_salon / drapeau pro_plan_pris) : le centre ancien,
+//     ses lieux imprimés (PLAN_SALON) ;
+//   - la CARTE ROUTIÈRE (objet carte_routiere, trouvée dans une boîte à gants, une gare…) : tout le pays salonais ;
+//   - les lieux visités ou désignés par l'histoire (effet `decouvrir`), avec leurs abords ;
+//   - ce qu'on a vu en marchant : chaque trajet dévoile un couloir autour du chemin parcouru (G.world.carteVue).
+// Un lieu « connu de tous » (decouvert: true dans lieux_recit) apparaît dès qu'il tombe dans une zone dévoilée ;
+// un lieu caché par l'histoire (decouvert: false) n'apparaît que quand l'histoire le découvre.
+export const PLAN_SALON = ['tour_horloge', 'place_crousillat', 'hotel_poste', 'casino_shop', 'pharmacie_carnot', 'hotel_de_ville',
+  'nostradamus', 'saint_michel', 'emperi', 'place_de_gaulle', 'saint_laurent', 'cimetiere'];
+export const RAYONS = {        // mètres (unités de la feuille)
+  salon: { plan: 340, lieu: 240, trajet: 170, pas: 60 },
+  region: { lieu: 2600, trajet: 1600, pas: 700, salon: 4200 },
+};
+const possede = (id) => !!(G && ((G.player.inventaire || []).some(it => it.id === id) || Object.values(G.player.equip || {}).includes(id)));
+// (une carte qu'on a eue entre les mains reste en mémoire, même perdue ensuite)
+export const aLePlan = () => !!(G && (G.world.flags.pro_plan_pris || (possede('plan_salon') && (G.world.flags.pro_plan_pris = true))));
+export const aLaCarteRoutiere = () => !!(G && (G.world.flags.carte_routiere_lue || (possede('carte_routiere') && (G.world.flags.carte_routiere_lue = true))));
+// Partie commencée avant le brouillard (pas de G.world.brouillard) : la carte reste entièrement connue.
+const sansBrouillard = () => !G || !G.world.brouillard;
+function connuDuMonde(id) { return !!(G && G.world.lieux[id] && G.world.lieux[id].decouvert); }
+// Zones dévoilées d'une feuille : [[x, y, r], …] en mètres de la feuille ; null = toute la feuille.
+export function zonesVues(echelle) {
+  if (sansBrouillard()) return null;
+  if (echelle === 'region' && aLaCarteRoutiere()) return null;
+  const R = RAYONS[echelle] || RAYONS.salon, out = [];
+  if (echelle === 'salon' && aLePlan()) for (const id of PLAN_SALON) { const l = LIEUX[id]; if (l) { const p = projeter(l.lat, l.lon, 'salon'); out.push([p.x, p.y, R.plan]); } }
+  if (echelle === 'region') { const p = projeter(SALON_SUR_REGION.lat, SALON_SUR_REGION.lon, 'region'); out.push([p.x, p.y, R.salon]); }
+  for (const l of Object.values(LIEUX)) {
+    if (l.echelle !== echelle || !Number.isFinite(l.lat) || !connuDuMonde(l.id)) continue;
+    const p = projeter(l.lat, l.lon, echelle); out.push([p.x, p.y, R.lieu]);
+  }
+  for (const c of (G.world.carteVue && G.world.carteVue[echelle]) || []) out.push(c);
+  return out;
+}
+const dedans = (zones, x, y) => !zones || zones.some(([cx, cy, r]) => (x - cx) ** 2 + (y - cy) ** 2 <= r * r);
+// Dévoile un disque de la feuille (trajet) ; les lieux connus de tous qui y tombent apparaissent.
+export function reveler(echelle, x, y, r) {
+  if (!G || sansBrouillard()) return false;
+  const W = G.world, cv = W.carteVue || (W.carteVue = {}), L = cv[echelle] || (cv[echelle] = []);
+  const der = L[L.length - 1];
+  if (der && (der[0] - x) ** 2 + (der[1] - y) ** 2 < (r * 0.45) ** 2) return false;
+  L.push([Math.round(x), Math.round(y), Math.round(r)]);
+  if (L.length > 4000) L.splice(0, L.length - 4000);
+  for (const l of Object.values(LIEUX)) {
+    if (l.echelle !== echelle || l.decouvert === false || !Number.isFinite(l.lat) || connuDuMonde(l.id)) continue;
+    const p = projeter(l.lat, l.lon, echelle);
+    if ((p.x - x) ** 2 + (p.y - y) ** 2 <= (r * 1.15) ** 2) { (W.lieux[l.id] || (W.lieux[l.id] = {})).decouvert = true; }
+  }
+  return true;
+}
 // Lieux visibles (REFONTE §12.5) d'une feuille.
 export function estDecouvert(id) {
   const l = LIEUX[id]; if (!l) return false;
-  return !!(l.decouvert || (G && G.world.lieux[id] && G.world.lieux[id].decouvert));
+  if (connuDuMonde(id)) return true;
+  if (!l.decouvert) return false;                       // caché par l'histoire
+  if (sansBrouillard()) return true;
+  if (l.echelle === 'salon' && aLePlan() && PLAN_SALON.includes(id)) return true;
+  if (l.echelle === 'region' && aLaCarteRoutiere()) return true;
+  if (!Number.isFinite(l.lat)) return false;
+  const p = projeter(l.lat, l.lon, l.echelle || 'salon');
+  return dedans(zonesVues(l.echelle || 'salon'), p.x, p.y);
 }
 export function lieuxAffiches(echelle) {
   return Object.values(LIEUX).filter(l => l.echelle === echelle && Number.isFinite(l.lat) && estDecouvert(l.id));
 }
+
 // Échelle d'un lieu (les lieux inconnus / malformés sont traités comme 'salon').
 export function echelleDe(id) { return (LIEUX[id] && LIEUX[id].echelle) || 'salon'; }
 

@@ -38,14 +38,14 @@ en « ville des morts », allées étroites en terrasses, grille d’entrée ouv
 | `housse_patrick` | contre une chapelle voisine, dans l’allée | `pro_patrick` (P3, facultatif) |
 | `conteneur_frigo` | porte du conteneur A | `pro_conteneur` : registre du lot 14 |
 | `loge_gardien` | bureau de la loge | `pro_loge` : cahier, **clé de la grille** |
-| `grille_sortie` | devant la grille | `pro_grille` (clé ou escalade) |
+| `grille_sortie` | devant la grille | `pro_grille` (la clé seulement : pas d’escalade) |
 
 **Morts** : dans la loge, le gardien **`dort`** dans le fauteuil (tutoriel discrétion : on prend la clé derrière lui) ;
 dans le conteneur A, 3 à 5 morts **`cogne`** (ne sortent pas) ; 2 errants **`erre`** lents dans les allées éloignées
 (`errant`) ; le plus proche du caveau hors de la route principale. Pas de mort sur le trajet caveau → soldat (on apprend
 à marcher et à s’éclairer).
 **Portes** : la grille principale est une sortie `E` placée **derrière** une porte `{ porte: true, verrou:
-{ flag: 'pro_grille_ouverte' } }` (la scène pose le drapeau après la clé ou l’escalade).
+{ flag: 'pro_grille_ouverte' } }` (la scène pose le drapeau quand on ouvre avec la clé).
 **Documents libres** : `doc_cimetiere_manieres` (plan des chapelles, punaisé dans la loge ou sur la tente).
 **Déroulé** : se réveiller (scène) → fouiller le scellé → sortir du caveau (dans le noir, le rai de lumière guide) →
 soldat (lampe) → (Patrick) → robinet → conteneurs (lecture) → loge (discrétion, clé) → grille → carte.

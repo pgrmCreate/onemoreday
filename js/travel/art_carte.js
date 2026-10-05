@@ -212,7 +212,7 @@ export function construireFeuille(echelle) {
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   svg.innerHTML = cacheSVG[echelle];
   const couches = {};
-  for (const nom of ['zones', 'annot', 'route', 'marques', 'pion']) {
+  for (const nom of ['zones', 'annot', 'brouillard', 'route', 'marques', 'pion']) {
     const g = document.createElementNS(SVGNS, 'g'); g.setAttribute('class', 'c-' + nom); svg.appendChild(g); couches[nom] = g;
   }
   return { svg, cadre: f.cadre, marge, couches, echelle };
@@ -338,6 +338,38 @@ function taches(echelle, f, rng, x0, y0, W, H, marge) {
 }
 const x1Of = (x0, W) => x0 + W;
 function echapper(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// ---------------------------------------------------------------- brouillard
+// Ce qu'on ne connaît pas encore de la feuille : un voile de papier vierge (crayonné de hachures légères), percé de
+// trous aux bords doux là où la carte est connue (zones : [[x, y, r], …] en mètres ; null = tout est connu).
+let nBrouillard = 0;
+export function dessinerBrouillard(F, zones) {
+  const g = F.couches.brouillard; if (!g) return;
+  g.innerHTML = ''; F.masqueBrouillard = null;
+  if (!zones) return;
+  const [x0, y0, x1, y1] = F.cadre, m = F.marge * 1.6;
+  const id = `c-brou-${F.echelle}-${++nBrouillard}`, hs = F.echelle === 'region' ? 300 : 30;
+  let s = `<defs>
+    <radialGradient id="${id}-t"><stop offset="0" stop-color="#000"/><stop offset=".5" stop-color="#000"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+    <pattern id="${id}-h" width="${hs}" height="${hs}" patternUnits="userSpaceOnUse" patternTransform="rotate(-32)"><line x1="0" y1="0" x2="0" y2="${hs}" stroke="#7a6038" stroke-width="${hs * 0.05}" stroke-opacity=".28"/></pattern>
+    <mask id="${id}" maskUnits="userSpaceOnUse" x="${x0 - m}" y="${y0 - m}" width="${x1 - x0 + 2 * m}" height="${y1 - y0 + 2 * m}">
+      <rect x="${x0 - m}" y="${y0 - m}" width="${x1 - x0 + 2 * m}" height="${y1 - y0 + 2 * m}" fill="#fff"/>`;
+  for (const [x, y, r] of zones) s += `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r)}" fill="url(#${id}-t)"/>`;
+  s += `</mask></defs>
+    <g mask="url(#${id})" class="c-voile">
+      <rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="#e3d1a6" fill-opacity=".94"/>
+      <rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="url(#${id}-h)"/>
+    </g>`;
+  g.innerHTML = s;
+  F.masqueBrouillard = g.querySelector('mask'); F.idBrouillard = id;
+}
+// Un trou de plus (pendant un trajet), sans tout redessiner.
+export function percerBrouillard(F, x, y, r) {
+  if (!F || !F.masqueBrouillard) return;
+  const c = document.createElementNS(SVGNS, 'circle');
+  c.setAttribute('cx', f1(x)); c.setAttribute('cy', f1(y)); c.setAttribute('r', f1(r)); c.setAttribute('fill', `url(#${F.idBrouillard}-t)`);
+  F.masqueBrouillard.appendChild(c);
+}
 
 // ---------------------------------------------------------------- couches dynamiques
 // Zones de danger (≥ 0,5) : cercle hachuré + contour au feutre rouge + nom griffonné.
@@ -521,7 +553,7 @@ function grain() {
   } catch (e) { grainURL = ''; }
   return grainURL;
 }
-export function monterFeuille(hote, echelle, { onTap, onChange, estDecouvert = () => true, zones = true, nuit = false } = {}) {
+export function monterFeuille(hote, echelle, { onTap, onChange, estDecouvert = () => true, zones = true, nuit = false, brouillard = null } = {}) {
   const F = construireFeuille(echelle);
   hote.classList.add('carte-hote');
   hote.classList.toggle('nuit', !!nuit);
@@ -533,6 +565,8 @@ export function monterFeuille(hote, echelle, { onTap, onChange, estDecouvert = (
   hote.appendChild(osm);
   if (zones) dessinerZones(F.couches.zones, echelle);
   dessinerAnnotations(F.couches.annot, echelle, estDecouvert);
+  dessinerBrouillard(F, brouillard);
+
   const R = echelle === 'region';
   F.svg.style.setProperty('--k', R ? '4' : '1');
   const vue = creerVue(hote, F.svg, {

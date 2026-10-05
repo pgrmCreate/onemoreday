@@ -83,7 +83,7 @@ const D = {
     L('lampe_torche', 1, 1, 0.07), L('piles', 1, 1, 0.06), L('tuyau_plastique', 1, 1, 0.05), L('cable_electrique', 1, 1, 0.07),
     L('trousse_outils', 1, 1, 0.025), L('cle_molette', 1, 1, 0.04), L('ressort', 1, 1, 0.07), L('chiffon', 1, 1, 0.08),
     L('briquet', 1, 1, 0.06), L('sac_a_dos', 1, 1, 0.03), L('photo_famille', 1, 1, 0.04), L('telephone_mort', 1, 1, 0.1),
-    L('bidon_vide', 1, 1, 0.02), L('fusee_detresse', 1, 1, 0.02),
+    L('bidon_vide', 1, 1, 0.02), L('fusee_detresse', 1, 1, 0.02), L('carte_routiere', 1, 1, 0.07),
   ],
   poubelle: [
     L('canette_vide', 1, 2, 0.32), L('bouteille_vide', 1, 1, 0.22), L('sac_plastique', 1, 2, 0.28), L('journal_papier', 1, 1, 0.14),
@@ -259,7 +259,7 @@ export const BUTIN = {
     table: [L('allumettes', 1, 1, 0.12), L('photo_famille', 1, 1, 0.15), L('bouteille_vide', 1, 1, 0.1)],
   },
   gare: {
-    comptoir: [L('journal_papier', 1, 3, 0.3), L('piles', 1, 1, 0.1), L('briquet', 1, 1, 0.1), L('chocolat', 1, 1, 0.12), L('barre_cereales', 1, 2, 0.15), L('bouteille_eau', 1, 1, 0.12), L('lampe_torche', 1, 1, 0.04)],
+    comptoir: [L('journal_papier', 1, 3, 0.3), L('piles', 1, 1, 0.1), L('briquet', 1, 1, 0.1), L('chocolat', 1, 1, 0.12), L('barre_cereales', 1, 2, 0.15), L('bouteille_eau', 1, 1, 0.12), L('lampe_torche', 1, 1, 0.04), L('carte_routiere', 1, 1, 0.35)],
     machine: plus(D.machine, [L('bouteille_eau', 1, 2, 0.15)]),
     bureau: plus(D.bureau, [L('lampe_torche', 1, 1, 0.08), L('cle_molette', 1, 1, 0.05), L('radio_portable', 1, 1, 0.03), L('fusee_detresse', 1, 1, 0.06)]),
     vetements: [L('sac_a_dos', 1, 1, 0.1), L('sacoche', 1, 1, 0.1), L('manteau_hiver', 1, 1, 0.06), L('pull_laine', 1, 1, 0.08), L('sweat_capuche', 1, 1, 0.08), L('baskets', 1, 1, 0.05), L('gourde', 1, 1, 0.04), L('photo_famille', 1, 1, 0.06)],
@@ -386,7 +386,7 @@ export const BUTIN = {
   },
   route: { // péage de Lançon, aires, bouchons
     voiture: plus(D.voiture, [L('bouteille_eau', 1, 2, 0.1), L('sac_a_dos', 1, 1, 0.04), L('essence', 1, 1, 0.03), L('blouson_moto', 1, 1, 0.01), L('casque_moto', 1, 1, 0.015)]),
-    comptoir: [L('piles', 1, 1, 0.12), L('lampe_torche', 1, 1, 0.08), L('fusee_detresse', 1, 1, 0.08), L('cafe_soluble', 1, 1, 0.12), L('journal_papier', 1, 2, 0.15), L('radio_portable', 1, 1, 0.03)],
+    comptoir: [L('piles', 1, 1, 0.12), L('lampe_torche', 1, 1, 0.08), L('fusee_detresse', 1, 1, 0.08), L('cafe_soluble', 1, 1, 0.12), L('journal_papier', 1, 2, 0.15), L('radio_portable', 1, 1, 0.03), L('carte_routiere', 1, 1, 0.4)],
     machine: D.machine,
   },
   nature: {

@@ -4,7 +4,8 @@
 //   la chapelle Roux-Bérenger (on s'y réveille, des bougies brûlent encore) → dehors, une FUSÉE ROUGE qui finit de brûler
 //   près d'un soldat mort (sa lampe frontale ; un rampant fait le mort à côté : premier combat) → l'esplanade NRBC
 //   (housses en rang, fût enflammé, camion au gyrophare, conteneur A où « ça cogne », tente, robinet) → la remise
-//   (une pelle : de quoi se défendre) → la loge du gardien (la clé ; il dort dans son fauteuil) → la grille (à deux en co-op).
+//   (une pelle : de quoi se défendre) → la loge du gardien (le plan de Salon punaisé au mur, et derrière lui le double de la
+//   clé ; le gardien mort dort dans son fauteuil) → la grille (pas d'escalade : barbelé de l'armée ; à deux en co-op).
 // Chemin discret : le carré ancien, à l'ouest (herbe haute, ossuaire noir où se logent les morts procéduraux).
 import { plan } from '../../carte/plan.js';
 
@@ -84,7 +85,7 @@ export default plan({
   e.objet('caisson', os.x0, os.y0); e.objet('caisson', os.x0 + 1, os.y0); e.objet('cercueil', os.x0 + 3, os.y0 + 1);
   e.objet('debris', os.x0 + 2, os.y0 + 3);
   for (let k = 0; k < 4; k++) e.objet('stele', 2 + k * 2, 19 + (k % 2));
-  e.objet('olivier', 4, 22);
+  e.objet('olivier', 6, 21);
   e.taches('herbe_seche', 1, 18, 8, 3, 0.4, 1.2);
   e.zombie('errant', 6, 20, { etat: 'erre' });
 
@@ -111,6 +112,9 @@ export default plan({
   const lo = e.batiment(2, 22, 8, 7, { nom: 'Loge du gardien', sol: 'lino', toit: 'tuiles', sombre: 1,
     portes: [{ cote: 'e', a: 1 }], fenetres: [{ cote: 'n', a: 2, l: 2 }, { cote: 'e', a: 3 }] });
   e.objet('bureau', lo.x0 + 2, lo.y0, { nom: 'le bureau du gardien', marqueur: 'loge_gardien', conteneur: false, w: 2, h: 1 });
+  // le plan de Salon punaisé au mur, à côté de la fenêtre (derrière lui, le double de la clé) ; le tableau de clés près de la porte
+  e.objet('plan_mural', lo.x0 + 4, lo.y0 - 1, { drapeau: 'pro_plan_pris' });
+  e.objet('tableau_cles', lo.x1, lo.y0 - 1);
   e.objet('chaise', lo.x0 + 2, lo.y0 + 1); e.zombie('errant', lo.x0 + 2, lo.y0 + 1, { etat: 'dort', dir: -1.57 });
   e.objet('lit_simple', lo.x0, lo.y0 + 3, { w: 1, h: 2 });
   e.objet('armoire', lo.x0, lo.y0, { w: 1, h: 2, rot: 1 });

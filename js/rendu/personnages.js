@@ -57,8 +57,149 @@ function bras(c, sx, sy, hx, hy, manche, peau, ep = 5) {
   c.fillStyle = peau; cercle(c, hx, hy, ep * 0.55); c.fill();
 }
 
+// ---------- Sacs : chacun se voit comme il se porte ----------
+// port : 'dos' (sac à dos), 'cube' (sac de livreur), 'hotte' (osier), 'gilet' (trail : flasques sur la poitrine),
+//        'bandouliere' (sur la hanche, sangle en travers du torse), 'epaule' (sac de sport, de voyage, tote bag),
+//        'main' (cabas, cartable), 'valise' (tirée derrière soi), 'banane' (sur le ventre).
+// l : largeur (le long des épaules), p : épaisseur, coul, détails (rabat, poches, molle, matelas, cadre, corde, bande, motif).
+export const SACS = {
+  sac_a_dos: { port: 'dos', l: 15, p: 7, coul: '#34465e', rabat: 1 },
+  sac_enfant: { port: 'dos', l: 11, p: 5, coul: '#c2503a', rabat: 1, motif: '#e8c84a' },
+  sac_randonnee: { port: 'dos', l: 17, p: 10, coul: '#4f6030', rabat: 1, poches: 1, matelas: '#2e6a8a' },
+  sac_militaire: { port: 'dos', l: 18, p: 10, coul: '#4b5236', molle: 1, poches: 1 },
+  sac_alpinisme: { port: 'dos', l: 15, p: 12, coul: '#b0402a', rabat: 1, corde: '#d8c050' },
+  sac_expedition: { port: 'dos', l: 19, p: 13, coul: '#cc7420', poches: 1, matelas: '#3a3a3a', cadre: 1 },
+  sac_police: { port: 'dos', l: 17, p: 9, coul: '#1e2430', molle: 1, bande: '#c8ccd2' },
+  sac_samu: { port: 'dos', l: 17, p: 9, coul: '#b8322a', bande: '#e0e0d4', poches: 1 },
+  sac_jute: { port: 'dos', l: 16, p: 11, coul: '#9a7e52', informe: 1 },
+  sac_fortune: { port: 'dos', l: 13, p: 8, coul: '#5a5248', informe: 1 },
+  sac_livreur: { port: 'cube', l: 20, p: 17, coul: '#25a39a' },
+  hotte_vendange: { port: 'hotte', l: 17, p: 14, coul: '#8a6a3a' },
+  sac_trail: { port: 'gilet', l: 12, p: 4, coul: '#2a6a9a' },
+  sacoche: { port: 'bandouliere', l: 10, p: 6, coul: '#5a3e28' },
+  musette: { port: 'bandouliere', l: 11, p: 7, coul: '#5a5e3a' },
+  gibeciere: { port: 'bandouliere', l: 12, p: 7, coul: '#6a4a2a', frange: 1 },
+  sacoche_facteur: { port: 'bandouliere', l: 13, p: 7, coul: '#2e4a7a', bande: '#d8b030' },
+  sac_photo: { port: 'bandouliere', l: 10, p: 8, coul: '#262628' },
+  sac_ordinateur: { port: 'bandouliere', l: 14, p: 4, coul: '#2c2e32' },
+  sac_isotherme: { port: 'bandouliere', l: 12, p: 8, coul: '#2a5a8a' },
+  sac_main: { port: 'epaule', l: 9, p: 5, coul: '#6a2a2a' },
+  tote_bag: { port: 'epaule', l: 11, p: 3, coul: '#d6cab0' },
+  sac_sport: { port: 'epaule', l: 16, p: 8, coul: '#1e1e22', bande: '#c02a2a' },
+  sac_voyage: { port: 'epaule', l: 18, p: 9, coul: '#4a3a2a' },
+  cabas_courses: { port: 'main', l: 12, p: 6, coul: '#3a7a4a' },
+  cartable_cuir: { port: 'main', l: 13, p: 4, coul: '#6a3e1e' },
+  valise_cabine: { port: 'valise', l: 14, p: 9, coul: '#2a3a4a' },
+  sac_banane: { port: 'banane', l: 9, p: 4, coul: '#2a2a2a' },
+};
+const sacDe = (s) => (!s ? null : s === true ? SACS.sac_a_dos : SACS[s] || (/sac|sacoche/.test(s) ? SACS.sac_a_dos : null));
+// Ce qui passe DERRIÈRE le torse (dos, hanche, valise)
+function sacArriere(c, S, bal, m, ph) {
+  const sw = Math.sin(ph) * 0.8 * m;     // le sac ballotte un peu en marchant
+  c.save(); c.translate(0, bal * 0.6);
+  switch (S.port) {
+    case 'dos': case 'cube': case 'hotte': {
+      const x1 = -6, x0 = x1 - 4 - S.p, y0 = -S.l / 2 + sw * 0.4;
+      if (S.matelas) { c.fillStyle = teinte(S.matelas, 0.9); rr(c, x0 - 4, y0 - 2.5, 5, S.l + 5, 2.5); c.fill(); c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x0 - 3.5, y0 - 2, 1.2, S.l + 4); }
+      if (S.cadre) { c.strokeStyle = '#5a5e62'; c.lineWidth = 1.4; c.strokeRect(x0 - 1.5, y0 - 1.5, S.p + 5, S.l + 3); }
+      if (S.port === 'hotte') {
+        // hotte d'osier : vannerie, ouverture sombre, quelques grappes
+        c.fillStyle = S.coul; rr(c, x0, y0, x1 - x0, S.l, 5); c.fill();
+        c.strokeStyle = 'rgba(40,24,10,0.55)'; c.lineWidth = 0.8;
+        for (let k = 1; k < 5; k++) { c.beginPath(); c.moveTo(x0, y0 + S.l * k / 5); c.lineTo(x1, y0 + S.l * k / 5); c.stroke(); }
+        for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(x0 + (x1 - x0) * k / 4, y0); c.lineTo(x0 + (x1 - x0) * k / 4, y0 + S.l); c.stroke(); }
+        c.fillStyle = 'rgba(20,12,6,0.75)'; ellipse(c, x0 + (x1 - x0) * 0.45, 0, (x1 - x0) * 0.32, S.l * 0.36); c.fill();
+        c.fillStyle = '#4a2048'; for (let k = 0; k < 5; k++) { cercle(c, x0 + (x1 - x0) * (0.3 + (k % 2) * 0.2), (k - 2) * 2.2, 1.6); c.fill(); }
+        break;
+      }
+      const g = c.createLinearGradient(x0, y0, x1, y0 + S.l);
+      g.addColorStop(0, teinte(S.coul, 1.25)); g.addColorStop(1, teinte(S.coul, 0.75));
+      c.fillStyle = g;
+      if (S.informe) { ellipse(c, (x0 + x1) / 2, sw * 0.4, (x1 - x0) / 2 + 1, S.l / 2 + 1); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x0 + 2, -3); c.quadraticCurveTo((x0 + x1) / 2, 1, x1 - 2, -2); c.stroke(); }
+      else { rr(c, x0, y0, x1 - x0, S.l, S.port === 'cube' ? 1.5 : 4); c.fill(); }
+      c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 0.9; if (!S.informe) { rr(c, x0, y0, x1 - x0, S.l, S.port === 'cube' ? 1.5 : 4); c.stroke(); }
+      if (S.port === 'cube') { c.fillStyle = 'rgba(255,255,255,0.85)'; rr(c, x0 + S.p * 0.3, -3.5, S.p * 0.4, 7, 1.5); c.fill(); }
+      if (S.rabat) { c.fillStyle = teinte(S.coul, 0.7); rr(c, x0 + 1, y0 + 2, (x1 - x0) * 0.45, S.l - 4, 3); c.fill(); c.fillStyle = 'rgba(200,190,170,0.6)'; c.fillRect(x0 + (x1 - x0) * 0.45, -0.8, 1.6, 1.6); }
+      if (S.poches) { c.fillStyle = teinte(S.coul, 0.82); rr(c, x0 + 1.5, y0 - 1.6, x1 - x0 - 4, 2.6, 1); c.fill(); rr(c, x0 + 1.5, y0 + S.l - 1, x1 - x0 - 4, 2.6, 1); c.fill(); }
+      if (S.molle) { c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.8; for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(x0 + (x1 - x0) * k / 4, y0 + 2); c.lineTo(x0 + (x1 - x0) * k / 4, y0 + S.l - 2); c.stroke(); } }
+      if (S.bande) { c.fillStyle = S.bande; c.fillRect(x0 + (x1 - x0) * 0.55, y0 + 1, 1.8, S.l - 2); }
+      if (S.motif) { c.fillStyle = S.motif; cercle(c, x0 + (x1 - x0) * 0.35, -2, 1.4); c.fill(); cercle(c, x0 + (x1 - x0) * 0.6, 2.5, 1.2); c.fill(); }
+      if (S.corde) { c.strokeStyle = S.corde; c.lineWidth = 1.3; c.beginPath(); c.arc(x0 + 2, 0, 4, PI * 0.5, PI * 1.5); c.stroke(); }
+      break;
+    }
+    case 'gilet': { c.fillStyle = teinte(S.coul, 0.9); rr(c, -10, -S.l / 2, 4, S.l, 2); c.fill(); break; }
+    case 'bandouliere': {
+      const y = -13 - S.p / 2 + sw * 0.5, x = -2 - sw;
+      c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, x - S.l / 2 + 1, y - S.p / 2 + 1.2, S.l, S.p, 2.5); c.fill();
+      c.fillStyle = S.coul; rr(c, x - S.l / 2, y - S.p / 2, S.l, S.p, 2.5); c.fill();
+      c.fillStyle = teinte(S.coul, 0.7); rr(c, x - S.l / 2, y - S.p / 2, S.l * 0.55, S.p, 2.5); c.fill();       // rabat
+      if (S.bande) { c.fillStyle = S.bande; c.fillRect(x - S.l / 2 + 1, y - 0.6, S.l * 0.5, 1.2); }
+      if (S.frange) { c.strokeStyle = teinte(S.coul, 0.6); c.lineWidth = 0.8; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo(x - S.l / 2 + 2 + k * 2, y - S.p / 2); c.lineTo(x - S.l / 2 + 2 + k * 2, y - S.p / 2 - 2.2); c.stroke(); } }
+      break;
+    }
+    case 'valise': {
+      const x0 = -27 - S.p, y0 = -15 - S.l / 2;
+      c.strokeStyle = '#18181a'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x0 + S.p, y0 + S.l / 2); c.lineTo(-6, -12); c.stroke();   // la poignée tirée
+      c.fillStyle = 'rgba(0,0,0,0.35)'; rr(c, x0 + 1.5, y0 + 1.5, S.p, S.l, 2); c.fill();
+      c.fillStyle = S.coul; rr(c, x0, y0, S.p, S.l, 2); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,0.12)'; c.lineWidth = 0.8; for (let k = 1; k < 3; k++) { c.beginPath(); c.moveTo(x0 + 1, y0 + S.l * k / 3); c.lineTo(x0 + S.p - 1, y0 + S.l * k / 3); c.stroke(); }
+      c.fillStyle = '#111'; cercle(c, x0 + 1.5, y0 + 2, 1.3); c.fill(); cercle(c, x0 + 1.5, y0 + S.l - 2, 1.3); c.fill();
+      break;
+    }
+    default: break;
+  }
+  c.restore();
+}
+// Ce qui passe DEVANT le torse : bretelles, sangle en travers, sac porté à l'épaule ou à la main, banane, flasques.
+function sacAvant(c, S, bal, m, ph) {
+  const sw = Math.sin(ph) * 0.8 * m;
+  c.save(); c.translate(0, bal * 0.6);
+  c.lineCap = 'round';
+  switch (S.port) {
+    case 'dos': case 'cube': case 'hotte': case 'gilet': {
+      // bretelles par-dessus les épaules
+      c.strokeStyle = teinte(S.coul, 0.6); c.lineWidth = 2.2;
+      c.beginPath(); c.moveTo(-7, -7); c.quadraticCurveTo(-1, -9.5, 4, -6.5); c.moveTo(-7, 7); c.quadraticCurveTo(-1, 9.5, 4, 6.5); c.stroke();
+      if (S.port === 'gilet') { c.fillStyle = '#9ad0f0'; rr(c, 3, -7.5, 5, 3, 1.2); c.fill(); rr(c, 3, 4.5, 5, 3, 1.2); c.fill(); c.fillStyle = '#20384a'; c.fillRect(7.2, -7, 1, 2); c.fillRect(7.2, 5, 1, 2); }
+      if (S.p >= 9 && S.port === 'dos') { c.strokeStyle = 'rgba(20,20,20,0.7)'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(4, -6); c.lineTo(4, 6); c.stroke(); }  // sangle de poitrine
+      break;
+    }
+    case 'bandouliere': {
+      c.strokeStyle = teinte(S.coul, 0.65); c.lineWidth = 1.8;
+      c.beginPath(); c.moveTo(-2 - sw, -13); c.quadraticCurveTo(2, -2, -3, 11); c.stroke();
+      break;
+    }
+    case 'epaule': {
+      const y = -15 - S.p / 2 + sw * 0.4, x = -2 - sw * 1.2;
+      c.strokeStyle = teinte(S.coul, 0.6); c.lineWidth = 1.6; c.beginPath(); c.moveTo(x - S.l * 0.3, y + S.p / 2); c.quadraticCurveTo(x, -9, x + S.l * 0.3, y + S.p / 2); c.stroke();
+      c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, x - S.l / 2 + 1, y - S.p / 2 + 1.2, S.l, S.p, S.p / 2); c.fill();
+      const g = c.createLinearGradient(0, y - S.p / 2, 0, y + S.p / 2); g.addColorStop(0, teinte(S.coul, 1.2)); g.addColorStop(1, teinte(S.coul, 0.75));
+      c.fillStyle = g; rr(c, x - S.l / 2, y - S.p / 2, S.l, S.p, Math.min(S.p / 2, 4)); c.fill();
+      if (S.bande) { c.fillStyle = S.bande; c.fillRect(x - S.l / 2 + 2, y - 0.7, S.l - 4, 1.4); }
+      break;
+    }
+    case 'main': {
+      const x = 1 + sw * 2, y = -19;
+      c.strokeStyle = teinte(S.coul, 0.6); c.lineWidth = 1.2; c.beginPath(); c.moveTo(x - 2, y + S.p / 2 - 1); c.quadraticCurveTo(x, y + S.p / 2 + 3, x + 2, y + S.p / 2 - 1); c.stroke();
+      c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, x - S.l / 2 + 1, y - S.p / 2 + 1.2, S.l, S.p, 1.5); c.fill();
+      c.fillStyle = S.coul; rr(c, x - S.l / 2, y - S.p / 2, S.l, S.p, 1.5); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x - S.l / 2 + 1, y - S.p / 2 + 0.6, S.l - 2, 1);
+      break;
+    }
+    case 'banane': {
+      c.strokeStyle = '#1a1a1a'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(6, -8); c.quadraticCurveTo(9, 0, 6, 8); c.stroke();
+      c.fillStyle = S.coul; rr(c, 6, -S.l / 2, S.p, S.l, 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(6.6, -S.l / 2 + 1, 0.9, S.l - 2);
+      break;
+    }
+    default: break;
+  }
+  c.restore();
+}
+
 // ---------- Vivants ----------
-// P = { manteau, pantalon, chaussures, peau, cheveux, coiffure: 'court'|'long'|'chauve'|'capuche', sac: bool, taille, contour }
+// P = { manteau, pantalon, chaussures, peau, cheveux, coiffure: 'court'|'long'|'chauve'|'capuche', sac: id du sac porté
+//       (SACS) | true (sac à dos) | false, taille, contour }
 // A = { t, marche (0..1), phase (rad), allure, geste: { type, p, combo }, charge (0..1), vise, empoigne, arme (id),
 //       lampe (bool), mainG (id), flash (0..1), fantome (bool), aTerre (bool), agonie (bool) }
 export function dessinerHumain(c, x, y, dir, P, A) {
@@ -83,8 +224,9 @@ export function dessinerHumain(c, x, y, dir, P, A) {
   c.strokeStyle = jb; c.lineWidth = 5.5; c.lineCap = 'round';
   c.beginPath(); c.moveTo(-1, -4.5); c.lineTo(pas * 0.9 + (accroupi ? 4 : 0), -5.5); c.moveTo(-1, 4.5); c.lineTo(-pas * 0.9 + (accroupi ? 4 : 0), 5.5); c.stroke();
   c.fillStyle = ch; ellipse(c, pas + 1.5 + (accroupi ? 4 : 0), -5.5, 4.6, 3); c.fill(); ellipse(c, -pas + 1.5 + (accroupi ? 4 : 0), 5.5, 4.6, 3); c.fill();
-  // sac à dos
-  if (P.sac) { c.fillStyle = teinte(P.sac === true ? '#3e3a2c' : P.sac, 1); rr(c, -15, -9, 9, 18, 4); c.fill(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(-13, -7, 2, 14); }
+  // sac (derrière le torse : dos, hanche, valise)
+  const sac = sacDe(P.sac);
+  if (sac) sacArriere(c, sac, bal, m, ph);
   // torse (manteau) avec ombrage
   const tx = course ? 2 : accroupi ? 1 : 0;
   const g = c.createLinearGradient(-6, -12, 6, 12);
@@ -92,6 +234,7 @@ export function dessinerHumain(c, x, y, dir, P, A) {
   c.fillStyle = g; ellipse(c, -1 + tx, bal, 9.5, accroupi ? 13 : 14.5); c.fill();
   c.strokeStyle = 'rgba(0,0,0,0.55)'; c.lineWidth = 1; c.stroke();
   c.fillStyle = teinte(P.manteau, 0.6); ellipse(c, 2.5 + tx, bal, 3.5, 6.5); c.fill(); // col
+  if (sac) sacAvant(c, sac, bal, m, ph);
   // bras
   const peau = P.peau || '#b89378', manche = teinte(P.manteau, 0.92);
   const pose = poseBras(A);
@@ -323,6 +466,7 @@ export function dessinerCadavre(c, cd, t, frais, def) {
 
 // Fondu de contour d'une silhouette pour le marquage d'une cible (PC : survol / tactile : visée auto).
 export function apparenceJoueur(p, couleurs) {
-  return { ...couleurs, sac: !!(p && p.equip && p.equip.sac) };
+  return { ...couleurs, sac: (p && p.equip && p.equip.sac) || false };
 }
+
 void hash; void ease;

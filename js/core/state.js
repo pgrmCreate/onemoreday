@@ -37,6 +37,7 @@ export function nouvellePartie({ nom = 'Sam', genre = 'm', mode = 'solo', seed }
       seed: seed ?? Math.floor(Math.random() * 1e9),
       minutes: (REGLAGES.temps && REGLAGES.temps.DEPART_MINUTES) || 480,
       flags: {}, lieux: {}, quetes: {}, declencheurs: {},
+      brouillard: true, carteVue: {},   // la carte se découvre petit à petit (js/travel/geo.js)
     },
     player: joueurNeuf(nom, genre),
     journal: [], documents: [], carteNotes: {},

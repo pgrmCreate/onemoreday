@@ -15,8 +15,8 @@ import { el, fmtDistance, fmtDuree, texteHtml } from '../core/util.js';
 import { seedRng } from '../core/rng.js';
 import { LIEUX, objet } from '../game/donnees.js';
 import { REGLAGES } from '../data/reglages.js';
-import { itineraire, pointA, sousTrace, inverser, allonger, projeter, echelleDe } from './geo.js';
-import { monterFeuille, creerMarqueur, SVGNS } from './art_carte.js';
+import { itineraire, pointA, sousTrace, inverser, allonger, projeter, echelleDe, zonesVues, reveler, RAYONS } from './geo.js';
+import { monterFeuille, creerMarqueur, SVGNS, percerBrouillard } from './art_carte.js';
 import { contexteVoyage, vitesse, evaluerRisque, tirerRencontres } from './rencontres_voyage.js';
 import { lieuCourant } from './carte.js';
 
@@ -44,7 +44,7 @@ export async function entrer({ de, vers, allure = 'normale', groupe = null, minu
   V = { de, vers, allure, groupe, ctx, iti, rencontres, d: 0, total: 0, racine, vueHote, offs: [], pauses: new Set(), accel: false, fini: false, surp, raf: 0, dernierTexte: '' };
   V.v = vitesse(ctx, { surpoids: surp }).mParMin;
   V.risque = evaluerRisque(iti, ctx, { de, vers });
-  V.F = monterFeuille(vueHote, iti.echelle, { zones: true, nuit: ctx.nuit });
+  V.F = monterFeuille(vueHote, iti.echelle, { zones: true, nuit: ctx.nuit, brouillard: zonesVues(iti.echelle) });
   construireUI();
   dessinerRoute();
   cadrer(false);
@@ -150,6 +150,15 @@ function majPion() {
   V.fait.setAttribute('d', d);
 }
 
+// En marchant, on découvre la carte : un couloir se dévoile autour du chemin parcouru (et les lieux qui s'y trouvent).
+function devoiler() {
+  const R = RAYONS[V.iti.echelle] || RAYONS.salon;
+  if (V.dVu != null && Math.abs(V.d - V.dVu) < R.pas) return;
+  V.dVu = V.d;
+  const p = pointA(V.iti, V.d);
+  if (reveler(V.iti.echelle, p.x, p.y, R.trajet)) percerBrouillard(V.F, p.x, p.y, R.trajet);
+}
+
 // ---------------------------------------------------------------- boucle
 function boucle(t) {
   if (!V) return;
@@ -163,7 +172,7 @@ function boucle(t) {
     if (proch && nd >= proch.d) { nd = proch.d; V.rencontres.shift(); V.d = nd; majPion(); majBandeau(); lancerRencontre(proch); }
     else if (nd >= V.iti.metres) { V.d = V.iti.metres; majPion(); majBandeau(); arriver(); return; }
     else V.d = nd;
-    majPion(); majBandeau();
+    majPion(); majBandeau(); devoiler();
     if (G && G.player.position.voyage) G.player.position.voyage.d = V.d;
   }
   V.raf = requestAnimationFrame(boucle);

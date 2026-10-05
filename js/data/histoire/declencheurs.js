@@ -11,7 +11,8 @@ export const DECLENCHEURS = [
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'robinet_fleurs', scene: 'pro_robinet', unique: true },
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'housse_patrick', scene: 'pro_patrick', unique: true },
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'conteneur_frigo', scene: 'pro_conteneur', unique: true },
-  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'loge_gardien', scene: 'pro_loge', unique: true },
+  // (rejouable tant que la clé n'est pas prise : une partie fermée en pleine scène ne bloque pas la sortie)
+  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'loge_gardien', si: { pasFlag: 'pro_cle_prise' }, scene: 'pro_loge', libelle: 'Examiner le bureau du gardien' },
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'grille_sortie', si: { pasFlag: 'pro_grille_ouverte' }, scene: 'pro_grille', deux: true, libelle: 'Examiner la grille' },
 
   // Voyage cimetière → Tour de l'Horloge (tutoriel de la carte, puis du combat)

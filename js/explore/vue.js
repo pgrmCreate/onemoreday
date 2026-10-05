@@ -15,7 +15,7 @@ import { REGLAGES, presetDifficulte } from '../data/reglages.js';
 import { ZOMBIES } from '../data/zombies.js';
 import { QUETES } from '../data/histoire/quetes.js';
 import { parserNiveau } from './niveau.js';
-import { FIN, icase } from '../carte/catalogue.js';
+import { icase } from '../carte/catalogue.js';
 import { creerSimLieu } from './sim.js';
 import { creerCanalLocal } from './canal_local.js';
 import { creerChamp, calculerLOS, calculerVision, lumiereLampe } from './vision.js';
@@ -217,7 +217,8 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   majBoutonLampe();
   V.off.push(on('inventaire', majBoutonLampe));
   V.off.push(on('quete', () => { if (V) V.tGuide = 0; }));
-  V.off.push(on('flag', () => { if (V) V.tGuide = 0; }));
+  V.off.push(on('flag', () => { if (V) { V.tGuide = 0; majObjetsDrapeaux(); } }));
+  majObjetsDrapeaux();
   if (mod.inv && mod.inv.setSol) mod.inv.setSol(fournisseurSol());
   if (!mod.panneaux) import('../ui/panels/index.js').then(m => { mod.panneaux = m; }).catch(() => {});
 
@@ -416,6 +417,7 @@ function image(t, dt) {
   for (let q = 0; q < V.nLampes; q++) lumJ = Math.max(lumJ, lumiereLampe(V.lampes[q], j.x, j.y) * 0.5);
   j.lumiere = Math.min(1, lumJ);
   V.canal.majJoueur({ x: j.x, y: j.y, etage: j.etage, dir: j.dir, allure: j.allure, lumiere: j.lumiere, lampe: !!la, lampeSource: la ? la.id : null });
+  { const sac = (G.player.equip && G.player.equip.sac) || null; if (sac !== V._sacEnvoye) { V._sacEnvoye = sac; V.canal.majJoueur({ sac }); } } // le coéquipier voit ton sac
 
   // --- morts interpolés (figés pendant le micro-arrêt) ---
   const f = clamp((V.tVis - V.tSnapVis) / V.periode, 0, 1);
@@ -484,7 +486,7 @@ function styleJoueur() {
   styleCle = cle;
   const torse = e.torse || '';
   const manteau = /cuir|blouson/.test(torse) ? '#3a2a22' : /militaire|treillis|parka/.test(torse) ? '#3e4630' : /pull|laine/.test(torse) ? '#5a3a3a' : /veste|manteau/.test(torse) ? '#2e3a3e' : /blouse|hopital/.test(torse) ? '#8a9a9c' : '#4a4a3a';
-  styleCache = { manteau, pantalon: '#2a2c30', cheveux: p.genre === 'f' ? '#3a2416' : '#241a12', peau: '#b89378', coiffure: p.genre === 'f' ? 'long' : 'court', sac: !!e.sac };
+  styleCache = { manteau, pantalon: '#2a2c30', cheveux: p.genre === 'f' ? '#3a2416' : '#241a12', peau: '#b89378', coiffure: p.genre === 'f' ? 'long' : 'court', sac: e.sac || false };
   return styleCache;
 }
 function grilleBloque() {
@@ -553,48 +555,46 @@ function tension() {
   try { mod.audio.setTension(clamp(t, 0, 1)); } catch (e) {}
 }
 
-// ---------- Guide d'objectif : où aller, ici ----------
-// L'étape courante de la quête principale peut donner un `guide` : [{ si, marqueur, texte, lieu }] (le premier
-// dont la condition est vraie) ; sinon, si l'étape vise un autre lieu : « Sortir — direction X ».
+// ---------- Objectif : jamais un fil d'Ariane ----------
+// Le personnage ne sait pas où est la sortie ni où s'équiper : pas de bandeau permanent, pas de flèche vers le but.
+// Un nouvel objectif est annoncé une fois (toast du HUD général, js/ui/hud.js) ; il reste lisible dans le journal
+// (onglet Objectifs) et, quand le personnage connaît le lieu, marqué sur la carte de Salon.
+// Exception voulue au cas par cas : une entrée `guide` marquée `repere: true` ({ lieu, si, marqueur, texte }) pose
+// encore un repère discret sur place (aucune quête n'en a besoin aujourd'hui).
 function majObjectif() {
   V.objectif = null;
-  if (V.arene) { V.hud.majGuide(''); return; }
+  V.hud.majGuide('');
+  if (V.arene) return;
   let best = null;
   for (const [id, q] of Object.entries(QUETES)) {
     const e = G.world.quetes && G.world.quetes[id];
     if (!q.principale || !e || e.faite) continue;
     if (!best || (q.chapitre || 0) >= (best.q.chapitre || 0)) best = { q, e };
   }
-  if (!best) { V.hud.majGuide(''); return; }
-  const etape = best.q.etapes[best.e.etape] || {};
-  let texte = etape.objectif || '', cible = null;
+  const etape = best ? best.q.etapes[best.e.etape] || {} : {};
   for (const g of etape.guide || []) {
-    if (g.lieu && g.lieu !== V.lieuId) continue;
-    if (!verifierCondition(g.si)) continue;
-    texte = g.texte || texte;
-    if (g.marqueur) cible = V.niveau.marqueurs[g.marqueur] || null;
-    if (g.sortie) cible = sortieProche();
+    if (!g.repere || (g.lieu && g.lieu !== V.lieuId) || !verifierCondition(g.si)) continue;
+    const cible = g.marqueur ? V.niveau.marqueurs[g.marqueur] : null;
+    if (cible) V.objectif = { etage: cible.etage, x: cible.x + 0.5, y: cible.y + 0.5, texte: texteCourt(g.texte || etape.objectif || '') };
     break;
   }
-  if (!cible && etape.lieu && etape.lieu !== V.lieuId) cible = sortieProche();
-  if (cible) V.objectif = { etage: cible.etage, x: cible.x + 0.5, y: cible.y + 0.5, texte: texteCourt(texte) };
-  V.hud.majGuide(texte);
-}
-// La case de sortie la plus proche du joueur (même étage d'abord).
-function sortieProche() {
-  let best = null, bd = Infinity;
-  for (const s of V.niveau.sorties) {
-    const Es = V.niveau.etages[V.niveau.etageIdx[s.etage]];
-    for (const i of s.cases) { const x = (i % Es.w + 0.5) / FIN - 0.5, y = (((i / Es.w) | 0) + 0.5) / FIN - 0.5; const d = Math.hypot(x + 0.5 - V.j.x, y + 0.5 - V.j.y) + (s.etage === V.j.etage ? 0 : 1000); if (d < bd) { bd = d; best = { etage: s.etage, x, y }; } }
-
-  }
-  return best;
 }
 const texteCourt = (t) => (t.length > 34 ? t.slice(0, 32).replace(/\s+\S*$/, '') + '…' : t);
 function majCoopHud(pairs) {
   if (G.mode === 'solo' || !crochets.coop) { V.hud.majCoop(null); return; }
   const info = crochets.coop.info ? crochets.coop.info(V, pairs) : null;
   V.hud.majCoop(info);
+}
+
+// Objets du décor liés à un drapeau (R.drapeau) : le plan décroché du mur de la loge… → R.pris, blocs refaits.
+function majObjetsDrapeaux() {
+  let change = false;
+  for (const E of V.niveau.etages) for (const R of (E.rendu ? E.rendu.objets : [])) {
+    if (!R.drapeau) continue;
+    const v = !!getFlag(R.drapeau);
+    if (R.pris !== v) { R.pris = v; change = true; }
+  }
+  if (change && V.rendu) V.rendu.viderCache();
 }
 
 // ---------- Lampe ----------

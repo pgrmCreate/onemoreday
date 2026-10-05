@@ -226,50 +226,97 @@ export const SCENES_PROLOGUE = {
     choix: [{ label: 'Laisser la porte fermée', suivant: '#fin' }],
   },
 
-  // Marqueur 'loge_gardien' (bureau de la loge, près de la grille) : la clé. Un mort DORT dans le fauteuil.
+  // Marqueur 'loge_gardien' (bureau de la loge, près de la grille) : le plan de Salon, et derrière lui, la clé.
+  // Mise en scène : le crochet GRILLE PRINCIPALE du tableau est vide (le sergent a emporté la clé). Le gardien a
+  // caché le DOUBLE sur un clou, derrière le plan de Salon punaisé au mur, au-dessus du bureau. Un mort DORT dans
+  // le fauteuil, tourné vers ce plan. Tous les chemins passent par le plan : on ne peut pas avoir la clé sans lui.
   pro_loge: {
     illu: 'saint_roch_nuit', musique: 'tension',
-    texte: 'La loge du gardien du cimetière sent le café froid et la pisse de chat. Sur le bureau, un cahier ouvert. Au mur, un tableau de clés. Une seule t’intéresse : GRILLE PRINCIPALE, une grosse clé de laiton avec un anneau rouge. C’est la clé de la sortie.\n\nDans le fauteuil, face à la fenêtre, quelqu’un est assis, la tête penchée sur l’épaule. Il ne respire pas. C’est un mort qui dort. Il ne faut pas le réveiller.',
+    texte: 'La loge du gardien sent le café froid, le tabac et la pisse de chat. Une seule pièce : un lit étroit, un coin cuisine, un bureau poussé sous la fenêtre.\n\nPrès de la porte, un tableau de clés. Les clés des chapelles pendent à leurs crochets, chacune avec son étiquette. Un seul crochet est vide, le plus gros. Son étiquette dit : GRILLE PRINCIPALE.\n\nDevant le bureau, un homme est assis dans un fauteuil, de dos. Sa tête penche sur son épaule. Il ne respire pas. C’est un mort, mais il dort : tant que rien ne le réveille, il ne bougera pas.\n\nIl est tourné vers le mur, au-dessus du bureau, comme s’il regardait encore ce qui y est punaisé : un grand plan de Salon-de-Provence, couvert de notes au stylo. Sur le bureau, à portée de sa main, un cahier est ouvert.',
     choix: [
       { label: 'Lire le cahier ouvert', effets: { document: 'doc_cahier_gardien' }, suivant: 'pro_loge_2' },
-      { label: 'Décrocher la clé de la grille', suivant: 'pro_loge_cle' },
+      { label: 'Décrocher le plan de Salon', si: { pasFlag: 'pro_plan_pris' }, suivant: 'pro_loge_plan' },
+      // (scène interrompue puis rejouée : le plan est déjà pris, la clé attend sur son clou)
+      { label: 'Prendre la clé, sur le clou derrière le plan', si: { flag: 'pro_plan_pris' }, suivant: 'pro_loge_cle' },
     ],
   },
 
   pro_loge_2: {
     illu: 'saint_roch_nuit', musique: 'tension',
-    texte: 'La dernière ligne du cahier date d’avant-hier : « Ça bouge dans la chapelle des Roux-Bérenger. Je n’ouvre pas. »\n\nLa chapelle des Roux-Bérenger. C’est le caveau où tu t’es {réveillé|réveillée}. Le gardien t’a {entendu|entendue} bouger, et il a eu peur.\n\nDans le fauteuil, la tête du mort glisse un peu plus sur son épaule.',
-    choix: [{ label: 'Décrocher la clé de la grille', suivant: 'pro_loge_cle' }],
+    texte: 'La dernière ligne du cahier date d’avant-hier : « Ça bouge dans la chapelle des Roux-Bérenger. Je n’ouvre pas. »\n\nLa chapelle des Roux-Bérenger, c’est le caveau où tu t’es {réveillé|réveillée}. Le gardien t’a {entendu|entendue} bouger, et il a eu peur.\n\nQuelques lignes plus haut, il raconte que les soldats sont partis avec la clé de la grille, et qu’il leur a caché le double. Il n’écrit pas où.\n\nDans le fauteuil, la tête du mort glisse un peu plus sur son épaule.',
+    choix: [
+      { label: 'Chercher le double sans réveiller le mort', suivant: 'pro_loge_fouille' },
+      { label: 'Décrocher le plan de Salon', suivant: 'pro_loge_plan' },
+    ],
   },
 
-  pro_loge_cle: {
+  pro_loge_fouille: {
     illu: 'saint_roch_nuit', musique: 'tension',
-    texte: 'Le tableau de clés est juste derrière le fauteuil. Pour l’atteindre, tu dois passer le bras au-dessus du mort, au-dessus de sa nuque grise et de ses cheveux collés.',
+    texte: 'Tu cherches sans un bruit. Le tiroir du bureau s’ouvre contre les genoux du mort, centimètre par centimètre : des factures, des pastilles Valda, un briquet vide. Pas de clé. Sous l’oreiller du lit, rien. Dans la veste pendue derrière la porte, rien.\n\nLes soldats voulaient toutes les clés. S’ils avaient fouillé la loge, ils auraient regardé dans les tiroirs et dans les poches. Pas sur le mur, sous les yeux de tout le monde.\n\nTu relèves les yeux vers le plan de Salon.',
+    choix: [{ label: 'Décrocher le plan de Salon', suivant: 'pro_loge_plan' }],
+  },
+
+  pro_loge_plan: {
+    illu: 'saint_roch_nuit', musique: 'tension',
+    texte: 'Le plan est punaisé au mur, juste au-dessus de la tête du mort. Pour l’atteindre, tu dois te pencher par-dessus le fauteuil, le ventre contre le dossier, le visage à quelques centimètres de sa nuque grise. Il sent le tabac froid et la viande tournée.\n\nC’est un plan du centre-ville, celui que donne l’office de tourisme, en papier glacé. Quatre punaises le tiennent. Les monuments sont numérotés. Tout en bas, sur le cimetière Saint-Roch, le gardien a dessiné une croix au stylo.\n\nDans le coin inférieur droit, le papier fait une bosse. Petite et allongée, comme si quelque chose était accroché au mur, derrière le plan.',
     choix: [
       {
-        label: 'Décrocher la clé sans faire de bruit',
+        label: 'Retirer les punaises sans faire de bruit',
         test: { skill: 'agilite', difficulte: 1 },
         reussite: {
-          texte: 'L’anneau glisse du crochet sans un bruit. Tu refermes les doigts sur la clé. Dans le fauteuil, rien ne bouge.',
-          effets: { objet: ['cle_grille_saint_roch', 1], xp: { agilite: 8 } },
-          suivant: '#fin',
+          texte: 'Tu retires les punaises une à une, du bout des ongles, et tu les gardes dans ta paume. Le papier se décolle du mur avec un petit froissement. Tu le roules contre ta poitrine.\n\nDerrière, le mur est plus clair : un rectangle propre au milieu du plâtre jauni par la fumée. Dans le coin, un clou. Et sur le clou, une grosse clé de laiton.',
+          effets: { objet: ['plan_salon', 1], flag: 'pro_plan_pris', document: 'doc_plan_salon', xp: { agilite: 8 } },
+          suivant: 'pro_loge_cle',
         },
         echec: {
-          texte: 'La clé heurte sa voisine. Un tintement minuscule, clair comme une cuillère contre un verre.\n\nDans le fauteuil, la tête se redresse. Le mort s’est réveillé.',
-          effets: { objet: ['cle_grille_saint_roch', 1], bruit: 2 },
-          suivant: '#fin',
+          texte: 'La dernière punaise résiste. Tu tires un peu trop fort. Le plan se décolle d’un coup, et quelque chose, derrière, s’arrache du mur avec lui : une grosse clé de laiton. Elle tombe sur le bureau avec un bruit de cloche, rebondit et roule par terre.\n\nDans le fauteuil, la tête se redresse.',
+          effets: { objet: ['plan_salon', 1], flag: 'pro_plan_pris', document: 'doc_plan_salon', bruit: 2 },
+          suivant: 'pro_loge_cle_vite',
         },
       },
     ],
   },
 
-  // Marqueur 'grille_sortie' (grille principale, boulevard du Roi-René).
-  pro_grille: {
-    illu: 'saint_roch_nuit', musique: null,
-    texte: 'La grille principale du cimetière donne sur le boulevard du Roi-René. Elle est fermée par une chaîne et un cadenas. De l’autre côté : les platanes, des voitures abandonnées, et la ville qui descend vers le centre dans la lumière du soir.\n\nC’est Salon-de-Provence. Au-dessus des toits, tu vois la Tour de l’Horloge et sa cage de fer noire, où sont les cloches. C’est là que le mot te dit d’aller.\n\nC’est à un peu plus de cinq cents mètres.',
+  pro_loge_cle: {
+    illu: 'saint_roch_nuit', musique: 'sombre',
+    texte: 'La clé est lourde, plus longue que ta main. Une étiquette en carton pend à l’anneau, écrite au stylo bille : DOUBLE GRILLE — NE PAS DONNER.\n\nLe gardien avait de quoi sortir. Il ne l’a jamais fait. Il est resté assis là, devant son plan, jusqu’à la fin.\n\nDans le fauteuil, rien ne bouge.',
     choix: [
       {
-        label: 'Ouvrir le cadenas avec la clé',
+        label: 'Prendre la clé',
+        effets: {
+          objet: ['cle_grille_saint_roch', 1],
+          flag: 'pro_cle_prise',
+          journal: 'Dans la loge, le gardien est mort assis dans son fauteuil, face à un plan de Salon punaisé au mur. Derrière le plan, il avait caché le double de la clé de la grille. J’ai pris le plan et la clé.',
+        },
+        suivant: '#fin',
+      },
+    ],
+  },
+
+  pro_loge_cle_vite: {
+    illu: 'saint_roch_nuit', musique: 'tension',
+    texte: 'La clé est par terre, entre les pieds du fauteuil. Entre ses pantoufles.\n\nAu-dessus, les mains du mort se referment sur les accoudoirs. Il essaie de se lever.',
+    choix: [
+      {
+        label: 'Ramasser la clé et reculer',
+        effets: {
+          objet: ['cle_grille_saint_roch', 1],
+          flag: 'pro_cle_prise',
+          journal: 'Dans la loge, le gardien était mort dans son fauteuil, face à un plan de Salon punaisé au mur. Derrière le plan, il avait caché le double de la clé de la grille. J’ai pris le plan et la clé. Je l’ai réveillé.',
+        },
+        suivant: '#fin',
+      },
+    ],
+  },
+
+  // Marqueur 'grille_sortie' (grille principale, boulevard du Roi-René). Rejouable tant que la grille est fermée.
+  // On ne passe pas par-dessus : pointes de lance + barbelé à lames posé par l'armée. Seule la clé ouvre.
+  pro_grille: {
+    illu: 'saint_roch_nuit', musique: null,
+    texte: 'La grille principale donne sur le boulevard du Roi-René. Deux battants de fer forgé, deux fois plus hauts que toi, terminés par des pointes de lance. Ils sont fermés à clé.\n\nAu-dessus des pointes, l’armée a déroulé du barbelé à lames, celui des clôtures de prison, qui coupe comme un rasoir. Le même barbelé court sur tout le mur d’enceinte. Un panneau rouge est attaché aux barreaux : ZONE D’EXCLUSION SANITAIRE — ACCÈS INTERDIT. Les soldats ont fermé le cimetière pour que rien n’en sorte. Ni les morts du lot 14, ni personne. Passer par-dessus, ce serait s’ouvrir les mains et le ventre.\n\nSur le pilier, une plaque émaillée : CIMETIÈRE SAINT-ROCH — OUVERT DE 7 H 30 À 19 H — FERMETURE DES PORTES PAR LE GARDIEN.\n\nDe l’autre côté : les platanes, des voitures abandonnées, et la ville qui descend vers le centre. Au-dessus des toits, tu vois la Tour de l’Horloge et sa cage de fer noire, où sont les cloches. C’est là que le mot de « M. » te dit d’aller. Elle n’a pas l’air loin.',
+    choix: [
+      {
+        label: 'Ouvrir la grille avec la clé',
         besoin: { objet: 'cle_grille_saint_roch' },
         effets: {
           flag: 'pro_grille_ouverte',
@@ -278,21 +325,15 @@ export const SCENES_PROLOGUE = {
         },
         suivant: '#fin',
       },
-      {
-        label: 'Escalader la grille',
-        test: { skill: 'agilite', difficulte: 2 },
-        reussite: {
-          texte: 'Tu glisses un pied dans les ornements de fer, puis l’autre. Tu passes par-dessus et tu retombes sur le trottoir, sans bruit. Ton corps se souvient de gestes que ta tête a oubliés.',
-          effets: { flag: 'pro_grille_ouverte', quete: ['q_prologue', 'horloge'], xp: { agilite: 10 } },
-          suivant: '#fin',
-        },
-        echec: {
-          texte: 'En passant, une pointe de la grille t’ouvre la paume. Tu retombes mal, sur le côté. Tu restes un moment {allongé|allongée} sur le trottoir, à regarder les feuilles des platanes tourner au-dessus de toi.',
-          effets: { flag: 'pro_grille_ouverte', quete: ['q_prologue', 'horloge'], blessure: { type: 'entaille', zone: 'à la main' }, xp: { agilite: 4 } },
-          suivant: '#fin',
-        },
-      },
+      { label: 'Secouer la grille', si: { pasFlag: 'pro_plan_pris' }, effets: { bruit: 2 }, suivant: 'pro_grille_secouer' },
+      { label: 'Faire demi-tour', suivant: '#fin' },
     ],
+  },
+
+  pro_grille_secouer: {
+    illu: 'saint_roch_nuit', musique: 'tension',
+    texte: 'Tu prends les barreaux à deux mains et tu tires de toutes tes forces. La serrure tient. Les gonds aussi. Le fer gronde et résonne sur tout le boulevard, et le barbelé tinte au-dessus de ta tête.\n\nCette grille ne s’ouvrira qu’avec sa clé. Quelqu’un l’ouvrait chaque matin et la fermait chaque soir. Quelqu’un qui vivait ici.\n\nDerrière toi, entre les tombes, quelque chose a entendu.',
+    choix: [{ label: 'Reculer dans l’ombre', suivant: '#fin' }],
   },
 
   // ─────────────────────────── LA TOUR ───────────────────────────

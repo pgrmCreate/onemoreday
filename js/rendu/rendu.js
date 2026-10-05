@@ -82,7 +82,7 @@ export function creerRendu(cv, niveau) {
     // un arbre abattu laisse sa souche
     for (const R of (E.rendu ? E.rendu.objets : [])) if (R.retire && dans(R) && RECOLTES[R.type] && RECOLTES[R.type].souche) dessinerObjet(c, { ...R, type: 'souche', E_w: E.w });
     // décor plat (tapis, corps, débris, housses) sous les murs
-    const plat = (R) => R.d && R.d.decor;
+    const plat = (R) => R.d && R.d.decor && !R.d.mural;
     for (const R of objets) if (plat(R)) { R.E_w = E.w; dessinerObjet(c, R); }
     peindreMurs(c, niveau, E, x0, y0, x1, y1);
     objets.filter(R => !plat(R)).sort((a, b2) => (a.y + a.h) - (b2.y + b2.h)).forEach(R => { R.E_w = E.w; dessinerObjet(c, R); });
@@ -216,7 +216,7 @@ export function creerRendu(cv, niveau) {
       if (p.etage !== E.id) continue;
       const v = visCase(p.x, p.y);
       const ph = phase('pair:' + p.id, p.x, p.y);
-      const st = { ...(p.lampe ? STYLE_PAIR_L : STYLE_PAIR), contour: 'rgba(110,200,255,0.9)', sac: true };
+      const st = { ...(p.lampe ? STYLE_PAIR_L : STYLE_PAIR), contour: 'rgba(110,200,255,0.9)', sac: p.sac === undefined ? true : p.sac };
       tmpListe.push({ y: p.y, f: () => dessinerHumain(ctx, p.x * TS, p.y * TS, p.dir, st, { t, marche: p.marche ?? (p.allure && p.allure !== 'immobile' ? 1 : 0), phase: ph, allure: p.allure, arme: p.arme, lampe: p.lampe, geste: p.geste, empoigne: p.empoigne, fantome: v < 0.15, aTerre: p.aTerre, agonie: p.agonie }) });
     }
     const J = S.joueur;

@@ -11,7 +11,7 @@ import { LIEUX, SALON_SUR_REGION } from '../game/donnees.js';
 import { QUETES } from '../data/histoire/quetes.js';
 import { CARTE_SALON } from '../data/carte_salon.js';
 import { REGLAGES } from '../data/reglages.js';
-import { itineraire, projeter, lieuxAffiches, estDecouvert, echelleDe } from './geo.js';
+import { itineraire, projeter, lieuxAffiches, estDecouvert, echelleDe, zonesVues } from './geo.js';
 import { monterFeuille, creerMarqueur, desencombrer, SVGNS, pictoPath } from './art_carte.js';
 import { contexteVoyage, vitesse, evaluerRisque, tirerRencontres, estHostile } from './rencontres_voyage.js';
 
@@ -116,7 +116,7 @@ function montrer(echelle, { premier = false, centrerSur = null } = {}) {
   if (E.F) E.F.detruire();
   E.echelle = echelle;
   for (const b of E.racine.querySelectorAll('.carte-onglet')) b.classList.toggle('actif', b.dataset.ech === echelle);
-  E.F = monterFeuille(E.vueHote, echelle, { onTap, onChange: planifierDesencombrement, estDecouvert, nuit: clock.estNuit() });
+  E.F = monterFeuille(E.vueHote, echelle, { onTap, onChange: planifierDesencombrement, estDecouvert, nuit: clock.estNuit(), brouillard: zonesVues(echelle) });
   poserMarqueurs();
   if (centrerSur) E.F.vue.centrer(centrerSur.x, centrerSur.y, echelle === 'region' ? 16000 : 2200);
   else recentrer(false);

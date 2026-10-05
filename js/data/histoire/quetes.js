@@ -7,19 +7,11 @@ export const QUETES = {
   q_prologue: {
     titre: 'Lot 14', chapitre: 0, principale: true,
     etapes: {
+      // Prologue : les objectifs ne disent que ce que le personnage sait (pas de « la clé est dans la loge »).
       debut:   { objectif: 'Sortir de la housse mortuaire', lieu: 'cimetiere' },
-      scelle:  { objectif: 'Fouiller le sachet agrafé à ta housse, dans le caveau', lieu: 'cimetiere',
-        guide: [{ lieu: 'cimetiere', marqueur: 'scelle_effets', texte: 'Fouille le sachet agrafé à ta housse (au fond du caveau)' }] },
-      // guide : le premier dont la condition est vraie s'affiche en haut de l'écran, et un losange marque l'endroit.
-      sortir:  { objectif: 'Trouver une lumière, puis sortir du cimetière Saint-Roch', lieu: 'cimetiere',
-        guide: [
-          { lieu: 'cimetiere', si: { pasFlag: 'pro_lampe' }, marqueur: 'soldat_nrbc', texte: 'Dehors, la lueur rouge : le soldat a une lampe' },
-          { lieu: 'cimetiere', si: { non: { ou: [{ objet: 'pelle' }, { objet: 'cle_grille_saint_roch' }, { flag: 'pro_grille_ouverte' }] } }, marqueur: 'remise_etabli', texte: 'Trouve de quoi te défendre : la remise, près de la loge' },
-          { lieu: 'cimetiere', si: { pasObjet: 'cle_grille_saint_roch' }, marqueur: 'loge_gardien', texte: 'La clé de la grille est dans la loge du gardien (il dort)' },
-          { lieu: 'cimetiere', marqueur: 'grille_sortie', texte: 'Ouvre la grille principale, au sud' },
-        ] },
-      horloge: { objectif: 'Rejoindre la Tour de l’Horloge, place Crousillat, et y allumer une lumière', lieu: 'tour_horloge',
-        guide: [{ lieu: 'cimetiere', sortie: true, texte: 'Sors sur le boulevard : la carte de Salon t’attend' }] },
+      scelle:  { objectif: 'Ouvrir le sachet agrafé à ta housse, dans le caveau', lieu: 'cimetiere' },
+      sortir:  { objectif: 'Trouver une lumière, puis un moyen de sortir du cimetière Saint-Roch', lieu: 'cimetiere' },
+      horloge: { objectif: 'Rejoindre la Tour de l’Horloge, place Crousillat, et lever une lumière vers les cloches', lieu: 'tour_horloge' },
       monter:  { objectif: 'Monter en haut de la Tour de l’Horloge', lieu: 'tour_horloge' },
       fin:     { objectif: 'Dormir dans la maison de Nostradamus' },
     },

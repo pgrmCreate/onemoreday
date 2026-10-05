@@ -13,8 +13,10 @@ export const OBJETS_QUETE = {
     desc: 'Une carte d’identité à ton nom, un billet de vingt euros, une carte de fidélité d’une boulangerie de Marseille. Sur la photo de la carte, c’est toi. À peu près.' },
   trousseau_inconnu: { nom: 'Trousseau de trois clés', type: 'lore', poids: 0.05, espace: 0,
     desc: 'Trois clés que tu ne reconnais pas : une clé d’appartement, une de boîte aux lettres, une de cadenas de vélo. Quelque part, une porte t’attend.' },
-  cle_grille_saint_roch: { nom: 'Clé de la grille principale', type: 'quete', poids: 0.1, espace: 0,
-    desc: 'Une grosse clé de laiton à anneau rouge, prise au tableau de la loge du gardien, au cimetière Saint-Roch. Elle ouvre la grille principale.' },
+  plan_salon: { nom: 'Plan de Salon-de-Provence', type: 'quete', poids: 0.05, espace: 0,
+    desc: 'Un plan du centre-ville, celui que donne l’office de tourisme, en papier glacé, troué aux quatre coins par des punaises. Il montre la vieille ville et ses boulevards : la Tour de l’Horloge, la Fontaine Moussue, le château de l’Empéri sur son rocher, la maison de Nostradamus, la collégiale Saint-Laurent. Le cimetière Saint-Roch est tout en bas, au bord du papier. Au-delà des boulevards, plus rien : ni la gare, ni l’hôpital, ni la base aérienne, ni les villages autour. Le reste, il faudra le découvrir sur place. Le gardien du cimetière l’a couvert de notes au stylo bille.' },
+  cle_grille_saint_roch: { nom: 'Double de la clé de la grille', type: 'quete', poids: 0.1, espace: 0,
+    desc: 'Une grosse clé de laiton, plus longue que ta main. À l’anneau pend une étiquette en carton : DOUBLE GRILLE — NE PAS DONNER. Le gardien du cimetière Saint-Roch l’avait cachée aux soldats, sur un clou, derrière le plan de Salon punaisé au mur de sa loge. Elle ouvre la grille principale du cimetière.' },
 
   // ─── Chapitre 1 ───
   cle_sacristie: { nom: 'Clé de la sacristie', type: 'quete', poids: 0.1, espace: 0,

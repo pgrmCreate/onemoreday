@@ -97,7 +97,8 @@ export function sousCases(E, ux, uy) {
 // ---------- 4. Objets ----------
 // t: [w, h] taille par défaut (cases, orientation 0 = horizontale) ; cat : catégorie de butin (null = pas fouillable) ;
 // bloque / opaque ; nom (avec article) ; haut : partie dessinée AU-DESSUS des personnages (houppier, auvent) ;
-// lumiere : id de LUMIERES émise ; decor : ne bloque pas (on marche dessus) ; bruit : bruit des pas dessus (×).
+// lumiere : id de LUMIERES émise ; decor : ne bloque pas (on marche dessus) ; bruit : bruit des pas dessus (×) ;
+// mural : accroché à un mur (posé sur la case du mur, dessiné PAR-DESSUS le mur).
 // c : caractère de l'ancien format ASCII (compatibilité).
 // tf : [w, h] empreinte réelle en PETITES cases (grille fine), plus petite que t : le tronc d'un pin, un poteau. L'objet
 //      est dessiné centré sur cette empreinte, à sa taille habituelle.
@@ -183,6 +184,8 @@ export const OBJETS = {
   chariot:    { cat: null, bloque: 1, t: [1, 2], nom: 'le chariot de la morgue' },
   etabli_meuble: { cat: 'caisse', bloque: 1, t: [3, 1], nom: 'l\'établi' },
   couronne:   { cat: null, bloque: 0, t: [1, 1], nom: 'la couronne de fleurs', decor: 1, sol: 1 },
+  plan_mural: { cat: null, bloque: 0, t: [1, 1], nom: 'le plan de Salon', decor: 1, mural: 1 },             // punaisé au mur (posé sur la case du mur)
+  tableau_cles:{ cat: null, bloque: 0, t: [1, 1], nom: 'le tableau de clés', decor: 1, mural: 1 },
   banc_pierre:{ cat: null, bloque: 1, t: [2, 1], nom: 'le banc de pierre' },
   // — décor au sol (on marche dessus) —
   cadavre:    { c: '%', cat: null, bloque: 0, t: [1, 1], nom: 'le corps', decor: 1 },

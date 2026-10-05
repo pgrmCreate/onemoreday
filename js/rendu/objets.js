@@ -671,6 +671,28 @@ const DESSINS = {
     if (r() < 0.4) { c.fillStyle = 'rgba(80,10,12,0.55)'; ellipse(c, W / 2 + 3, H * 0.5, 6, 9); c.fill(); }
     c.fillStyle = '#c8a032'; c.fillRect(W / 2 - 3, H * 0.86, 6, 3);
   },
+  // Plan de ville punaisé au mur (dessiné sur l'arête du mur, en haut de sa case) ; R.pris : décroché (rectangle plus clair)
+  plan_mural(c, W, H, r, R) {
+    const x = W * 0.1, y = H * 0.1, w = W * 0.8, h = H * 0.52;
+    if (R && R.pris) { c.fillStyle = 'rgba(230,220,190,0.28)'; c.fillRect(x, y, w, h); c.fillStyle = '#6a6a6a'; cercle(c, x + w - 4, y + h - 4, 1.2); c.fill(); return; }
+    avecOmbre(c, 3, 1, 2, 0.5, () => { c.fillStyle = '#e8dcb8'; c.fillRect(x, y, w, h); });
+    c.strokeStyle = 'rgba(160,60,40,0.55)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x + 3, y + h * 0.6); c.lineTo(x + w * 0.45, y + h * 0.35); c.lineTo(x + w - 3, y + h * 0.5); c.moveTo(x + w * 0.3, y + 2); c.lineTo(x + w * 0.5, y + h - 2); c.stroke();
+    c.fillStyle = 'rgba(150,110,80,0.5)'; for (let k = 0; k < 7; k++) c.fillRect(x + 3 + r() * (w - 8), y + 3 + r() * (h - 8), 3 + r() * 4, 2 + r() * 3);
+    c.strokeStyle = 'rgba(30,50,120,0.7)'; c.beginPath(); c.moveTo(x + w * 0.62, y + h * 0.7); c.lineTo(x + w * 0.72, y + h * 0.82); c.moveTo(x + w * 0.72, y + h * 0.7); c.lineTo(x + w * 0.62, y + h * 0.82); c.stroke();
+    c.fillStyle = 'rgba(0,0,0,0.18)'; ellipse(c, x + w - 5, y + h - 5, 3, 2); c.fill();         // la bosse, en bas à droite
+    c.fillStyle = '#b02a2a'; for (const [px, py] of [[x + 1.5, y + 1.5], [x + w - 1.5, y + 1.5], [x + 1.5, y + h - 1.5], [x + w - 1.5, y + h - 1.5]]) { cercle(c, px, py, 1.3); c.fill(); }
+  },
+  // Tableau de clés : planchette, crochets, étiquettes ; le plus gros crochet est vide
+  tableau_cles(c, W, H, r) {
+    const x = W * 0.12, y = H * 0.12, w = W * 0.76, h = H * 0.42;
+    avecOmbre(c, 3, 1, 2, 0.5, () => { c.fillStyle = '#6a4a2a'; rr(c, x, y, w, h, 1.5); c.fill(); });
+    for (let k = 0; k < 6; k++) {
+      const px = x + 4 + (k % 3) * (w - 8) / 2, py = y + 4 + Math.floor(k / 3) * (h - 8);
+      c.fillStyle = '#b8b0a0'; cercle(c, px, py, 1); c.fill();
+      if (k === 4) { c.fillStyle = '#e8e0c8'; c.fillRect(px - 2.5, py + 1.5, 5, 2.5); continue; }      // GRILLE PRINCIPALE : vide
+      c.strokeStyle = '#c8a040'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(px, py); c.lineTo(px + (r() - 0.5) * 2, py + 4); c.stroke();
+    }
+  },
   autel(c, W, H) { boite(c, 2, 4, W - 4, H - 8, '#8a8476', { r: 2 }); c.fillStyle = '#d8d0c0'; c.fillRect(6, 6, W - 12, H - 12); c.fillStyle = '#c8a032'; c.fillRect(W / 2 - 1.5, 7, 3, H - 14); c.fillRect(W / 2 - 5, H / 2 - 1.5, 10, 3); },
   prie_dieu(c, W, H, r) { DESSINS.banc(c, W, H, r); },
   cloche(c, W, H) { avecOmbre(c, 8, 4, 6, 0.6, () => { const g = c.createRadialGradient(W / 2 - 6, H / 2 - 6, 2, W / 2, H / 2, W / 2 - 4); g.addColorStop(0, '#c8a052'); g.addColorStop(1, '#4a3a1a'); c.fillStyle = g; cercle(c, W / 2, H / 2, W / 2 - 5); c.fill(); }); c.fillStyle = '#2a1a0a'; cercle(c, W / 2, H / 2, 5); c.fill(); },

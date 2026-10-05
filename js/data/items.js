@@ -828,6 +828,10 @@ export const ITEMS = {
     nom: 'Portefeuille', type: 'lore', poids: 0.1, espace: 0, volume: 0.1,
     desc: 'Cartes bleues, billets, photos de famille. Tout ce qui valait quelque chose ne vaut plus rien.',
   },
+  carte_routiere: {
+    nom: 'Carte routière', type: 'lore', poids: 0.15, espace: 0, volume: 0.15,
+    desc: 'Une carte Michelin des Bouches-du-Rhône, pliée à l’envers, le coin mangé par le soleil d’une plage arrière. Les villages autour de Salon, les routes, l’étang de Berre, la Durance au nord. Avec elle, le pays salonais n’est plus une page blanche.',
+  },
   photo_famille: {
     nom: 'Photo de famille', type: 'lore', poids: 0, espace: 0, volume: 0.001,
     desc: 'Des inconnus qui sourient sur une plage. Tu la gardes quand même.',
