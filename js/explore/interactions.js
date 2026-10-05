@@ -309,8 +309,9 @@ async function actionPorte(c) {
   else if (r.raison === 'verrouillee') message('Verrouillée.');
 }
 // Action chronométrée générique (forcer, crocheter, relever…) : interrompue par le mouvement.
-export function lancerAction(label, ms, x, y, fin, bruitParS = 0) {
-  V.action = { label, duree: ms, t: 0, x, y, fin, bruit: bruitParS, tb: 0 };
+// son : bruit de travail rejoué pendant l'action (ex. 'clouer'), toutes les sonMs.
+export function lancerAction(label, ms, x, y, fin, bruitParS = 0, son = null, sonMs = 2300) {
+  V.action = { label, duree: ms, t: 0, x, y, fin, bruit: bruitParS, tb: 0, son, sonMs, tSon: 0 };
   V.hud.barre.firstChild.textContent = label;
   V.hud.barre.classList.remove('cache');
 }
@@ -318,6 +319,7 @@ export function avancerAction(dt) {
   const a = V.action, I = V.entrees.etat;
   if (Math.hypot(I.mx, I.my) > 0.3) { V.action = null; V.hud.barre.classList.add('cache'); message('Interrompu.'); return; }
   a.t += dt; a.tb += dt;
+  if (a.son && (a.tSon -= dt) <= 0) { a.tSon = a.sonMs; sfx(a.son); }
   if (a.bruit && a.tb >= 1000) { a.tb = 0; V.canal.bruit({ etage: V.j.etage, x: a.x, y: a.y, rayon: a.bruit }); }
   V.hud.barre.lastChild.firstChild.style.width = (100 * Math.min(1, a.t / a.duree)).toFixed(1) + '%';
   if (a.t >= a.duree) { V.action = null; V.hud.barre.classList.add('cache'); a.fin(); }

@@ -21,7 +21,7 @@ export function lierCommun(v) { V = v; }
 export const vueCourante = () => V;
 
 export const vib = (ms) => { try { if (pref('vibrations') !== false && navigator.vibrate) navigator.vibrate(ms); } catch (e) {} };
-export const sfx = (n, o) => { try { mod.audio && mod.audio.sfx && mod.audio.sfx(n, o); } catch (e) {} };
+export const sfx = (n, o) => { try { return mod.audio && mod.audio.sfx && mod.audio.sfx(n, o); } catch (e) {} };
 // Son situé dans le lieu : plus on est loin, moins on l'entend (au-delà de la portée : rien). Un étage d'écart = étouffé.
 export function sfxA(nom, x, y, etage, portee = 14) {
   if (!V) return;

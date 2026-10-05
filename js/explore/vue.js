@@ -268,6 +268,7 @@ export function sortir() {
   try { v.canal.fermer && v.canal.fermer(); } catch (e) {}
   if (mod.inv && mod.inv.setSol) { const pile = []; mod.inv.setSol({ lister: () => pile, deposer: (it) => pile.push({ ...it }), prendre: (i) => pile.splice(i, 1)[0] || null }); }
   try { mod.audio && mod.audio.setTension && mod.audio.setTension(0); } catch (e) {}
+  try { mod.audio && mod.audio.setHorde && mod.audio.setHorde(0); } catch (e) {}
   v.racine.remove();
   if (!v.arene) emit('lieu:sort', { lieu: v.lieuId });
   V = null;
@@ -383,6 +384,13 @@ function image(t, dt) {
   } else if (performance.now() < (V.finCourse || 0)) dS = 0;   // reprendre son souffle
   else dS = (S[j.allure === 'immobile' ? 'repos' : j.allure] || 6) * M.regenSta;
   G.player.sta = clamp(G.player.sta + dS * dt / 1000, 0, staMax);
+  // pas (bitume dehors, plancher dedans) et souffle court en fin de course
+  if (j.allure !== 'immobile') {
+    V.pasDist = (V.pasDist || 0) + vReelle * dt / 1000;
+    if (V.pasDist >= RX.PAS_FOULEE[j.allure]) { V.pasDist = 0; sfx(V.dehorsSon ? 'pas_beton' : 'pas', { volume: RX.PAS_VOLUME[j.allure] }); }
+  }
+  V.tSouffle = (V.tSouffle || 0) - dt;
+  if (j.allure === 'course' && G.player.sta < staMax * RX.SOUFFLE_SEUIL && V.tSouffle <= 0) { V.tSouffle = 2300; sfx('souffle_course'); }
   // orientation : souris (PC) sinon direction de marche
   let dirCible = j.dir;
   const forcee = V.cbt.dirForcee();
@@ -555,6 +563,10 @@ function tension() {
   let t = 0;
   for (const z of V.zListe) if (z.etage === V.j.etage) { const d = Math.hypot(z.x - V.j.x, z.y - V.j.y); if (z.etat === 'chasse') t = Math.max(t, 1 - d / 14); else if (z.alerte > 0.3) t = Math.max(t, 0.4 * (1 - d / 12)); }
   try { mod.audio.setTension(clamp(t, 0, 1)); } catch (e) {}
+  // horde lointaine : beaucoup de morts dans le quartier, hors de portée directe
+  const H = RX.HORDE_SON; let n = 0;
+  for (const z of V.zListe) if (z.etage === V.j.etage) { const d = Math.hypot(z.x - V.j.x, z.y - V.j.y); if (d >= H.DIST_MIN && d <= H.DIST_MAX) n++; }
+  try { mod.audio.setHorde && mod.audio.setHorde(n >= H.FORTE ? 2 : n >= H.CALME ? 1 : 0, !V.dehorsSon); } catch (e) {}
 }
 
 // ---------- Objectif : jamais un fil d'Ariane ----------
@@ -665,6 +677,7 @@ function couperTout() {
 
 // ---------- Divers ----------
 async function ouvrirInventaire() {
+  sfx('sac_zip');
   if (mod.panneaux === null || mod.panneaux === undefined) { try { mod.panneaux = await import('../ui/panels/index.js'); } catch (e) { mod.panneaux = false; } }
   if (mod.panneaux && mod.panneaux.ouvrirPanneau) { try { mod.panneaux.ouvrirPanneau('inventaire'); } catch (e) { console.warn(e); } }
 }

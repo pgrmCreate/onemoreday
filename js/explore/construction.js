@@ -101,7 +101,7 @@ export function poserPlacement() {
     sfx('porte_coup', { volume: 0.5 });
     message(`${d.nom} : fait.`, 1600);
     if (V && V.placement && !cons.etatConstruction(o.type).faisable) { V.placement = null; message(`${d.nom} : fait. Plus assez de matériaux pour un autre.`, 2600); }
-  }, d.outils && d.outils.includes('marteler') ? 7 : 3);
+  }, d.outils && d.outils.includes('marteler') ? 7 : 3, d.outils && d.outils.includes('marteler') ? 'clouer' : null);
   if (V.action) V.action.chantier = chantier;
   return true;
 }
@@ -307,7 +307,7 @@ export function secondairePorte(p, s) {
       mod.inv.removeItem('planche', 2); mod.inv.removeItem('clous', 4);
       (mod.player && mod.player.gagnerXp) && mod.player.gagnerXp('construction', REGLAGES.competences.XP_ACTIONS.barricader.construction || 10);
       sfx('porte_coup'); message('Barricadée. Derrière, on peut dormir.');
-    }, 7);
+    }, 7, 'clouer');
   } };
 }
 // Pour les bancs d'essai : émettre l'ordre de placement comme le panneau.

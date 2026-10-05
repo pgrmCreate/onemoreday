@@ -14,8 +14,7 @@ export function lierButin(v) { V = v; }
 export async function commencerFouille(cle, nom, x, y) {
   const r = await V.canal.fouiller(cle);
   if (!V || r.erreur) return;
-  sfx('tissu_dechire');
-  V.fouille = { cle, nom: r.nom || nom, items: r.items, duree: Math.max(400, r.dureeMs), p: r.progres || 0, x, y, reveles: -1, tb: 0 };
+  V.fouille = { cle, nom: r.nom || nom, items: r.items, duree: Math.max(400, r.dureeMs), p: r.progres || 0, x, y, reveles: -1, tb: 0, tSon: 0, son: null };
   ouvrirButin(V.fouille);
   majRevele();
 }
@@ -23,9 +22,12 @@ export function avancerFouille(dt) {
   const F = V.fouille, I = V.entrees.etat;
   if (Math.hypot(I.mx, I.my) > 0.3) { interrompreFouille(); return; }
   F.p = Math.min(1, F.p + dt / F.duree);
+  // le bruit de la fouille, relancé tant qu'on fouille (le fichier dure ~5,6 s)
+  F.tSon -= dt; if (F.tSon <= 0) { F.tSon = 5200; F.son = sfx('fouille'); }
   majRevele();
   if (F.p >= 1) {
     V.canal.arreterFouille(1);
+    if (F.son) F.son.stop();
     V.fouille = null;
     if (!V.butin || !V.butin.items.length) { message(`Rien d'utile dans ${F.nom}.`); fermerButin(); }
     else { V.butin.fini = true; rendreButin(); sfx('loot'); }
@@ -39,6 +41,7 @@ function majRevele() {
 export function interrompreFouille() {
   if (!V || !V.fouille) return;
   V.canal.arreterFouille(V.fouille.p);
+  if (V.fouille.son) V.fouille.son.stop();
   V.fouille = null;
   if (V.butin && !V.butin.visibles) fermerButin();
   else if (V.butin) { V.butin.fini = true; rendreButin(); }

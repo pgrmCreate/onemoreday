@@ -168,3 +168,7 @@ function variante(theme, { transpose = 0, etire = 1, attenuation = 1 } = {}) {
 
 // La nuit, l'exploration descend de trois demi-tons, ralentit et se feutre.
 THEMES.exploration_nuit = variante(THEMES.exploration, { transpose: -3, etire: 1.3, attenuation: 0.85 });
+// La route de jour : même partition de repli, mais un fichier à elle (très calme) — la nuit retombe sur exploration_nuit.
+THEMES.exploration_calme = THEMES.exploration;
+// L'écran de mort : son fichier (cordes) ; sans lui, le glas de « mort ».
+THEMES.deces = THEMES.mort;

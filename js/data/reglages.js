@@ -90,6 +90,12 @@ export const REGLAGES = {
     COURSE_REPRISE_MS: 1500,    // après une course, 1,5 s à reprendre ton souffle avant que l'endurance remonte.
     COURSE_XP_S: 12,            // 1 XP d'Agilité toutes les 12 s de course.
     ACCROUPI_VITESSE_AGILITE: 0.05, // +5 % de vitesse accroupie par niveau d'agilité.
+    // --- SONS du corps : un pas toutes les « foulée » cases parcourues ; volume par allure ---
+    PAS_FOULEE: { marche: 1.8, course: 2.1, accroupi: 1.4 },
+    PAS_VOLUME: { marche: 0.32, course: 0.55, accroupi: 0.12 },
+    SOUFFLE_SEUIL: 0.45,        // en course sous 45 % d'endurance, on entend le souffle court.
+    // --- HORDE lointaine (boucle sonore) : morts du même étage entre DIST_MIN et DIST_MAX cases ---
+    HORDE_SON: { DIST_MIN: 12, DIST_MAX: 80, CALME: 6, FORTE: 18 }, // ≥ 6 → gémissements au loin ; ≥ 18 → la ville grouille.
 
     // --- BRUIT : rayon (cases) du bruit émis ; les morts dont (distance ≤ rayon × ouïe) l'entendent ---
     BRUIT: {

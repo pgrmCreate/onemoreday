@@ -304,14 +304,16 @@ export function creerCombatVue(o) {
         // micro-arrêt : la sensation de choc
         S.hitstop = Math.max(S.hitstop, e.achever ? HS.achever : e.lourd ? HS.lourd : e.combo === 2 ? HS.combo : e.tue ? HS.tue : HS.rapide);
         nombre(e.x, e.y, (e.crit ? '!' : '') + e.degats, e.crit ? 'crit' : e.furtif ? 'furtif' : '');
-        o.sfx(fort ? 'coup_critique' : 'coup');
+        const st = S.stats || stats();
+        // Arme de Force (batte, barre, marteau, crosse…) : le choc sourd sur la chair.
+        if (!e.tir && st.arme.skill === 'force') o.sfx('coup_contondant', { volume: fort ? 1 : 0.8 });
+        else o.sfx(fort ? 'coup_critique' : 'coup');
         o.vib(fort ? 40 : 18);
         S.secousse = Math.max(S.secousse, fort ? 0.7 : 0.28);
         if (e.achever) nombre(e.x, e.y - 0.45, 'Coup de grâce', 'crit');
         else if (e.terre) nombre(e.x, e.y - 0.45, 'À terre', 'info');
         else if (e.interrompt) nombre(e.x, e.y - 0.45, 'Interrompu', 'info');
         else if (e.vacille) nombre(e.x, e.y - 0.45, 'Il vacille', 'info');
-        const st = S.stats || stats();
         const skill = e.tir ? 'visee' : (st.arme.skill || 'mainsNues');
         xp(skill, e.tir ? X.tir : X.touche);
         if (e.lourd) xp('force', X.charge_lourde);
@@ -331,7 +333,7 @@ export function creerCombatVue(o) {
           st.tuesParType = st.tuesParType || {}; st.tuesParType[e.typeMort] = (st.tuesParType[e.typeMort] || 0) + 1;
           if (e.furtif) { o.message('Mise à mort silencieuse.', 1600); xp('discretion', REGLAGES.exploration.FURTIF.XP_DISCRETION); }
         }
-        o.sfxA('mort', e.x, e.y, e.etage, 12);
+        o.sfxA('mort_zombie', e.x, e.y, e.etage, 12);
         break;
       }
       case 'poussee': if (e.joueur === moi) {

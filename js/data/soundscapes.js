@@ -155,7 +155,7 @@ export const SCENES_SONORES = {
     stingersNuit: [['hibou', 2], ['gemissement', 1], ['chien', 1], ['insectes_nuit', 3]],
     stingersJour: [['cigales', 4], ['oiseau_isole', 3]], // la garrigue salonaise en plein cagnard
     intervalle: [8, 20],
-    musique: { theme: 'exploration' }, // la route est longue — même thème que la rue
+    musique: { theme: 'exploration_calme' }, // la route est longue : le jour, la musique la plus calme ; la nuit, celle de la rue
   },
   village: {
     vent: [420, 0.12, 0.05],
@@ -198,5 +198,5 @@ export const SCENES_SONORES = {
 SCENES_SONORES.titre   = { ...SCENES_SONORES.sombre, musique: { theme: 'titre' } };
 SCENES_SONORES.calme   = { ...SCENES_SONORES.interieur, musique: { theme: 'titre' } };
 SCENES_SONORES.tension = { ...SCENES_SONORES.rue, musique: { theme: 'titre' } };
-SCENES_SONORES.mort    = { ...SCENES_SONORES.sombre, stingers: [['vent_rafale', 1]], musique: { theme: 'titre' } };
+SCENES_SONORES.mort    = { ...SCENES_SONORES.sombre, stingers: [['vent_rafale', 1]], musique: { theme: 'deces' } };
 SCENES_SONORES.combat  = { ...SCENES_SONORES.sombre };

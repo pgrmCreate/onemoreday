@@ -66,6 +66,22 @@ const BANQUE_SFX = {
   zombie_loin:      { f: ['monster/zombie-alone-calm-growl.mp3'], vol: 0.45 },
   hurlement:        { f: ['monster/zombie-agonie.mp3', 'monster/zombie-alone-agony-2.mp3'], vol: 0.8 },
   alerte_infection: { f: ['effect/little-horror-suspence.mp3'], vol: 0.55 },
+  pas_beton:        { f: ['effect/step-concrete-1.mp3', 'effect/step-concrete-2.mp3'], vol: 0.3 }, // dehors : bitume, trottoir
+  souffle_course:   { f: ['action/step-run-breath.mp3'], vol: 0.45 }, // course à bout de souffle
+  coup_contondant:  { f: ['effect/blunt-hit-flesh.mp3'], vol: 0.85 }, // batte, barre, marteau… sur de la chair
+  mort_zombie:      { f: ['monster/zombie-death-fall.mp3'], vol: 0.75 }, // le corps tombe, un dernier râle
+  fouille:          { f: ['effect/rummage-search.mp3'], vol: 0.45 },
+  vitre:            { f: ['effect/glass-break.mp3'], vol: 0.8 },
+  boire:            { f: ['action/drink-gulp.mp3'], vol: 0.6 },
+  clouer:           { f: ['effect/hammer-nail.mp3'], vol: 0.6 },
+  sac_zip:          { f: ['effect/bag-zip.mp3'], vol: 0.45 },
+};
+// Hordes lointaines : des boucles posées SOUS l'ambiance quand beaucoup de morts
+// rôdent dans le quartier (voir setHorde). « calme » = gémissements longs et
+// espacés ; « forte » = la ville grouille (aussi pour les cinématiques).
+const BANQUE_HORDES = {
+  calme: { f: ['monster/zombie-horde-calme-1.mp3', 'monster/zombie-horde-calme-2.mp3'], vol: 0.35 },
+  forte: { f: ['monster/zombie-horde-distant.mp3'], vol: 0.45 },
 };
 // Chaque thème est une PLAYLIST (liste de fichiers). Le lecteur enchaîne les
 // morceaux en variant l'ordre — jamais deux fois le même de suite : fini la
@@ -75,8 +91,13 @@ const BANQUE_SFX = {
 const BANQUE_THEMES = {
   titre:       { f: ['musique/intro-horror.mp3'], vol: 1.0 },
   exploration: { f: ['musique/empty-city.mp3'], vol: 0.9 },
+  exploration_nuit: { f: ['musique/empty-city.mp3'], vol: 0.9 },
+  // Très calme : réservée à la route de jour (carte de la région), là où rien ne presse.
+  exploration_calme: { f: ['musique/exploration-calme.mp3'], vol: 0.9 },
   train:       { f: ['musique/on-the-road.mp3'], vol: 1.0 },
-  refuge:      { f: ['musique/suspence-calm.mp3'], vol: 1.0 },
+  refuge:      { f: ['musique/refuge-calme.mp3'], vol: 1.0 },
+  // Écran de mort : cordes lentes qui s'éteignent.
+  deces:       { f: ['musique/mort.mp3'], vol: 1.0 },
   // Combat : une vraie playlist d'action qui tourne en continu (crossfade),
   // sans jamais rejouer le même morceau deux fois de suite.
   combat: { f: [
@@ -159,6 +180,12 @@ async function chargerBanque() {
     for (const f of def.f) { try { const b = await decoder(f); liste.push({ buffer: b, gain: gainMusique(b, def.vol) }); } catch (e) {} }
     if (liste.length) fichiers.themes[nom] = liste; // playlist (1 fichier ou plus)
   }
+  for (const [nom, def] of Object.entries(BANQUE_HORDES)) {
+    const liste = [];
+    for (const f of def.f) { try { const b = await decoder(f); liste.push({ buffer: b, gain: gainNormalise(b, def.vol) }); } catch (e) {} }
+    if (liste.length) hordeBufs[nom] = liste;
+  }
+  if (hordeVoulue) { const n = hordeVoulue; hordeVoulue = null; setHorde(n.niveau, n.interieur); } // demandée avant la fin du chargement
   // Chrono + pluie : on garde un facteur de normalisation (certains de ces fichiers
   // sont enregistrés très bas — la pluie a une crête à ~0,08 : il faut la remonter).
   try { const b = await decoder(FICHIER_CHRONO); chronoBuf = { buffer: b, norm: Math.min(0.9 / crete(b), 12) }; } catch (e) {}
@@ -178,6 +205,8 @@ function jouerSonFichier(entree, opts = {}) {
   else g.connect(master);
   src.start();
   src.onended = () => { try { src.disconnect(); g.disconnect(); } catch (e) {} };
+  // Poignée pour couper un son long en cours (fouille interrompue…), en fondu bref.
+  return { stop() { try { const t = ctx.currentTime; g.gain.setTargetAtTime(0.0001, t, 0.05); src.stop(t + 0.25); } catch (e) {} } };
 }
 
 export function initAudio() {
@@ -237,6 +266,7 @@ function stopAmbiance() {
   arreterPlaylist(bufferTheme); bufferTheme = null;
   arreterTensionMusique(); // change de scène / mort : la tension ne déborde pas sur le lieu suivant
   arreterPluie();
+  setHorde(0); // l'exploration la repose d'elle-même si la horde est toujours là
   musiqueLieuSuspendue = false; // tout le lit est démonté : plus rien à « reprendre »
 }
 
@@ -466,9 +496,9 @@ const SEQ_TICK_MS = 200;  // cadence du réveil
 
 function demarrerTheme(nom, nuit, cle) {
   let part = THEMES[nom];
-  if (!part) return;
+  if (!part && !fichiers.themes[nom]) return; // ni partition, ni fichier
   let nomEffectif = nom;
-  if (nuit && part.nuit && THEMES[part.nuit]) { nomEffectif = part.nuit; part = THEMES[part.nuit]; }
+  if (nuit && part && part.nuit && THEMES[part.nuit]) { nomEffectif = part.nuit; part = THEMES[part.nuit]; }
   // Fichiers (banque ou manifest) ? Ils remplacent la synthèse de ce thème
   // (la variante de nuit peut avoir sa propre playlist, sinon celle du jour).
   const liste = fichiers.themes[nomEffectif] || fichiers.themes[nom];
@@ -1074,15 +1104,42 @@ export function setChrono(on) {
   }
 }
 
+// ---------- Horde lointaine (boucle sous l'ambiance) ----------
+// setHorde(0) = rien ; 1 = des morts gémissent au loin (calme, espacé) ; 2 = la ville
+// grouille (forte). interieur : on l'entend à travers les murs, étouffée. Fondus
+// lents (la horde ne surgit jamais d'un coup) ; un changement de niveau croise les boucles.
+let hordeBufs = {}, hordeNode = null, hordeVoulue = null;
+export function setHorde(niveau, interieur = false) {
+  if (!ctx) return;
+  niveau = niveau >= 2 ? 2 : niveau >= 1 ? 1 : 0;
+  if (!hordeBufs.calme && !hordeBufs.forte) { if (niveau) hordeVoulue = { niveau, interieur }; return; } // pas encore chargées
+  const t = ctx.currentTime;
+  if (hordeNode && hordeNode.niveau === niveau) {
+    if (hordeNode.interieur !== interieur) { hordeNode.interieur = interieur; hordeNode.fil.frequency.setTargetAtTime(interieur ? 450 : 6000, t, 0.8); hordeNode.g.gain.setTargetAtTime(hordeNode.gain * (interieur ? 0.55 : 1), t, 0.8); }
+    return;
+  }
+  if (hordeNode) { const n = hordeNode; try { n.g.gain.cancelScheduledValues(t); n.g.gain.setTargetAtTime(0.0001, t, 1.2); n.src.stop(t + 5); } catch (e) {} hordeNode = null; }
+  if (!niveau) return;
+  const liste = hordeBufs[niveau === 2 ? 'forte' : 'calme'] || hordeBufs.calme || hordeBufs.forte;
+  const e = liste[Math.floor(Math.random() * liste.length)];
+  const src = ctx.createBufferSource(); src.buffer = e.buffer; src.loop = true;
+  const fil = ctx.createBiquadFilter(); fil.type = 'lowpass'; fil.frequency.value = interieur ? 450 : 6000;
+  const g = ctx.createGain(); g.gain.value = 0.0001;
+  g.gain.setTargetAtTime(e.gain * (interieur ? 0.55 : 1), t, 2);
+  src.connect(fil); fil.connect(g); g.connect(master);
+  src.start(t, Math.random() * e.buffer.duration); // pas toujours le même début de boucle
+  hordeNode = { niveau, interieur, src, fil, g, gain: e.gain };
+}
+
 // ---------- Effets sonores ----------
-// opts : { volume 0..1, pan -1..1 } — sons SPATIALISÉS (un bruit lointain s'entend moins, voire pas).
+// opts : { volume 0..1, pan -1..1 } — renvoie une poignée { stop() } quand le son vient d'un fichier. — sons SPATIALISÉS (un bruit lointain s'entend moins, voire pas).
 export function sfx(nom, opts = {}) {
   if (!ctx) return;
   if (opts.volume != null && opts.volume < 0.03) return;
   // Un fichier de la banque pour ce nom ? Il remplace la synthèse (tirage au sort
   // s'il y en a plusieurs : pas, douleur, râle…).
   const banque = sons[nom];
-  if (banque && banque.length) { jouerSonFichier(banque[Math.floor(Math.random() * banque.length)], opts); return; }
+  if (banque && banque.length) return jouerSonFichier(banque[Math.floor(Math.random() * banque.length)], opts);
   const t = ctx.currentTime;
   const burst = (dur, fType, fFreq, peak) => burstAt(t, dur, fType, fFreq, peak);
   switch (nom) {
