@@ -213,7 +213,7 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
 .ex-joy.on { opacity: 1; }
 .ex-joy-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(230,223,204,.35); }
 .ex-pad { position: absolute; right: 14px; bottom: 14px; display: none; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 3; }
-.ex-pad-ligne { display: flex; gap: 10px; }
+.ex-pad-ligne { display: flex; align-items: center; gap: 10px; }
 .ex-btn {
   min-width: 56px; min-height: 56px; border-radius: 50%; border: 1px solid rgba(230,223,204,.35);
   background: rgba(11,11,12,.62); color: var(--ex-creme); font: inherit; font-size: 12px; letter-spacing: .05em;
@@ -226,6 +226,11 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
   background: rgba(11,11,12,.38); border-color: rgba(230,223,204,.18); opacity: .78; }
 .ex-btn-ico svg { width: 22px; height: 22px; }
 .ex-btn-ico.on { opacity: 1; color: var(--ex-ambre); border-color: var(--ex-ambre); background: rgba(201,162,39,.14); }
+/* Courir (souvent) : un peu plus grand, au bord droit ; Accroupi (rarement) : petit, tout en bas à gauche des boutons de combat */
+.ex-btn-courir { width: 54px; height: 54px; min-width: 54px; min-height: 54px; opacity: .9; }
+.ex-btn-courir svg { width: 27px; height: 27px; }
+.ex-btn-accr { width: 40px; height: 40px; min-width: 40px; min-height: 40px; margin-right: -4px; }
+.ex-btn-accr svg { width: 20px; height: 20px; }
 .ex-btn-inter {
   border-radius: 28px; min-width: 150px; max-width: 46vw; min-height: 56px; padding: 0 18px; font-size: 15px; text-transform: none;
   border-color: var(--ex-ambre); color: var(--ex-creme); background: rgba(40,32,10,.75);
@@ -251,7 +256,7 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
 .ex-btn-crosse .ex-frap-l { bottom: 7px; font-size: 9.5px; }
 .ex-btn-frapper, .ex-btn-pousser { position: relative; display: grid; place-items: center; padding: 0; border-radius: 50%; overflow: visible; }
 .ex-btn-frapper { width: 92px; height: 92px; min-width: 92px; border: 2px solid rgba(230,223,204,.5); background: rgba(60,14,18,.6); }
-.ex-btn-pousser { width: 62px; height: 62px; min-width: 62px; margin-bottom: 38px; background: rgba(11,11,12,.62); }
+.ex-btn-pousser { width: 62px; height: 62px; min-width: 62px; margin-bottom: 20px; background: rgba(11,11,12,.62); }
 .ex-btn-pousser.proche { border-color: var(--ex-bleu); box-shadow: 0 0 12px rgba(124,200,255,.35); }
 .ex-frap-ico { display: grid; place-items: center; margin-top: -8px; }
 .ex-frap-ico svg { width: 28px; height: 28px; }
@@ -295,7 +300,8 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
   .ex-lieu { font-size: 17px; top: 56px; }
   .ex-msg { font-size: 15px; }
   .ex-btn-frapper { width: 78px; height: 78px; min-width: 78px; }
-  .ex-btn-pousser { width: 54px; height: 54px; min-width: 54px; margin-bottom: 30px; }
+  .ex-btn-pousser { width: 54px; height: 54px; min-width: 54px; margin-bottom: 16px; }
+  .ex-btn-courir { width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
   .ex-pad { gap: 6px; }
   .ex-btn-inter { min-height: 48px; }
   .ex-main { min-width: 80px; padding: 3px 8px 5px; }

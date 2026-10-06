@@ -255,7 +255,8 @@ export function libelleConstruction(c) {
 }
 export function secondaireConstruction(c) {
   const d = defDe(c); if (!d) return null;
-  if (!(mod.inv && (mod.inv.hasTag('marteler') || mod.inv.hasTag('forcer'))) && d.outils && d.outils.length) return { libelle: `Démonter ${le(c)} (marteau ou pied-de-biche)`, f: () => message('Il faut un marteau ou un pied-de-biche.') };
+  // geste secondaire : proposé seulement si on peut le faire
+  if (!(mod.inv && (mod.inv.hasTag('marteler') || mod.inv.hasTag('forcer'))) && d.outils && d.outils.length) return null;
   return { libelle: `Démonter ${le(c)}`, f: () => demonterConstruction(c) };
 }
 function demonterConstruction(c) {
@@ -327,7 +328,7 @@ export async function agirConstruction(c) {
 // ---------- Meubles et portes : gestes secondaires ----------
 export function secondaireMeuble(m) {
   if (!m || !DEMONTABLES[m.type]) return null;
-  if (!cons.peutDemonterMeuble(m.type)) return { libelle: `Démonter ${m.nom} (marteau ou pied-de-biche)`, f: () => message('Il faut un marteau ou un pied-de-biche pour le démonter.') };
+  if (!cons.peutDemonterMeuble(m.type)) return null;     // geste secondaire : seulement avec marteau ou pied-de-biche
   return { libelle: `Démonter ${m.nom}`, f: () => demonterMeuble(m) };
 }
 export function demonterMeuble(m) {
@@ -343,9 +344,9 @@ export function demonterMeuble(m) {
 }
 export function secondairePorte(p, s) {
   if (!s || s.etat === 'cassee' || s.barricadee) return null;
-  const ok = compter('planche') >= 2 && compter('clous') >= 4 && mod.inv && mod.inv.hasTag('marteler');
-  return { libelle: 'Barricader (2 planches, 4 clous, marteau)', f: () => {
-    if (!ok) { message('Pour barricader : 2 planches, 4 clous et un marteau.'); return; }
+  // geste secondaire : proposé seulement quand on a de quoi (2 planches, 4 clous, un marteau)
+  if (!(compter('planche') >= 2 && compter('clous') >= 4 && mod.inv && mod.inv.hasTag('marteler'))) return null;
+  return { libelle: 'Barricader la porte', f: () => {
     lancerAction('Barricader la porte…', REGLAGES.exploration.PORTES.BARRICADER_MIN * 170, p.x + 0.5, p.y + 0.5, async () => {
       const r = await V.canal.porte(p.cle, 'barricader');
       if (!r || !r.ok) { message(r && r.raison === 'occupee' ? 'Quelque chose bloque la porte.' : 'Impossible.'); return; }

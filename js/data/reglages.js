@@ -706,6 +706,7 @@ export const REGLAGES = {
       mecanique:    { nom: 'Mécanique',          desc: 'Crocheter, désamorcer, récupérer piles et pièces, réparer.' },
       entretien:    { nom: 'Entretien',          desc: 'Les armes s\'usent moins (−10 %/niv), réparations plus efficaces.' },
       chasse:       { nom: 'Chasse & cuisine',   desc: 'Pêche, collets, dépeçage, cuisine : plus de viande, meilleurs repas.' },
+      recherche:    { nom: 'Recherche',          desc: 'Chercher par terre (loupe, O) : on trouve plus souvent (+30 %/niv) et des objets de meilleure qualité.' },
     },
     EFFETS: {                   // par niveau
       medecine: { vitesse: 0.1, efficacite: 0.1, douleurSuture: 0.2 }, // soins −10 % de temps ; +10 % d'effet ; suture −20 % de douleur.

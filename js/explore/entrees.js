@@ -93,8 +93,8 @@ export function creerEntrees({ racine, canvas, actions }) {
     lampe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="10" width="8" height="4.5" rx="1.2"/><path d="M10.5 9.2 13.5 8v8.5l-3-1.2z"/><path d="M15.5 9.5 21 7.5M15.5 12.2H21.5M15.5 15l5.5 2" opacity=".7"/></svg>',
   };
   const icone = (nom, label) => el('button', { class: 'ex-btn ex-btn-ico', type: 'button', 'aria-label': label, title: label, html: SVG[nom] });
-  const bCourse = icone('courir', 'Courir (maintenir)');
-  const bAccr = icone('accroupi', 'S\'accroupir');
+  const bCourse = icone('courir', 'Courir (maintenir)'); bCourse.classList.add('ex-btn-courir');  // on court souvent : un peu plus grand
+  const bAccr = icone('accroupi', 'S\'accroupir'); bAccr.classList.add('ex-btn-accr');          // un toucher de temps en temps : petit, collé en bas
   const bLampe = icone('lampe', 'Lampe');
   const bLoupe = icone('loupe', 'Chercher par terre (O)');
   const bInv = el('button', { class: 'cache', type: 'button' });

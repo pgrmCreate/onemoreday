@@ -3,6 +3,9 @@
 // Une seule touche (E / bouton Interagir) : l'action proposée est toujours écrite en clair (« Fouiller l'armoire »).
 // Plusieurs actions possibles au même endroit (objets au sol + meuble à fouiller, porte à barricader…) : la plus
 // probable reste sur E / Interagir ; un petit rond à côté (G au clavier) déplie la liste des autres.
+// Gestes PRINCIPAUX (sur E) : fouiller, ramasser, ouvrir, parler, lire, cueillir, monter… et abattre un arbre hache en main.
+// Gestes SECONDAIRES (seulement dans le menu) : démonter un meuble, barricader, couper un buisson — et seulement quand
+// on a de quoi le faire (outil, matériaux) : on ne propose pas ce qui est impossible.
 // Co-op : portes à deux (verrou { deux: true }), déclencheurs « à deux » (deux: true), relever son coéquipier à terre.
 import { G, getFlag, sauver as sauverPartie } from '../core/state.js';
 import { emit } from '../core/bus.js';
@@ -20,7 +23,7 @@ import { ouvrirSommeil } from '../game/sommeil.js';
 import { commencerFouille, interrompreFouille, fermerButin, ramasser, lireDocument, prendreTout } from './butin.js';
 import { ciblesConstruction, libelleConstruction, agirConstruction, constructionActive, secondaireConstruction, secondaireMeuble, secondairePorte, demonterMeuble } from './construction.js';
 import { DEMONTABLES } from '../data/construction.js';
-import { recoltable, libelleNature, secondaireNature, agirNature } from './nature.js';
+import { recoltable, propositionNature, libelleNature, secondaireNature, agirNature } from './nature.js';
 
 const RX = REGLAGES.exploration;
 let V = null, api = null;
@@ -34,11 +37,12 @@ export function chercherCible() {
   const R = RX.INTERACTION_CASES;
   let best = null, bs = Infinity;
   const cands = [];
+  // c.seul2 : cible dont le seul geste est secondaire (meuble à démonter, buisson à couper) — jamais sur E
   const proposer = (c, d, bonus = 0) => {
     let a = Math.atan2(c.cy - j.y, c.cx - j.x) - j.dir; a = Math.abs(Math.atan2(Math.sin(a), Math.cos(a)));
     const s = d + a * 0.25 - bonus;
     c._s = s; cands.push(c);
-    if (s < bs) { bs = s; best = c; }
+    if (!c.seul2 && s < bs) { bs = s; best = c; }
   };
   // grille fine : on parcourt les petites cases en vue ; une porte, un meuble, un escalier ou une sortie n'est proposé
   // qu'une fois, à la distance de sa petite case la plus proche
@@ -63,8 +67,15 @@ export function chercherCible() {
       if (!m || plusProche.has('m' + m.idx) && plusProche.get('m' + m.idx).d <= d) continue;
       if (V.retires && V.retires.has(m.cle)) continue;          // démonté
       const decl = m.marqueur && declencheurMarqueur(m.marqueur);
-      if (!m.conteneur && !decl && !DEMONTABLES[m.type] && !recoltable(m)) continue;
-      garder('m' + m.idx, d, decl ? 0.2 : 0, () => ({ type: 'meuble', m, decl, etage: E.id, x0: m.x0, y0: m.y0, x1: m.x1 + 1, y1: m.y1 + 1, cx: ux + t / 2, cy: uy + t / 2 }));
+      let seul2 = false;
+      if (!decl && recoltable(m)) {
+        const pn = propositionNature(m); if (!pn) continue;          // arbre sans hache en main, hors saison : rien
+        seul2 = !pn.principal;
+      } else if (!decl && !m.conteneur && !estLit(m)) {
+        if (!DEMONTABLES[m.type] || !secondaireMeuble(m)) continue;   // démonter : seulement avec l'outil
+        seul2 = true;
+      }
+      garder('m' + m.idx, d, decl ? 0.2 : 0, () => ({ type: 'meuble', m, decl, seul2, etage: E.id, x0: m.x0, y0: m.y0, x1: m.x1 + 1, y1: m.y1 + 1, cx: ux + t / 2, cy: uy + t / 2 }));
     } else if (code === K.ESC_MONTE || code === K.ESC_DESCEND) {
       const s = n.escaliers.find(e => e.etage === E.id && e.cases.includes(i));
       if (s && s.arrivee) garder('e' + s.cle, d, 0.1, () => ({ type: 'escalier', s, etage: E.id, x0: ux, y0: uy, x1: ux + t, y1: uy + t, cx: ux + t / 2, cy: uy + t / 2 }));
@@ -115,8 +126,10 @@ export function chercherCible() {
     proposer({ type: 'cadavre', cd, etage: E.id, x0: cd.x - 0.6, y0: cd.y - 0.6, x1: cd.x + 0.6, y1: cd.y + 0.6, cx: cd.x, cy: cd.y }, d);
   }
   ciblesConstruction(proposer);
+  // rien de principal ici, mais des gestes secondaires possibles : pas d'action sur E, juste le petit rond
+  if (!best && cands.length) best = { type: 'rien', etage: null };
   if (best) {
-    best.libelle = libelle(best);
+    best.libelle = best.type === 'rien' ? null : libelle(best);
     best.secondaire = secondaire(best);
     // les autres gestes possibles ici : le secondaire de la cible, puis les autres cibles (plus proches d'abord)
     const autres = [];
@@ -128,15 +141,18 @@ export function chercherCible() {
       const k = cleCible(c); if (vus.has(k)) continue; vus.add(k);
       c.libelle = libelle(c);
       if (c.type !== 'construction' || constructionActive(c.c)) autres.push({ cle: k, libelle: c.libelle, f: () => agirSur(c) });
+      if (c.seul2) continue;          // son seul geste est déjà dans la liste
       const s2 = secondaire(c);
       if (s2 && autres.length < 6) autres.push({ cle: k + ':2', libelle: s2.libelle, f: s2.f });
     }
     best.autres = autres;
+    if (best.type === 'rien' && !autres.length) return null;
   }
   return best;
 }
 // Geste secondaire d'une cible : démonter, barricader.
 function secondaire(c) {
+  if (c.seul2 || c.type === 'rien') return null;
   if (c.type === 'construction') return secondaireConstruction(c.c);
   if (c.type === 'porte') return secondairePorte(c.p, c.s);
   if (c.type === 'meuble' && !c.decl && recoltable(c.m)) return secondaireNature(c.m);
@@ -151,6 +167,7 @@ function cleCible(c) {
     case 'construction': return 'c:' + c.c.uid;
     case 'sol': return 's:' + c.o.uid;
     case 'cadavre': return 'k:' + c.cd.uid;
+    case 'rien': return 'rien';
     case 'pnj': return 'n:' + c.q.id;
     case 'relever': return 'r:' + c.p.id;
     case 'marqueur': case 'doc': return 'q:' + (c.m ? c.m.id : '') + (c.p ? c.p.cle : '');
@@ -167,7 +184,8 @@ export function basculerChoix() {
   if (V.choix) { fermerChoix(); return; }
   const c = V.cible = chercherCible();
   if (!c || !c.autres || !c.autres.length) return;
-  V.choix = { cle: cleCible(c), x: V.j.x, y: V.j.y, t: performance.now(), liste: [{ cle: cleCible(c), libelle: c.libelle, f: () => agirSur(c), principal: true }, ...c.autres] };
+  const principal = c.type === 'rien' ? [] : [{ cle: cleCible(c), libelle: c.libelle, f: () => agirSur(c), principal: true }];
+  V.choix = { cle: cleCible(c), x: V.j.x, y: V.j.y, t: performance.now(), liste: [...principal, ...c.autres] };
   V.hud.montrerChoix(V.choix.liste, (i) => choisir(i));
 }
 export function fermerChoix() { if (V && V.choix) { V.choix = null; V.hud.montrerChoix(null); } }
@@ -209,7 +227,7 @@ function libelle(c) {
     case 'meuble': {
       if (c.decl) return c.decl.libelle || `Examiner ${c.m.nom}`;
       if (recoltable(c.m)) return libelleNature(c.m);
-      if (!c.m.conteneur && !estLit(c.m)) return `Démonter ${c.m.nom}`;
+      if (!c.m.conteneur && !estLit(c.m)) return (secondaireMeuble(c.m) || {}).libelle || `Démonter ${c.m.nom}`;
       const st = V.snap.conteneurs[c.m.cle];
       if (estLit(c.m) && (!c.m.conteneur || (st && st.progres >= 1 && st.reste === 0))) return `Dormir dans ${c.m.nom}`;
       if (st && st.progres >= 1 && st.reste === 0) return `Fouiller ${c.m.nom} (vide)`;
@@ -251,6 +269,7 @@ export async function interagir(o) {
   fermerChoix();
   const c = V.cible = chercherCible();
   if (!c) return;
+  if (c.type === 'rien') return basculerChoix();       // seulement des gestes secondaires : on ouvre leur menu
   return agirSur(c);
 }
 // Le geste principal d'une cible (E, ou choisi dans le menu des actions).

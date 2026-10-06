@@ -634,7 +634,7 @@ export const ITEMS = {
     desc: '« Tout faire soi-même », édition 1987, cornée aux chapitres « assemblages » et « charpente ». Les dessins sont clairs. Les usages que tu en feras, moins.',
   },
   guide_survie: {
-    nom: 'Guide de survie', type: 'livre', poids: 0.4, espace: 1, volume: 0.6, lecture: 30, xp: { chasse: 15, construction: 10 },
+    nom: 'Guide de survie', type: 'livre', poids: 0.4, espace: 1, volume: 0.6, lecture: 30, xp: { chasse: 15, construction: 10, recherche: 15 },
     desc: 'Un guide de randonneur fanfaron, « survivre en milieu hostile ». Écrit pour les Cévennes, pas pour ça. Mais les nœuds sont les mêmes.',
   },
   precis_secourisme: {
