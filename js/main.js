@@ -81,32 +81,42 @@ export function ecranTitre() {
 }
 
 export function ecranCreation({ mode = 'solo', apres } = {}) {
-  let genre = 'm', diff = pref('difficulte') || REGLAGES.difficulte.DEFAUT || 'survie';
   const presets = REGLAGES.difficulte.PRESETS;
+  let genre = 'm', diff = pref('difficulte');
+  if (!presets[diff]) diff = REGLAGES.difficulte.DEFAUT || 'survie';   // une ancienne préférence inconnue : la difficulté par défaut
+  const aide = { recit: 'Les morts frappent moins fort. Pour l’histoire.', survie: 'L’équilibre voulu : chaque erreur se paie.', cauchemar: 'Mort définitive : la sauvegarde est effacée.' };
+  // Tout tient sur un écran de téléphone (paysage comme portrait) : une carte, deux colonnes, les boutons en bas.
   const c = afficher(`
-    <h2 class="gros-titre">${mode === 'hote' ? 'Héberger une partie' : 'Nouvelle partie'}</h2>
-    <div class="champ">Ton prénom</div>
-    <input class="saisie" id="c-nom" maxlength="16" placeholder="Sam" autocomplete="off">
-    <div class="champ">Tu es</div>
-    <div class="choix-seg" id="c-genre"><button data-g="m" class="on">un homme</button><button data-g="f">une femme</button></div>
-    <div class="champ">Difficulté</div>
-    <div class="choix-seg" id="c-diff">${Object.entries(presets).map(([id, p]) => `<button data-d="${id}" class="${id === diff ? 'on' : ''}">${escapeHtml(p.nom)}</button>`).join('')}</div>
-    <p class="aide" id="c-diff-aide"></p>
-    <div class="menu" style="margin-top:14px">
-      ${btn({ cls: 'primaire', data: 'data-a="go"' }, mode === 'hote' ? 'Ouvrir le salon' : 'Commencer')}
-      ${btn({ data: 'data-a="retour"' }, 'Retour')}
+    <div class="creation">
+      <header class="cr-tete"><small>${mode === 'hote' ? 'Héberger une partie' : mode === 'invite' ? 'Rejoindre la partie' : 'Nouvelle partie'}</small><h2>Qui se réveille ?</h2></header>
+      <div class="cr-grille">
+        <section>
+          <label class="champ" for="c-nom">Ton prénom</label>
+          <input class="saisie" id="c-nom" maxlength="16" placeholder="Sam" autocomplete="off" enterkeyhint="done">
+          <div class="champ">Tu es</div>
+          <div class="cr-seg" id="c-genre"><button type="button" data-g="m" class="on">Un homme</button><button type="button" data-g="f">Une femme</button></div>
+        </section>
+        <section>
+          <div class="champ">Difficulté</div>
+          <div class="cr-diff" id="c-diff">${Object.entries(presets).map(([id, p]) => `<button type="button" data-d="${id}" class="${id === diff ? 'on' : ''}"><b>${escapeHtml(p.nom)}</b><small>${escapeHtml(aide[id] || '')}</small></button>`).join('')}</div>
+        </section>
+      </div>
+      <div class="cr-actions">
+        <button type="button" class="btn cr-retour" data-a="retour">Retour</button>
+        <button type="button" class="btn primaire cr-go" data-a="go">${mode === 'hote' ? 'Ouvrir le salon' : 'Commencer'}</button>
+      </div>
     </div>`, 'cimetiere_caveau');
-  const aide = { recit: 'Pour l’histoire : les morts frappent moins fort, on respire.', survie: 'L’équilibre voulu : chaque erreur se paie.', cauchemar: 'Mort définitive : la sauvegarde est effacée.' };
-  const majAide = () => { $('#c-diff-aide').textContent = aide[diff] || ''; };
-  majAide();
+  c.classList.add('ec-creation');
   c.querySelectorAll('#c-genre button').forEach(b => b.onclick = () => { genre = b.dataset.g; c.querySelectorAll('#c-genre button').forEach(x => x.classList.toggle('on', x === b)); });
-  c.querySelectorAll('#c-diff button').forEach(b => b.onclick = () => { diff = b.dataset.d; setPref('difficulte', diff); c.querySelectorAll('#c-diff button').forEach(x => x.classList.toggle('on', x === b)); majAide(); });
+  c.querySelectorAll('#c-diff button').forEach(b => b.onclick = () => { diff = b.dataset.d; setPref('difficulte', diff); c.querySelectorAll('#c-diff button').forEach(x => x.classList.toggle('on', x === b)); });
   c.querySelector('[data-a="retour"]').onclick = () => ecranTitre();
-  c.querySelector('[data-a="go"]').onclick = () => {
+  const go = () => {
     const nom = ($('#c-nom').value || 'Sam').trim().slice(0, 16) || 'Sam';
     if (apres) return apres({ nom, genre, difficulte: diff });
     nouvelleAventure({ nom, genre, difficulte: diff, mode });
   };
+  c.querySelector('[data-a="go"]').onclick = go;
+  $('#c-nom').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
   setTimeout(() => { const i = $('#c-nom'); if (i && !matchMedia('(pointer: coarse)').matches) i.focus(); }, 100);
 }
 

@@ -60,6 +60,30 @@ input.saisie:focus { border-color: var(--ambre); }
 .gros-titre.sang { color: var(--sang2); }
 .bilan { display: flex; gap: 18px; flex-wrap: wrap; font-family: var(--f-ui); letter-spacing: .06em; color: var(--creme2); margin: 10px 0 18px; font-size: 14px; text-transform: uppercase; }
 .bilan b { color: var(--creme); font-size: 20px; display: block; }
+/* ---------- Création du personnage : une carte qui tient sur un téléphone, sans défiler ---------- */
+.ecran-contenu.ec-creation { max-width: none; align-items: flex-start; justify-content: center; padding-top: max(12px, 3vh); padding-bottom: max(12px, 3vh); }
+.creation { width: min(720px, 100%); padding: clamp(14px, 3vh, 26px) clamp(14px, 3vw, 28px); background: linear-gradient(180deg, rgba(16,15,17,.8), rgba(10,10,11,.88));
+  border: 1px solid #2e2a22; box-shadow: 0 18px 60px rgba(0,0,0,.65); backdrop-filter: blur(3px); }
+.cr-tete small { display: block; font-family: var(--f-ui); font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--ambre); }
+.cr-tete h2 { margin: 2px 0 0; font-family: var(--f-recit); font-style: italic; font-weight: 500; font-size: clamp(22px, 4.4vh, 32px); line-height: 1.1; color: var(--creme); }
+.cr-grille { display: grid; grid-template-columns: 1fr; gap: 4px 24px; margin-top: clamp(4px, 1.5vh, 12px); }
+@media (min-width: 600px) { .cr-grille { grid-template-columns: 1fr 1fr; } }
+.creation .champ { display: block; margin: clamp(6px, 1.6vh, 12px) 0 5px; font-size: 12px; letter-spacing: .14em; }
+.creation input.saisie { min-height: 42px; max-width: none; font-size: 18px; }
+.cr-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.cr-seg button, .cr-diff button { cursor: pointer; background: rgba(0,0,0,.42); border: 1px solid var(--trait); color: var(--creme2); transition: border-color .15s, background .15s; }
+.cr-seg button { min-height: 42px; padding: 0 10px; font-family: var(--f-ui); font-size: 15px; letter-spacing: .06em; text-transform: uppercase; }
+.cr-diff { display: flex; flex-direction: column; gap: 5px; }
+.cr-diff button { display: flex; align-items: baseline; gap: 10px; min-height: 40px; padding: 6px 12px; text-align: left; }
+.cr-diff b { flex: none; min-width: 84px; font-family: var(--f-ui); font-weight: 500; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+.cr-diff small { font-size: 13px; font-style: italic; color: var(--gris); line-height: 1.25; }
+.cr-seg button.on, .cr-diff button.on { border-color: var(--ambre); color: var(--ambre2); background: rgba(40,34,16,.72); }
+.cr-diff button.on small { color: var(--creme2); }
+.cr-actions { display: flex; gap: 8px; margin-top: clamp(10px, 2.4vh, 20px); }
+.cr-actions .btn { min-height: 46px; justify-content: center; }
+.cr-retour { flex: 0 0 auto; padding: 0 18px; }
+.cr-go { flex: 1; font-size: 18px; letter-spacing: .14em; }
+@media (max-height: 420px) { .cr-diff small { font-size: 12px; } .creation .champ { margin-top: 6px; } }
 .code-salon { font-family: var(--f-ui); font-size: 44px; letter-spacing: .3em; color: var(--ambre2); }
 
 /* ---------- Scènes à choix (dialogue.js) ---------- */
