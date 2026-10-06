@@ -69,10 +69,11 @@ const BANQUE_SFX = {
   alerte_infection: { f: ['effect/little-horror-suspence.mp3'], vol: 0.55 },
   pas_beton:        { f: [1, 2, 3, 4, 5, 6].map(i => `effect/step-concrete-${i}.mp3`), vol: 0.3 }, // dehors en ville : bitume, trottoir
   pas_gravier:      { f: [1, 2, 3, 4].map(i => `effect/step-gravel-${i}.mp3`), vol: 0.3 },  // dehors hors de la ville : gravier, terre, Crau
-  souffle_course:   { f: ['action/step-run-breath.mp3'], vol: 0.45 }, // course à bout de souffle
+  souffle_course:   { f: ['action/step-run-breath.mp3'], vol: 0.16 }, // course à bout de souffle (fichier dense : bas, sinon il couvre tout)
   coup_contondant:  { f: ['effect/blunt-hit-flesh.mp3'], vol: 0.85 }, // batte, barre, marteau… sur de la chair
   mort_zombie:      { f: ['monster/zombie-death-fall.mp3'], vol: 0.75 }, // le corps tombe, un dernier râle
   fouille:          { f: ['effect/rummage-search.mp3', 'effect/rummage-search-2.mp3'], vol: 0.45 },
+  fouille_corps:    { f: ['effect/body-search.mp3', 'effect/body-search-2.mp3'], vol: 0.28 }, // fouiller un cadavre : froissements de vêtements
   vitre:            { f: ['effect/glass-break.mp3'], vol: 0.8 },
   boire:            { f: ['action/drink-gulp.mp3'], vol: 0.6 },
   clouer:           { f: ['effect/hammer-nail.mp3'], vol: 0.6 },

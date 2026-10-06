@@ -46,7 +46,7 @@
   // Équipement
   const ajouter = (id, n = 1, inst = {}) => inv.addItem(id, n, inst);
   for (const id of ['sac_randonnee', 'ceinture_cuir', 'sweat_capuche', 'pantalon_cargo', 'bottes_cuir']) { ajouter(id); inv.equiper(p.inventaire.findIndex(x => x.id === id)); }
-  ajouter('batte_baseball'); inv.equiper(p.inventaire.findIndex(x => x.id === 'batte_baseball')); p.equipEtat.arme.dur = 29;
+  ajouter('batte_baseball'); inv.tenir(p.inventaire.findIndex(x => x.id === 'batte_baseball'), 'droite'); if (p.equipEtat.arme) p.equipEtat.arme.dur = 29;
   ajouter('lampe_frontale', 1, { charge: 350 }); inv.equiper(p.inventaire.findIndex(x => x.id === 'lampe_frontale')); inv.allumerLampe(true);
   // Sac varié
   ajouter('couteau_cuisine', 1, { dur: 7, durMax: 40 });

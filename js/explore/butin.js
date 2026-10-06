@@ -22,8 +22,9 @@ export function avancerFouille(dt) {
   const F = V.fouille, I = V.entrees.etat;
   if (Math.hypot(I.mx, I.my) > 0.3) { interrompreFouille(); return; }
   F.p = Math.min(1, F.p + dt / F.duree);
-  // le bruit de la fouille, relancé tant qu'on fouille (le fichier dure ~5,6 s)
-  F.tSon -= dt; if (F.tSon <= 0) { F.tSon = 5200; F.son = sfx('fouille'); }
+  // le bruit de la fouille, relancé tant qu'on fouille (~5,6 s ; un cadavre : des vêtements qu'on retourne, ~7 s)
+  const corps = F.cle.startsWith('cad:');
+  F.tSon -= dt; if (F.tSon <= 0) { F.tSon = corps ? 6400 : 5200; F.son = sfx(corps ? 'fouille_corps' : 'fouille'); }
   majRevele();
   if (F.p >= 1) {
     V.canal.arreterFouille(1);

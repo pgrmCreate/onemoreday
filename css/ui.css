@@ -223,6 +223,26 @@ body:not([data-temps=exploration]) .hud-btn-construire { display: none; }
 .cat-arme { --cat: #c98b6b; } .cat-munition { --cat: #b59a7a; } .cat-nourriture { --cat: #c7a55a; } .cat-boisson { --cat: #7fa6bd; }
 .cat-soin { --cat: #d7646f; } .cat-outil { --cat: #a9a18e; } .cat-vetement { --cat: #9c93b5; } .cat-materiau { --cat: #8e8676; }
 .cat-livre { --cat: #c9b27f; } .cat-quete { --cat: var(--ui-ambre); } .cat-divers { --cat: #8e8676; }
+/* Filtre du sac : petites icônes par type + recherche */
+.inv-filtre { position: sticky; top: 0; z-index: 2; display: flex; flex-direction: column; gap: 6px; padding: 6px 0 4px; background: var(--ui-fond-2, #141315); }
+.inv-puces { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; }
+.inv-puces::-webkit-scrollbar { display: none; }
+.inv-puce { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; padding: 0; cursor: pointer;
+  border: 1px solid var(--ui-bord); background: #0f0e10; color: var(--cat, var(--ui-texte-2)) !important; }
+.inv-puce .ico { width: 19px; height: 19px; }
+.inv-puce em { position: absolute; top: -4px; right: -5px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; font-style: normal; font-size: 10px; line-height: 16px;
+  text-align: center; background: var(--ui-fond-3); color: var(--ui-texte-2); }
+.inv-puce.cat-tout { --cat: var(--ui-texte-2); }
+.inv-puce.actif { border-color: var(--cat, var(--ui-ambre)); background: color-mix(in srgb, var(--cat, #c9a227) 22%, #0f0e10); box-shadow: 0 0 0 1px var(--cat, var(--ui-ambre)); }
+.inv-puce.actif em { background: var(--cat, var(--ui-ambre)); color: #111; }
+.inv-cherche { display: flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 4px 0 10px; border: 1px solid var(--ui-bord); border-radius: var(--ui-rayon); background: #0f0e10; color: var(--ui-texte-3); }
+.inv-cherche:focus-within { border-color: var(--ui-ambre); }
+.inv-cherche > .ico { width: 16px; height: 16px; flex: 0 0 auto; }
+.inv-cherche-champ { flex: 1; min-width: 0; height: 36px; border: 0; outline: 0; background: none; color: var(--ui-texte); font: inherit; font-size: 15px; }
+.inv-cherche-champ::-webkit-search-cancel-button { display: none; }
+.inv-cherche-x { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--ui-texte-3); cursor: pointer; }
+.inv-cherche-x.cache { display: none; }
+.inv-cherche-x .ico { width: 14px; height: 14px; }
 
 /* ======================================================================
    INVENTAIRE

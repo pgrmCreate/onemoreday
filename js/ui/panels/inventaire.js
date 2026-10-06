@@ -13,7 +13,7 @@ import { iconeObjet } from '../icons.js';
 import { el, icoEl, onglets, jauge, bouton, avecScroll, vide, fmtKg, fmtL, pct, g } from './commun.js';
 
 const ONGLET_KEY = 'inv';
-let etat = { onglet: 'sac', sel: null }; // sel : { zone: 'sac'|'slot'|'sol', ref }
+let etat = { onglet: 'sac', sel: null, cat: 'tout', q: '' }; // sel : { zone: 'sac'|'slot'|'sol', ref } ; cat / q : filtre du sac
 
 export function monter(racine, opts = {}, api) {
   if (opts.onglet) etat.onglet = opts.onglet;
@@ -89,17 +89,44 @@ function enteteSac(p) {
         ? `Sac : ${fmtL(b.sac.utilise)} / ${fmtL(b.sac.max)} · poches : ${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)} · +${sac.portage} kg portables.`
         : `Pas de sac : tes poches seulement (${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)}), et seulement les petits objets.`)));
 }
+// Filtre du sac : une rangée de petites icônes (Tout, Soins, Nourriture…) + un champ « Chercher ». Le choix est gardé
+// d'une ouverture à l'autre ; taper dans le champ ne redessine que la liste (le clavier reste ouvert).
+const sansAccent = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 function listeSac(col, p, racine, api) {
   col.append(enteteSac(p));
   const groupes = inv.sacParCategorie(p);
   if (!groupes.length) { col.append(vide('Ton sac est vide. Fouille les meubles, les voitures, les morts.', 'sac')); return; }
-  for (const gr of groupes) {
-    col.append(el('h3', { class: 'pn-section' }, gr.nom, el('em', {}, String(gr.items.reduce((s, x) => s + x.it.qty, 0)))));
-    for (const x of gr.items) {
-      const actif = etat.sel && etat.sel.zone === 'sac' && etat.sel.ref === x.index;
-      col.append(ligneObjet(x, p, actif, () => { etat.sel = { zone: 'sac', ref: x.index, id: x.it.id }; dessiner(racine, api); }));
+  if (etat.cat !== 'tout' && !groupes.some(gr => gr.cat === etat.cat)) etat.cat = 'tout';   // plus rien de ce type
+  const total = (gr) => gr.items.reduce((s, x) => s + x.it.qty, 0);
+  const puce = (cat, nom, icone, n) => el('button', { type: 'button', class: `inv-puce cat-${cat}${etat.cat === cat ? ' actif' : ''}`, title: nom, 'aria-label': nom, 'aria-pressed': etat.cat === cat ? 'true' : 'false',
+    onclick: () => { etat.cat = etat.cat === cat ? 'tout' : cat; dessiner(racine, api); } }, icoEl(icone), el('em', {}, String(n)));
+  const puces = el('div', { class: 'inv-puces', role: 'toolbar', 'aria-label': 'Trier par type' },
+    puce('tout', 'Tout', 'tout', groupes.reduce((s, gr) => s + total(gr), 0)),
+    ...groupes.map(gr => puce(gr.cat, gr.nom, gr.cat, total(gr))));
+  const liste = el('div', { class: 'inv-liste' });
+  const champ = el('input', { type: 'search', class: 'inv-cherche-champ', placeholder: 'Chercher dans le sac…', value: etat.q, enterkeyhint: 'search', autocomplete: 'off' });
+  const effacer = el('button', { type: 'button', class: 'inv-cherche-x' + (etat.q ? '' : ' cache'), 'aria-label': 'Effacer', onclick: () => { etat.q = ''; champ.value = ''; effacer.classList.add('cache'); remplir(); } }, icoEl('fermer'));
+  champ.addEventListener('input', () => { etat.q = champ.value; effacer.classList.toggle('cache', !etat.q); remplir(); });
+  const cherche = el('label', { class: 'inv-cherche' }, icoEl('loupe'), champ, effacer);
+  function remplir() {
+    liste.textContent = '';
+    const q = sansAccent(etat.q.trim());
+    let n = 0;
+    for (const gr of groupes) {
+      if (etat.cat !== 'tout' && gr.cat !== etat.cat) continue;
+      const items = q ? gr.items.filter(x => sansAccent(x.def ? x.def.nom : x.it.id).includes(q)) : gr.items;
+      if (!items.length) continue;
+      n += items.length;
+      liste.append(el('h3', { class: 'pn-section' }, gr.nom, el('em', {}, String(items.reduce((s, x) => s + x.it.qty, 0)))));
+      for (const x of items) {
+        const actif = etat.sel && etat.sel.zone === 'sac' && etat.sel.ref === x.index;
+        liste.append(ligneObjet(x, p, actif, () => { etat.sel = { zone: 'sac', ref: x.index, id: x.it.id }; dessiner(racine, api); }));
+      }
     }
+    if (!n) liste.append(vide(q ? `Rien qui s'appelle « ${etat.q.trim()} »${etat.cat !== 'tout' ? ' dans ce type' : ''}.` : 'Rien de ce type.', 'loupe'));
   }
+  remplir();
+  col.append(el('div', { class: 'inv-filtre' }, puces, cherche), liste);
 }
 
 // ---------- Onglet Équipement (paper-doll) ----------

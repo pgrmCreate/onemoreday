@@ -144,6 +144,7 @@ export const ICONS = {
   recyclage: P('M7 19H4.5l3.5-6m9 6h2.5L16 13m-6.5-7.5L12 3l2.5 4.5M8 13l-1.7-3M16 13l1.7-3M10 19h4M12 3v0'),
   equipement: P('M9 4a3 3 0 0 0 6 0l5.5 2.5-2 4.5L16 9.8V20H8V9.8L5.5 11l-2-4.5L9 4zm-1 9h8'),
   tout: P('M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z'),
+  loupe: P('M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13zM15.3 15.3 20 20'),
 
   // ---------- Journal ----------
   recit: P('M6 3h9l3 3v15H6V3zm9 0v3h3M9 10h6m-6 3h6m-6 3h4'),

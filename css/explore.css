@@ -229,7 +229,8 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
 /* Courir (souvent) : un peu plus grand, au bord droit ; Accroupi (rarement) : petit, tout en bas à gauche des boutons de combat */
 .ex-btn-courir { width: 54px; height: 54px; min-width: 54px; min-height: 54px; opacity: .9; }
 .ex-btn-courir svg { width: 27px; height: 27px; }
-.ex-btn-accr { width: 40px; height: 40px; min-width: 40px; min-height: 40px; margin-right: -4px; }
+.ex-btn-accr { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+.ex-pad-bas { display: flex; gap: 6px; align-self: flex-end; margin-right: -4px; }
 .ex-btn-accr svg { width: 20px; height: 20px; }
 .ex-btn-inter {
   border-radius: 28px; min-width: 150px; max-width: 46vw; min-height: 56px; padding: 0 18px; font-size: 15px; text-transform: none;

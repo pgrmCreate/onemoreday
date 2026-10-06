@@ -116,10 +116,11 @@ export function creerEntrees({ racine, canvas, actions }) {
   // mode placement (construction) : petits boutons au-dessus d'Interagir
   const bTourner = el('button', { class: 'ex-btn ex-btn-petit cache', type: 'button' }, 'Tourner');
   const bAnnuler = el('button', { class: 'ex-btn ex-btn-petit cache', type: 'button' }, 'Arrêter');
-  // s'accroupir : en bas à gauche des boutons de combat (sous le pouce, comme Frapper)
-  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLoupe, bLampe, bCourse),
+  // chercher par terre et s'accroupir : même importance, côte à côte en bas à gauche des boutons de combat
+  bLoupe.classList.add('ex-btn-accr');
+  const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bCourse),
     el('div', { class: 'ex-pad-ligne ex-pad-place' }, bTourner, bAnnuler), el('div', { class: 'ex-pad-inter' }, bAutres, bInter),
-    el('div', { class: 'ex-pad-combat' }, bAccr, el('div', { class: 'ex-pad-pile' }, bRecharger, bCrosse), bPousser, bFrapper));
+    el('div', { class: 'ex-pad-combat' }, el('div', { class: 'ex-pad-bas' }, bLoupe, bAccr), el('div', { class: 'ex-pad-pile' }, bRecharger, bCrosse), bPousser, bFrapper));
   racine.append(zoneJoy, pad);
 
   const joy = { id: null, ox: 0, oy: 0, R: 56, t0: 0, sx: 0, sy: 0 };
