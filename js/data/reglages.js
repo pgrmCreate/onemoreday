@@ -95,6 +95,8 @@ export const REGLAGES = {
     PAS_VOLUME: { marche: 0.22, course: 0.38, accroupi: 0.08 }, // discrets : on les entend sans qu'ils couvrent le monde
     SOUFFLE_SEUIL: 0.45,        // en course sous 45 % d'endurance, on entend le souffle court.
     // --- HORDE lointaine (boucle sonore) : morts du même étage entre DIST_MIN et DIST_MAX cases ---
+    // Le dehors entendu depuis un bâtiment : ENTREE à la porte, divisé par e tous les DECROIT unités, jamais sous MIN.
+    DEDANS_SON: { ENTREE: 0.12, DECROIT: 1.5, MIN: 0.008, PORTEE: 12 },
     CLOCHES_SOIR: { HEURE: 21 + 10 / 60, FIN_FLAG: 'prologue_fini' }, // les cloches de Maud, chaque soir, jusqu'à la fin du prologue.
     HORDE_SON: { DIST_MIN: 12, DIST_MAX: 80, CALME: 6, FORTE: 18, SALON_DEHORS: true }, // ≥ 6 → gémissements au loin ; ≥ 18 → la ville grouille ; dehors dans Salon : toujours au moins le fond calme.
 

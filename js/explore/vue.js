@@ -15,7 +15,7 @@ import { REGLAGES, presetDifficulte } from '../data/reglages.js';
 import { ZOMBIES } from '../data/zombies.js';
 import { QUETES } from '../data/histoire/quetes.js';
 import { parserNiveau } from './niveau.js';
-import { icase } from '../carte/catalogue.js';
+import { icase, FIN } from '../carte/catalogue.js';
 import { creerSimLieu } from './sim.js';
 import { creerCanalLocal } from './canal_local.js';
 import { creerChamp, calculerLOS, calculerVision, lumiereLampe } from './vision.js';
@@ -272,6 +272,7 @@ export function sortir() {
   try { mod.audio && mod.audio.setTension && mod.audio.setTension(0); } catch (e) {}
   try { mod.audio && mod.audio.setHorde && mod.audio.setHorde(0); } catch (e) {}
   try { mod.audio && mod.audio.setNature && mod.audio.setNature(null); } catch (e) {}
+  try { mod.audio && mod.audio.setDedans && mod.audio.setDedans(1); } catch (e) {}
   v.racine.remove();
   if (!v.arene) emit('lieu:sort', { lieu: v.lieuId });
   V = null;
@@ -561,6 +562,30 @@ function onde(cle, danger) {
   if (Math.hypot(p.x + 0.5 - V.j.x, p.y + 0.5 - V.j.y) > 16) return;
   if (V.ondes.length < 24) V.ondes.push({ x: p.x + 0.5, y: p.y + 0.5, etage: p.etage, age: 0, duree: 1200, danger });
 }
+// Profondeur dans un bâtiment : le plus court chemin (en unités) de la position du joueur jusqu'à une case
+// du dehors, sans traverser murs ni portes fermées. Infinity si tout est fermé.
+function profondeurDedans() {
+  const E = V.E, bl = grilleBloque(), P = V.niveau.pieces, ext = !!V.niveau.exterieur;
+  const dehorsCase = (i) => { const pi = E.piece[i]; const p = pi >= 0 ? P[pi] : null; return p ? !!p.exterieur : ext; };
+  const d0 = icase(E, V.j.x, V.j.y); if (d0 < 0) return 0;
+  const MAX = RX.DEDANS_SON.PORTEE * FIN, w = E.w, n = E.w * E.h;
+  const vu = new Uint8Array(n), file = [d0]; vu[d0] = 1; let tete = 0;
+  for (let pas = 0; pas <= MAX && tete < file.length; pas++) {
+    const fin = file.length;
+    for (; tete < fin; tete++) {
+      const i = file[tete];
+      if (dehorsCase(i) && !bl[i]) return pas / FIN;
+      const x = i % w;
+      for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) if (j >= 0 && j < n && !vu[j] && !bl[j]) { vu[j] = 1; file.push(j); }
+    }
+  }
+  return Infinity;
+}
+// Combien du dehors on entend à cette profondeur : faible à l'entrée, quasi rien au fond.
+function attenuationDedans(prof) {
+  const D = RX.DEDANS_SON;
+  return prof === Infinity ? D.MIN : Math.max(D.MIN, D.ENTREE * Math.exp(-prof / D.DECROIT));
+}
 function tension() {
   if (!mod.audio || !mod.audio.setTension) return;
   let t = 0;
@@ -575,6 +600,8 @@ function tension() {
   // fond nature : cigales, oiseaux, grillons, vent — selon l'heure, le terrain et la météo
   const Sc = V.scene || {};
   try { mod.audio.setNature && mod.audio.setNature({ dehors: !!V.dehorsSon, biome: Sc.biome || 'ville', heure: clock.heureDecimale(), vent: V.vent ?? 0.3 }); } catch (e) {}
+  // dans un bâtiment : le dehors s'entend de moins en moins à mesure qu'on s'enfonce (portes fermées : presque rien)
+  try { mod.audio.setDedans && mod.audio.setDedans(V.dehorsSon ? 1 : attenuationDedans(profondeurDedans())); } catch (e) {}
   // Les cloches du soir : tant que Maud guette, elles sonnent sur Salon chaque soir à 21 h 10
   // (l'heure où l'horloge s'est arrêtée). Une fois par jour, dehors, en ville.
   const C2 = RX.CLOCHES_SOIR, h = clock.heureDecimale(), jr = clock.jour();

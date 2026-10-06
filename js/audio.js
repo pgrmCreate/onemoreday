@@ -95,9 +95,9 @@ const BANQUE_SFX = {
   amb_pigeons:      { f: ['environnement/pigeons-flight.mp3'], vol: 0.4 },
   amb_porte_lointaine: { f: ['environnement/door-slam-distant.mp3'], vol: 0.4 },
   amb_gemissement:  { f: [1, 2, 3].map(i => `monster/moan-distant-${i}.mp3`).concat('monster/moan-distant-long.mp3'), vol: 0.12 }, // un FOND : à peine audible
-  amb_cigales:      { f: ['environnement/cicadas-burst.mp3'], vol: 0.3 },
-  amb_insectes_nuit: { f: ['environnement/crickets-burst.mp3'], vol: 0.3 },
-  amb_oiseau_isole: { f: ['environnement/bird-call.mp3'], vol: 0.3 },
+  amb_cigales:      { f: ['environnement/cicadas-burst.mp3'], vol: 0.07 },
+  amb_insectes_nuit: { f: ['environnement/crickets-burst.mp3'], vol: 0.06 },
+  amb_oiseau_isole: { f: ['environnement/bird-call.mp3'], vol: 0.1 },
   amb_vent_rafale:  { f: ['environnement/little-wind.mp3'], vol: 0.35 },
   // Les cloches de Salon : jamais au hasard, c'est l'histoire qui les fait sonner (cloches du soir, explore/vue.js).
   cloches:          { f: ['environnement/church-bells-distant.mp3'], vol: 0.5 },
@@ -113,12 +113,13 @@ const BANQUE_SFX = {
 // Fond NATURE : des boucles dosées en continu selon l'heure, le terrain, le vent (voir setNature).
 // Toutes à la même sonie (montage) : vol = niveau relatif.
 const BANQUE_NATURE = {
-  cigales:        { f: 'environnement/cicadas-loop.mp3', vol: 0.10 },
-  oiseaux_matin:  { f: 'environnement/birds-morning-loop.mp3', vol: 0.10 },
-  oiseaux_foret:  { f: 'environnement/birds-forest-loop.mp3', vol: 0.10 },
-  grillons:       { f: 'environnement/crickets-night-loop.mp3', vol: 0.09 },
-  vent_moyen:     { f: 'environnement/wind-medium-loop.mp3', vol: 0.08 },
-  vent_fort:      { f: 'environnement/wind-strong-loop.mp3', vol: 0.10 },
+  // Un FOND : on doit le deviner plus que l'entendre. Les insectes sont presque tout en aigus (stridents) : plus bas encore.
+  cigales:        { f: 'environnement/cicadas-loop.mp3', vol: 0.022 },
+  oiseaux_matin:  { f: 'environnement/birds-morning-loop.mp3', vol: 0.03 },
+  oiseaux_foret:  { f: 'environnement/birds-forest-loop.mp3', vol: 0.025 },
+  grillons:       { f: 'environnement/crickets-night-loop.mp3', vol: 0.016 },
+  vent_moyen:     { f: 'environnement/wind-medium-loop.mp3', vol: 0.035 },
+  vent_fort:      { f: 'environnement/wind-strong-loop.mp3', vol: 0.045 },
 };
 const BANQUE_HORDES = {
   calme: { f: ['monster/zombie-horde-calme-1.mp3', 'monster/zombie-horde-calme-2.mp3'], vol: 0.14 }, // fond : sous l'ambiance, jamais devant
@@ -171,7 +172,7 @@ const BANQUE_THEMES = {
 const FICHIER_CHRONO = 'effect/chrono.mp3';
 const FICHIERS_PLUIE = { legere: 'environnement/light-rain-background.mp3', forte: 'environnement/rain-hard-background.mp3' };
 const SCENES_EXTERIEURES = new Set(['rue', 'region', 'village', 'triage', 'gare']);
-// Bruits ponctuels qui se produisent DANS la pièce : jamais étouffés.
+// Bruits ponctuels (fichiers amb_) qui se produisent DANS la pièce : jamais étouffés.
 const STINGERS_DEDANS = new Set(['feu_crepite']);
 let sons = {};         // nom sfx -> [{buffer, gain}]
 let chronoBuf = null;  // tampon du tic-tac (barre d'attente)
@@ -218,8 +219,11 @@ function gainMusique(buffer, vol) {
   if (cretePost > 0.97) g *= 0.97 / cretePost; // jamais d'écrêtage, même sur un morceau dense
   return Math.min(g, vol * 4); // garde-fou : un fichier quasi-muet n'est pas amplifié à l'absurde
 }
+// Le dossier audio/ est à côté de js/ : chemin résolu depuis ce fichier, pas depuis la page
+// (le jeu à la racine, les bancs d'essai dans dev/, la version en ligne dans un sous-dossier).
+const urlAudio = (chemin) => new URL('../audio/' + chemin, import.meta.url).href;
 async function decoder(chemin) {
-  const r = await fetch('audio/' + chemin);
+  const r = await fetch(urlAudio(chemin));
   if (!r.ok) throw new Error('404');
   return ctx.decodeAudioData(await r.arrayBuffer());
 }
@@ -270,10 +274,9 @@ function jouerSonFichier(entree, opts = {}) {
   const src = ctx.createBufferSource(); src.buffer = entree.buffer;
   const g = ctx.createGain(); g.gain.value = entree.gain * (opts.volume ?? 1);
   src.connect(g);
-  let sortie = g;
-  if (opts.etouffe) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 600; g.connect(f); sortie = f; } // à travers les murs
-  if (opts.pan && ctx.createStereoPanner) { const pn = ctx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, opts.pan)); sortie.connect(pn); pn.connect(master); }
-  else sortie.connect(master);
+  const dest = opts.dehors ? bus() : master; // un bruit du dehors passe par le canal du dehors
+  if (opts.pan && ctx.createStereoPanner) { const pn = ctx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, opts.pan)); g.connect(pn); pn.connect(dest); }
+  else g.connect(dest);
   src.start();
   src.onended = () => { try { src.disconnect(); g.disconnect(); } catch (e) {} };
   // Poignée pour couper un son long en cours (fouille interrompue…), en fondu bref.
@@ -695,7 +698,7 @@ function reprendreSeq() {
 // pas de manifest (404), JSON invalide, fichier manquant → repli synthèse.
 async function chargerManifest() {
   try {
-    const rep = await fetch('audio/manifest.json');
+    const rep = await fetch(urlAudio('manifest.json'));
     if (!rep.ok) return;
     const man = await rep.json();
     // Le manifest a la priorité sur la banque. Un thème peut désormais déclarer
@@ -709,7 +712,7 @@ async function chargerManifest() {
     for (const [nom, val] of Object.entries(man.ambiances || {})) {
       const ff = Array.isArray(val) ? val[0] : val;
       try {
-        const r = await fetch('audio/' + ff);
+        const r = await fetch(urlAudio(ff));
         if (!r.ok) continue;
         const b = await ctx.decodeAudioData(await r.arrayBuffer());
         fichiers.ambiances[nom] = { buffer: b, gain: gainNormalise(b, 0.5) };
@@ -1079,11 +1082,11 @@ const STINGERS = {
 
 function jouerStinger(nom) {
   // un fichier pour ce bruit ? Joué d'un côté ou de l'autre, jamais pile au centre (le monde est autour)
-  // Dans un lieu fermé, ce qui vient du dehors arrive étouffé et plus bas (le feu du refuge, lui, est dans la pièce).
+  // Un bruit du dehors passe par le canal du dehors : étouffé, voire inaudible, au fond d'un bâtiment.
+  // (le feu du refuge, lui, est dans la pièce.)
   const f = sons['amb_' + nom];
   if (f && f.length) {
-    const dedans = !SCENES_EXTERIEURES.has(String(ambianceCourante || '').split(':')[0]) && !STINGERS_DEDANS.has(nom);
-    jouerSonFichier(f[Math.floor(Math.random() * f.length)], { volume: (0.6 + Math.random() * 0.4) * (dedans ? 0.6 : 1), etouffe: dedans, pan: (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.5) });
+    jouerSonFichier(f[Math.floor(Math.random() * f.length)], { volume: 0.6 + Math.random() * 0.4, dehors: !STINGERS_DEDANS.has(nom), pan: (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.5) });
     return;
   }
   const fn = STINGERS[nom];
@@ -1206,7 +1209,6 @@ export function setHorde(niveau, interieur = false) {
   const t = ctx.currentTime;
   if (hordeEnCours && hordeEnCours.niveau === niveau) { hordeEnCours.interieur = interieur; return; } // déjà en train de se décoder
   if (hordeNode && hordeNode.niveau === niveau) {
-    if (hordeNode.interieur !== interieur) { hordeNode.interieur = interieur; hordeNode.fil.frequency.setTargetAtTime(interieur ? 450 : 6000, t, 0.8); hordeNode.g.gain.setTargetAtTime(hordeNode.gain * (interieur ? 0.55 : 1), t, 0.8); }
     return;
   }
   if (hordeNode) { const n = hordeNode; try { n.g.gain.cancelScheduledValues(t); n.g.gain.setTargetAtTime(0.0001, t, 1.2); n.src.stop(t + 5); } catch (e) {} hordeNode = null; }
@@ -1228,12 +1230,37 @@ function lancerHorde(e, niveau, interieur) {
   e.lecteurs++;
   const src = ctx.createBufferSource(); src.buffer = e.buffer; src.loop = true;
   src.onended = () => lacherPiste(e);
-  const fil = ctx.createBiquadFilter(); fil.type = 'lowpass'; fil.frequency.value = interieur ? 450 : 6000;
+  const fil = ctx.createBiquadFilter(); fil.type = 'lowpass'; fil.frequency.value = 6000;
   const g = ctx.createGain(); g.gain.value = 0.0001;
-  g.gain.setTargetAtTime(e.gain * (interieur ? 0.55 : 1), t, 2);
-  src.connect(fil); fil.connect(g); g.connect(master);
+  g.gain.setTargetAtTime(e.gain, t, 2);
+  src.connect(fil); fil.connect(g); g.connect(bus()); // dedans, c'est le canal du dehors qui l'étouffe
   src.start(t, Math.random() * e.buffer.duration); // pas toujours le même début de boucle
   hordeNode = { niveau, interieur, src, fil, g, gain: e.gain };
+}
+
+// ---------- Le DEHORS : un seul canal pour tout ce qui vient de l'extérieur ----------
+// Fond nature, horde, bruits ponctuels du dehors (corbeau, chien, gémissement…) passent par ce bus.
+// setDedans(f) : 1 = dehors ; < 1 = dans un bâtiment (f baisse avec la profondeur, voir explore/vue.js) :
+// le dehors y arrive étouffé (aigus coupés) et quasi inaudible au fond des pièces.
+let busDehors = null, busFiltre = null, dedansF = 1;
+function bus() {
+  if (!busDehors && ctx) {
+    busFiltre = ctx.createBiquadFilter(); busFiltre.type = 'lowpass'; busFiltre.frequency.value = 16000;
+    busDehors = ctx.createGain(); busDehors.gain.value = 1;
+    busFiltre.connect(busDehors); busDehors.connect(master);
+  }
+  return busFiltre;
+}
+// Diagnostic (bancs d'essai, console) : ce qui joue en ce moment.
+export function etatSon() {
+  return { dedans: +dedansF.toFixed(3), horde: hordeNode ? hordeNode.niveau : 0, nature: Object.keys(natureNodes).map(k => `${k}:${natureNodes[k].g.gain.value.toFixed(4)}`), ambiance: ambianceCourante };
+}
+export function setDedans(f) {
+  dedansF = Math.max(0, Math.min(1, f ?? 1));
+  if (!ctx || !bus()) return;
+  const t = ctx.currentTime;
+  busFiltre.frequency.setTargetAtTime(dedansF >= 1 ? 16000 : 350 + 900 * dedansF, t, 0.5);
+  busDehors.gain.setTargetAtTime(Math.max(dedansF, 0.0001), t, 0.5);
 }
 
 // ---------- Fond nature (boucles dosées en continu) ----------
@@ -1259,12 +1286,10 @@ export function setNature(e) {
   natureDernier = e;
   const t = ctx.currentTime;
   if (!natureG) {
-    natureFil = ctx.createBiquadFilter(); natureFil.type = 'lowpass'; natureFil.frequency.value = 12000;
-    natureG = ctx.createGain(); natureG.gain.value = 1; natureFil.connect(natureG); natureG.connect(master);
+    // les aigus des insectes adoucis (étagère −8 dB au-dessus de 4 kHz), puis le canal du dehors
+    natureFil = ctx.createBiquadFilter(); natureFil.type = 'highshelf'; natureFil.frequency.value = 4000; natureFil.gain.value = -8;
+    natureG = ctx.createGain(); natureG.gain.value = 1; natureFil.connect(natureG); natureG.connect(bus());
   }
-  const dedans = !!(e && !e.dehors);
-  natureFil.frequency.setTargetAtTime(dedans ? 500 : 12000, t, 0.6);
-  natureG.gain.setTargetAtTime(dedans ? 0.35 : 1, t, 0.6);
   const niv = niveauxNature(e);
   for (const [nom, b] of Object.entries(natureBufs)) {
     const cible = (niv[nom] || 0) * b.vol;
