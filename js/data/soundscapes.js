@@ -5,6 +5,11 @@
 // propre à l'endroit. La nuit ajoute ses propres bruits.
 // Tout est synthétisé par js/audio.js — les noms de stingers y sont définis.
 
+// Musique d'exploration CALME (campagne paisible) : seulement de jour, hors de Salon,
+// dans un lieu peu dangereux, et une fois les premiers jours passés. Partout ailleurs
+// (le réveil au cimetière, la ville, les lieux risqués, la nuit) : mystère et tension sourde.
+export const EXPLORATION_CALME = { DANGER_MAX: 0.25, DES_JOUR: 4 };
+
 // Carte → scène sonore. Une carte absente retombe sur carte.ambiance (héritage).
 export const CARTE_SCENE = {
   int_hotel: 'hotel',
@@ -155,7 +160,7 @@ export const SCENES_SONORES = {
     stingersNuit: [['hibou', 2], ['gemissement', 1], ['chien', 1], ['insectes_nuit', 3]],
     stingersJour: [['cigales', 4], ['oiseau_isole', 3]], // la garrigue salonaise en plein cagnard
     intervalle: [8, 20],
-    musique: { theme: 'exploration_calme' }, // la route est longue : le jour, la musique la plus calme ; la nuit, celle de la rue
+    musique: { theme: 'exploration' }, // la route est longue — même thème que la rue (calme seulement si EXPLORATION_CALME le permet)
   },
   village: {
     vent: [420, 0.12, 0.05],

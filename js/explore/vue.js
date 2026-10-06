@@ -386,10 +386,10 @@ function image(t, dt) {
   } else if (performance.now() < (V.finCourse || 0)) dS = 0;   // reprendre son souffle
   else dS = (S[j.allure === 'immobile' ? 'repos' : j.allure] || 6) * M.regenSta;
   G.player.sta = clamp(G.player.sta + dS * dt / 1000, 0, staMax);
-  // pas (bitume dehors, plancher dedans) et souffle court en fin de course
+  // pas (plancher dedans ; dehors : bitume en ville, gravier ailleurs) et souffle court en fin de course
   if (j.allure !== 'immobile') {
     V.pasDist = (V.pasDist || 0) + vReelle * dt / 1000;
-    if (V.pasDist >= RX.PAS_FOULEE[j.allure]) { V.pasDist = 0; sfx(V.dehorsSon ? 'pas_beton' : 'pas', { volume: RX.PAS_VOLUME[j.allure] }); }
+    if (V.pasDist >= RX.PAS_FOULEE[j.allure]) { V.pasDist = 0; sfx(!V.dehorsSon ? 'pas' : V.scene && V.scene.biome && V.scene.biome !== 'ville' ? 'pas_gravier' : 'pas_beton', { volume: RX.PAS_VOLUME[j.allure] }); }
   }
   V.tSouffle = (V.tSouffle || 0) - dt;
   if (j.allure === 'course' && G.player.sta < staMax * RX.SOUFFLE_SEUIL && V.tSouffle <= 0) { V.tSouffle = 2300; sfx('souffle_course'); }

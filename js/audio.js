@@ -10,9 +10,10 @@
 // Interface stable : playAmbiance, startCombatMusic, stopCombatMusic, sfx,
 // setMuted, setHeartbeat — et setTension(0..1) pour la nappe « zombie proche ».
 import { G } from './core/state.js';
-import { estNuit } from './core/clock.js';
+import { estNuit, jour } from './core/clock.js';
 import { LIEUX_GAMEPLAY } from './data/lieux_gameplay.js';
-import { CARTE_SCENE, SCENES_LEGACY, SCENES_SONORES } from './data/soundscapes.js';
+import { LIEUX_GEO } from './data/lieux.js';
+import { CARTE_SCENE, SCENES_LEGACY, SCENES_SONORES, EXPLORATION_CALME } from './data/soundscapes.js';
 import { THEMES } from './data/musiques.js';
 
 let ctx = null;
@@ -62,15 +63,16 @@ const BANQUE_SFX = {
   manger:           { f: ['action/eat-crunshy.mp3'], vol: 0.7 },
   degats:           { f: ['action/medium-pain.mp3', 'action/medium-pain-2.mp3', 'action/light-pain-male.mp3', 'action/femal-light-pain.mp3'], vol: 0.7 },
   mort:             { f: ['action/terrible-pain-agony.mp3'], vol: 0.85 },
-  zombie:           { f: ['monster/zombie-alone-growl.mp3'], vol: 0.7 },
+  zombie:           { f: ['monster/zombie-alone-growl.mp3', 'monster/zombie-growl-2.mp3'], vol: 0.7 },
   zombie_loin:      { f: ['monster/zombie-alone-calm-growl.mp3'], vol: 0.45 },
   hurlement:        { f: ['monster/zombie-agonie.mp3', 'monster/zombie-alone-agony-2.mp3'], vol: 0.8 },
   alerte_infection: { f: ['effect/little-horror-suspence.mp3'], vol: 0.55 },
-  pas_beton:        { f: ['effect/step-concrete-1.mp3', 'effect/step-concrete-2.mp3'], vol: 0.3 }, // dehors : bitume, trottoir
+  pas_beton:        { f: [1, 2, 3, 4, 5, 6].map(i => `effect/step-concrete-${i}.mp3`), vol: 0.3 }, // dehors en ville : bitume, trottoir
+  pas_gravier:      { f: [1, 2, 3, 4].map(i => `effect/step-gravel-${i}.mp3`), vol: 0.3 },  // dehors hors de la ville : gravier, terre, Crau
   souffle_course:   { f: ['action/step-run-breath.mp3'], vol: 0.45 }, // course à bout de souffle
   coup_contondant:  { f: ['effect/blunt-hit-flesh.mp3'], vol: 0.85 }, // batte, barre, marteau… sur de la chair
   mort_zombie:      { f: ['monster/zombie-death-fall.mp3'], vol: 0.75 }, // le corps tombe, un dernier râle
-  fouille:          { f: ['effect/rummage-search.mp3'], vol: 0.45 },
+  fouille:          { f: ['effect/rummage-search.mp3', 'effect/rummage-search-2.mp3'], vol: 0.45 },
   vitre:            { f: ['effect/glass-break.mp3'], vol: 0.8 },
   boire:            { f: ['action/drink-gulp.mp3'], vol: 0.6 },
   clouer:           { f: ['effect/hammer-nail.mp3'], vol: 0.6 },
@@ -87,6 +89,8 @@ const BANQUE_SFX = {
   // Bruits ponctuels d'ambiance (stingers) : un fichier « amb_<nom> » remplace la synthèse du même nom.
   amb_corbeau:      { f: ['environnement/crow-1.mp3', 'environnement/crow-2.mp3', 'environnement/crow-3.mp3'], vol: 0.4 },
   amb_chien:        { f: ['environnement/dog-distant.mp3'], vol: 0.35 },
+  amb_feu_crepite:  { f: [1, 2, 3].map(i => `environnement/fire-crackle-${i}.mp3`), vol: 0.4 },
+  rate:             { f: ['effect/swing-miss.mp3'], vol: 0.5 },  // l'arme fend l'air
 };
 // Hordes lointaines : des boucles posées SOUS l'ambiance quand beaucoup de morts
 // rôdent dans le quartier (voir setHorde). « calme » = gémissements longs et
@@ -102,10 +106,14 @@ const BANQUE_HORDES = {
 // MUSIQUE_GAIN. Déposez d'autres fichiers : la rotation les prend tout seuls.
 const BANQUE_THEMES = {
   titre:       { f: ['musique/intro-horror.mp3'], vol: 1.0 },
-  exploration: { f: ['musique/empty-city.mp3'], vol: 0.9 },
-  exploration_nuit: { f: ['musique/empty-city.mp3'], vol: 0.9 },
-  // Très calme : réservée à la route de jour (carte de la région), là où rien ne presse.
-  exploration_calme: { f: ['musique/exploration-calme.mp3'], vol: 0.9 },
+  // Exploration ordinaire (ville, réveil au cimetière, lieux risqués) : mystère et tension
+  // sourde — jamais d'action, jamais de calme. Le calme est réservé à exploration_calme.
+  exploration: { f: ['musique/empty-city.mp3', 'musique/suspence-calm.mp3', 'musique/ambiance-horror-calm-deep.mp3',
+    'musique/mystere-dark-ambient.mp3', 'musique/mystere-eerie.mp3', 'musique/mystere-horror-ambient.mp3'], vol: 0.9 },
+  exploration_nuit: { f: ['musique/empty-city.mp3', 'musique/ambiance-horror-calm-deep.mp3', 'musique/mystere-dark-ambient.mp3', 'musique/mystere-horror-ambient.mp3'], vol: 0.9 },
+  // Très calme : campagne paisible de jour, après les premiers jours (voir explorationCalme).
+  exploration_calme: { f: ['musique/exploration-calme.mp3', 'musique/calme-guitare-paisible.mp3', 'musique/calme-matin-village.mp3',
+    'musique/calme-campagne.mp3', 'musique/calme-guitare-acoustique.mp3'], vol: 0.9 },
   train:       { f: ['musique/on-the-road.mp3'], vol: 1.0 },
   refuge:      { f: ['musique/refuge-calme.mp3'], vol: 1.0 },
   // Écran de mort : cordes lentes qui s'éteignent.
@@ -291,16 +299,27 @@ function resoudreScene(id) {
   return sid;
 }
 
+// La campagne paisible mérite la musique calme ; pas le réveil au cimetière ni la ville.
+function explorationCalme(id, nuit) {
+  if (nuit || !G || !G.world) return false;
+  const lg = LIEUX_GAMEPLAY[id], li = LIEUX_GEO[id];
+  if (li && li.echelle === 'salon') return false;                       // en ville : jamais
+  if (lg && (lg.danger ?? 1) > EXPLORATION_CALME.DANGER_MAX) return false; // lieu risqué
+  return jour() >= EXPLORATION_CALME.DES_JOUR;
+}
+
 export function playAmbiance(id) {
   if (!ctx) return;
   lieuCourantId = id; // mémorisé pour relancer le lit du lieu à la fin d'un combat
   const sid = resoudreScene(id);
   const nuit = !!(G && estNuit());
-  const cle = sid + (nuit ? ':n' : ':j');
+  let sc = SCENES_SONORES[sid];
+  const calme = !!(sc && sc.musique && sc.musique.theme === 'exploration' && explorationCalme(id, nuit));
+  if (calme) sc = { ...sc, musique: { theme: 'exploration_calme' } };
+  const cle = sid + (nuit ? ':n' : ':j') + (calme ? ':c' : '');
   if (ambianceCourante === cle) return;
   ambianceCourante = cle;
   stopAmbiance();
-  const sc = SCENES_SONORES[sid];
   if (!sc) { sceneCourante = null; return; }
   sceneCourante = sc; nuitCourante = nuit; // mémorisés pour relancer la musique du lieu après une musique d'action
 

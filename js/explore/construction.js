@@ -89,7 +89,7 @@ function majPlacement() {
 export function poserPlacement() {
   const P = V && V.placement; if (!P || V.action) return false;
   majPlacement();
-  if (!P.ok) { message(`Impossible : ${P.raison}.`, 1800); sfx('rate', { volume: 0.4 }); return true; }
+  if (!P.ok) { message(`Impossible : ${P.raison}.`, 1800); sfx('clic'); return true; }
   const d = CONSTRUCTIONS[P.type], o = { type: P.type, etage: V.E.id, x: P.x, y: P.y, rot: P.rot };
   const chantier = { type: P.type, dessin: d.dessin, x: P.x, y: P.y, w: P.w, h: P.h, etage: V.E.id };
   P.cible = null;
