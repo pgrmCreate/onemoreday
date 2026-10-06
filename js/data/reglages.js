@@ -92,10 +92,11 @@ export const REGLAGES = {
     ACCROUPI_VITESSE_AGILITE: 0.05, // +5 % de vitesse accroupie par niveau d'agilité.
     // --- SONS du corps : un pas toutes les « foulée » cases parcourues ; volume par allure ---
     PAS_FOULEE: { marche: 1.8, course: 2.1, accroupi: 1.4 },
-    PAS_VOLUME: { marche: 0.32, course: 0.55, accroupi: 0.12 },
+    PAS_VOLUME: { marche: 0.22, course: 0.38, accroupi: 0.08 }, // discrets : on les entend sans qu'ils couvrent le monde
     SOUFFLE_SEUIL: 0.45,        // en course sous 45 % d'endurance, on entend le souffle court.
     // --- HORDE lointaine (boucle sonore) : morts du même étage entre DIST_MIN et DIST_MAX cases ---
-    HORDE_SON: { DIST_MIN: 12, DIST_MAX: 80, CALME: 6, FORTE: 18 }, // ≥ 6 → gémissements au loin ; ≥ 18 → la ville grouille.
+    CLOCHES_SOIR: { HEURE: 21 + 10 / 60, FIN_FLAG: 'prologue_fini' }, // les cloches de Maud, chaque soir, jusqu'à la fin du prologue.
+    HORDE_SON: { DIST_MIN: 12, DIST_MAX: 80, CALME: 6, FORTE: 18, SALON_DEHORS: true }, // ≥ 6 → gémissements au loin ; ≥ 18 → la ville grouille ; dehors dans Salon : toujours au moins le fond calme.
 
     // --- BRUIT : rayon (cases) du bruit émis ; les morts dont (distance ≤ rayon × ouïe) l'entendent ---
     BRUIT: {

@@ -172,3 +172,5 @@ THEMES.exploration_nuit = variante(THEMES.exploration, { transpose: -3, etire: 1
 THEMES.exploration_calme = THEMES.exploration;
 // L'écran de mort : son fichier (cordes) ; sans lui, le glas de « mort ».
 THEMES.deces = THEMES.mort;
+// Scènes lentes : leur fichier ; sans lui, la partition du titre.
+THEMES.lent = THEMES.titre;

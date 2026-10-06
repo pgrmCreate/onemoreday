@@ -53,7 +53,7 @@ const MUSIQUE_GAIN = 0.6;
 // qui rééquilibre automatiquement les fichiers trop forts. Plusieurs fichiers pour
 // un même nom : on en tire un au sort à chaque jeu (pas, douleur, râle…).
 const BANQUE_SFX = {
-  pas:              { f: ['effect/step-wood-simple.mp3'], vol: 0.4 }, // un pas bref et net (0,6 s)
+  pas:              { f: ['effect/step-wood-simple.mp3', ...[1, 2, 3, 4, 5].map(i => `effect/step-wood-${i}.mp3`)], vol: 0.4, rms: true }, // dedans : plancher, carrelage
   pas_craque:       { f: ['effect/step-wood-creaks-calm.mp3'], vol: 0.55 }, // craquement appuyé, occasionnel, qui fait du bruit
   porte:            { f: ['effect/door-wood-opening.mp3'], vol: 0.7 },
   porte_coup:       { f: ['effect/door-wood-hitting.mp3'], vol: 0.7 },
@@ -64,11 +64,12 @@ const BANQUE_SFX = {
   degats:           { f: ['action/medium-pain.mp3', 'action/medium-pain-2.mp3', 'action/light-pain-male.mp3', 'action/femal-light-pain.mp3'], vol: 0.7 },
   mort:             { f: ['action/terrible-pain-agony.mp3'], vol: 0.85 },
   zombie:           { f: ['monster/zombie-alone-growl.mp3', 'monster/zombie-growl-2.mp3'], vol: 0.7 },
-  zombie_loin:      { f: ['monster/zombie-alone-calm-growl.mp3'], vol: 0.45 },
+  zombie_loin:      { f: ['monster/zombie-alone-calm-growl.mp3', 'monster/zombie-alone-move.mp3'], vol: 0.45 },
   hurlement:        { f: ['monster/zombie-agonie.mp3', 'monster/zombie-alone-agony-2.mp3'], vol: 0.8 },
   alerte_infection: { f: ['effect/little-horror-suspence.mp3'], vol: 0.55 },
-  pas_beton:        { f: [1, 2, 3, 4, 5, 6].map(i => `effect/step-concrete-${i}.mp3`), vol: 0.3 }, // dehors en ville : bitume, trottoir
-  pas_gravier:      { f: [1, 2, 3, 4].map(i => `effect/step-gravel-${i}.mp3`), vol: 0.3 },  // dehors hors de la ville : gravier, terre, Crau
+  pas_beton:        { f: [1, 2, 3, 4, 5, 6].map(i => `effect/step-concrete-${i}.mp3`), vol: 0.3, rms: true }, // dehors en ville : bitume, trottoir
+  pas_gravier:      { f: [1, 2, 3, 4].map(i => `effect/step-gravel-${i}.mp3`), vol: 0.3, rms: true },  // dehors hors de la ville : gravier, terre, Crau
+  pas_herbe:        { f: [...[1, 2, 3, 4, 5].map(i => `effect/step-grass-${i}.mp3`), ...[2, 3].map(i => `effect/step-grass-old-${i}.mp3`)], vol: 0.3, rms: true }, // campagne verte
   souffle_course:   { f: ['action/step-run-breath.mp3'], vol: 0.16 }, // course à bout de souffle (fichier dense : bas, sinon il couvre tout)
   coup_contondant:  { f: ['effect/blunt-hit-flesh.mp3'], vol: 0.85 }, // batte, barre, marteau… sur de la chair
   mort_zombie:      { f: ['monster/zombie-death-fall.mp3'], vol: 0.75 }, // le corps tombe, un dernier râle
@@ -90,12 +91,35 @@ const BANQUE_SFX = {
   // Bruits ponctuels d'ambiance (stingers) : un fichier « amb_<nom> » remplace la synthèse du même nom.
   amb_corbeau:      { f: ['environnement/crow-1.mp3', 'environnement/crow-2.mp3', 'environnement/crow-3.mp3'], vol: 0.4 },
   amb_chien:        { f: ['environnement/dog-distant.mp3'], vol: 0.35 },
+  amb_hibou:        { f: ['environnement/owl.mp3'], vol: 0.35 },
+  amb_pigeons:      { f: ['environnement/pigeons-flight.mp3'], vol: 0.4 },
+  amb_porte_lointaine: { f: ['environnement/door-slam-distant.mp3'], vol: 0.4 },
+  amb_gemissement:  { f: [1, 2, 3].map(i => `monster/moan-distant-${i}.mp3`).concat('monster/moan-distant-long.mp3'), vol: 0.4 },
+  amb_cigales:      { f: ['environnement/cicadas-burst.mp3'], vol: 0.3 },
+  amb_insectes_nuit: { f: ['environnement/crickets-burst.mp3'], vol: 0.3 },
+  amb_oiseau_isole: { f: ['environnement/bird-call.mp3'], vol: 0.3 },
+  amb_vent_rafale:  { f: ['environnement/little-wind.mp3'], vol: 0.35 },
+  // Les cloches de Salon : jamais au hasard, c'est l'histoire qui les fait sonner (cloches du soir, explore/vue.js).
+  cloches:          { f: ['environnement/church-bells-distant.mp3'], vol: 0.5 },
+  porte_verrouillee: { f: ['effect/door-locked.mp3'], vol: 0.6 },
+  decouverte:       { f: ['effect/event-discover-effect.mp3'], vol: 0.45 }, // un nouvel objectif
+  remplir:          { f: ['effect/water-fill.mp3'], vol: 0.5 },
   amb_feu_crepite:  { f: [1, 2, 3].map(i => `environnement/fire-crackle-${i}.mp3`), vol: 0.4 },
   rate:             { f: ['effect/swing-miss.mp3'], vol: 0.5 },  // l'arme fend l'air
 };
 // Hordes lointaines : des boucles posées SOUS l'ambiance quand beaucoup de morts
 // rôdent dans le quartier (voir setHorde). « calme » = gémissements longs et
 // espacés ; « forte » = la ville grouille (aussi pour les cinématiques).
+// Fond NATURE : des boucles dosées en continu selon l'heure, le terrain, le vent (voir setNature).
+// Toutes à la même sonie (montage) : vol = niveau relatif.
+const BANQUE_NATURE = {
+  cigales:        { f: 'environnement/cicadas-loop.mp3', vol: 0.10 },
+  oiseaux_matin:  { f: 'environnement/birds-morning-loop.mp3', vol: 0.10 },
+  oiseaux_foret:  { f: 'environnement/birds-forest-loop.mp3', vol: 0.10 },
+  grillons:       { f: 'environnement/crickets-night-loop.mp3', vol: 0.09 },
+  vent_moyen:     { f: 'environnement/wind-medium-loop.mp3', vol: 0.08 },
+  vent_fort:      { f: 'environnement/wind-strong-loop.mp3', vol: 0.10 },
+};
 const BANQUE_HORDES = {
   calme: { f: ['monster/zombie-horde-calme-1.mp3', 'monster/zombie-horde-calme-2.mp3'], vol: 0.35 },
   forte: { f: ['monster/zombie-horde-distant.mp3'], vol: 0.45 },
@@ -106,7 +130,11 @@ const BANQUE_HORDES = {
 // référence) ; la sonie absolue est égalisée à l'écoute (RMS) puis abaissée par
 // MUSIQUE_GAIN. Déposez d'autres fichiers : la rotation les prend tout seuls.
 const BANQUE_THEMES = {
-  titre:       { f: ['musique/intro-horror.mp3'], vol: 1.0 },
+  titre:       { f: ['musique/menu-theme.mp3'], vol: 1.0 },  // accueil et menu
+  // Scènes lentes, moments suspendus (scènes et cinématiques « calme »).
+  lent:        { f: ['musique/scene-lente.mp3'], vol: 1.0 },
+  // Cinématiques et lieux sombres (scène « sombre ») : remplace le glas synthétisé.
+  mort:        { f: ['musique/cinematique-sombre-1.mp3', 'musique/cinematique-sombre-2.mp3'], vol: 1.0 },
   // Exploration ordinaire (ville, réveil au cimetière, lieux risqués) : mystère et tension
   // sourde — jamais d'action, jamais de calme. Le calme est réservé à exploration_calme.
   exploration: { f: ['musique/empty-city.mp3', 'musique/suspence-calm.mp3', 'musique/ambiance-horror-calm-deep.mp3',
@@ -116,7 +144,7 @@ const BANQUE_THEMES = {
   exploration_calme: { f: ['musique/exploration-calme.mp3', 'musique/calme-guitare-paisible.mp3', 'musique/calme-matin-village.mp3',
     'musique/calme-campagne.mp3', 'musique/calme-guitare-acoustique.mp3'], vol: 0.9 },
   train:       { f: ['musique/on-the-road.mp3'], vol: 1.0 },
-  refuge:      { f: ['musique/refuge-calme.mp3'], vol: 1.0 },
+  refuge:      { f: ['musique/refuge-calme.mp3', 'musique/refuge-piano-chaleureux.mp3', 'musique/refuge-piano-calme.mp3', 'musique/refuge-piano-doux.mp3'], vol: 1.0 },
   // Écran de mort : cordes lentes qui s'éteignent.
   deces:       { f: ['musique/mort.mp3'], vol: 1.0 },
   // Combat : une vraie playlist d'action qui tourne en continu (crossfade),
@@ -163,6 +191,9 @@ function crete(buffer) {
 // automatiquement divisé par deux. On borne pour ne pas trop pousser un son faible.
 // (Bon pour les SFX, brefs : la crête suffit.)
 function gainNormalise(buffer, vol) { return Math.min(vol * (0.9 / crete(buffer)), vol * 4); }
+// Les PAS : égalisés sur leur sonie (RMS), pas sur la crête — un pas sec et claquant ne doit pas
+// ressortir plus fort qu'un pas sourd. Garde-fou de crête pour ne jamais saturer.
+function gainRms(buffer, vol) { const g = vol * (0.12 / rms(buffer)); return Math.min(g, 0.95 / crete(buffer), vol * 6); }
 // Sonie perçue (RMS) : deux morceaux masterisés différemment (l'un compressé/fort,
 // l'autre dynamique/faible) ont la même crête mais des volumes ressentis très
 // différents. Pour la MUSIQUE on égalise donc le RMS, pas la crête — c'est ce qui
@@ -190,22 +221,37 @@ async function decoder(chemin) {
   if (!r.ok) throw new Error('404');
   return ctx.decodeAudioData(await r.arrayBuffer());
 }
+// Piste longue chargée à la demande : { chemin, vol, buffer (null tant qu'elle ne joue pas), gain }.
+// norme : 'musique' (sonie RMS égalisée), 'crete' (crête), 'brut' (gain = vol, déjà égalisé au montage).
+function piste(chemin, vol, norme) { return { chemin, vol, norme, buffer: null, gain: 0, charge: null, mort: false, lecteurs: 0 }; }
+function chargerPiste(ent) {
+  if (ent.buffer) return Promise.resolve(ent);
+  if (!ent.charge) {
+    ent.charge = decoder(ent.chemin).then(b => {
+      ent.buffer = b;
+      ent.gain = ent.norme === 'musique' ? gainMusique(b, ent.vol) : ent.norme === 'crete' ? gainNormalise(b, ent.vol) : ent.vol;
+      return ent;
+    }).catch(() => { ent.mort = true; ent.charge = null; return ent; });
+  }
+  return ent.charge;
+}
+// Plus personne ne la joue : on rend la mémoire (elle sera redécodée au prochain passage).
+function lacherPiste(ent) {
+  ent.lecteurs = Math.max(0, ent.lecteurs - 1);
+  if (!ent.lecteurs) { ent.buffer = null; ent.charge = null; }
+}
 async function chargerBanque() {
   for (const [nom, def] of Object.entries(BANQUE_SFX)) {
     const liste = [];
-    for (const f of def.f) { try { const b = await decoder(f); liste.push({ buffer: b, gain: gainNormalise(b, def.vol) }); } catch (e) {} }
+    for (const f of def.f) { try { const b = await decoder(f); liste.push({ buffer: b, gain: def.rms ? gainRms(b, def.vol) : gainNormalise(b, def.vol) }); } catch (e) {} }
     if (liste.length) sons[nom] = liste;
   }
-  for (const [nom, def] of Object.entries(BANQUE_THEMES)) {
-    const liste = [];
-    for (const f of def.f) { try { const b = await decoder(f); liste.push({ buffer: b, gain: gainMusique(b, def.vol) }); } catch (e) {} }
-    if (liste.length) fichiers.themes[nom] = liste; // playlist (1 fichier ou plus)
-  }
-  for (const [nom, def] of Object.entries(BANQUE_HORDES)) {
-    const liste = [];
-    for (const f of def.f) { try { const b = await decoder(f); liste.push({ buffer: b, gain: gainNormalise(b, def.vol) }); } catch (e) {} }
-    if (liste.length) hordeBufs[nom] = liste;
-  }
+  // Musiques, fonds nature et hordes : de longues pistes. Décodées TOUTES au démarrage, elles
+  // pesaient plus d'un gigaoctet en mémoire (un mobile n'y survit pas). On ne garde que la
+  // liste des pistes ; chacune est décodée quand elle va jouer et libérée après (chargerPiste).
+  for (const [nom, def] of Object.entries(BANQUE_THEMES)) fichiers.themes[nom] = def.f.map(f => piste(f, def.vol, 'musique'));
+  for (const [nom, def] of Object.entries(BANQUE_NATURE)) natureBufs[nom] = piste(def.f, def.vol, 'brut');
+  for (const [nom, def] of Object.entries(BANQUE_HORDES)) hordeBufs[nom] = def.f.map(f => piste(f, def.vol, 'crete'));
   if (hordeVoulue) { const n = hordeVoulue; hordeVoulue = null; setHorde(n.niveau, n.interieur); } // demandée avant la fin du chargement
   // Chrono + pluie : on garde un facteur de normalisation (certains de ces fichiers
   // sont enregistrés très bas — la pluie a une crête à ~0,08 : il faut la remonter).
@@ -653,16 +699,8 @@ async function chargerManifest() {
     // reste acceptée (rétrocompatible). Les ambiances restent un seul fichier.
     for (const [nom, val] of Object.entries(man.themes || {})) {
       const fs = Array.isArray(val) ? val : [val];
-      const liste = [];
-      for (const ff of fs) {
-        try {
-          const r = await fetch('audio/' + ff);
-          if (!r.ok) continue;
-          const b = await ctx.decodeAudioData(await r.arrayBuffer());
-          liste.push({ buffer: b, gain: gainMusique(b, 1.0) }); // sonie égalisée comme la banque
-        } catch (e) { /* fichier illisible : ignoré */ }
-      }
-      if (liste.length) fichiers.themes[nom] = liste;
+      // décodées à la demande comme la banque ; un fichier illisible est simplement sauté
+      if (fs.length) fichiers.themes[nom] = fs.map(ff => piste(ff, 1.0, 'musique'));
     }
     for (const [nom, val] of Object.entries(man.ambiances || {})) {
       const ff = Array.isArray(val) ? val[0] : val;
@@ -689,15 +727,22 @@ function creerPlaylist(entrees, opts = {}) {
   return etat;
 }
 function prochaineIdx(etat) {
-  const n = etat.entrees.length;
-  if (n <= 1) return 0;
-  let i; do { i = Math.floor(Math.random() * n); } while (i === etat.idx); // pas de répétition immédiate
-  return i;
+  const vivantes = etat.entrees.map((e, i) => i).filter(i => !etat.entrees[i].mort);
+  if (!vivantes.length) return -1;
+  if (vivantes.length === 1) return vivantes[0];
+  const autres = vivantes.filter(i => i !== etat.idx); // pas de répétition immédiate
+  return autres[Math.floor(Math.random() * autres.length)];
 }
-function enchainerPiste(etat, premier) {
+async function enchainerPiste(etat, premier) {
   if (!etat.vivant || !ctx) return;
-  etat.idx = prochaineIdx(etat);
-  const ent = etat.entrees[etat.idx];
+  const idx = prochaineIdx(etat);
+  if (idx < 0) return; // aucune piste lisible : silence
+  etat.idx = idx;
+  const ent = etat.entrees[idx];
+  await chargerPiste(ent);
+  if (!etat.vivant || !ctx) return;
+  if (!ent.buffer) { enchainerPiste(etat, premier); return; } // illisible (marquée morte) : la suivante
+  ent.lecteurs++;
   const dur = ent.buffer.duration;
   const fondu = Math.min(etat.opts.fondu || 1.4, dur / 3);
   const t0 = ctx.currentTime + 0.02;
@@ -709,6 +754,7 @@ function enchainerPiste(etat, premier) {
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); // fondu de sortie : pas de coupure sèche
   src.connect(g); g.connect(master);
   src.start(t0); src.stop(t0 + dur + 0.1);
+  src.onended = () => lacherPiste(ent); // fin naturelle ou arrêt : la mémoire est rendue
   etat.src = src; etat.g = g;
   // Planifie la piste suivante. repos = silence entre morceaux ; repos = 0 →
   // on avance du temps d'un fondu pour chevaucher la fin (crossfade).
@@ -1143,21 +1189,36 @@ export function setChrono(on) {
 // setHorde(0) = rien ; 1 = des morts gémissent au loin (calme, espacé) ; 2 = la ville
 // grouille (forte). interieur : on l'entend à travers les murs, étouffée. Fondus
 // lents (la horde ne surgit jamais d'un coup) ; un changement de niveau croise les boucles.
-let hordeBufs = {}, hordeNode = null, hordeVoulue = null;
+let hordeBufs = {}, hordeNode = null, hordeVoulue = null, hordeEnCours = null;
 export function setHorde(niveau, interieur = false) {
   if (!ctx) return;
   niveau = niveau >= 2 ? 2 : niveau >= 1 ? 1 : 0;
-  if (!hordeBufs.calme && !hordeBufs.forte) { if (niveau) hordeVoulue = { niveau, interieur }; return; } // pas encore chargées
+  if (!hordeBufs.calme && !hordeBufs.forte) { if (niveau) hordeVoulue = { niveau, interieur }; return; } // banque pas encore lue
   const t = ctx.currentTime;
+  if (hordeEnCours && hordeEnCours.niveau === niveau) { hordeEnCours.interieur = interieur; return; } // déjà en train de se décoder
   if (hordeNode && hordeNode.niveau === niveau) {
     if (hordeNode.interieur !== interieur) { hordeNode.interieur = interieur; hordeNode.fil.frequency.setTargetAtTime(interieur ? 450 : 6000, t, 0.8); hordeNode.g.gain.setTargetAtTime(hordeNode.gain * (interieur ? 0.55 : 1), t, 0.8); }
     return;
   }
   if (hordeNode) { const n = hordeNode; try { n.g.gain.cancelScheduledValues(t); n.g.gain.setTargetAtTime(0.0001, t, 1.2); n.src.stop(t + 5); } catch (e) {} hordeNode = null; }
+  hordeEnCours = null;
   if (!niveau) return;
-  const liste = hordeBufs[niveau === 2 ? 'forte' : 'calme'] || hordeBufs.calme || hordeBufs.forte;
+  const liste = (hordeBufs[niveau === 2 ? 'forte' : 'calme'] || hordeBufs.calme || hordeBufs.forte).filter(x => !x.mort);
+  if (!liste.length) return;
   const e = liste[Math.floor(Math.random() * liste.length)];
+  // décodée à la demande : on la lance quand elle est prête, si on la veut toujours
+  const attente = hordeEnCours = { niveau, interieur };
+  chargerPiste(e).then(() => {
+    if (hordeEnCours !== attente || !e.buffer || !ctx) return;
+    hordeEnCours = null;
+    lancerHorde(e, niveau, attente.interieur);
+  });
+}
+function lancerHorde(e, niveau, interieur) {
+  const t = ctx.currentTime;
+  e.lecteurs++;
   const src = ctx.createBufferSource(); src.buffer = e.buffer; src.loop = true;
+  src.onended = () => lacherPiste(e);
   const fil = ctx.createBiquadFilter(); fil.type = 'lowpass'; fil.frequency.value = interieur ? 450 : 6000;
   const g = ctx.createGain(); g.gain.value = 0.0001;
   g.gain.setTargetAtTime(e.gain * (interieur ? 0.55 : 1), t, 2);
@@ -1166,8 +1227,63 @@ export function setHorde(niveau, interieur = false) {
   hordeNode = { niveau, interieur, src, fil, g, gain: e.gain };
 }
 
+// ---------- Fond nature (boucles dosées en continu) ----------
+// setNature({ dehors, biome, heure, vent }) : chaque couche monte ou s'efface en fondu lent.
+// Cigales en plein jour (moins en ville), oiseaux le matin (forêt en campagne verte), grillons
+// la nuit, vent selon sa force. À l'intérieur : tout est étouffé. setNature(null) : silence.
+let natureBufs = {}, natureNodes = {}, natureFil = null, natureG = null, natureDernier = null;
+function niveauxNature(e) {
+  if (!e) return {};
+  const h = e.heure ?? 12, ville = e.biome === 'ville', vert = e.biome === 'vert', v = e.vent ?? 0.3;
+  const jour = h >= 9.5 && h < 19.5, matin = h >= 5.5 && h < 10.5, nuit = h >= 21 || h < 5;
+  return {
+    cigales: jour ? (ville ? 0.35 : 1) : 0,
+    oiseaux_matin: matin ? (ville ? 0.4 : vert ? 0.6 : 1) : (jour && !ville ? 0.25 : 0),
+    oiseaux_foret: vert && (matin || jour) ? (matin ? 1 : 0.5) : 0,
+    grillons: nuit ? (ville ? 0.4 : 1) : 0,
+    vent_moyen: Math.max(0, Math.min(1, v * 1.6)) * (v > 0.7 ? 0.5 : 1),
+    vent_fort: v > 0.55 ? Math.min(1, (v - 0.55) / 0.3) : 0,
+  };
+}
+export function setNature(e) {
+  if (!ctx || !Object.keys(natureBufs).length) return;
+  natureDernier = e;
+  const t = ctx.currentTime;
+  if (!natureG) {
+    natureFil = ctx.createBiquadFilter(); natureFil.type = 'lowpass'; natureFil.frequency.value = 12000;
+    natureG = ctx.createGain(); natureG.gain.value = 1; natureFil.connect(natureG); natureG.connect(master);
+  }
+  const dedans = !!(e && !e.dehors);
+  natureFil.frequency.setTargetAtTime(dedans ? 500 : 12000, t, 0.6);
+  natureG.gain.setTargetAtTime(dedans ? 0.35 : 1, t, 0.6);
+  const niv = niveauxNature(e);
+  for (const [nom, b] of Object.entries(natureBufs)) {
+    const cible = (niv[nom] || 0) * b.vol;
+    let n = natureNodes[nom];
+    if (!n && cible > 0.001 && !b.buffer) { // pas encore décodée : on la charge, elle montera dès qu'elle est prête
+      if (!b.mort && !b.charge) chargerPiste(b).then(() => { if (b.buffer && natureDernier) setNature(natureDernier); });
+      continue;
+    }
+    if (!n && cible > 0.001) {
+      b.lecteurs++;
+      const src = ctx.createBufferSource(); src.buffer = b.buffer; src.loop = true;
+      src.onended = () => lacherPiste(b);
+      const g = ctx.createGain(); g.gain.value = 0.0001; src.connect(g); g.connect(natureFil);
+      src.start(t, Math.random() * b.buffer.duration); // jamais le même début de boucle
+      n = natureNodes[nom] = { src, g };
+    }
+    if (!n) continue;
+    n.g.gain.setTargetAtTime(Math.max(cible, 0.0001), t, 2.5);
+    clearTimeout(n.fin);
+    if (cible <= 0.001) { // éteinte : on démonte une fois le fondu fini
+      n.fin = setTimeout(() => { if (natureNodes[nom] === n) { try { n.src.stop(); } catch (er) {} delete natureNodes[nom]; } }, 12000);
+    }
+  }
+}
+
 // ---------- Effets sonores ----------
-// opts : { volume 0..1, pan -1..1 } — renvoie une poignée { stop() } quand le son vient d'un fichier. — sons SPATIALISÉS (un bruit lointain s'entend moins, voire pas).
+// opts : { volume 0..1, pan -1..1 } — sons SPATIALISÉS (un bruit lointain s'entend moins, voire pas).
+// Renvoie une poignée { stop() } quand le son vient d'un fichier.
 export function sfx(nom, opts = {}) {
   if (!ctx) return;
   if (opts.volume != null && opts.volume < 0.03) return;

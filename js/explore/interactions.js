@@ -316,7 +316,7 @@ async function actionPorte(c) {
     } else if (v.crocheter && compter('crochets_serrure') > 0 && niv('mecanique') >= (v.meca || 0)) {
       return lancerAction('Crocheter…', RX.PORTES.CROCHETER_MS * Math.max(0.4, 1 - 0.12 * niv('mecanique')), p.x + 0.5, p.y + 0.5, async () => { await C.porte(p.cle, 'crocheter'); sfx('clic'); });
     } else {
-      sfx('porte_coup');
+      sfx('porte_verrouillee');
       message(v.flag && !v.cle && !v.forcer ? 'Fermée. Ça ne s\'ouvre pas de ce côté.' : v.cle ? `Verrouillée. Il faudrait ${nomObjet(v.cle).toLowerCase()}.` : v.forcer ? `Verrouillée. Un ${nomObjet(v.forcer).toLowerCase()} en viendrait à bout.` : 'Verrouillée.');
       return;
     }
@@ -325,7 +325,7 @@ async function actionPorte(c) {
   if (r.ok) sfx('porte');
   else if (r.raison === 'occupee') message('Quelque chose bloque le passage.');
   else if (r.raison === 'flag') message('Fermée. Ça ne s\'ouvre pas de ce côté.');
-  else if (r.raison === 'verrouillee') message('Verrouillée.');
+  else if (r.raison === 'verrouillee') { sfx('porte_verrouillee'); message('Verrouillée.'); }
 }
 // Action chronométrée générique (forcer, crocheter, relever…) : interrompue par le mouvement.
 // son : bruit de travail rejoué pendant l'action (ex. 'clouer'), toutes les sonMs.

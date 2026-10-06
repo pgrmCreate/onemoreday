@@ -219,7 +219,7 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   };
   majBoutonLampe();
   V.off.push(on('inventaire', majBoutonLampe));
-  V.off.push(on('quete', () => { if (V) V.tGuide = 0; }));
+  V.off.push(on('quete', (e) => { if (!V) return; V.tGuide = 0; if (e && !e.distant && e.etape !== 'fin') sfx('decouverte'); }));
   V.off.push(on('flag', () => { if (V) { V.tGuide = 0; majObjetsDrapeaux(); } }));
   majObjetsDrapeaux();
   if (mod.inv && mod.inv.setSol) mod.inv.setSol(fournisseurSol());
@@ -271,6 +271,7 @@ export function sortir() {
   if (mod.inv && mod.inv.setSol) { const pile = []; mod.inv.setSol({ lister: () => pile, deposer: (it) => pile.push({ ...it }), prendre: (i) => pile.splice(i, 1)[0] || null }); }
   try { mod.audio && mod.audio.setTension && mod.audio.setTension(0); } catch (e) {}
   try { mod.audio && mod.audio.setHorde && mod.audio.setHorde(0); } catch (e) {}
+  try { mod.audio && mod.audio.setNature && mod.audio.setNature(null); } catch (e) {}
   v.racine.remove();
   if (!v.arene) emit('lieu:sort', { lieu: v.lieuId });
   V = null;
@@ -389,7 +390,7 @@ function image(t, dt) {
   // pas (plancher dedans ; dehors : bitume en ville, gravier ailleurs) et souffle court en fin de course
   if (j.allure !== 'immobile') {
     V.pasDist = (V.pasDist || 0) + vReelle * dt / 1000;
-    if (V.pasDist >= RX.PAS_FOULEE[j.allure]) { V.pasDist = 0; sfx(!V.dehorsSon ? 'pas' : V.scene && V.scene.biome && V.scene.biome !== 'ville' ? 'pas_gravier' : 'pas_beton', { volume: RX.PAS_VOLUME[j.allure] }); }
+    if (V.pasDist >= RX.PAS_FOULEE[j.allure]) { V.pasDist = 0; sfx(!V.dehorsSon ? 'pas' : ({ vert: 'pas_herbe', sec: 'pas_gravier' })[V.scene && V.scene.biome] || 'pas_beton', { volume: RX.PAS_VOLUME[j.allure] }); }
   }
   V.tSouffle = (V.tSouffle || 0) - dt;
   if (j.allure === 'course' && G.player.sta < staMax * RX.SOUFFLE_SEUIL && V.tSouffle <= 0) { V.tSouffle = 2300; sfx('souffle_course'); }
@@ -568,7 +569,18 @@ function tension() {
   // horde lointaine : beaucoup de morts dans le quartier, hors de portée directe
   const H = RX.HORDE_SON; let n = 0;
   for (const z of V.zListe) if (z.etage === V.j.etage) { const d = Math.hypot(z.x - V.j.x, z.y - V.j.y); if (d >= H.DIST_MIN && d <= H.DIST_MAX) n++; }
-  try { mod.audio.setHorde && mod.audio.setHorde(n >= H.FORTE ? 2 : n >= H.CALME ? 1 : 0, !V.dehorsSon); } catch (e) {}
+  // Salon est infesté : dehors, on l'entend toujours gémir au loin, même si peu de morts rôdent ici
+  const fond = H.SALON_DEHORS && V.dehorsSon && V.L && V.L.echelle === 'salon' ? 1 : 0;
+  try { mod.audio.setHorde && mod.audio.setHorde(n >= H.FORTE ? 2 : n >= H.CALME ? 1 : fond, !V.dehorsSon); } catch (e) {}
+  // fond nature : cigales, oiseaux, grillons, vent — selon l'heure, le terrain et la météo
+  const Sc = V.scene || {};
+  try { mod.audio.setNature && mod.audio.setNature({ dehors: !!V.dehorsSon, biome: Sc.biome || 'ville', heure: clock.heureDecimale(), vent: V.vent ?? 0.3 }); } catch (e) {}
+  // Les cloches du soir : tant que Maud guette, elles sonnent sur Salon chaque soir à 21 h 10
+  // (l'heure où l'horloge s'est arrêtée). Une fois par jour, dehors, en ville.
+  const C2 = RX.CLOCHES_SOIR, h = clock.heureDecimale(), jr = clock.jour();
+  if (C2 && V.dehorsSon && V.L && V.L.echelle === 'salon' && !getFlag(C2.FIN_FLAG) && h >= C2.HEURE && h < C2.HEURE + 0.5 && G.world.clochesJour !== jr) {
+    G.world.clochesJour = jr; sfx('cloches');
+  }
 }
 
 // ---------- Objectif : jamais un fil d'Ariane ----------

@@ -201,7 +201,7 @@ export const SCENES_SONORES = {
 
 // ---------- Scènes « cinématiques » (refonte v3) : le lit d'une scène existante + un thème ----------
 SCENES_SONORES.titre   = { ...SCENES_SONORES.sombre, musique: { theme: 'titre' } };
-SCENES_SONORES.calme   = { ...SCENES_SONORES.interieur, musique: { theme: 'titre' } };
-SCENES_SONORES.tension = { ...SCENES_SONORES.rue, musique: { theme: 'titre' } };
+SCENES_SONORES.calme   = { ...SCENES_SONORES.interieur, musique: { theme: 'lent' } };        // scènes lentes, moments suspendus
+SCENES_SONORES.tension = { ...SCENES_SONORES.rue, musique: { theme: 'exploration' } };   // cinématiques tendues : mystère, pas d'action
 SCENES_SONORES.mort    = { ...SCENES_SONORES.sombre, stingers: [['vent_rafale', 1]], musique: { theme: 'deces' } };
 SCENES_SONORES.combat  = { ...SCENES_SONORES.sombre };
