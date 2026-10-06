@@ -21,8 +21,8 @@ function maj() {
   const m = meteoCourante();
   if (m === courante) return;
   courante = m;
-  try { setContexteSurvie({ meteo: m }); } catch (e) {}
   const p = pluie();
+  try { setContexteSurvie({ meteo: m, pluie: p }); } catch (e) {}
   import('../audio.js').then(a => a.setPluie && a.setPluie(p ? (p >= 1 ? 'forte' : 'legere') : null)).catch(() => {});
   emit('meteo', { type: m, pluie: p, vent: vent() });
 }

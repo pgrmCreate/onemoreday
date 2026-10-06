@@ -20,6 +20,19 @@
 import { FIN, K } from '../carte/catalogue.js';
 export const CONSTRUCTIONS = {
   // ─────────── Murs et clôtures ───────────
+  // TOITS : posés au-dessus (on passe dessous, ils ne bloquent rien). Sous un toit, la pluie ne mouille plus et
+  // s'entend étouffée ; des murs tout autour + un toit = un vrai intérieur (le dehors se tait, on n'a plus froid
+  // comme dehors). Le toit s'efface quand on est dessous (comme ceux des bâtiments).
+  toit_planches: {
+    nom: 'Toit de planches', cat: 'murs', t: [2, 2], bloque: 0, opaque: 0, pv: 200, toit: true, dessin: 'toit_planches',
+    ingredients: [{ id: 'planche', qty: 4 }, { id: 'clous', qty: 8 }], outils: ['marteler'], skill: null, tempsMin: 40, xp: { construction: 6 },
+    desc: 'Des planches jointives clouées sur deux chevrons, un peu de pente. Dessous, on est au sec ; avec des murs autour, on est chez soi.',
+  },
+  toit_bache: {
+    nom: 'Toit de bâche', cat: 'murs', t: [2, 2], bloque: 0, opaque: 0, pv: 60, toit: true, dessin: 'toit_bache',
+    ingredients: [{ id: 'bache_plastique', qty: 1 }, { id: 'branche', qty: 4 }, { id: 'fibres', qty: 2 }], outils: [], skill: null, tempsMin: 20, xp: { construction: 3 },
+    desc: 'Une bâche tendue sur quatre branches. Ça claque au vent, mais la pluie glisse dessus.',
+  },
   mur_planches: {
     nom: 'Mur de planches', cat: 'murs', t: [1, 1], bloque: 1, opaque: 1, pv: 150, dessin: 'mur_planches',
     ingredients: [{ id: 'planche', qty: 3 }, { id: 'clous', qty: 6 }], outils: ['marteler'], skill: null, tempsMin: 30, xp: { construction: 6 },
@@ -190,7 +203,7 @@ export const CONSTRUCTIONS = {
     desc: 'Un carré de terre retournée entre quatre planches. Trois jours plus tard, de quoi manger. On replante avec un sachet de graines.',
   },
 };
-export const CATS_CONSTRUCTION = { murs: 'Murs et clôtures', defense: 'Défense et pièges', mobilier: 'Mobilier', survie: 'Survie' };
+export const CATS_CONSTRUCTION = { murs: 'Murs, toits et clôtures', defense: 'Défense et pièges', mobilier: 'Mobilier', survie: 'Survie' };
 
 // Bois qu'on met au feu (minutes de feu gagnées par pièce), dans l'ordre où on le prend.
 export const COMBUSTIBLES = [['buche', 180], ['planche', 60], ['branche', 30], ['brindilles', 10]];

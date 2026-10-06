@@ -521,6 +521,21 @@ const DESSINS = {
     c.strokeStyle = '#8a8a8a'; c.lineWidth = 1.5; cercle(c, W / 2, H / 2, W * 0.36); c.stroke();
     c.fillStyle = 'rgba(200,220,240,0.15)'; cercle(c, W / 2 - 3, H / 2 - 3, W * 0.12); c.fill();
   },
+  toit_planches(c, W, H, r, R) {
+    avecOmbre(c, 8, 6, 8, 0.5, () => { c.fillStyle = BOIS_F; c.fillRect(0, 0, W, H); });
+    const n = 7; for (let k = 0; k < n; k++) { const y = k * H / n; c.fillStyle = teinte(BOIS_C, 0.72 + r() * 0.35); c.fillRect(1, y + 0.5, W - 2, H / n - 1.2); }
+    grainBois(c, 1, 1, W - 2, H - 2, r, 9);
+    c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(0, H - 4, W, 4);                          // la pente : bord bas dans l'ombre
+    c.fillStyle = '#9a9a9a'; for (let k = 0; k < n; k++) { const y = k * H / n + H / n / 2; cercle(c, 5, y, 1.2); c.fill(); cercle(c, W - 5, y, 1.2); c.fill(); }
+    usure(c, W, H, R);
+  },
+  toit_bache(c, W, H, r, R) {
+    avecOmbre(c, 7, 5, 7, 0.45, () => { c.fillStyle = '#2f4f6a'; rr(c, 2, 2, W - 4, H - 4, 3); c.fill(); });
+    c.fillStyle = 'rgba(255,255,255,0.08)'; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo(2, 4 + k * (H - 8) / 4); c.quadraticCurveTo(W / 2, 8 + k * (H - 8) / 4, W - 2, 4 + k * (H - 8) / 4); c.lineTo(W - 2, 6 + k * (H - 8) / 4); c.quadraticCurveTo(W / 2, 10 + k * (H - 8) / 4, 2, 6 + k * (H - 8) / 4); c.fill(); }
+    c.fillStyle = BOIS_F; for (const [x, y] of [[4, 4], [W - 4, 4], [4, H - 4], [W - 4, H - 4]]) { cercle(c, x, y, 2.5); c.fill(); }
+    c.strokeStyle = 'rgba(200,190,150,0.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(4, 4); c.lineTo(1, 1); c.moveTo(W - 4, 4); c.lineTo(W - 1, 1); c.stroke();
+    usure(c, W, H, R);
+  },
   abri_branches(c, W, H, r, R) {
     avecOmbre(c, 7, 5, 6, 0.55, () => { c.fillStyle = '#3e4a30'; rr(c, 4, 6, W - 8, H - 12, 8); c.fill(); });
     c.fillStyle = '#4a5a6a'; c.fillRect(8, 10, W - 16, H - 20);

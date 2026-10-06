@@ -7,7 +7,7 @@ import { REGLAGES, niveauDepuisXp, presetDifficulte } from '../data/reglages.js'
 import { CLOTHES, ZONES_JAMBE, ZONES_BRAS } from '../data/clothing.js';
 import { ITEMS } from '../data/items.js';
 import { poidsPorte, chargeMax as chargeMaxInv, surpoids } from './inventory.js';
-import { douleur, deficitFroid } from './survival.js';
+import { douleur, deficitFroid, stadeMouille } from './survival.js';
 
 const C = () => REGLAGES.competences;
 const S = () => REGLAGES.survie;
@@ -116,6 +116,8 @@ export function modificateurs(p) {
   if (p.mal >= M.fievre_noire) r.toucher -= 0.05;
   // froid
   const d = deficitFroid(p); if (d > 0) r.regenSta *= Math.max(0, 1 - S().FROID.REGEN_PAR_POINT * d);
+  // mouillé : le souffle revient moins vite ; trempé, on se traîne
+  const sm = stadeMouille(p), MO = S().MOUILLE; r.regenSta *= MO.REGEN_STA[sm]; r.vitesse *= MO.VITESSE[sm]; r.vitesseVoyage *= MO.VITESSE[sm];
   // blessures
   const mj = malusJambe(p); r.vitesse *= mj; r.vitesseVoyage *= mj;
   if (mj < 1) r.fuite -= 0.2;

@@ -43,6 +43,7 @@ export const ICONS = {
   fievre: P('M10 4a2 2 0 0 1 4 0v9.3a4 4 0 1 1-4 0V4zm2 6v6.5M17 5h3m-3 3h2'),
   malade: P('M8.5 16a5 5 0 0 1 7 0M9 9.5l1.5 1.5m0-1.5L9 11m5-1.5 1.5 1.5m0-1.5L14 11', C(12, 12, 9)),
   rhume: P('M4 12h3m3.5-5.5L12 9m6.5-2.5L16 9M20 12h-3m-9.5 5.5 2-2m8 2-2-2', C(12, 12, 2.2)),
+  mouille: P('M8 4s-3 4-3 6.2a3 3 0 0 0 6 0C11 8 8 4 8 4zm8 6s-3 4-3 6.2a3 3 0 0 0 6 0C19 14 16 10 16 10zM6.5 18.5l-1.5 2.5m5-2 -1.5 2.5'),
   froid: P('M12 3v18M12 3l-2 2m2-2 2 2m-2 14-2 2m2-2 2 2M4.2 7.5l15.6 9M4.2 7.5l.8 2.7m-.8-2.7 2.7-.7m12.9 9.7-.8-2.7m.8 2.7-2.7.7M19.8 7.5l-15.6 9m15.6-9-.8 2.7m.8-2.7-2.7-.7M4.2 16.5l.8-2.7m-.8 2.7 2.7.7'),
   surcharge: P('M6 21h12l-1.5-11h-9L6 21zm3-11V7a3 3 0 0 1 6 0v3M12 13v4m0 2.2v.1'),
   mal: P('M12 3c-1 3.5-4.5 4.5-4.5 9a4.5 4.5 0 0 0 9 0C16.5 7.5 13 6.5 12 3zM12 16.5V21M9.5 11.5l2.5 2 2.5-3.5M4 20c2-1 3-2.5 3.5-4.5m12.5 4.5c-2-1-3-2.5-3.5-4.5'),
@@ -190,5 +191,5 @@ export function iconeObjet(id) {
     materiau: 'materiau', recipient: 'recipient', livre: 'livre', lore: 'document', quete: 'quete' }[d.type] || 'divers';
 }
 export const ICONE_CATEGORIE_RECETTE = { soins: 'soins', armes: 'armes', reparation: 'reparation', nourriture: 'cuisine', lumiere: 'lumiere', survie: 'survie', recyclage: 'recyclage', equipement: 'equipement' };
-export const ICONE_MOODLE = { faim: 'faim', soif: 'soif', fatigue: 'fatigue', douleur: 'douleur', saignement: 'saignement', infection: 'infection', fievre: 'fievre', malade: 'malade', rhume: 'rhume', froid: 'froid', surcharge: 'surcharge', mal: 'mal', calme: 'calme' };
+export const ICONE_MOODLE = { faim: 'faim', soif: 'soif', fatigue: 'fatigue', douleur: 'douleur', saignement: 'saignement', infection: 'infection', fievre: 'fievre', malade: 'malade', rhume: 'rhume', mouille: 'mouille', froid: 'froid', surcharge: 'surcharge', mal: 'mal', calme: 'calme' };
 export const nombreIcones = () => Object.keys(ICONS).length;

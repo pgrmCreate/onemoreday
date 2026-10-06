@@ -25,7 +25,8 @@ let uidBlessure = 1;
 
 // ---------- Contexte (fourni par les autres temps) ----------
 // exterieur : dehors ? ; feuProche : à ≤ 3 cases d'un feu ; meteo : 'clair'|'mistral'|'pluie'|… ; lieuSur : barricadé/refuge.
-const contexte = { exterieur: null, feuProche: false, meteo: 'clair', lieuSur: false, sourceEau: null, lumiere: true };
+// abrite : sous un toit (bâtiment, ou toit construit) — la pluie ne mouille pas ; pluie : intensité 0 / 0,55 / 1.
+const contexte = { exterieur: null, abrite: null, pluie: 0, feuProche: false, meteo: 'clair', lieuSur: false, sourceEau: null, lumiere: true };
 export function setContexteSurvie(patch) { Object.assign(contexte, patch || {}); emit('survie', { contexte: true }); }
 export function contexteSurvie() { return { ...contexte }; }
 function estDehors(p) { if (contexte.exterieur != null) return contexte.exterieur; return !!(p.position && p.position.mode === 'voyage'); }
@@ -63,9 +64,19 @@ export function besoinChaleur(p) {
   const saison = (G && G.world.flags && G.world.flags.saison) || F.SAISON_DEFAUT;
   b += F.SAISON[saison] || 0;
   const M = (REGLAGES.meteo.EFFETS[contexte.meteo] || {});
-  if (dehors) { b += M.froid || 0; if (M.mouille && !inv.impermeable(p)) b += F.MOUILLE; }
+  if (dehors) b += M.froid || 0;
+  b += S().MOUILLE.FROID[stadeMouille(p)] || 0;   // des vêtements mouillés glacent, même à l'abri, tant qu'ils n'ont pas séché
   if (contexte.feuProche) b += F.FEU_PROCHE;
   return b;
+}
+// ---------- Mouillé ----------
+// Stade 0 (sec) à 4 (trempé jusqu'aux os), d'après la jauge p.mouille (0..100).
+export function stadeMouille(p) { p = joueur(p); const v = (p && p.mouille) || 0; let n = 0; S().MOUILLE.SEUILS.forEach((s, i) => { if (v >= s) n = i + 1; }); return n; }
+export function sousLaPluie(p) { p = joueur(p); return !!(contexte.pluie > 0 && estDehors(p) && !contexte.abrite); }
+function majMouille(p) {
+  const MO = S().MOUILLE;
+  if (sousLaPluie(p)) p.mouille = Math.min(100, (p.mouille || 0) + MO.PLUIE_PAR_MIN[contexte.pluie >= 1 ? 'forte' : 'legere'] * inv.facteurPluie(p));
+  else if (p.mouille > 0) p.mouille = Math.max(0, p.mouille - (contexte.feuProche ? MO.SECHE_PAR_MIN.feu : estDehors(p) && !contexte.abrite ? MO.SECHE_PAR_MIN.dehors_sec : MO.SECHE_PAR_MIN.abri));
 }
 export function deficitFroid(p) { p = joueur(p); if (!p) return 0; return Math.max(0, besoinChaleur(p) - inv.chaleurVetements(p)); }
 
@@ -143,13 +154,14 @@ function uneMinute(p, act) {
   const SV = S(), E = SV.EFFETS, SE = SV.SEUILS, MUL = SV.MULT_ACTIVITE, CT = SV.CONTAMINATION, INF = SV.INFECTION;
   const dort = act === 'sommeil';
   const mAct = MUL[act] || 1, besoins = diff().besoins ?? 1, f = inv.surpoids(p).f;
-  const mal = p.mal || 0, fievre = !!p.maladies.fievre, d = deficitFroid(p);
+  majMouille(p);
+  const mal = p.mal || 0, fievre = !!p.maladies.fievre, d = deficitFroid(p), sm = stadeMouille(p);
   // Besoins
   p.faim -= SV.FAIM_PAR_MIN * besoins * (mal >= CT.SEUILS.noirceur ? 1.25 : 1);
   p.soif -= SV.SOIF_PAR_MIN * besoins * mAct * (fievre ? SV.MALADIES.fievre.soif : 1) * (mal >= CT.SEUILS.fievre_noire ? 1.5 : 1)
     + (p.maladies.intoxication ? SV.MALADIES.intoxication.soifParMin : 0);
   if (dort) p.fatigue += SV.SOMMEIL.FATIGUE_PAR_MIN;
-  else p.fatigue -= SV.FATIGUE_PAR_MIN * besoins * mAct * (fievre ? SV.MALADIES.fievre.fatigue : 1) * (1 + REGLAGES.inventaire.SURPOIDS.fatigue * f) + SV.FROID.FATIGUE_PAR_POINT * d;
+  else p.fatigue -= SV.FATIGUE_PAR_MIN * besoins * mAct * (fievre ? SV.MALADIES.fievre.fatigue : 1) * (1 + REGLAGES.inventaire.SURPOIDS.fatigue * f) + SV.FROID.FATIGUE_PAR_POINT * d + SV.MOUILLE.FATIGUE_PAR_MIN[sm];
   p.faim = clamp(p.faim); p.soif = clamp(p.soif); p.fatigue = clamp(p.fatigue);
   // Pertes de PV
   let perte = 0, cause = null;
@@ -206,7 +218,7 @@ function uneMinute(p, act) {
   if (Mx.intoxication && --Mx.intoxication.reste <= 0) { delete Mx.intoxication; emit('toast', { texte: 'Ton ventre se calme.', type: 'bon' }); }
   if (Mx.fievre) { if (infectee) Mx.fievre.reste = SV.MALADIES.fievre.finApresMin; else if (--Mx.fievre.reste <= 0) { delete Mx.fievre; emit('toast', { texte: 'La fièvre tombe.', type: 'bon' }); } }
   if (Mx.rhume && (Mx.rhume.reste -= ((p.effets.tisane || 0) > 0 ? 2 : 1)) <= 0) delete Mx.rhume;
-  if (!Mx.rhume && d > 0 && Math.random() < parMin(SV.FROID.RHUME_H * d)) { Mx.rhume = { reste: 60 * rngInt(...SV.MALADIES.rhume.dureeH) }; emit('toast', { texte: 'Tu as pris froid.', type: 'mauvais' }); }
+  if (!Mx.rhume && (d > 0 || sm >= 2) && Math.random() < parMin(SV.FROID.RHUME_H * d + SV.MOUILLE.RHUME_H[sm])) { Mx.rhume = { reste: 60 * rngInt(...SV.MALADIES.rhume.dureeH) }; emit('toast', { texte: 'Tu as pris froid.', type: 'mauvais' }); }
   p.maladie = Mx.intoxication ? 'intoxication' : Mx.fievre ? 'fievre' : Mx.rhume ? 'rhume' : null;
   // Effets temporaires
   const Ef = p.effets;
@@ -268,6 +280,8 @@ export function etatsCorps(p) {
   if (p.maladies.fievre) r.push({ id: 'fievre', niveau: 2, label: 'Fièvre', detail: 'Soif et fatigue accrues. Tisane ou antibiotiques.', mauvais: true });
   if (p.maladies.intoxication) r.push({ id: 'malade', niveau: 3, label: 'Intoxication', detail: 'Tu vomis. Charbon actif : fin en 30 min.', mauvais: true });
   if (p.maladies.rhume) r.push({ id: 'rhume', niveau: 1, label: 'Enrhumé{|e}', detail: 'Tu tousses : ça s\'entend.', mauvais: true });
+  const sm = stadeMouille(p);
+  if (sm) r.push({ id: 'mouille', niveau: sm, label: ['Humide', 'Mouillé{|e}', 'Trempé{|e}', 'Trempé{|e} jusqu\'aux os'][sm - 1], detail: sm >= 3 ? 'Tes vêtements te glacent et te ralentissent. Mets-toi à l\'abri, près d\'un feu.' : 'Mets-toi à l\'abri pour sécher (plus vite près d\'un feu).', mauvais: sm >= 2 });
   const d = deficitFroid(p);
   if (d > 0) r.push({ id: 'froid', niveau: Math.min(4, d), label: d >= 3 ? 'Transi{|e}' : d >= 2 ? 'Tu grelottes' : 'Frais', detail: `Il te manque ${d} de chaleur. Couvre-toi, ou approche un feu.`, mauvais: true });
   const sp = inv.surpoids(p);

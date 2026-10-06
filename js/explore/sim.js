@@ -70,11 +70,13 @@ export function creerSimLieu(opts) {
   let constructions = [], consSeq = 1;
   const retires = new Set();                                   // clés des meubles démontés
   const eauReste = {};                                         // clé d'un point d'eau déjà entamé → litres restants
-  const consCase = niveau.etages.map(() => new Map());         // i → construction (index par case)
+  const consCase = niveau.etages.map(() => new Map());         // i → construction (index par case) — hors toits
+  const toitCase = niveau.etages.map(() => new Map());         // i → toit construit (on passe dessous : index à part)
   function indexerC(c, ajout) {
     const ei = EI(c.etage); if (ei == null) return; const E = niveau.etages[ei];
     for (const i of casesFinesConstruction(E, c)) {
-      if (ajout) consCase[ei].set(i, c); else if (consCase[ei].get(i) === c) consCase[ei].delete(i);
+      const idx = (CONSTRUCTIONS[c.type] || {}).toit ? toitCase[ei] : consCase[ei];
+      if (ajout) idx.set(i, c); else if (idx.get(i) === c) idx.delete(i);
     }
   }
   // Grilles dynamiques recalculées : niveau → meubles démontés → portes → constructions.
@@ -1222,6 +1224,7 @@ export function creerSimLieu(opts) {
       if (x < 0 || y < 0 || x * FIN >= E.w || y * FIN >= E.h) return { ok: false, raison: 'hors' };
       const sous = [];
       for (let dy = 0; dy < FIN; dy++) for (let dx = 0; dx < FIN; dx++) sous.push((y * FIN + dy) * E.w + x * FIN + dx);
+      if (d.toit) { if (sous.some(i => toitCase[ei].has(i))) return { ok: false, raison: 'occupe' }; continue; } // un toit passe au-dessus du reste
       if (sous.some(i => consCase[ei].has(i))) return { ok: false, raison: 'occupe' };
       if (d.pose === 'fenetre') { if (!sous.some(i => E.code[i] === K.FENETRE)) return { ok: false, raison: 'fenetre' }; continue; }
       if (sous.some(i => E.code[i] !== K.SOL || D.bloque[i])) return { ok: false, raison: 'occupe' };

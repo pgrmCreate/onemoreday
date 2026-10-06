@@ -444,6 +444,13 @@ export function chaleurVetements(p) {
   p = joueur(p); let c = 0; for (const s of SLOTS_VETEMENT) { const v = CLOTHES[p.equip[s]]; if (v) c += v.chaleur || 0; } return c;
 }
 export function impermeable(p) { p = joueur(p); return SLOTS_VETEMENT.some(s => CLOTHES[p.equip[s]] && CLOTHES[p.equip[s]].impermeable); }
+// Sous la pluie : à quelle vitesse on se mouille (1 = rien ne protège). C'est le haut du corps qui compte
+// (poncho, veste de feu) ; des bottes ou un chapeau imperméables aident un peu.
+export function facteurPluie(p) {
+  p = joueur(p); const R = REGLAGES.survie.MOUILLE; let f = 1;
+  for (const s of SLOTS_VETEMENT) { const v = CLOTHES[p.equip[s]]; if (v && v.impermeable) f *= s === 'torse' ? R.IMPERMEABLE : R.IMPERMEABLE_AUTRE; }
+  return f;
+}
 export function protectionZone(zone, p) {
   p = joueur(p); let pr = 0;
   for (const s of SLOTS_VETEMENT) {

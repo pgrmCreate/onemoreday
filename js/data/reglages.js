@@ -544,13 +544,25 @@ export const REGLAGES = {
                                 // nuits fraîches — en t-shirt + jean (chaleur 1), déficit 2 la nuit dehors : on grelotte
                                 // sans mourir. Le scénariste peut la changer (drapeau 'saison' = une des clés ci-dessus).
       FEU_PROCHE: -4,           // à ≤ 3 cases d'un feu / réchaud allumé.
-      MOUILLE: 1,               // pluie sans vêtement imperméable.
       // Déficit d = besoin − chaleur (si > 0) :
       FATIGUE_PAR_POINT: 0.02,  // fatigue −0,02 × d /min en plus.
       REGEN_PAR_POINT: 0.1,     // récup. sta × (1 − 0,1 × d).
       PV_SEUIL: 3,              // d ≥ 3 : PV −0,015 × (d − 2) /min.
       PV_PAR_POINT: 0.015,
       RHUME_H: 0.015,           // chance/h d'attraper un rhume : 0,015 × d.
+    },
+    // --- Mouillé : une jauge 0..100 qui monte sous la pluie (dehors, sans toit) et sèche à l'abri ---
+    MOUILLE: {
+      PLUIE_PAR_MIN: { legere: 0.6, forte: 1.1 }, // /min de jeu sous la pluie : averse forte → mouillé ~30 min, trempé ~1 h (≈ 2 min 30 réelles)
+      IMPERMEABLE: 0.25,        // un imperméable sur le dos (poncho, veste de feu) : on se mouille 4 fois moins vite…
+      IMPERMEABLE_AUTRE: 0.85,  // … des bottes, un chapeau imperméables : un peu moins vite (chacun).
+      SECHE_PAR_MIN: { abri: 0.45, dehors_sec: 0.6, feu: 2.5 }, // sécher : à l'abri, dehors sans pluie (vent, soleil), près d'un feu
+      SEUILS: [10, 35, 65, 90],  // stades : Humide, Mouillé, Trempé, Trempé jusqu'aux os
+      FROID: [0, 0, 1, 2, 3],    // + besoin de chaleur par stade (0 = sec) — les vêtements mouillés glacent, même à l'abri
+      RHUME_H: [0, 0, 0.01, 0.02, 0.04], // chance/h EN PLUS d'attraper un rhume
+      FATIGUE_PAR_MIN: [0, 0, 0.005, 0.01, 0.015], // un peu plus las
+      REGEN_STA: [1, 1, 0.95, 0.9, 0.85], // le souffle revient moins vite
+      VITESSE: [1, 1, 1, 0.94, 0.88],     // trempé, on se traîne
     },
     // --- Douleur (0..100 = somme des douleurs des blessures + maladies, moins les calmants) ---
     DOULEUR: {

@@ -177,7 +177,7 @@ export function creerRendu(cv, niveau) {
     // constructions (murs, caisses, feux, potager…) et fantôme du placement
     for (const c of S.constructions || []) {
       if (c.etage !== E.id) continue;
-      const d = CONSTRUCTIONS[c.type]; if (!d) continue;
+      const d = CONSTRUCTIONS[c.type]; if (!d || d.toit) continue; // les toits : plus tard, au-dessus des personnages
       const [w, h] = tailleConstruction(c.type, c.rot);
       if (c.x + w < vx0 - 1 || c.x > vx1 + 1 || c.y + h < vy0 - 1 || c.y > vy1 + 1) continue;
       if (!vuCase(c.x + w / 2, c.y + h / 2)) continue;
@@ -285,6 +285,10 @@ export function creerRendu(cv, niveau) {
     }
     // 6) toits, puis le ciel : ombres des nuages, brume
     dessinerToits(S, E, C, pxc, vx0, vy0, vx1, vy1, dt);
+    // toits construits : comme ceux des bâtiments, par-dessus l'obscurité (vus de dehors) — repasse en px monde
+    ctx.save(); ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (W / 2 + sx0 - cam.x * pxc), dpr * (H / 2 + sy0 - cam.y * pxc));
+    toitsConstruits(S, E, S.joueur, vx0, vy0, vx1, vy1, dt, vuCase);
+    ctx.restore();
     atmo.nuages(ctx, S, W, H, ecranX, ecranY, pxc, t, dpr);
     atmo.brume(ctx, S, W, H, ecranX, ecranY, pxc, t, dpr);
     atmo.mouille(ctx, S, W, H);
@@ -439,6 +443,36 @@ export function creerRendu(cv, niveau) {
     s = { cv: cvs, x0, y0, masque, pid };
     toitsCache.set(cle, s);
     return s;
+  }
+  // Toits construits : au-dessus de tout ; quand on est dessous (ou sous un toit qui le touche), ils s'effacent.
+  function toitsConstruits(S, E, J, vx0, vy0, vx1, vy1, dt, vuCase) {
+    const L = [];
+    for (const c of S.constructions || []) {
+      if (c.etage !== E.id) continue;
+      const d = CONSTRUCTIONS[c.type]; if (!d || !d.toit) continue;
+      const [w, h] = tailleConstruction(c.type, c.rot); L.push({ c, d, w, h });
+    }
+    if (!L.length) return;
+    // les toits qui se touchent forment un même abri : sous l'un, on voit sous tous
+    const touche = (a, b) => a.c.x <= b.c.x + b.w && b.c.x <= a.c.x + a.w && a.c.y <= b.c.y + b.h && b.c.y <= a.c.y + a.h;
+    const dessous = new Set(L.filter(o => J.x >= o.c.x && J.x <= o.c.x + o.w && J.y >= o.c.y && J.y <= o.c.y + o.h));
+    for (let k = 0; k < L.length; k++) for (const o of L) if (!dessous.has(o) && [...dessous].some(q => touche(q, o))) dessous.add(o);
+    for (const o of L) {
+      const { c, d, w, h } = o;
+      if (c.x + w < vx0 - 1 || c.x > vx1 + 1 || c.y + h < vy0 - 1 || c.y > vy1 + 1) continue;
+      if (!vuCase(c.x + w / 2, c.y + h / 2) && !vuCase(c.x + 0.2, c.y + 0.2) && !vuCase(c.x + w - 0.2, c.y + h - 0.2)) continue; // jamais vu : rien
+      const cible = dessous.has(o) ? 0.1 : 0.94;
+      let a = toitsA.get('c:' + c.uid); if (a == null) a = cible;
+      a += (cible - a) * (1 - Math.exp(-dt / 160)); toitsA.set('c:' + c.uid, a);
+      const R = rConstr.get(c.uid) || { variante: graine(String(c.uid)) % 1000 };
+      Object.assign(R, { type: d.dessin, x: c.x, y: c.y, w, h, rot: 0, c, d, minutes: S.minutes });
+      rConstr.set(c.uid, R);
+      ctx.globalAlpha = a; dessinerObjet(ctx, R);
+      // éclairage du ciel : la nuit, le toit est sombre (comme ceux des bâtiments)
+      const lum = 0.16 + 0.84 * (S.jour ?? 1);
+      ctx.fillStyle = `rgba(0,0,${S.jour < 0.5 ? 8 : 0},${1 - lum})`; ctx.fillRect(c.x * TS, c.y * TS, w * TS, h * TS);
+      ctx.globalAlpha = 1;
+    }
   }
   function dessinerToits(S, E, C, pxc, vx0, vy0, vx1, vy1, dt) {
     const T = E.rendu ? E.rendu.toits : [];

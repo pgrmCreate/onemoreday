@@ -27,6 +27,18 @@ export function lierConstruction(v) { V = v; pointEau = null; if (v) { v.placeme
 const minutes = () => (G ? G.world.minutes : 0);
 const defDe = (c) => CONSTRUCTIONS[c.type];
 const consListe = () => (V && V.snap && V.snap.constructions) || [];
+// Petites cases couvertes par un toit construit (étage E) — recalculée seulement quand les toits changent.
+let toitsCache = null;
+export function grilleToits(E) {
+  if (!V || !E) return null;
+  const L = consListe().filter(c => c.etage === E.id && CONSTRUCTIONS[c.type] && CONSTRUCTIONS[c.type].toit);
+  const sig = E.id + '|' + L.map(c => c.uid).join(',');
+  if (toitsCache && toitsCache.sig === sig) return toitsCache.g;
+  const g = new Uint8Array(E.w * E.h);
+  for (const c of L) for (const i of casesFinesConstruction(E, c)) g[i] = 1;
+  toitsCache = { sig, g };
+  return g;
+}
 const nomC = (c) => (defDe(c) || {}).nom || 'la construction';
 const le = (c) => { const n = nomC(c); return /^[AEIOUYÉÈ]/i.test(n) ? `l'${n.toLowerCase()}` : `${/^(Caisse|Palissade|Porte|Barricade|Clôture|Fosse|Table|Chaise|Torche|Alarme)/.test(n) ? 'la' : /^(Barbelés)/.test(n) ? 'les' : 'le'} ${n.toLowerCase()}`; };
 const feuAllume = (c) => (defDe(c) || {}).feu && (c.feuJusqua || 0) > minutes();
@@ -55,7 +67,21 @@ function verifier(P) {
   const E = V.E, d = CONSTRUCTIONS[P.type];
   const bl = V.canal.grilles ? V.canal.grilles(E.id).bloque : E.bloque;
   const occ = new Set();
-  for (const c of consListe()) if (c.etage === E.id) for (const i of casesFinesConstruction(E, c)) occ.add(i);
+  // un toit ne gêne que les autres toits (on en pose au-dessus des murs, d'un lit, d'un feu…)
+  for (const c of consListe()) if (c.etage === E.id && !!(CONSTRUCTIONS[c.type] || {}).toit === !!d.toit) for (const i of casesFinesConstruction(E, c)) occ.add(i);
+  if (d.toit) {
+    let dehors = 0;
+    for (const [x, y] of casesConstruction(P.type, P.x, P.y, P.rot)) {
+      if (x < 0 || y < 0 || x * FIN >= E.w || y * FIN >= E.h) return 'hors de la carte';
+      const sous = sousCases(E, x, y);
+      if (sous.some(i => occ.has(i))) return 'il y a déjà un toit';
+      if (sous.some(i => { const pi = E.piece[i], Pc = pi >= 0 ? V.niveau.pieces[pi] : null; return Pc ? Pc.exterieur : V.niveau.exterieur; })) dehors++;
+    }
+    if (!dehors) return 'déjà à l\'abri ici';
+    const [w, h] = tailleConstruction(P.type, P.rot);
+    if (Math.hypot(P.x + w / 2 - V.j.x, P.y + h / 2 - V.j.y) > 3.2) return 'trop loin : approche-toi';
+    return '';
+  }
   for (const [x, y] of casesConstruction(P.type, P.x, P.y, P.rot)) {
     if (x < 0 || y < 0 || x * FIN >= E.w || y * FIN >= E.h) return 'hors de la carte';
     const sous = sousCases(E, x, y);       // les petites cases de l'unité (grille fine)
@@ -212,7 +238,9 @@ function majContexte() {
   const ij = icase(E, j.x, j.y), pi = ij >= 0 ? E.piece[ij] : -1, P = pi >= 0 ? V.niveau.pieces[pi] : null;
 
   try { setContexteFabrication({ etabli, etabliVrai, feu, lieu: V.lieuId }); } catch (e) {}
-  try { mod.survie && mod.survie.setContexteSurvie && mod.survie.setContexteSurvie({ exterieur: P ? !!P.exterieur : !!V.niveau.exterieur, feuProche, sourceEau: eau ? 'croupie' : null }); } catch (e) {}
+  // dehors / à l'abri : calculés par la vue (toits construits, murs autour) — voir explore/vue.js, abri()
+  const A = V.abri || { exterieur: P ? !!P.exterieur : !!V.niveau.exterieur, abrite: P ? !P.exterieur : !V.niveau.exterieur };
+  try { mod.survie && mod.survie.setContexteSurvie && mod.survie.setContexteSurvie({ exterieur: A.exterieur, abrite: A.abrite, feuProche, sourceEau: eau ? 'croupie' : null }); } catch (e) {}
 }
 
 // ---------- Cibles (touche E / G) ----------

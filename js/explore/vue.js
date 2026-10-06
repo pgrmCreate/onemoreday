@@ -31,7 +31,7 @@ import { lierButin, avancerFouille, interrompreFouille, fermerButin, fournisseur
 import { lierInteractions, chercherCible, majInvite, interagir, basculerChoix, fermerChoix, choisir, avancerAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
 import { lierCombatLieu, combatIci as combatIci_, embuscade as embuscade_, suivreCombat, finArene } from './combat_lieu.js';
 import { lierNature, majRecherche, basculerRecherche, vitesseRecherche, enRecherche } from './nature.js';
-import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, viserPlacement, majConstruction, feuxCommeLampes, fantome } from './construction.js';
+import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, viserPlacement, majConstruction, feuxCommeLampes, fantome, grilleToits } from './construction.js';
 
 export { verifierCondition };
 const RX = REGLAGES.exploration, RL = REGLAGES.lumiere;
@@ -471,7 +471,8 @@ function image(t, dt) {
   V.rendu.suivre(j.x, j.y, dt, Math.cos(j.dir) * av * (vReelle > 0.2 || I.viseeSouris ? 1 : 0.5), Math.sin(j.dir) * av * (vReelle > 0.2 || I.viseeSouris ? 1 : 0.5));
   const snap = V.snap, Sc = V.scene || (V.scene = { joueur: {}, fouille: { x: 0, y: 0, frac: 0, n: 0 } });
   Sc.E = E; Sc.C = C; Sc.jour = jour; Sc.t = V.tVis; Sc.dt = dtv; Sc.heure = clock.heureDecimale(); Sc.hitstop = ech < 1 ? 1 : 0;
-  { const ii = icase(E, V.j.x, V.j.y), pi = ii >= 0 ? E.piece[ii] : -1; const P = pi >= 0 ? V.niveau.pieces[pi] : null; Sc.dehors = P ? !!P.exterieur : !!V.niveau.exterieur; }
+  // à ciel ouvert : une pièce extérieure, et pas sous un toit construit
+  { const ii = icase(E, V.j.x, V.j.y), pi = ii >= 0 ? E.piece[ii] : -1; const P = pi >= 0 ? V.niveau.pieces[pi] : null; const T = grilleToits(E); Sc.dehors = (P ? !!P.exterieur : !!V.niveau.exterieur) && !(T && ii >= 0 && T[ii]); }
   Sc.pluie = V.pluie || 0; Sc.vent = V.vent ?? 0.3; Sc.meteo = V.meteo || 'clair';
   if (!V.tBiome || t - V.tBiome > 1000) { V.tBiome = t; Sc.biome = biomeAutour(E, V.j.x, V.j.y); }   // ville, sec (Crau), vert
   if (V.dehorsSon !== Sc.dehors) { V.dehorsSon = Sc.dehors; try { mod.audio && mod.audio.setPluieInterieur && mod.audio.setPluieInterieur(!Sc.dehors); } catch (e) {} }
@@ -565,8 +566,8 @@ function onde(cle, danger) {
 // Profondeur dans un bâtiment : le plus court chemin (en unités) de la position du joueur jusqu'à une case
 // du dehors, sans traverser murs ni portes fermées. Infinity si tout est fermé.
 function profondeurDedans() {
-  const E = V.E, bl = grilleBloque(), P = V.niveau.pieces, ext = !!V.niveau.exterieur;
-  const dehorsCase = (i) => { const pi = E.piece[i]; const p = pi >= 0 ? P[pi] : null; return p ? !!p.exterieur : ext; };
+  const E = V.E, bl = grilleBloque(), P = V.niveau.pieces, ext = !!V.niveau.exterieur, T = grilleToits(E);
+  const dehorsCase = (i) => { if (T && T[i]) return false; const pi = E.piece[i]; const p = pi >= 0 ? P[pi] : null; return p ? !!p.exterieur : ext; }; // ciel ouvert
   const d0 = icase(E, V.j.x, V.j.y); if (d0 < 0) return 0;
   const MAX = RX.DEDANS_SON.PORTEE * FIN, w = E.w, n = E.w * E.h;
   const vu = new Uint8Array(n), file = [d0]; vu[d0] = 1; let tete = 0;
@@ -601,7 +602,12 @@ function tension() {
   const Sc = V.scene || {};
   try { mod.audio.setNature && mod.audio.setNature({ dehors: !!V.dehorsSon, biome: Sc.biome || 'ville', heure: clock.heureDecimale(), vent: V.vent ?? 0.3 }); } catch (e) {}
   // dans un bâtiment : le dehors s'entend de moins en moins à mesure qu'on s'enfonce (portes fermées : presque rien)
-  try { mod.audio.setDedans && mod.audio.setDedans(V.dehorsSon ? 1 : attenuationDedans(profondeurDedans())); } catch (e) {}
+  const prof = V.dehorsSon ? 0 : profondeurDedans();
+  try { mod.audio.setDedans && mod.audio.setDedans(V.dehorsSon ? 1 : attenuationDedans(prof)); } catch (e) {}
+  // pour la survie : sous un toit = au sec ; toit + murs tout autour (plus de ciel ouvert accessible) = un intérieur
+  { const ii = icase(V.E, V.j.x, V.j.y), pi = ii >= 0 ? V.E.piece[ii] : -1, Pc = pi >= 0 ? V.niveau.pieces[pi] : null;
+    const pieceExt = Pc ? !!Pc.exterieur : !!V.niveau.exterieur;
+    V.abri = { abrite: !V.dehorsSon, exterieur: pieceExt && !(!V.dehorsSon && prof === Infinity) }; }
   // Les cloches du soir : tant que Maud guette, elles sonnent sur Salon chaque soir à 21 h 10
   // (l'heure où l'horloge s'est arrêtée). Une fois par jour, dehors, en ville.
   const C2 = RX.CLOCHES_SOIR, h = clock.heureDecimale(), jr = clock.jour();
