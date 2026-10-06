@@ -59,6 +59,11 @@ export const LIEUX_GEO = {
   saint_chamas:     { nom: 'Saint-Chamas — la Poudrerie', echelle: 'region', lat: 43.55265, lon: 5.03126, type: 'usine' },
   istres:           { nom: 'Istres', echelle: 'region', lat: 43.51391, lon: 4.98843, type: 'village' },
   berre:            { nom: 'Berre-l\'Étang', echelle: 'region', lat: 43.47571, lon: 5.16760, type: 'village' },
+
+  // ─────────── La nature : de grandes parcelles où l'on tient quand les sirènes hurlent (js/data/histoire/ruees.js) ───────────
+  chaine_cotes:     { nom: 'La chaîne des Côtes', echelle: 'region', lat: 43.67380, lon: 5.12450, type: 'nature' },
+  crau_coussouls:   { nom: 'Les coussouls de la Crau', echelle: 'region', lat: 43.61450, lon: 5.03200, type: 'nature' },
+  touloubre:        { nom: 'Les berges de la Touloubre', echelle: 'region', lat: 43.61750, lon: 5.07650, type: 'nature' },
 };
 
 // La ville de Salon vue depuis la carte régionale (centre de la feuille « salon »).

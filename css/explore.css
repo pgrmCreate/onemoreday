@@ -232,6 +232,13 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
 .ex-btn-accr { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
 .ex-pad-bas { display: flex; gap: 6px; align-self: flex-end; margin-right: -4px; }
 .ex-btn-accr svg { width: 20px; height: 20px; }
+/* Objets au sol : grisé (et sans effet) quand il n'y a rien autour ; un petit nombre quand il y en a plusieurs */
+.ex-btn-sol { position: relative; }
+.ex-btn-sol.inactif { opacity: .28; border-style: dashed; }
+.ex-btn-sol:not(.inactif) { opacity: .95; border-color: rgba(201,162,39,.6); }
+.ex-btn-sol em { position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; font-style: normal; font-size: 10px;
+  line-height: 15px; text-align: center; background: var(--ex-ambre); color: #111; }
+.ex-btn-sol em:empty { display: none; }
 .ex-btn-inter {
   border-radius: 28px; min-width: 150px; max-width: 46vw; min-height: 56px; padding: 0 18px; font-size: 15px; text-transform: none;
   border-color: var(--ex-ambre); color: var(--ex-creme); background: rgba(40,32,10,.75);

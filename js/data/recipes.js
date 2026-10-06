@@ -6,6 +6,7 @@
 //   cat           'soins' | 'armes' | 'reparation' | 'nourriture' | 'lumiere' | 'survie' | 'recyclage' | 'equipement'
 //   nom, desc
 //   resultat      { id, qty } — ou null pour une recette spéciale (voir `special`).
+//   aussi         [{ id, qty }] — ce qu'on récupère EN PLUS (démonter un réveil : les piles, et un ressort, des vis).
 //   ingredients   [{ id, qty }] consommés À LA FIN (interrompre ne coûte rien).
 //   outils        [tags] requis, non consommés (tags `usage` des objets : 'cuisson', 'couper', 'marteler', 'visser',
 //                 'affuter', 'coudre', 'allumer', 'filtrer', 'entretien_arme', 'ouvrir'…). Un seul objet peut en couvrir plusieurs.
@@ -104,6 +105,13 @@ export const RECIPES = [
     ingredients: [{ id: 'manche_balai', qty: 1 }, { id: 'couteau_cuisine', qty: 1 }, { id: 'fil_de_fer', qty: 1 }],
     outils: [], poste: null, skill: null, tempsMin: 20, xp: { construction: 8 }, connue: true,
     desc: 'Ligaturer un couteau au bout d\'un manche. Garder les dents loin de la peau — et les gonflés loin du visage.',
+  },
+  {
+    id: 'r_lance_verre', cat: 'armes', nom: 'Lance à pointe de verre',
+    resultat: { id: 'lance_artisanale', qty: 1 },
+    ingredients: [{ id: 'manche_balai', qty: 1 }, { id: 'eclat_verre', qty: 1 }, { id: 'scotch', qty: 1 }],
+    outils: [], poste: null, skill: null, tempsMin: 20, xp: { dexterite: 3 }, connue: true,
+    desc: 'Fendre le bout du manche, y coincer le plus long éclat, ligaturer serré au scotch. Elle cassera plus vite qu\'une lame — mais tu gardes ton couteau.',
   },
   {
     id: 'r_lance_renforcee', cat: 'armes', nom: 'Lance renforcée',
@@ -297,6 +305,27 @@ export const RECIPES = [
     desc: '« Faites-les bouillir dans le miel écumé jusqu\'à ce qu\'ils soient confits. » Quatre cent soixante-dix ans plus tard, la recette marche.',
   },
   {
+    id: 'r_escargots_grilles', cat: 'nourriture', nom: 'Escargots grillés',
+    resultat: { id: 'escargots_grilles', qty: 1 },
+    ingredients: [{ id: 'escargots', qty: 2 }],
+    outils: [], poste: 'feu', skill: null, tempsMin: 15, xp: { chasse: 1 }, connue: true,
+    desc: 'Les poser coquille en bas au bord des braises. Quand ils ne bavent plus, c\'est prêt — et ça ne rend plus malade.',
+  },
+  {
+    id: 'r_champignons_poeles', cat: 'nourriture', nom: 'Champignons poêlés',
+    resultat: { id: 'champignons_poeles', qty: 1 },
+    ingredients: [{ id: 'champignons', qty: 2 }],
+    outils: ['cuisson'], poste: 'feu', skill: null, tempsMin: 15, xp: {}, connue: true,
+    desc: 'Les couper, les laisser rendre leur eau à feu doux. Bien cuits, ils passent mieux.',
+  },
+  {
+    id: 'r_soupe_sauvage', cat: 'nourriture', nom: 'Soupe des collines',
+    resultat: { id: 'soupe_sauvage', qty: 2 },
+    ingredients: [{ id: 'herbes_simples', qty: 1 }, { id: 'champignons', qty: 1 }, { id: 'eau_croupie', qty: 2 }],
+    outils: ['cuisson'], poste: 'feu', skill: null, tempsMin: 30, xp: { medecine: 1 }, connue: true,
+    desc: 'Tout dans la casserole, et laisser frémir longtemps : l\'eau bouillie ne rend plus malade. Une soupe de rien, pour deux.',
+  },
+  {
     id: 'r_tapenade', cat: 'nourriture', nom: 'Tapenade',
     resultat: { id: 'tapenade', qty: 3 },
     ingredients: [{ id: 'olives', qty: 1 }, { id: 'huile_olive', qty: 1 }],
@@ -356,6 +385,21 @@ export const RECIPES = [
     desc: 'Un chiffon imbibé d\'huile serré au bout d\'une branche. Ça fume, ça éclaire, ça sent la friture.',
   },
   {
+    id: 'r_appat_escargots', cat: 'survie', nom: 'Appâts d\'escargots',
+    resultat: { id: 'appat', qty: 2 },
+    ingredients: [{ id: 'escargots', qty: 1 }],
+    outils: ['couper'], poste: null, skill: null, tempsMin: 5, xp: { chasse: 1 }, connue: true,
+    desc: 'Écraser les coquilles, hacher la chair. Les poissons de la Touloubre ne font pas les difficiles.',
+  },
+  {
+    id: 'r_charbon_actif', cat: 'survie', nom: 'Charbon de bois broyé',
+    resultat: { id: 'charbon_actif', qty: 1 },
+    ingredients: [{ id: 'branche', qty: 2 }],
+    outils: [], poste: 'feu', skill: null, tempsMin: 40, xp: { medecine: 3 },
+    connue: false, apprise_par: ['guide_survie', 'precis_secourisme'], apprise_niveau: { medecine: 1 },
+    desc: 'Laisser les branches charbonner à l\'étouffée sous la cendre, puis piler le charbon fin. Contre le ventre qui se tord, ça vaut des gélules.',
+  },
+  {
     id: 'r_sac_sable', cat: 'survie', nom: 'Remplir un sac de terre',
     resultat: { id: 'sac_sable', qty: 1 },
     ingredients: [{ id: 'sac_plastique', qty: 1 }],
@@ -396,12 +440,11 @@ export const RECIPES = [
     desc: 'Scotcher la lampe sur un bandeau de chiffon, régler l\'angle en la calant. Tes deux mains sont enfin à toi.',
   },
   {
-    id: 'r_piles_recup', cat: 'lumiere', nom: 'Récupérer des piles',
+    id: 'r_piles_recup', cat: 'lumiere', nom: 'Piles de récupération',
     resultat: { id: 'piles', qty: 1 },
-    ingredients: [{ id: 'telephone_mort', qty: 2 }],
-    outils: ['visser'], poste: null, skill: null, tempsMin: 15, xp: { mecanique: 6 },
-    connue: false, apprise_par: ['revue_mecanique'], apprise_niveau: { mecanique: 1 },
-    desc: 'Ouvrir les téléphones morts, ponter les cellules encore vives, isoler au scotch de la gaine. De quoi rallumer une lampe.',
+    ingredients: [{ id: 'batterie_telephone', qty: 2 }, { id: 'scotch', qty: 1 }],
+    outils: [], poste: null, skill: null, tempsMin: 15, xp: { mecanique: 6 }, connue: true,
+    desc: 'Ponter deux batteries de téléphone encore vives, isoler au scotch, tordre les languettes pour qu\'elles touchent. De quoi rallumer une lampe.',
   },
 
   // ======================== SURVIE ========================
@@ -468,6 +511,55 @@ export const RECIPES = [
     outils: ['couper'], poste: null, skill: null, tempsMin: 10, xp: { mecanique: 3 }, connue: true,
     desc: 'Sous la gaine, du bon fil de cuivre. Long, pénible, mais ça occupe les mains.',
   },
+  {
+    id: 'r_batterie_telephone', cat: 'recyclage', nom: 'Sortir la batterie d\'un téléphone',
+    resultat: { id: 'batterie_telephone', qty: 1 },
+    ingredients: [{ id: 'telephone_mort', qty: 1 }],
+    outils: [], poste: null, skill: null, tempsMin: 3, xp: { mecanique: 1 }, connue: true,
+    desc: 'Faire sauter la coque à l\'ongle, décoller la batterie sans la plier. L\'écran noir te renvoie ta figure.',
+  },
+  {
+    id: 'r_demonter_reveil', cat: 'recyclage', nom: 'Démonter un réveil',
+    resultat: { id: 'piles', qty: 1 }, aussi: [{ id: 'ressort', qty: 1 }, { id: 'visserie', qty: 1 }],
+    ingredients: [{ id: 'reveil', qty: 1 }],
+    outils: ['visser'], poste: null, skill: null, tempsMin: 8, xp: { mecanique: 3 }, connue: true,
+    desc: 'Les piles d\'abord. Puis quatre vis, le mécanisme, le petit ressort de la sonnerie. Il ne réveillera plus personne.',
+  },
+  {
+    id: 'r_clous_ferraille', cat: 'recyclage', nom: 'Tirer des clous de la ferraille',
+    resultat: { id: 'clous', qty: 5 },
+    ingredients: [{ id: 'ferraille', qty: 1 }],
+    outils: ['marteler'], poste: 'etabli', skill: null, tempsMin: 15, xp: { construction: 3, mecanique: 2 }, connue: true,
+    desc: 'Arracher les rivets, redresser les tiges tordues à petits coups sur le plat de l\'établi. Ils ne sont pas beaux, ils tiennent.',
+  },
+  {
+    id: 'r_ferraille_boites', cat: 'recyclage', nom: 'Aplatir des boîtes de conserve',
+    resultat: { id: 'ferraille', qty: 1 },
+    ingredients: [{ id: 'boite_vide', qty: 3 }],
+    outils: ['marteler'], poste: null, skill: null, tempsMin: 10, xp: { mecanique: 1 }, connue: true,
+    desc: 'Écraser, replier, marteler les boîtes vides en plaques. Du fer-blanc qui servira de rustine.',
+  },
+  {
+    id: 'r_eclats_bouteille', cat: 'recyclage', nom: 'Casser une bouteille',
+    resultat: { id: 'eclat_verre', qty: 2 },
+    ingredients: [{ id: 'bouteille_vide', qty: 1 }],
+    outils: [], poste: null, skill: null, tempsMin: 2, xp: {}, connue: true,
+    desc: 'Envelopper la bouteille dans un tissu, un coup sec contre une pierre. Garder les deux plus longs éclats.',
+  },
+  {
+    id: 'r_corde_chiffons', cat: 'recyclage', nom: 'Tresser une corde de chiffons',
+    resultat: { id: 'corde', qty: 1 },
+    ingredients: [{ id: 'chiffon', qty: 6 }],
+    outils: [], poste: null, skill: null, tempsMin: 20, xp: { construction: 2 }, connue: true,
+    desc: 'Nouer les bandes bout à bout, tresser serré à trois brins. La corde des évasions, celle qui descend des fenêtres.',
+  },
+  {
+    id: 'r_bache_sacs', cat: 'recyclage', nom: 'Bâche de sacs plastique',
+    resultat: { id: 'bache_plastique', qty: 1 },
+    ingredients: [{ id: 'sac_plastique', qty: 8 }, { id: 'scotch', qty: 1 }],
+    outils: ['couper'], poste: null, skill: null, tempsMin: 20, xp: { construction: 2 }, connue: true,
+    desc: 'Fendre les sacs, les étaler à plat en écailles, tout souder au scotch. Ça ne fera pas un beau toit, mais un toit sec.',
+  },
 
   // ======================== ÉQUIPEMENT ========================
   {
@@ -476,6 +568,13 @@ export const RECIPES = [
     ingredients: [{ id: 'chiffon', qty: 4 }, { id: 'corde', qty: 1 }],
     outils: [], poste: null, skill: null, tempsMin: 25, xp: { construction: 6 }, connue: true,
     desc: 'Cousu gros, mais ça porte. En attendant de trouver un vrai sac.',
+  },
+  {
+    id: 'r_sac_bache', cat: 'equipement', nom: 'Baluchon de bâche',
+    resultat: { id: 'sac_fortune', qty: 1 },
+    ingredients: [{ id: 'bache_plastique', qty: 1 }, { id: 'corde', qty: 1 }],
+    outils: ['couper'], poste: null, skill: null, tempsMin: 25, xp: { construction: 2 }, connue: true,
+    desc: 'Plier la bâche en poche, percer les coins, passer la corde en bretelles. Imperméable, au moins.',
   },
   {
     id: 'r_ceinture_fortune', cat: 'equipement', nom: 'Ceinture de fortune',

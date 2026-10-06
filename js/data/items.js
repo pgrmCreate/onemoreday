@@ -794,6 +794,10 @@ export const ITEMS = {
     nom: 'Téléphone mort', type: 'materiau', poids: 0.15, espace: 0, volume: 0.08,
     desc: 'Écran fendu, batterie à plat depuis des semaines. Le dernier SMS restera non lu.',
   },
+  batterie_telephone: {
+    nom: 'Batterie de téléphone', type: 'materiau', poids: 0.05, espace: 0, volume: 0.02,
+    desc: 'Un rectangle plat sorti d\'un téléphone mort. Il reste du jus dans les cellules : deux, pontées au scotch, font tourner une lampe.',
+  },
   reveil: {
     nom: 'Réveil à piles', type: 'materiau', poids: 0.25, espace: 1, volume: 0.4,
     desc: 'Un réveil de chevet en plastique, sonnerie stridente. Avant, il faisait lever les gens. Maintenant, il fait lever les morts.',
@@ -817,6 +821,21 @@ export const ITEMS = {
   essence: {
     nom: 'Bouteille d\'essence', type: 'materiau', poids: 0.8, espace: 1, volume: 1.1, usage: ['combustible'],
     desc: 'Un litre de sans-plomb siphonné, dans une bouteille d\'eau minérale. Ne pas confondre.',
+  },
+  escargots_grilles: {
+    nom: 'Escargots grillés', type: 'nourriture', poids: 0.2, espace: 1, volume: 0.3,
+    kcal: 180, perissable: 10,
+    desc: 'Grillés dans leur coquille au bord des braises jusqu\'à ce qu\'ils cessent de mousser. Un peu de sel aurait été parfait.',
+  },
+  champignons_poeles: {
+    nom: 'Champignons poêlés', type: 'nourriture', poids: 0.2, espace: 1, volume: 0.4,
+    kcal: 120, perissable: 8, risque: { type: 'intoxication', p: 0.05 },
+    desc: 'Revenus longtemps, jusqu\'à ce qu\'ils rendent leur eau. La cuisson ne sauve pas d\'un mauvais champignon, mais elle aide.',
+  },
+  soupe_sauvage: {
+    nom: 'Soupe des collines', type: 'nourriture', poids: 0.7, espace: 1, volume: 0.8,
+    kcal: 260, perissable: 10, soif: 20,
+    desc: 'Des herbes, ce qu\'on a trouvé sous les pins, de l\'eau bouillie longtemps. Ça ne tient pas au ventre, mais ça réchauffe et ça désaltère.',
   },
   appat: {
     nom: 'Appâts', type: 'materiau', poids: 0.1, espace: 0, volume: 0.1,

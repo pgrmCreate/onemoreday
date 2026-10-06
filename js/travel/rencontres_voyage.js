@@ -14,6 +14,7 @@ import { ZOMBIES } from '../game/donnees.js';
 import { G } from '../core/state.js';
 import { seedRng, pickPoids } from '../core/rng.js';
 import { pref } from '../core/prefs.js';
+import { rueeTroncon, etatRuee } from '../game/ruees.js';
 
 const V = () => REGLAGES.voyage;
 const R = () => REGLAGES.voyage.RENCONTRES;
@@ -100,7 +101,7 @@ const vue = (id) => !!(G && G.world.flags['rencontre_vue:' + id]);
 // Danger d'un tronçon (max des zones, défaut d'échelle) + courbe des jours.
 function dangerTroncon(t, ctx) {
   const d = t.danger ?? R().DANGER_DEFAUT[t.echelle] ?? 0.2;
-  return Math.min(1, d + (ctx.pj.danger || 0));
+  return Math.min(1, d + (ctx.pj.danger || 0) + rueeTroncon(t.echelle).danger);   // les sirènes : la zone qui hurle est pire
 }
 // λ de chaque tronçon (GAMEPLAY §3.2).
 export function lambdas(iti, ctx, { demiTour = false } = {}) {
@@ -110,7 +111,7 @@ export function lambdas(iti, ctx, { demiTour = false } = {}) {
     * (ctx.E.rencontres ?? 1) * (ctx.saigne ? Rr.SAIGNEMENT : 1) * (ctx.diff.rencontres ?? 1) * (demiTour ? Rr.DEMI_TOUR : 1);
   return iti.troncons.map(t => {
     const d = dangerTroncon(t, ctx);
-    return { t, d, lambda: (Rr.PAR_KM[t.echelle] ?? 0.3) * (Rr.DANGER.base + Rr.DANGER.pente * d) * (t.metres / 1000) * commun };
+    return { t, d, lambda: (Rr.PAR_KM[t.echelle] ?? 0.3) * (Rr.DANGER.base + Rr.DANGER.pente * d) * (t.metres / 1000) * commun * rueeTroncon(t.echelle).mult };
   });
 }
 // Rencontres éligibles en un point (tronçon t, danger d, nuit au moment du passage).
@@ -166,6 +167,7 @@ export function evaluerRisque(iti, ctx, { de, vers, demiTour = false } = {}) {
   const crans = V().RISQUE_CRANS; let cran = 1; for (const s of crans) if (E >= s) cran++;
   const RS = V().RAISONS_SEUILS, raisons = [];
   if (zoneMax && zoneMax.danger >= RS.zone) raisons.push(`${zoneMax.echelle === 'salon' ? 'quartier infesté' : 'secteur infesté'} : ${zoneMax.nom.replace(/^(Le |La |Les |L')/, (m) => m.toLowerCase())}`);
+  { const ru = etatRuee(); if (ru && ru.active && Ls.some(({ t }) => rueeTroncon(t.echelle).mult > 1)) raisons.unshift(`les sirènes hurlent : ${ru.nom}`); }
   if (RS.nuit && ctx.nuit) raisons.push('de nuit');
   if (ctx.allure === RS.allure) raisons.push('allure rapide : on t’entend venir');
   if (RS.coop && ctx.coop) raisons.push('à deux, on se fait remarquer');

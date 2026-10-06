@@ -192,7 +192,7 @@ for (const [id, z] of Object.entries(ZOMBIES)) {
 const CATS_R = Object.keys(mRec.CATEGORIES_RECETTES);
 const tagsDispo = new Set(Object.values(ITEMS).flatMap(d => d.usage || []));
 const idsR = new Set();
-if (RECIPES.length < 40 || RECIPES.length > 80) W(`recettes : ${RECIPES.length} (visé : 40 à 80)`);
+if (RECIPES.length < 40 || RECIPES.length > 110) W(`recettes : ${RECIPES.length} (visé : 40 à 110)`);
 for (const r of RECIPES) {
   const o = `recette ${r.id}`;
   if (idsR.has(r.id)) E(`${o} : id en double`); idsR.add(r.id);

@@ -6,7 +6,7 @@ import { emit } from '../core/bus.js';
 import { el } from '../core/util.js';
 import { DOCUMENTS } from '../data/histoire/documents.js';
 import { mod, sfx, message, nomObjet, capitaliser } from './commun.js';
-import { CONSTRUCTIONS } from '../data/construction.js';
+import { CONSTRUCTIONS, tailleConstruction } from '../data/construction.js';
 
 let V = null;
 export function lierButin(v) { V = v; }
@@ -83,11 +83,13 @@ export function rendreButin() {
   // Ranger : poser ses affaires dans une caisse construite (ou un meuble déjà fouillé)
   if (B.fini && inv) {
     if (B.ranger) {
-      const cap = capaciteRangement(B), occ = B.items.reduce((s, it) => s + inv.volumeDe(it.id) * (it.qty || 1), 0);
-      h.append(el('div', { class: 'ex-butin-place' }, `Place : ${fmt(occ)} / ${cap} L`));
+      // par terre : pas de limite de place ; un meuble ou une caisse : sa contenance
+      const cap = B.sol ? Infinity : capaciteRangement(B), occ = B.items.reduce((s, it) => s + inv.volumeDe(it.id) * (it.qty || 1), 0);
+      if (!B.sol) h.append(el('div', { class: 'ex-butin-place' }, `Place : ${fmt(occ)} / ${cap} L`));
       const ul2 = el('ul', { class: 'ex-butin-l' });
       G.player.inventaire.forEach((it, i) => {
         const v = inv.volumeDe(it.id) * (it.qty || 1), tient = occ + v <= cap + 1e-6;
+        if (B.sol) { ul2.append(el('li', {}, el('span', { class: 'ex-b-nom' }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null), el('button', { class: 'ex-b', type: 'button', onclick: () => poserItem(i) }, 'Poser'))); return; }
         ul2.append(el('li', { class: tient ? '' : 'plein' }, el('span', { class: 'ex-b-nom' }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
           el('button', { class: 'ex-b', type: 'button', disabled: tient ? null : true, onclick: () => rangerItem(i) }, tient ? 'Ranger' : 'Trop gros')));
       });
@@ -97,7 +99,7 @@ export function rendreButin() {
   }
   h.append(el('div', { class: 'ex-butin-a' },
     el('button', { class: 'ex-b ex-b-p', type: 'button', disabled: B.visibles ? null : true, onclick: prendreTout }, 'Tout prendre'),
-    B.fini ? el('button', { class: 'ex-b', type: 'button', onclick: () => { B.ranger = !B.ranger; rendreButin(); } }, B.ranger ? 'Fini de ranger' : 'Ranger…') : null,
+    B.fini ? el('button', { class: 'ex-b', type: 'button', onclick: () => { B.ranger = !B.ranger; rendreButin(); } }, B.ranger ? (B.sol ? 'Fini' : 'Fini de ranger') : (B.sol ? 'Poser…' : 'Ranger…')) : null,
     el('button', { class: 'ex-b', type: 'button', onclick: () => { interrompreFouille(); fermerButin(); } }, 'Fermer')));
 }
 const fmt = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
@@ -105,6 +107,20 @@ const fmt = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
 function capaciteRangement(B) {
   if (B.cle.startsWith('#c:')) { const c = ((V.snap && V.snap.constructions) || []).find(q => q.uid === B.cle.slice(3)); return (c && CONSTRUCTIONS[c.type] && CONSTRUCTIONS[c.type].contenance) || 60; }
   return B.cle.startsWith('cad:') ? 10 : 30;
+}
+// Par terre : poser une affaire du sac à ses pieds, la fenêtre se met à jour.
+function poserItem(i) {
+  const B = V && V.butin, inv = mod.inv; if (!B || !inv) return;
+  const it = G.player.inventaire[i]; if (!it) return;
+  inv.poser(i, it.qty || 1);
+  sfx('tissu_dechire', { volume: 0.3 });
+  setTimeout(() => {
+    if (!V || V.butin !== B) return;
+    const objets = solProche();
+    B.uids = objets.map(o => o.uid); B.items = objets.map(o => { const { uid: _u, etage: _e, x: _x, y: _y, ...r } = o; return r; });
+    B.visibles = B.dejaVus = B.items.length;
+    rendreButin();
+  }, 80);
 }
 async function rangerItem(i) {
   const B = V && V.butin, inv = mod.inv; if (!B || !inv) return;
@@ -118,7 +134,13 @@ async function rangerItem(i) {
   sfx('tissu_dechire', { volume: 0.4 });
   rendreButin();
 }
+// Prendre la i-ème ligne de la fenêtre : un meuble (par son rang), ou le sol (par l'objet lui-même).
+function prendreDe(B, i, qty) {
+  if (B.sol) return V.canal.prendre('#sol:' + B.uids[i], 0, qty);
+  return V.canal.prendre(B.cle, i, qty);
+}
 function retirerDuButin(B, i) {
+  if (B.uids) B.uids.splice(i, 1);
   B.items.splice(i, 1); B.visibles = Math.max(0, B.visibles - 1); B.dejaVus = Math.max(0, (B.dejaVus || 0) - 1);
   if (V.fouille && V.fouille.cle === B.cle) { V.fouille.items = B.items; V.fouille.reveles = Math.max(0, V.fouille.reveles - 1); }
 }
@@ -129,7 +151,7 @@ async function prendreItem(i) {
     message(`${inv.raisonPlace(prevu.id) || 'Plus de place.'}${inv.ouPorter(prevu.id) ? ' Tu peux le porter directement.' : ''}`, 2600);
     return;
   }
-  const it = await V.canal.prendre(B.cle, i);
+  const it = await prendreDe(B, i);
   if (!it) return;
   retirerDuButin(B, i);
   donner(it);
@@ -142,7 +164,7 @@ async function consommerItem(i) {
   const v = S.peutConsommer(prevu);
   if (!v.ok && !v.peutForcer) { message(v.raison || 'Impossible.', 2200); return; }
   if (!v.ok && v.peutForcer && !B.forcer) { B.forcer = prevu.id; message(`${v.raison} Touche encore « Manger » pour te forcer.`, 2600); return; }
-  const it = await V.canal.prendre(B.cle, i, 1);
+  const it = await prendreDe(B, i, 1);
   if (!it) return;
   if ((prevu.qty || 1) > 1) prevu.qty -= 1; else retirerDuButin(B, i);
   const r = S.consommer({ ...it, qty: 1 }, G.player, { forcer: !v.ok && B.forcer === prevu.id });
@@ -157,7 +179,7 @@ async function consommerItem(i) {
 }
 async function porterItem(i) {
   const B = V && V.butin, inv = mod.inv; if (!B || i >= B.visibles || !inv || !inv.porterObjet) return;
-  const it = await V.canal.prendre(B.cle, i);
+  const it = await prendreDe(B, i);
   if (!it) return;
   retirerDuButin(B, i);
   const r = inv.porterObjet(it);
@@ -178,7 +200,7 @@ export async function prendreTout() {
   for (let i = B.visibles - 1; i >= 0; i--) {
     const prevu = B.items[i];
     if (inv && inv.combienTient && inv.combienTient(prevu.id, prevu.qty || 1) < (prevu.qty || 1)) { laisses.push(nomObjet(prevu.id)); continue; }
-    const it = await V.canal.prendre(B.cle, i);
+    const it = await prendreDe(B, i);
     if (it) { retirerDuButin(B, i); donner(it, true); pris++; }
   }
   if (pris) sfx('loot');
@@ -224,4 +246,87 @@ export function fournisseurSol() {
       V.snap.sol = V.snap.sol.filter(x => x !== o); return r;
     },
   };
+}
+
+// ---------- À portée de main : le sol autour de soi + les rangements déjà fouillés tout près ----------
+// Pour fabriquer et construire, ce qui est là compte comme si on l'avait sur soi (inv.aPortee / retirerDispo).
+const PORTEE_SOL = 1.6, PORTEE_RANGEMENT = 1.5;
+function solProche() { return V && V.snap ? V.snap.sol.filter(o => !o.doc && o.etage === V.j.etage && Math.hypot(o.x - V.j.x, o.y - V.j.y) <= PORTEE_SOL) : []; }
+// Les rangements fouillés (ou caisses construites) qui ont encore quelque chose, à portée de bras.
+function rangementsProches() {
+  if (!V || !V.snap) return [];
+  const j = V.j, r = [], dRect = (x0, y0, x1, y1) => Math.hypot(Math.max(x0 - j.x, 0, j.x - x1), Math.max(y0 - j.y, 0, j.y - y1));
+  for (const m of V.niveau.meubles) {
+    if (m.etage !== j.etage || !m.conteneur || (V.retires && V.retires.has(m.cle))) continue;
+    const st = V.snap.conteneurs[m.cle];
+    if (!st || (st.progres || 0) < 1 || !st.reste) continue;
+    if (dRect(m.x0, m.y0, m.x1 + 1, m.y1 + 1) <= PORTEE_RANGEMENT) r.push(m.cle);
+  }
+  for (const c of V.snap.constructions || []) {
+    if (c.etage !== j.etage || !c.n) continue;
+    const [w, h] = tailleConstruction(c.type, c.rot);
+    if (dRect(c.x, c.y, c.x + w, c.y + h) <= PORTEE_RANGEMENT) r.push('#c:' + c.uid);
+  }
+  return r;
+}
+// Rafraîchi régulièrement par la boucle (le contenu des rangements se demande au monde : hôte en co-op).
+export function majProximite(dt) {
+  if (!V) return;
+  const P = V.proxi || (V.proxi = { t: 0, cle: '', contenus: {}, enCours: false });
+  P.t -= dt;
+  const cles = rangementsProches(), cle = cles.join('|') + '#' + ((V.snap && V.snap.vm) || 0);
+  if (P.enCours || (cle === P.cle && P.t > 0)) return;
+  P.cle = cle; P.t = 2500;
+  if (!cles.length) { if (Object.keys(P.contenus).length) { P.contenus = {}; emit('inventaire', { portee: true }); } return; }
+  if (!V.canal.contenu) return;
+  P.enCours = true;
+  Promise.all(cles.map(k => V.canal.contenu(k).then(items => [k, items || []]).catch(() => [k, []]))).then(res => {
+    P.enCours = false;
+    if (!V || V.proxi !== P) return;
+    P.contenus = Object.fromEntries(res);
+    emit('inventaire', { portee: true });
+  });
+}
+export function fournisseurProximite() {
+  return {
+    lister() {
+      if (!V) return [];
+      const r = solProche().map(o => { const { uid, etage: _e, x: _x, y: _y, ...it } = o; return { ...it, qty: it.qty || 1, src: { sol: uid } }; });
+      const P = V.proxi; if (!P) return r;
+      for (const [cle, items] of Object.entries(P.contenus)) items.forEach((it, i) => { const q = it.qty ?? 1; if (q > 0) r.push({ ...it, qty: q, src: { cle, i } }); });
+      return r;
+    },
+    // pris : [{ src, id, qty }] — un même rangement : des derniers aux premiers (les indices ne glissent pas)
+    prendre(pris) {
+      if (!V) return;
+      const tri = [...pris].sort((a, b) => (a.src.cle || '').localeCompare(b.src.cle || '') || (b.src.i ?? 0) - (a.src.i ?? 0));
+      for (const x of tri) {
+        if (x.src.sol != null) {
+          const o = V.snap.sol.find(q => q.uid === x.src.sol); if (!o) continue;
+          V.canal.prendre('#sol:' + o.uid, 0, x.qty);
+          if (x.qty < (o.qty || 1)) o.qty -= x.qty; else V.snap.sol = V.snap.sol.filter(q => q !== o);
+        } else if (x.src.cle) {
+          V.canal.prendre(x.src.cle, x.src.i, x.qty, x.id);
+          const items = V.proxi && V.proxi.contenus[x.src.cle], it = items && items[x.src.i];
+          if (it) { if (x.qty < (it.qty ?? 1)) it.qty = (it.qty ?? 1) - x.qty; else it.qty = 0; }   // décompté tout de suite ; relu au prochain passage
+        }
+      }
+      if (V.proxi) V.proxi.t = 0;
+    },
+  };
+}
+
+// ---------- Les objets au sol autour de soi (bouton à côté de la loupe) ----------
+// Comme une fouille déjà finie : la même fenêtre, avec ce qui traîne par terre à portée de main.
+export function nombreAuSol() { return solProche().length; }
+export function ouvrirSol() {
+  if (!V) return;
+  if (V.butin && V.butin.sol) { fermerButin(); return; }
+  if (V.fouille) interrompreFouille();
+  const objets = solProche();
+  if (!objets.length) { message('Rien par terre, ici.', 1400); return; }
+  V.butin = { cle: '#sol', sol: true, nom: 'Par terre', uids: objets.map(o => o.uid), items: objets.map(o => { const { uid: _u, etage: _e, x: _x, y: _y, ...it } = o; return it; }), visibles: objets.length, fini: true, x: V.j.x, y: V.j.y };
+  V.butin.dejaVus = objets.length;
+  V.hud.butin.classList.remove('cache');
+  rendreButin();
 }

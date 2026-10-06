@@ -11,6 +11,7 @@ import { creerSimLieu } from '../explore/sim.js';
 import { creerCanalLocal } from '../explore/canal_local.js';
 import { presetDifficulte } from '../data/reglages.js';
 import { lieu as lieuDe } from './donnees.js';
+import { intensiteRuee, rueeIdActive } from './ruees.js';
 
 // ---------- Lieux ----------
 const sims = new Map(); // lieuId → { sim, runner, canaux: Map<joueurId, canal>, dernier }
@@ -25,6 +26,7 @@ function creerSim(lieuId, niveau, L) {
     mortsN: (L.morts && L.morts.n) || (niveau.morts && niveau.morts.n),
     repeuplement: L.repeuplement, coop: true, difficulte: diff, mult: L.abondance || 1,
     getFlag: (k) => getFlag(k),
+    getRuee: () => { const i = intensiteRuee(lieuId); return i ? { i, id: rueeIdActive() } : null; },
   });
 }
 

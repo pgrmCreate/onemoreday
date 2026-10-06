@@ -60,6 +60,37 @@ let sol = {
 export function setSol(provider) { sol = provider || sol; emit('inventaire', { sol: true }); }
 export function objetsAuSol() { try { return sol.lister() || []; } catch (e) { return []; } }
 
+// ---------- À portée de main (fabriquer, construire) ----------
+// Ce qui traîne par terre autour de soi et ce qu'il y a dans les rangements DÉJÀ fouillés tout près compte comme
+// si on l'avait sur soi : deux chiffons par terre suffisent pour un bandage. L'exploration branche le fournisseur :
+// { lister() → [{ id, qty, src, ...état }], prendre([{ src, id, qty }]) }. Hors exploration : rien à portée.
+let proximite = { lister: () => [], prendre: () => {} };
+export function setProximite(provider) { proximite = provider || { lister: () => [], prendre: () => {} }; }
+export function aPortee() { try { return proximite.lister() || []; } catch (e) { return []; } }
+const compterPortee = (id) => aPortee().reduce((s, it) => s + (it.id === id ? (it.qty || 1) : 0), 0);
+// Sur soi + à portée de main.
+export function countDispo(id, p) { return countItem(id, p) + compterPortee(id); }
+export function hasTagDispo(tag, p) { return hasTag(tag, p) || aPortee().some(it => { const d = def(it.id); return !!(d && (d.usage || []).includes(tag)); }); }
+export function objetsAvecTagDispo(tag, p) {
+  const r = objetsAvecTag(tag, p);
+  for (const it of aPortee()) { const d = def(it.id); if (d && (d.usage || []).includes(tag) && !r.includes(it.id)) r.push(it.id); }
+  return r;
+}
+// Retire d'abord du sac, puis de ce qui est à portée (le sol, les rangements). → nombre retiré.
+export function retirerDispo(id, qty = 1, p) {
+  let n = removeItem(id, qty, p);
+  if (n >= qty) return n;
+  const pris = [];
+  for (const it of aPortee()) {
+    if (n >= qty) break;
+    if (it.id !== id) continue;
+    const k = Math.min(qty - n, it.qty || 1);
+    pris.push({ src: it.src, id, qty: k }); n += k;
+  }
+  if (pris.length) { try { proximite.prendre(pris); } catch (e) { console.warn('[inv] à portée', e); } }
+  return n;
+}
+
 // ---------- Volume (litres) ----------
 // Volume d'UN exemplaire. Vêtement plié : `volume`, sinon 0,5 + 2,5 × poids (un sac vide : 15 % de sa contenance).
 export function volumeDe(id) {

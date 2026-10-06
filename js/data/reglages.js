@@ -796,6 +796,22 @@ export const REGLAGES = {
   // ===========================================================================
   //  CO-OP — deux joueurs : plus de morts et de rencontres, pas deux fois plus de butin
   // ===========================================================================
+  // ---------- Les sirènes (« ruées ») : l'armée fait hurler une zone, tous les morts y courent ----------
+  // Histoire et textes : js/data/histoire/ruees.js ; moteur : js/game/ruees.js.
+  ruees: {
+    INTERVALLE_J: [3, 5],       // après les premières sirènes de l'histoire, d'autres reviennent tous les 3 à 5 jours…
+    DUREE_H: [18, 34],          // … et hurlent 18 à 34 h de jeu.
+    ANNONCE_RADIO_H: 12,        // une radio portable (+ piles) dans le sac : la radio prévient ~12 h avant.
+    SIGNES_H: 1.5,              // sans radio : on remarque les drones ~1 h 30 avant (si on est dans la zone).
+    VITESSE_ERRE: 1.7,          // pendant les sirènes, un mort qui erre va (1 + 1,7) × plus vite : ils courent partout…
+    VITESSE_ALERTE: 0.6,        // … × 1,6 quand il cherche…
+    VITESSE_CHASSE: 0.35,       // … × 1,35 quand il te poursuit.
+    DENSITE: 0.9,               // à l'arrivée des sirènes dans un lieu : + 0,9 × (morts max du lieu) morts en plus, réveillés.
+    RENCONTRES_ZONE: 2.2,       // voyage dans la zone qui hurle : rencontres × 2,2…
+    DANGER_ZONE: 0.3,           // … et danger + 0,3.
+    RENCONTRES_NATURE: 0.6,     // ailleurs (les collines, la Crau) : × 0,6 — les morts des environs sont partis vers le bruit.
+    SIRENE_S: [35, 80],         // dans la zone, une sirène s'entend toutes les 35 à 80 s réelles.
+  },
   coop: {
     MORTS_MULT: 1.5,            // morts procéduraux d'un lieu (1re visite) × 1,5.
     RENCONTRES_MULT: 1.3,       // voyage à deux : taux × 1,3 (plus de bruit, plus visibles).

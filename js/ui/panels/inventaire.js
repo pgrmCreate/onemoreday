@@ -13,7 +13,7 @@ import { iconeObjet } from '../icons.js';
 import { el, icoEl, onglets, jauge, bouton, avecScroll, vide, fmtKg, fmtL, pct, g } from './commun.js';
 
 const ONGLET_KEY = 'inv';
-let etat = { onglet: 'sac', sel: null, cat: 'tout', q: '' }; // sel : { zone: 'sac'|'slot'|'sol', ref } ; cat / q : filtre du sac
+let etat = { onglet: 'sac', sel: null, cat: 'tout' }; // sel : { zone: 'sac'|'slot'|'sol', ref } ; cat : filtre du sac
 
 export function monter(racine, opts = {}, api) {
   if (opts.onglet) etat.onglet = opts.onglet;
@@ -78,24 +78,25 @@ function ligneObjet({ index, it, def: d }, p, actif, onclick) {
   if (p.accesRapide.includes(it.id)) b.append(el('span', { class: 'inv-tag', title: 'À la ceinture (accès rapide)' }, icoEl('ceinture')));
   return b;
 }
-function enteteSac(p) {
+// Le sac porté, en PETIT (une pastille à gauche des filtres) : la place va à la liste des objets.
+// Toucher la pastille ouvre l'emplacement « Sac » de l'équipement.
+function enteteSac(p, racine, api) {
   const sac = inv.sacPorte(p);
   const b = inv.bilan(p);
-  return el('div', { class: 'inv-sac-porte' + (sac ? '' : ' sans') },
-    el('span', { class: 'isp-ic' }, icoEl('sac')),
-    el('div', {},
-      el('strong', {}, sac ? sac.nom : 'Pas de sac'),
-      el('p', {}, sac
-        ? `Sac : ${fmtL(b.sac.utilise)} / ${fmtL(b.sac.max)} · poches : ${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)} · +${sac.portage} kg portables.`
-        : `Pas de sac : tes poches seulement (${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)}), et seulement les petits objets.`)));
+  const titre = sac
+    ? `${sac.nom} — sac : ${fmtL(b.sac.utilise)} / ${fmtL(b.sac.max)} · poches : ${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)} · +${sac.portage} kg portables`
+    : `Pas de sac : tes poches seulement (${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)}), et seulement les petits objets.`;
+  return el('button', { type: 'button', class: 'inv-sac-mini' + (sac ? '' : ' sans'), title: titre, 'aria-label': titre,
+    onclick: () => { etat.onglet = 'equip'; etat.sel = { zone: 'slot', ref: 'sac' }; dessiner(racine, api); } },
+    icoEl('sac'),
+    el('span', {}, el('strong', {}, sac ? sac.nom : 'Pas de sac'),
+      el('em', {}, sac ? `${fmtL(b.sac.utilise)} / ${fmtL(b.sac.max)}` : `poches ${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)}`)));
 }
-// Filtre du sac : une rangée de petites icônes (Tout, Soins, Nourriture…) + un champ « Chercher ». Le choix est gardé
-// d'une ouverture à l'autre ; taper dans le champ ne redessine que la liste (le clavier reste ouvert).
-const sansAccent = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+// Filtre du sac : le sac porté en petit + une rangée de petites icônes (Tout, Soins, Nourriture…), collées en haut.
+// Le choix est gardé d'une ouverture à l'autre.
 function listeSac(col, p, racine, api) {
-  col.append(enteteSac(p));
   const groupes = inv.sacParCategorie(p);
-  if (!groupes.length) { col.append(vide('Ton sac est vide. Fouille les meubles, les voitures, les morts.', 'sac')); return; }
+  if (!groupes.length) { col.append(el('div', { class: 'inv-filtre' }, enteteSac(p, racine, api)), vide('Ton sac est vide. Fouille les meubles, les voitures, les morts.', 'sac')); return; }
   if (etat.cat !== 'tout' && !groupes.some(gr => gr.cat === etat.cat)) etat.cat = 'tout';   // plus rien de ce type
   const total = (gr) => gr.items.reduce((s, x) => s + x.it.qty, 0);
   const puce = (cat, nom, icone, n) => el('button', { type: 'button', class: `inv-puce cat-${cat}${etat.cat === cat ? ' actif' : ''}`, title: nom, 'aria-label': nom, 'aria-pressed': etat.cat === cat ? 'true' : 'false',
@@ -104,29 +105,15 @@ function listeSac(col, p, racine, api) {
     puce('tout', 'Tout', 'tout', groupes.reduce((s, gr) => s + total(gr), 0)),
     ...groupes.map(gr => puce(gr.cat, gr.nom, gr.cat, total(gr))));
   const liste = el('div', { class: 'inv-liste' });
-  const champ = el('input', { type: 'search', class: 'inv-cherche-champ', placeholder: 'Chercher dans le sac…', value: etat.q, enterkeyhint: 'search', autocomplete: 'off' });
-  const effacer = el('button', { type: 'button', class: 'inv-cherche-x' + (etat.q ? '' : ' cache'), 'aria-label': 'Effacer', onclick: () => { etat.q = ''; champ.value = ''; effacer.classList.add('cache'); remplir(); } }, icoEl('fermer'));
-  champ.addEventListener('input', () => { etat.q = champ.value; effacer.classList.toggle('cache', !etat.q); remplir(); });
-  const cherche = el('label', { class: 'inv-cherche' }, icoEl('loupe'), champ, effacer);
-  function remplir() {
-    liste.textContent = '';
-    const q = sansAccent(etat.q.trim());
-    let n = 0;
-    for (const gr of groupes) {
-      if (etat.cat !== 'tout' && gr.cat !== etat.cat) continue;
-      const items = q ? gr.items.filter(x => sansAccent(x.def ? x.def.nom : x.it.id).includes(q)) : gr.items;
-      if (!items.length) continue;
-      n += items.length;
-      liste.append(el('h3', { class: 'pn-section' }, gr.nom, el('em', {}, String(items.reduce((s, x) => s + x.it.qty, 0)))));
-      for (const x of items) {
-        const actif = etat.sel && etat.sel.zone === 'sac' && etat.sel.ref === x.index;
-        liste.append(ligneObjet(x, p, actif, () => { etat.sel = { zone: 'sac', ref: x.index, id: x.it.id }; dessiner(racine, api); }));
-      }
+  for (const gr of groupes) {
+    if (etat.cat !== 'tout' && gr.cat !== etat.cat) continue;
+    liste.append(el('h3', { class: 'pn-section' }, gr.nom, el('em', {}, String(total(gr)))));
+    for (const x of gr.items) {
+      const actif = etat.sel && etat.sel.zone === 'sac' && etat.sel.ref === x.index;
+      liste.append(ligneObjet(x, p, actif, () => { etat.sel = { zone: 'sac', ref: x.index, id: x.it.id }; dessiner(racine, api); }));
     }
-    if (!n) liste.append(vide(q ? `Rien qui s'appelle « ${etat.q.trim()} »${etat.cat !== 'tout' ? ' dans ce type' : ''}.` : 'Rien de ce type.', 'loupe'));
   }
-  remplir();
-  col.append(el('div', { class: 'inv-filtre' }, puces, cherche), liste);
+  col.append(el('div', { class: 'inv-filtre' }, enteteSac(p, racine, api), puces), liste);
 }
 
 // ---------- Onglet Équipement (paper-doll) ----------

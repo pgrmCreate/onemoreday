@@ -3,7 +3,8 @@
 // Une seule touche (E / bouton Interagir) : l'action proposée est toujours écrite en clair (« Fouiller l'armoire »).
 // Plusieurs actions possibles au même endroit (objets au sol + meuble à fouiller, porte à barricader…) : la plus
 // probable reste sur E / Interagir ; un petit rond à côté (G au clavier) déplie la liste des autres.
-// Gestes PRINCIPAUX (sur E) : fouiller, ramasser, ouvrir, parler, lire, cueillir, monter… et abattre un arbre hache en main.
+// Gestes PRINCIPAUX (sur E) : fouiller, ouvrir, parler, lire, cueillir, monter… et abattre un arbre hache en main.
+// Les objets par terre ne sont jamais proposés sur E : le bouton du sol (à côté de la loupe, touche R) les montre.
 // Gestes SECONDAIRES (seulement dans le menu) : démonter un meuble, barricader, couper un buisson — et seulement quand
 // on a de quoi le faire (outil, matériaux) : on ne propose pas ce qui est impossible.
 // Co-op : portes à deux (verrou { deux: true }), déclencheurs « à deux » (deux: true), relever son coéquipier à terre.
@@ -110,8 +111,9 @@ export function chercherCible() {
     if (d > R + 0.3) continue;
     proposer({ type: 'relever', p, etage: E.id, x0: p.x - 0.6, y0: p.y - 0.6, x1: p.x + 0.6, y1: p.y + 0.6, cx: p.x, cy: p.y }, d, 1);
   }
+  // par terre : seulement les documents (« Lire ») ; les objets se voient avec le bouton du sol (à côté de la loupe)
   for (const o of snap.sol) {
-    if (o.etage !== E.id) continue;
+    if (o.etage !== E.id || !o.doc) continue;
     const d = Math.hypot(o.x - j.x, o.y - j.y) - 0.2;
     if (d > R) continue;
     proposer({ type: 'sol', o, etage: E.id, x0: o.x - 0.5, y0: o.y - 0.5, x1: o.x + 0.5, y1: o.y + 0.5, cx: o.x, cy: o.y }, d, 0.15);

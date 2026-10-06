@@ -330,15 +330,23 @@ function noiseBuffer(dur = 2) {
   return buf;
 }
 
+// Fondus de musique : un changement de musique ne doit jamais claquer (sortie lente, entrée lente).
+const FONDU = { SORTIE_MS: 2800, SUSPEND_MS: 2200, TENSION_MS: 3200, COMBAT_FIN_MS: 3000, VERS_COMBAT_MS: 1600, ENTREE_S: 4, ENTRE_PISTES_S: 3 };
+
 function stopAmbiance() {
-  ambNodes.forEach(n => { try { n.stop ? n.stop() : n.disconnect(); } catch (e) {} });
-  ambNodes = [];
+  // le lit (vent, drones) s'efface en fondu au lieu de couper net ; démonté une fois silencieux
+  const anciens = ambNodes; ambNodes = [];
+  const lit = anciens[0];
+  if (lit && lit.gain && ctx) {
+    try { const t = ctx.currentTime; lit.gain.cancelScheduledValues(t); lit.gain.setValueAtTime(Math.max(0.0001, lit.gain.value), t); lit.gain.setTargetAtTime(0.0001, t, 0.6); } catch (e) {}
+    setTimeout(() => anciens.forEach(n => { try { n.stop ? n.stop() : n.disconnect(); } catch (e) {} }), 2600);
+  } else anciens.forEach(n => { try { n.stop ? n.stop() : n.disconnect(); } catch (e) {} });
   if (stingerTimer) { clearTimeout(stingerTimer); stingerTimer = null; }
   if (musiqueTimer) { clearTimeout(musiqueTimer); musiqueTimer = null; }
   arreterMotifs(); // un motif génératif en cours ne déborde pas sur la scène (ou le combat) suivant
   arreterSequenceur();
-  arreterPlaylist(bufferTheme); bufferTheme = null;
-  arreterTensionMusique(); // change de scène / mort : la tension ne déborde pas sur le lieu suivant
+  arreterPlaylist(bufferTheme, FONDU.SORTIE_MS); bufferTheme = null;
+  arreterTensionMusique(FONDU.SORTIE_MS); // change de scène / mort : la tension ne déborde pas sur le lieu suivant
   arreterPluie();
   setHorde(0); // l'exploration la repose d'elle-même si la horde est toujours là
   musiqueLieuSuspendue = false; // tout le lit est démonté : plus rien à « reprendre »
@@ -478,11 +486,30 @@ function arreterPluie() {
   }
 }
 
-function poolStingers(sc, nuit) {
+// Les bêtes ont leurs heures : une cigale ne chante pas à 21 h, un grillon pas à midi.
+// [début, fin) en heures décimales (une plage qui passe minuit : début > fin). Absent = à toute heure.
+const PLAGES_STINGERS = {
+  cigales: [9.5, 19.5],        // le plein cagnard, pas le soir
+  oiseau_isole: [5.5, 20.5],
+  pigeons: [6.5, 20],
+  corbeau: [6, 20],
+  insectes_nuit: [20.5, 5.5],  // grillons : le crépuscule et la nuit
+  hibou: [21, 5.5],
+};
+export function stingerALHeure(nom, h) {
+  const p = PLAGES_STINGERS[nom];
+  if (!p) return true;
+  return p[0] <= p[1] ? h >= p[0] && h < p[1] : h >= p[0] || h < p[1];
+}
+function heureMonde() { const m = G && G.world ? G.world.minutes : 720; return (m % 1440) / 60; }
+
+// Le pool est recalculé à CHAQUE tirage (l'heure tourne pendant qu'on reste dans un lieu).
+function poolStingers(sc) {
+  const nuit = !!(G && estNuit()), h = heureMonde();
   const pool = [...(sc.stingers || [])];
   if (nuit) pool.push(...(sc.stingersNuit || []));
-  else pool.push(...(sc.stingersJour || [])); // cigales, fontaine… : le plein jour seulement
-  return pool;
+  else pool.push(...(sc.stingersJour || [])); // cigales, fontaine… : le jour seulement
+  return pool.filter(([nom]) => stingerALHeure(nom, h));
 }
 
 function planifierStinger(sc, nuit, cle) {
@@ -490,7 +517,7 @@ function planifierStinger(sc, nuit, cle) {
   const delai = (mn + Math.random() * (mx - mn)) * 1000;
   stingerTimer = setTimeout(() => {
     if (ambianceCourante !== cle || !ctx) return;
-    const pool = poolStingers(sc, nuit);
+    const pool = poolStingers(sc);
     const total = pool.reduce((s, [, p]) => s + p, 0);
     let t = Math.random() * total;
     for (const [nom, p] of pool) { t -= p; if (t <= 0) { jouerStinger(nom); break; } }
@@ -589,7 +616,7 @@ function demarrerTheme(nom, nuit, cle) {
   const liste = fichiers.themes[nomEffectif] || fichiers.themes[nom];
   if (liste && liste.length) {
     // Thème d'ambiance : on respire entre les morceaux (le survival doit se taire).
-    bufferTheme = creerPlaylist(liste, { fondu: 1.6, repos: [7, 16] });
+    bufferTheme = creerPlaylist(liste, { fondu: FONDU.ENTRE_PISTES_S, repos: [7, 16] });
     return;
   }
   seq = {
@@ -756,7 +783,7 @@ async function enchainerPiste(etat, premier) {
   const src = ctx.createBufferSource(); src.buffer = ent.buffer;
   const g = ctx.createGain();
   g.gain.setValueAtTime(0.0001, t0);
-  g.gain.linearRampToValueAtTime(ent.gain, t0 + (premier ? Math.min(2, fondu * 1.5) : fondu));
+  g.gain.linearRampToValueAtTime(ent.gain, t0 + (premier ? Math.min(etat.opts.entree ?? FONDU.ENTREE_S, dur / 3) : fondu)); // entrée lente
   g.gain.setValueAtTime(ent.gain, t0 + Math.max(0.1, dur - fondu));
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); // fondu de sortie : pas de coupure sèche
   src.connect(g); g.connect(master);
@@ -772,7 +799,7 @@ async function enchainerPiste(etat, premier) {
   etat.timer = setTimeout(() => enchainerPiste(etat, false), attente * 1000);
 }
 
-function arreterPlaylist(etat, douxMs = 700) {
+function arreterPlaylist(etat, douxMs = FONDU.SORTIE_MS) {
   if (!etat) return;
   etat.vivant = false;
   if (etat.timer) { clearTimeout(etat.timer); etat.timer = null; }
@@ -800,7 +827,7 @@ function suspendreMusiqueLieu() {
   if (musiqueTimer) { clearTimeout(musiqueTimer); musiqueTimer = null; } // plus de nouveaux motifs…
   arreterMotifs();              // …et on coupe ceux déjà en train de sonner (sinon ils bavent sous l'action)
   arreterSequenceur();
-  arreterPlaylist(bufferTheme, 300); bufferTheme = null; // fondu court : la musique du lieu s'efface vite sous l'action
+  arreterPlaylist(bufferTheme, FONDU.SUSPEND_MS); bufferTheme = null; // la musique du lieu s'efface sous l'action (sans claquer)
 }
 function reprendreMusiqueLieu() {
   if (!musiqueLieuSuspendue) return;
@@ -823,7 +850,7 @@ function majTensionMusique(niveau) {
   if (niveau >= TENS_MUS_ON) {
     if (tensionMusTimer) { clearTimeout(tensionMusTimer); tensionMusTimer = null; } // menace de retour
     suspendreMusiqueLieu(); // la musique d'action prend la main : la musique du lieu se tait
-    if (!tensionMus) tensionMus = creerPlaylist(liste, { fondu: 2.5, repos: [5, 12] });
+    if (!tensionMus) tensionMus = creerPlaylist(liste, { fondu: FONDU.ENTRE_PISTES_S, entree: 2.5, repos: [5, 12] });
     return;
   }
   if (!tensionMus) return;
@@ -832,7 +859,7 @@ function majTensionMusique(niveau) {
     // (la menace peut juste s'être éloignée d'une case).
     if (!tensionMusTimer) tensionMusTimer = setTimeout(() => {
       tensionMusTimer = null;
-      arreterPlaylist(tensionMus, 1400); tensionMus = null;
+      arreterPlaylist(tensionMus, FONDU.TENSION_MS); tensionMus = null;
       reprendreMusiqueLieu(); // plus de menace : la musique du lieu revient en fondu
     }, 5000);
   } else if (tensionMusTimer) {
@@ -845,7 +872,7 @@ function majTensionMusique(niveau) {
 // la coupure normale est différée de 5 s, donc sans ça la playlist déborderait
 // sur la scène suivante (changement de lieu, mort) ou doublerait la musique de
 // combat (entrée en combat). Idempotente.
-function arreterTensionMusique(douxMs = 700) {
+function arreterTensionMusique(douxMs = FONDU.SORTIE_MS) {
   if (tensionMusTimer) { clearTimeout(tensionMusTimer); tensionMusTimer = null; }
   if (tensionMus) { arreterPlaylist(tensionMus, douxMs); tensionMus = null; }
 }
@@ -1096,7 +1123,7 @@ function jouerStinger(nom) {
 // ---------- Musique de combat : pulsation, riff dissonant, montée quand PV bas ----------
 export function startCombatMusic() {
   if (!ctx || combatTimer || combatBuf) return;
-  arreterTensionMusique(400); // l'éventuelle musique de tension cède la place au combat (pas de doublon)
+  arreterTensionMusique(FONDU.VERS_COMBAT_MS); // l'éventuelle musique de tension cède la place au combat (pas de doublon)
   // Le combat PREND LA MAIN sur le lit sonore du lieu : sans ça, l'ambiance (drones,
   // musique de lieu, stingers) continuait SOUS la musique de combat et on n'entendait
   // pas le changement. On coupe l'ambiance et on remet `ambianceCourante` à zéro pour
@@ -1106,7 +1133,7 @@ export function startCombatMusic() {
   // Fichiers fournis ? Une playlist d'action en continu remplace la boucle
   // procédurale : crossfade entre morceaux, jamais le même deux fois de suite.
   if (fichiers.themes.combat && fichiers.themes.combat.length) {
-    combatBuf = creerPlaylist(fichiers.themes.combat, { fondu: 1.8, repos: [0, 0] });
+    combatBuf = creerPlaylist(fichiers.themes.combat, { fondu: 2.5, entree: 1.5, repos: [0, 0] });
     return;
   }
   let beat = 0;
@@ -1153,7 +1180,7 @@ export function startCombatMusic() {
 }
 export function stopCombatMusic() {
   if (combatTimer) { clearTimeout(combatTimer); combatTimer = null; }
-  arreterPlaylist(combatBuf, 900); combatBuf = null;
+  arreterPlaylist(combatBuf, FONDU.COMBAT_FIN_MS); combatBuf = null;
   // Le combat est fini : on relance le lit sonore du lieu (le rendu de la carte le
   // referait, mais on l'assure ici pour ne pas laisser de silence si un chemin de code
   // ne repasse pas par renderLieu). playAmbiance se garde lui-même contre le doublon.
@@ -1271,7 +1298,7 @@ let natureBufs = {}, natureNodes = {}, natureFil = null, natureG = null, natureD
 function niveauxNature(e) {
   if (!e) return {};
   const h = e.heure ?? 12, ville = e.biome === 'ville', vert = e.biome === 'vert', v = e.vent ?? 0.3;
-  const jour = h >= 9.5 && h < 19.5, matin = h >= 5.5 && h < 10.5, nuit = h >= 21 || h < 5;
+  const jour = h >= 9.5 && h < 19.5, matin = h >= 5.5 && h < 10.5, nuit = h >= 20.5 || h < 5.5;
   return {
     cigales: jour ? (ville ? 0.35 : 1) : 0,
     oiseaux_matin: matin ? (ville ? 0.4 : vert ? 0.6 : 1) : (jour && !ville ? 0.25 : 0),
@@ -1375,6 +1402,20 @@ export function sfx(nom, opts = {}) {
     }
     case 'zombie_loin': { // un râle, quelque part — on le VOIT sur la carte
       tonAt(t, 100, 72, 1.1, 'sawtooth', 0.05, { filtre: 240, q: 3, a: 0.3, vib: 7, vibAmp: 10, echo: true });
+      break;
+    }
+    case 'sirene': { // une sirène d'alerte au loin (les sirènes de l'armée) : longue montée, palier, descente — par le canal du dehors
+      const v = Math.max(0.05, Math.min(1, opts.volume ?? 1)), dur = 13;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.05 * v, t + 3.5); g.gain.setValueAtTime(0.05 * v, t + 8.5); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1400;
+      f.connect(g); g.connect(bus()); if (echo) g.connect(echo);
+      for (const [type, mult, gain] of [['sawtooth', 1, 0.5], ['sine', 2, 0.35], ['triangle', 1.006, 0.4]]) {
+        const o = ctx.createOscillator(); o.type = type;
+        o.frequency.setValueAtTime(260 * mult, t); o.frequency.linearRampToValueAtTime(560 * mult, t + 4);
+        o.frequency.setValueAtTime(560 * mult, t + 8.5); o.frequency.linearRampToValueAtTime(240 * mult, t + dur);
+        const og = ctx.createGain(); og.gain.value = gain; o.connect(og); og.connect(f); o.start(t); o.stop(t + dur + 0.1);
+      }
       break;
     }
     case 'hurlement': {

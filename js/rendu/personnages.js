@@ -57,10 +57,11 @@ function bras(c, sx, sy, hx, hy, manche, peau, ep = 5) {
   c.fillStyle = peau; cercle(c, hx, hy, ep * 0.55); c.fill();
 }
 
-// ---------- Sacs : chacun se voit comme il se porte ----------
+// ---------- Sacs : chacun se voit comme il se porte — TOUJOURS dans le dos ----------
 // port : 'dos' (sac à dos), 'cube' (sac de livreur), 'hotte' (osier), 'gilet' (trail : flasques sur la poitrine),
-//        'bandouliere' (sur la hanche, sangle en travers du torse), 'epaule' (sac de sport, de voyage, tote bag),
-//        'main' (cabas, cartable), 'valise' (tirée derrière soi), 'banane' (sur le ventre).
+//        'bandouliere' (dans le dos, un peu sur le côté, sangle en travers du torse), 'epaule' (sac de sport, de voyage,
+//        tote bag : passé à l'épaule, il pend derrière, plus sur le côté), 'main' (cabas, cartable : portés en bandoulière,
+//        derrière et un peu de côté), 'valise' (tirée derrière soi), 'banane' (passée dans le dos, ceinture devant).
 // l : largeur (le long des épaules), p : épaisseur, coul, détails (rabat, poches, molle, matelas, cadre, corde, bande, motif).
 export const SACS = {
   sac_a_dos: { port: 'dos', l: 15, p: 7, coul: '#34465e', rabat: 1 },
@@ -128,13 +129,24 @@ function sacArriere(c, S, bal, m, ph) {
       break;
     }
     case 'gilet': { c.fillStyle = teinte(S.coul, 0.9); rr(c, -10, -S.l / 2, 4, S.l, 2); c.fill(); break; }
-    case 'bandouliere': {
-      const y = -13 - S.p / 2 + sw * 0.5, x = -2 - sw;
-      c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, x - S.l / 2 + 1, y - S.p / 2 + 1.2, S.l, S.p, 2.5); c.fill();
-      c.fillStyle = S.coul; rr(c, x - S.l / 2, y - S.p / 2, S.l, S.p, 2.5); c.fill();
-      c.fillStyle = teinte(S.coul, 0.7); rr(c, x - S.l / 2, y - S.p / 2, S.l * 0.55, S.p, 2.5); c.fill();       // rabat
-      if (S.bande) { c.fillStyle = S.bande; c.fillRect(x - S.l / 2 + 1, y - 0.6, S.l * 0.5, 1.2); }
-      if (S.frange) { c.strokeStyle = teinte(S.coul, 0.6); c.lineWidth = 0.8; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo(x - S.l / 2 + 2 + k * 2, y - S.p / 2); c.lineTo(x - S.l / 2 + 2 + k * 2, y - S.p / 2 - 2.2); c.stroke(); } }
+    case 'bandouliere': case 'epaule': case 'main': case 'banane': {
+      // derrière le dos, décalé du côté gauche (−y) : plus de côté pour un sac passé à l'épaule ou un cabas
+      const cote = { bandouliere: -5, epaule: -8, main: -8, banane: 0 }[S.port];
+      const ep = S.port === 'banane' ? S.p : Math.max(4, S.p * 0.8);   // l'épaisseur vue de dessus
+      const x1 = -6, x0 = x1 - 3.5 - ep, y0 = cote - S.l / 2 + sw * 0.5;
+      const rayon = S.port === 'epaule' ? Math.min(ep / 2, 4) : 2.5;
+      c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, x0 - 1, y0 + 1.2, x1 - x0, S.l, rayon); c.fill();
+      const g = c.createLinearGradient(x0, y0, x1, y0 + S.l); g.addColorStop(0, teinte(S.coul, 1.2)); g.addColorStop(1, teinte(S.coul, 0.75));
+      c.fillStyle = g; rr(c, x0, y0, x1 - x0, S.l, rayon); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 0.8; rr(c, x0, y0, x1 - x0, S.l, rayon); c.stroke();
+      if (S.port === 'bandouliere') { c.fillStyle = teinte(S.coul, 0.7); rr(c, x0, y0, (x1 - x0) * 0.55, S.l, 2.5); c.fill(); }   // rabat
+      if (S.port === 'main') {   // les anses du cabas / la poignée du cartable, au-dessus du sac
+        c.strokeStyle = teinte(S.coul, 0.6); c.lineWidth = 1.1;
+        c.beginPath(); c.moveTo(x1 - 0.5, y0 + S.l * 0.3); c.quadraticCurveTo(x1 + 2.5, y0 + S.l / 2, x1 - 0.5, y0 + S.l * 0.7); c.stroke();
+      }
+      if (S.bande) { c.fillStyle = S.bande; c.fillRect((x0 + x1) / 2 - 0.6, y0 + 1, 1.2, S.l - 2); }
+      if (S.frange) { c.strokeStyle = teinte(S.coul, 0.6); c.lineWidth = 0.8; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo(x0, y0 + 2 + k * 2); c.lineTo(x0 - 2.2, y0 + 2 + k * 2); c.stroke(); } }
+      c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x0 + 0.8, y0 + 1, 1, S.l - 2);
       break;
     }
     case 'valise': {
@@ -164,32 +176,21 @@ function sacAvant(c, S, bal, m, ph) {
       if (S.p >= 9 && S.port === 'dos') { c.strokeStyle = 'rgba(20,20,20,0.7)'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(4, -6); c.lineTo(4, 6); c.stroke(); }  // sangle de poitrine
       break;
     }
-    case 'bandouliere': {
-      c.strokeStyle = teinte(S.coul, 0.65); c.lineWidth = 1.8;
-      c.beginPath(); c.moveTo(-2 - sw, -13); c.quadraticCurveTo(2, -2, -3, 11); c.stroke();
+    case 'bandouliere': case 'main': {
+      // la sangle en travers du torse (épaule droite → hanche gauche, où pend le sac)
+      c.strokeStyle = teinte(S.coul, 0.65); c.lineWidth = S.port === 'main' ? 1.4 : 1.8;
+      c.beginPath(); c.moveTo(-6, 9 + sw * 0.3); c.quadraticCurveTo(3, 1, -5, -10 - sw); c.stroke();
       break;
     }
     case 'epaule': {
-      const y = -15 - S.p / 2 + sw * 0.4, x = -2 - sw * 1.2;
-      c.strokeStyle = teinte(S.coul, 0.6); c.lineWidth = 1.6; c.beginPath(); c.moveTo(x - S.l * 0.3, y + S.p / 2); c.quadraticCurveTo(x, -9, x + S.l * 0.3, y + S.p / 2); c.stroke();
-      c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, x - S.l / 2 + 1, y - S.p / 2 + 1.2, S.l, S.p, S.p / 2); c.fill();
-      const g = c.createLinearGradient(0, y - S.p / 2, 0, y + S.p / 2); g.addColorStop(0, teinte(S.coul, 1.2)); g.addColorStop(1, teinte(S.coul, 0.75));
-      c.fillStyle = g; rr(c, x - S.l / 2, y - S.p / 2, S.l, S.p, Math.min(S.p / 2, 4)); c.fill();
-      if (S.bande) { c.fillStyle = S.bande; c.fillRect(x - S.l / 2 + 2, y - 0.7, S.l - 4, 1.4); }
-      break;
-    }
-    case 'main': {
-      const x = 1 + sw * 2, y = -19;
-      c.strokeStyle = teinte(S.coul, 0.6); c.lineWidth = 1.2; c.beginPath(); c.moveTo(x - 2, y + S.p / 2 - 1); c.quadraticCurveTo(x, y + S.p / 2 + 3, x + 2, y + S.p / 2 - 1); c.stroke();
-      c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, x - S.l / 2 + 1, y - S.p / 2 + 1.2, S.l, S.p, 1.5); c.fill();
-      c.fillStyle = S.coul; rr(c, x - S.l / 2, y - S.p / 2, S.l, S.p, 1.5); c.fill();
-      c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x - S.l / 2 + 1, y - S.p / 2 + 0.6, S.l - 2, 1);
+      // la anse passée sur l'épaule gauche
+      c.strokeStyle = teinte(S.coul, 0.6); c.lineWidth = 1.6;
+      c.beginPath(); c.moveTo(-6, -12 - sw * 0.5); c.quadraticCurveTo(1, -12.5, -4, -6); c.stroke();
       break;
     }
     case 'banane': {
-      c.strokeStyle = '#1a1a1a'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(6, -8); c.quadraticCurveTo(9, 0, 6, 8); c.stroke();
-      c.fillStyle = S.coul; rr(c, 6, -S.l / 2, S.p, S.l, 2); c.fill();
-      c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(6.6, -S.l / 2 + 1, 0.9, S.l - 2);
+      // la ceinture du sac banane autour de la taille
+      c.strokeStyle = '#1a1a1a'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-6, -9); c.quadraticCurveTo(7, 0, -6, 9); c.stroke();
       break;
     }
     default: break;

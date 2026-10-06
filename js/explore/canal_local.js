@@ -3,7 +3,7 @@
 //   propriétaire → fait tourner sim.tick à 20 Hz (setInterval) et diffuse les événements (le combat se joue ici).
 //   Plusieurs canaux peuvent partager une même sim (co-op locale / tests) : un seul propriétaire.
 // Interface (identique pour le futur canal distant de l'invité) :
-//   majJoueur(patch), bruit(b), porte(cle, action) → Promise, fouiller(cle) → Promise, prendre(cle, i, qty?) → Promise,
+//   majJoueur(patch), bruit(b), porte(cle, action) → Promise, fouiller(cle) → Promise, prendre(cle, i, qty?, id?) → Promise, contenu(cle) → Promise,
 //   deposer(pos, item) → Promise, instantane(), pairs(), on(evt, fn) → off ;
 //   construire(o), agirConstruction(uid, action, patch), ranger(cle, item), demonterMeuble(cle), puiserEau(cle, L) → Promise
 // Combat : action(a) → Promise ({ type: 'frapper'|'pousser'|'tirer'|'marteler', … }), faireApparaitre(liste, o) → Promise<uids>.
@@ -52,7 +52,8 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } 
     porte(cle, action) { return ok(sim.porte(cle, action, joueurId)); },
     fouiller(cle) { return ok(sim.fouiller(joueurId, cle)); },
     arreterFouille(progres) { sim.arreterFouille(joueurId, progres); },
-    prendre(cle, i, qty) { return ok(sim.prendre(joueurId, cle, i, qty)); },
+    prendre(cle, i, qty, id) { return ok(sim.prendre(joueurId, cle, i, qty, id)); },
+    contenu(cle) { return ok(sim.contenu(joueurId, cle)); },
     deposer(pos, item) { return ok(sim.deposer(joueurId, pos, item)); },
     // construction (js/data/construction.js)
     construire(o) { return this._act(() => sim.construire(joueurId, o)); },

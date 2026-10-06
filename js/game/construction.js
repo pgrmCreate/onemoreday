@@ -16,8 +16,8 @@ const NOM_OUTIL = { abattre: 'Une hache ou une hachette', scier: 'Une scie', ela
 export function etatConstruction(type, p) {
   p = joueur(p); const d = CONSTRUCTIONS[type];
   if (!d) return { d: null, faisable: false, manques: ['Inconnu'], ingredients: [], outils: [], competences: [] };
-  const ingredients = (d.ingredients || []).map(x => { const a = inv.countItem(x.id, p); return { id: x.id, nom: (ITEMS[x.id] || {}).nom || x.id, faut: x.qty, a, ok: a >= x.qty }; });
-  const outils = (d.outils || []).map(tag => ({ tag, nom: NOM_OUTIL[tag] || tag, ok: inv.hasTag(tag, p) }));
+  const ingredients = (d.ingredients || []).map(x => { const a = inv.countDispo(x.id, p); /* le sac + ce qui est à portée de main */ return { id: x.id, nom: (ITEMS[x.id] || {}).nom || x.id, faut: x.qty, a, ok: a >= x.qty }; });
+  const outils = (d.outils || []).map(tag => ({ tag, nom: NOM_OUTIL[tag] || tag, ok: inv.hasTagDispo(tag, p) }));
   const competences = Object.entries(d.skill || {}).map(([s, n]) => { const a = nivComp(s, p); return { skill: s, nom: nomCompetence(s), faut: n, a, ok: a >= n }; });
   const manques = [
     ...ingredients.filter(x => !x.ok).map(x => `${x.nom} : ${x.a}/${x.faut}`),
@@ -29,7 +29,7 @@ export function etatConstruction(type, p) {
 // Après une pose réussie : les matériaux sont consommés, l'expérience gagnée.
 export function payerConstruction(type, p) {
   p = joueur(p); const d = CONSTRUCTIONS[type]; if (!d) return false;
-  for (const x of d.ingredients || []) inv.removeItem(x.id, x.qty, p);
+  for (const x of d.ingredients || []) inv.retirerDispo(x.id, x.qty, p);
   gagnerXps(d.xp || {}, 1, p);
   return true;
 }

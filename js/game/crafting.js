@@ -57,14 +57,15 @@ export function commentApprendre(r) {
 }
 
 // ---------- Ingrédients : on compte l'eau des contenants comme de l'eau à bouillir ----------
+// Ce qui est par terre autour de soi ou dans un rangement fouillé tout près compte aussi (inv.aPortee).
 const EAU_ING = 'eau_croupie';
 function disponible(id, p) {
-  let n = inv.countItem(id, p);
+  let n = inv.countDispo(id, p);
   if (id === EAU_ING) n += Math.floor(inv.litresEau(null, p) / REGLAGES.survie.EAU.DOSE_L + 1e-6);
   return n;
 }
 function consommer(id, qty, p) {
-  let reste = qty - inv.removeItem(id, qty, p);
+  let reste = qty - inv.retirerDispo(id, qty, p);
   if (id === EAU_ING) {
     p.inventaire.forEach((it, i) => { while (reste > 0 && it.eau && it.eau.L >= REGLAGES.survie.EAU.DOSE_L - 1e-6) { inv.preleverEau(i, REGLAGES.survie.EAU.DOSE_L, p); reste--; } });
   }
@@ -79,8 +80,8 @@ export function etatRecette(r, p, qty = 1) {
   if (!r) return null;
   const connue = estConnue(r, p), postes = postesDisponibles(p);
   const ingredients = (r.ingredients || []).map(x => ({ id: x.id, nom: inv.nomObjet(x.id), a: disponible(x.id, p), faut: x.qty * qty, parUnite: x.qty }));
-  ingredients.forEach(x => { x.ok = x.a >= x.faut; });
-  const outils = (r.outils || []).map(tag => { const o = inv.objetsAvecTag(tag, p); return { tag, nom: OUTILS[tag] || tag, ok: o.length > 0, objet: o[0] ? inv.nomObjet(o[0]) : null }; });
+  ingredients.forEach(x => { x.ok = x.a >= x.faut; x.aPortee = Math.max(0, Math.min(x.a, x.a - inv.countItem(x.id, p) - (x.id === EAU_ING ? Math.floor(inv.litresEau(null, p) / REGLAGES.survie.EAU.DOSE_L + 1e-6) : 0))); });
+  const outils = (r.outils || []).map(tag => { const o = inv.objetsAvecTagDispo(tag, p); return { tag, nom: OUTILS[tag] || tag, ok: o.length > 0, objet: o[0] ? inv.nomObjet(o[0]) : null }; });
   const poste = r.poste ? { id: r.poste, nom: POSTES[r.poste] || r.poste, ok: !!postes[r.poste], source: r.poste === 'feu' ? postes.feuSource : null } : null;
   const competences = Object.entries(r.skill || {}).map(([s, n]) => ({ skill: s, nom: nomCompetence(s), faut: n, a: niveau(s, p), ok: niveau(s, p) >= n }));
   const manques = [];
@@ -159,6 +160,8 @@ export function fabriquer(id, qty = 1, opts = {}, p) {
     else inv.addItem(r.resultat.id, n, {}, p);
     obtenu = { id: r.resultat.id, qty: n };
     texte = `${d ? d.nom : r.resultat.id}${n > 1 ? ' ×' + n : ''}`;
+    // ce qu'on récupère en plus (démontage) : dans le sac, ou au sol s'il n'y a plus de place
+    for (const x of r.aussi || []) { const k = x.qty * qty; inv.addItem(x.id, k, {}, p); texte += `, ${inv.nomObjet(x.id)}${k > 1 ? ' ×' + k : ''}`; }
   } else if (r.special === 'reparer') {
     inv.reparerInstance(cible, r.gain || 0.3, p);
     texte = `${inv.nomObjet(cible.id)} : ${Math.round(100 * cible.dur / cible.durMax)} %`;

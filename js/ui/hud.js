@@ -7,6 +7,7 @@ import * as clock from '../core/clock.js';
 import { lieu as lieuDe } from '../game/donnees.js';
 import { QUETES } from '../data/histoire/quetes.js';
 import { etatsCorps } from '../game/survival.js';
+import { etatRuee, quandTexte } from '../game/ruees.js';
 import { ico, ICONE_MOODLE } from './icons.js';
 import { ouvrirPanneau, panneauOuvert } from './panels/index.js';
 
@@ -42,6 +43,7 @@ function construire() {
       <div class="hud-carte">
         <div class="hud-heure"><span class="hud-jour"></span><span class="hud-h"></span></div>
         <div class="hud-lieu">${ico('lieu')}<span class="t"></span></div>
+        <div class="hud-ruee" hidden>${ico('alerte')}<span class="t"></span></div>
       </div>
       <button class="hud-objectif" type="button" aria-label="Objectif">${ico('objectif')}<span class="t"></span></button>
     </div>
@@ -57,6 +59,7 @@ function construire() {
   document.body.appendChild(racine);
   els.jour = racine.querySelector('.hud-jour'); els.h = racine.querySelector('.hud-h');
   els.lieu = racine.querySelector('.hud-lieu .t'); els.lieuBox = racine.querySelector('.hud-lieu');
+  els.ruee = racine.querySelector('.hud-ruee'); els.rueeTxt = els.ruee.querySelector('.t');
   els.obj = racine.querySelector('.hud-objectif'); els.objTxt = els.obj.querySelector('.t');
   els.moodles = racine.querySelector('.hud-moodles'); els.bulle = racine.querySelector('.hud-bulle');
   els.pastCorps = racine.querySelector('[data-p=corps] .hud-pastille');
@@ -87,6 +90,11 @@ export function majHUD() {
   els.h.textContent = `${String(clock.heure()).padStart(2, '0')}:${String(clock.minute()).padStart(2, '0')}`;
   racine.classList.toggle('nuit', clock.estNuit());
   const l = texteLieu(); els.lieu.textContent = l; els.lieuBox.hidden = !l;
+  // Les sirènes : quand elles hurlent (et quand la radio les a annoncées)
+  const ru = etatRuee();
+  const rt = !ru ? '' : ru.active ? `Sirènes : ${ru.nom}` : `Sirènes · ${ru.nom} · ${quandTexte(ru.debut).replace('vers ', '')}`;
+  if (els.rueeTxt.textContent !== rt) els.rueeTxt.textContent = rt;
+  els.ruee.hidden = !rt; els.ruee.classList.toggle('active', !!(ru && ru.active));
   const o = objectifCourant();
   const ot = o ? o.objectif : '';
   els.obj.hidden = !ot; els.objTxt.textContent = ot;
@@ -132,7 +140,7 @@ export function montrerHUD(on_ = true) {
   if (visible) {
     if (!offs.length) {
       const maj = () => { if (visible) majHUD(); };
-      for (const e of ['minute', 'inventaire', 'blessure', 'quete', 'temps', 'survie', 'lieu:entre', 'lieu:sort', 'voyage:debut', 'voyage:fin'])
+      for (const e of ['minute', 'flag', 'inventaire', 'blessure', 'quete', 'temps', 'survie', 'lieu:entre', 'lieu:sort', 'voyage:debut', 'voyage:fin'])
         offs.push(on(e, maj));
       offs.push(on('journal', () => { if (!panneauOuvert()) els.pastJournal.hidden = false; }));
       offs.push(on('document', () => { els.pastJournal.hidden = false; }));

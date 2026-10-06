@@ -41,7 +41,7 @@ export function creerHud(racine, { arene = false } = {}) {
       el('div', {}, el('h4', {}, 'Bouger'), ligne('ZQSD', 'se déplacer'), ligne('Maj', 'courir'), ligne('C', 'accroupi (discret)'), ligne('Souris', 'regarder / viser')),
       el('div', {}, el('h4', {}, 'Se battre'), ligne('Clic', 'frapper — 3 clics en rythme : enchaînement'), ligne('Clic maintenu', 'coup chargé'), ligne('Clic droit · Espace', 'repousser'), ligne('Arme à feu', 'clic droit maintenu : viser, clic : tirer — sans viser : crosse')),
       el('div', {}, el('h4', {}, 'Construire'), ligne('Marteau', 'menu Construire'), ligne('Clic', 'placer puis bâtir'), ligne('T', 'tourner'), ligne('Échap', 'arrêter')),
-      el('div', {}, el('h4', {}, 'Faire'), ligne('E', 'interagir / fouiller'), ligne('O', 'chercher par terre'), ligne('G', 'autres actions ici'), ligne('F', 'lampe'), ligne('I', 'sac'), ligne('Tab', 'plan du lieu'), ligne('X / B', 'mains / dos'), ligne('1-4', 'ceinture (réappuyer : ranger)'))),
+      el('div', {}, el('h4', {}, 'Faire'), ligne('E', 'interagir / fouiller'), ligne('O', 'chercher par terre'), ligne('P', 'objets au sol autour'), ligne('G', 'autres actions ici'), ligne('F', 'lampe'), ligne('I', 'sac'), ligne('Tab', 'plan du lieu'), ligne('X / B', 'mains / dos'), ligne('1-4', 'ceinture (réappuyer : ranger)'))),
   );
   racine.append(h.sang, h.lieu, h.guide, h.coop, h.msg, h.invite, h.choix, h.etat, h.zoom, h.barre, h.butin, h.mains, h.degage, h.route, h.aide);
   if (!arene && !pref('aideExploreVue')) { h.aide.classList.remove('cache'); setTimeout(() => h.aide.classList.add('cache'), 16000); setPref('aideExploreVue', true); }

@@ -49,6 +49,7 @@ export function creerEntrees({ racine, canvas, actions }) {
     else if (c === 'KeyF') actions.lampe && actions.lampe();
     else if (c === 'KeyG') actions.secondaire && actions.secondaire();
     else if (c === 'KeyO') actions.recherche && actions.recherche();
+    else if (c === 'KeyP') actions.sol && actions.sol();
     else if (c === 'KeyT') actions.tourner && actions.tourner();
     else if (c === 'KeyI') actions.inventaire && actions.inventaire();
     else if (c === 'KeyH') actions.aide && actions.aide();
@@ -90,6 +91,7 @@ export function creerEntrees({ racine, canvas, actions }) {
     courir: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="4.2" r="1.9" fill="currentColor" stroke="none"/><path d="M8.5 9.5 12 7.6l3 1.6 1.4 3 2.6.8"/><path d="M12 7.6 10.6 13l3.4 2.6-1 5.2"/><path d="M10.6 13 7.4 15.4 4.4 15"/></svg>',
     accroupi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="6.2" r="1.9" fill="currentColor" stroke="none"/><path d="M12.4 8.8 9 12.2l4.4 2.4-1.6 5"/><path d="M9 12.2 7.6 16.4 4.6 17"/><path d="M12 10.6l4 1.4"/><path d="M3 20.5h18" opacity=".45"/></svg>',
     loupe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="9" r="5.2"/><path d="m14 13 5.5 5.5"/><path d="M3 21.2h9" opacity=".45"/></svg>',
+    sol: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20.5h18" opacity=".45"/><rect x="4" y="13" width="7" height="6" rx="1"/><path d="M14 19l2.2-6.5h3.2L21 19"/><path d="M7.5 13v-2.5M12 6.5l2 2 3.5-4" opacity=".75"/></svg>',
     lampe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="10" width="8" height="4.5" rx="1.2"/><path d="M10.5 9.2 13.5 8v8.5l-3-1.2z"/><path d="M15.5 9.5 21 7.5M15.5 12.2H21.5M15.5 15l5.5 2" opacity=".7"/></svg>',
   };
   const icone = (nom, label) => el('button', { class: 'ex-btn ex-btn-ico', type: 'button', 'aria-label': label, title: label, html: SVG[nom] });
@@ -97,6 +99,8 @@ export function creerEntrees({ racine, canvas, actions }) {
   const bAccr = icone('accroupi', 'S\'accroupir'); bAccr.classList.add('ex-btn-accr');          // un toucher de temps en temps : petit, collé en bas
   const bLampe = icone('lampe', 'Lampe');
   const bLoupe = icone('loupe', 'Chercher par terre (O)');
+  // les objets par terre autour de soi (P) : grisé quand il n'y a rien, un petit nombre sinon
+  const bSol = icone('sol', 'Objets au sol (P)'); bSol.classList.add('ex-btn-accr', 'ex-btn-sol', 'inactif'); bSol.append(el('em', {}, ''));
   const bInv = el('button', { class: 'cache', type: 'button' });
   // Combat : gros bouton Frapper (maintenir = charger), Pousser à côté.
   const SVG_F = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 15 9"/><path d="m13 7 4-4 4 4-4 4"/><path d="M6 15l3 3"/></svg>';
@@ -120,7 +124,7 @@ export function creerEntrees({ racine, canvas, actions }) {
   bLoupe.classList.add('ex-btn-accr');
   const pad = el('div', { class: 'ex-pad' }, el('div', { class: 'ex-pad-ligne' }, bLampe, bCourse),
     el('div', { class: 'ex-pad-ligne ex-pad-place' }, bTourner, bAnnuler), el('div', { class: 'ex-pad-inter' }, bAutres, bInter),
-    el('div', { class: 'ex-pad-combat' }, el('div', { class: 'ex-pad-bas' }, bLoupe, bAccr), el('div', { class: 'ex-pad-pile' }, bRecharger, bCrosse), bPousser, bFrapper));
+    el('div', { class: 'ex-pad-combat' }, el('div', { class: 'ex-pad-bas' }, bSol, bLoupe, bAccr), el('div', { class: 'ex-pad-pile' }, bRecharger, bCrosse), bPousser, bFrapper));
   racine.append(zoneJoy, pad);
 
   const joy = { id: null, ox: 0, oy: 0, R: 56, t0: 0, sx: 0, sy: 0 };
@@ -177,6 +181,7 @@ export function creerEntrees({ racine, canvas, actions }) {
   presser(bAccr, () => { etat.accroupi = !etat.accroupi; actions.accroupi && actions.accroupi(etat.accroupi); majBoutons(); }); relacher(bAccr);
   presser(bLampe, () => actions.lampe && actions.lampe()); relacher(bLampe);
   presser(bLoupe, () => actions.recherche && actions.recherche()); relacher(bLoupe);
+  presser(bSol, () => { if (!bSol.classList.contains('inactif')) actions.sol && actions.sol(); }); relacher(bSol);
   presser(bInv, () => actions.inventaire && actions.inventaire()); relacher(bInv);
   let doigtFrappe = false;
   presser(bFrapper, () => { doigtFrappe = true; etat.tactile = true; actions.frapper && actions.frapper(true); });
@@ -189,7 +194,7 @@ export function creerEntrees({ racine, canvas, actions }) {
   presser(bAutres, () => actions.secondaire && actions.secondaire()); relacher(bAutres);
   presser(bTourner, () => actions.tourner && actions.tourner()); relacher(bTourner);
   presser(bAnnuler, () => actions.echap && actions.echap()); relacher(bAnnuler);
-  for (const b of [bInter, bCourse, bAccr, bLampe, bLoupe, bInv, bFrapper, bPousser, bRecharger, bCrosse, bAutres, bTourner, bAnnuler]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
+  for (const b of [bInter, bCourse, bAccr, bLampe, bLoupe, bSol, bInv, bFrapper, bPousser, bRecharger, bCrosse, bAutres, bTourner, bAnnuler]) ecoute(b, 'contextmenu', (e) => e.preventDefault());
 
   function majBoutons() {
     bAccr.classList.toggle('on', etat.accroupi);
@@ -234,6 +239,11 @@ export function creerEntrees({ racine, canvas, actions }) {
       bFrapper.dataset.combo = combo >= 0 ? String(combo + 1) : '';
     },
     setAccroupi(v) { etat.accroupi = !!v; majBoutons(); },
+    // n objets par terre à portée (0 = bouton grisé)
+    setSol(n) {
+      const t = n > 1 ? String(n) : ''; const em = bSol.lastChild; if (em.textContent !== t) em.textContent = t;
+      if (bSol.classList.contains('inactif') !== !n) { bSol.classList.toggle('inactif', !n); bSol.setAttribute('aria-disabled', n ? 'false' : 'true'); }
+    },
     actif(v) {
       actif = !!v;
       if (!actif) {

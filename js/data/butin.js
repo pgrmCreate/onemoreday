@@ -389,9 +389,24 @@ export const BUTIN = {
     comptoir: [L('piles', 1, 1, 0.12), L('lampe_torche', 1, 1, 0.08), L('fusee_detresse', 1, 1, 0.08), L('cafe_soluble', 1, 1, 0.12), L('journal_papier', 1, 2, 0.15), L('radio_portable', 1, 1, 0.03), L('carte_routiere', 1, 1, 0.4)],
     machine: D.machine,
   },
-  nature: {
+  nature: { // collines, Crau, rivière : cabanons de chasse, bergeries, moulins, tentes de fuyards
     table: [L('bouteille_vide', 1, 1, 0.12), L('canette_vide', 1, 2, 0.15), L('boite_vide', 1, 1, 0.1), L('allumettes', 1, 1, 0.04)],
     poubelle: D.poubelle,
+    etagere: [
+      L('corde', 1, 1, 0.16), L('fil_de_fer', 1, 2, 0.14), L('bache_plastique', 1, 1, 0.12), L('collet', 1, 1, 0.06), L('appat', 1, 3, 0.1),
+      L('canne_peche', 1, 1, 0.04), L('allumettes', 1, 1, 0.12), L('bouteille_vide', 1, 2, 0.15), L('herbes_simples', 1, 2, 0.12),
+      L('graines', 1, 2, 0.1), L('huile_olive', 1, 1, 0.06), L('casserole', 1, 1, 0.08), L('pierre_aiguiser', 1, 1, 0.06),
+      L('hachette', 1, 1, 0.025), L('scie', 1, 1, 0.025), L('pelle', 1, 1, 0.03), L('clous', 2, 6, 0.1), L('carnet_chasseur', 1, 1, 0.03),
+    ],
+    caisse: [
+      L('conserve_haricots', 1, 2, 0.14), L('conserve_thon', 1, 1, 0.08), L('pates_seches', 1, 1, 0.08), L('alcool_fort', 1, 1, 0.08),
+      L('cartouches', 2, 6, 0.06), L('fusil_chasse', 1, 1, 0.01), L('couteau_cuisine', 1, 1, 0.06), L('briquet', 1, 1, 0.06),
+      L('chiffon', 1, 2, 0.12), L('amandes', 1, 2, 0.12), L('graines', 1, 1, 0.1), L('buche', 1, 2, 0.1),
+    ],
+    lit: [L('drap', 1, 1, 0.3), L('chiffon', 1, 2, 0.15), L('photo_famille', 1, 1, 0.06), L('guide_survie', 1, 1, 0.02)],
+    vetements: [L('bottes_caoutchouc', 1, 1, 0.12), L('manteau_hiver', 1, 1, 0.08), L('gants_cuir', 1, 1, 0.1), L('poncho_pluie', 1, 1, 0.08)],
+    cuisine: [L('casserole', 1, 1, 0.15), L('huile_olive', 1, 1, 0.1), L('olives', 1, 2, 0.1), L('miel', 1, 1, 0.06), L('allumettes', 1, 1, 0.1)],
+    voiture: plus(D.voiture, [L('corde', 1, 1, 0.06), L('essence', 1, 1, 0.04)]),
   },
 
   // ─────────── Butin de VOYAGE (rencontres : butin { table: 'voyage.<cat>', n }) ───────────

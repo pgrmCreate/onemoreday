@@ -38,6 +38,14 @@ export const QUETES = {
       fin:   { objectif: 'Tu sais maintenant ce qui t’est arrivé le 6 septembre' },
     },
   },
+  q_sirenes: {
+    titre: 'Les sirènes', chapitre: 1, principale: false,
+    etapes: {
+      debut: { objectif: 'Quitter Salon avant que les sirènes hurlent : la chaîne des Côtes, la Crau ou la Touloubre' },
+      tenir: { objectif: 'Les sirènes hurlent sur Salon : tenir dehors, loin de la ville, jusqu’à ce qu’elles se taisent' },
+      fin:   { objectif: 'Les sirènes se sont tues. La ville est plus pleine qu’avant' },
+    },
+  },
   q_traversee: {
     titre: 'La transhumance', chapitre: 2, principale: true,
     etapes: {
@@ -70,6 +78,14 @@ export const QUETES = {
     etapes: {
       debut: { objectif: 'Filmer ton témoignage avec Lou (il faut un téléphone chargé)', lieu: 'cales' },
       fin:   { objectif: 'Ton témoignage est enregistré dans ton téléphone' },
+    },
+  },
+  q_sirenes_plaine: {
+    titre: 'Le rabattage de la plaine', chapitre: 2, principale: false,
+    etapes: {
+      debut: { objectif: 'Les sirènes vont hurler sur les villages de la plaine : rester à l’écart des bourgs et des routes' },
+      tenir: { objectif: 'Les villages hurlent : tenir dans les collines ou dans la Crau jusqu’à ce que ça se taise' },
+      fin:   { objectif: 'Les sirènes se sont tues sur la plaine' },
     },
   },
   q_final: {

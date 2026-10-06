@@ -103,12 +103,12 @@ function remplirFiche(f, p, racine) {
   const res = r.resultat ? inv.def(r.resultat.id) : null;
   f.append(el('div', { class: `fi-tete${e.faisable ? ' faisable' : ''}` },
     el('span', { class: 'fi-ic' }, icoEl(iconeRecette(r))),
-    el('div', {}, el('h2', {}, r.nom), el('p', { class: 'fi-type' }, r.resultat ? `Donne : ${res ? res.nom : r.resultat.id} ×${r.resultat.qty * etat.qty}` : craft.CATEGORIES_RECETTES[r.cat]))));
+    el('div', {}, el('h2', {}, r.nom), el('p', { class: 'fi-type' }, r.resultat ? `Donne : ${res ? res.nom : r.resultat.id} ×${r.resultat.qty * etat.qty}${(r.aussi || []).map(x => ` + ${inv.nomObjet(x.id)} ×${x.qty * etat.qty}`).join('')}` : craft.CATEGORIES_RECETTES[r.cat]))));
   if (r.desc) f.append(el('p', { class: 'fi-desc' }, g(r.desc)));
   // Besoins
   const req = el('ul', { class: 'fa-req' });
   const item = (ok, ic, txt, val) => req.append(el('li', { class: ok ? 'ok' : 'ko' }, icoEl(ok ? 'coche' : 'fermer'), el('span', { class: 'fa-req-ic' }, icoEl(ic)), el('span', {}, txt), val ? el('b', {}, val) : null));
-  for (const x of e.ingredients) item(x.ok, iconeObjet(x.id), x.nom, `${x.a} / ${x.faut}`);
+  for (const x of e.ingredients) item(x.ok, iconeObjet(x.id), x.aPortee ? `${x.nom} (${x.aPortee} à portée de main)` : x.nom, `${x.a} / ${x.faut}`);   // par terre, rangements fouillés tout près
   for (const o of e.outils) item(o.ok, 'outil', o.ok ? `${o.nom} (${o.objet})` : o.nom, o.ok ? '' : 'manque');
   item(!e.poste || e.poste.ok, e.poste ? (e.poste.id === 'feu' ? 'feu' : 'etabli') : 'main', e.poste ? e.poste.nom : 'À la main, n\'importe où', e.poste && !e.poste.ok ? 'absent' : '');
   for (const c of e.competences) item(c.ok, 'competences', `${c.nom} ${c.faut}`, `niv. ${c.a}`);

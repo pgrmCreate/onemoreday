@@ -56,6 +56,11 @@
 .ui-hud.nuit .hud-h { color: #b9c3d6; }
 .hud-lieu { display: flex; align-items: center; gap: 4px; font-size: var(--ui-t-s); color: var(--ui-texte-2); letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
 .hud-lieu .ico { width: 13px; height: 13px; color: var(--ui-ambre); }
+/* Les sirènes de l'armée : annoncées (ambre), puis hurlant (rouge, qui bat lentement) */
+.hud-ruee { display: flex; align-items: center; gap: 4px; font-size: var(--ui-t-xs); color: var(--ui-ambre); letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 44vw; }
+.hud-ruee .ico { width: 12px; height: 12px; flex: none; }
+.hud-ruee.active { color: #e0656c; animation: hud-ruee 2.4s ease-in-out infinite; }
+@keyframes hud-ruee { 50% { opacity: .55; } }
 .hud-objectif { display: flex; align-items: center; gap: 7px; min-height: 30px; max-width: 100%; padding: 3px 12px 3px 8px; border: 0; background: rgba(11, 11, 12, .6);
   border-radius: 2px; font-family: var(--ui-f-recit) !important; font-style: italic; font-size: calc(15px * var(--ui-echelle)); color: var(--ui-texte); text-align: left; text-shadow: 0 1px 2px #000; }
 .hud-objectif .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -223,9 +228,17 @@ body:not([data-temps=exploration]) .hud-btn-construire { display: none; }
 .cat-arme { --cat: #c98b6b; } .cat-munition { --cat: #b59a7a; } .cat-nourriture { --cat: #c7a55a; } .cat-boisson { --cat: #7fa6bd; }
 .cat-soin { --cat: #d7646f; } .cat-outil { --cat: #a9a18e; } .cat-vetement { --cat: #9c93b5; } .cat-materiau { --cat: #8e8676; }
 .cat-livre { --cat: #c9b27f; } .cat-quete { --cat: var(--ui-ambre); } .cat-divers { --cat: #8e8676; }
-/* Filtre du sac : petites icônes par type + recherche */
-.inv-filtre { position: sticky; top: 0; z-index: 2; display: flex; flex-direction: column; gap: 6px; padding: 6px 0 4px; background: var(--ui-fond-2, #141315); }
-.inv-puces { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; }
+/* Filtre du sac : le sac porté en petit + petites icônes par type */
+.inv-filtre { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 6px 0 4px; background: var(--ui-fond-2, #141315); }
+.inv-puces { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 4px 6px 4px 1px; }
+/* Le sac porté, en petit : une pastille (nom + litres) à gauche des filtres */
+.inv-sac-mini { flex: 0 1 auto; max-width: 46%; min-width: 0; display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px 0 8px; cursor: pointer;
+  border: 1px solid #3a3222; border-radius: 20px; background: rgba(201,162,39,.08); color: var(--ui-texte) !important; text-align: left; }
+.inv-sac-mini.sans { border-color: #4a2226; background: rgba(142,27,36,.10); }
+.inv-sac-mini > .ico { width: 18px; height: 18px; flex: none; color: var(--ui-ambre); }
+.inv-sac-mini > span { display: flex; flex-direction: column; min-width: 0; line-height: 1.1; }
+.inv-sac-mini strong { font-family: var(--f-ui); font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inv-sac-mini em { font-style: normal; font-size: 11px; color: var(--ui-texte-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .inv-puces::-webkit-scrollbar { display: none; }
 .inv-puce { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; padding: 0; cursor: pointer;
   border: 1px solid var(--ui-bord); background: #0f0e10; color: var(--cat, var(--ui-texte-2)) !important; }
@@ -235,14 +248,6 @@ body:not([data-temps=exploration]) .hud-btn-construire { display: none; }
 .inv-puce.cat-tout { --cat: var(--ui-texte-2); }
 .inv-puce.actif { border-color: var(--cat, var(--ui-ambre)); background: color-mix(in srgb, var(--cat, #c9a227) 22%, #0f0e10); box-shadow: 0 0 0 1px var(--cat, var(--ui-ambre)); }
 .inv-puce.actif em { background: var(--cat, var(--ui-ambre)); color: #111; }
-.inv-cherche { display: flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 4px 0 10px; border: 1px solid var(--ui-bord); border-radius: var(--ui-rayon); background: #0f0e10; color: var(--ui-texte-3); }
-.inv-cherche:focus-within { border-color: var(--ui-ambre); }
-.inv-cherche > .ico { width: 16px; height: 16px; flex: 0 0 auto; }
-.inv-cherche-champ { flex: 1; min-width: 0; height: 36px; border: 0; outline: 0; background: none; color: var(--ui-texte); font: inherit; font-size: 15px; }
-.inv-cherche-champ::-webkit-search-cancel-button { display: none; }
-.inv-cherche-x { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--ui-texte-3); cursor: pointer; }
-.inv-cherche-x.cache { display: none; }
-.inv-cherche-x .ico { width: 14px; height: 14px; }
 
 /* ======================================================================
    INVENTAIRE
@@ -560,13 +565,6 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border: 1px soli
   .hud-moodle { width: 38px; height: 38px; }
 }
 @media (prefers-reduced-motion: reduce) { .ui-hud *, .ui-panneau *, .ui-toast { animation: none !important; transition: none !important; } }
-
-/* Sac porté (en tête de l'onglet Sac) */
-.inv-sac-porte { display: flex; gap: 10px; align-items: center; padding: 10px 12px; margin: 4px 0 10px; border: 1px solid #3a3222; background: rgba(201,162,39,.07); }
-.inv-sac-porte.sans { border-color: #4a2226; background: rgba(142,27,36,.10); }
-.inv-sac-porte .isp-ic svg { width: 28px; height: 28px; }
-.inv-sac-porte strong { font-family: var(--f-ui); letter-spacing: .06em; text-transform: uppercase; font-weight: 500; }
-.inv-sac-porte p { margin: 2px 0 0; font-size: 14px; color: var(--creme2); }
 
 /* ======================================================================
    Dormir — choix de la durée, invitation à deux, écran noir qui fait filer l'horloge

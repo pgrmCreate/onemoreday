@@ -27,11 +27,12 @@ import { creerCombatVue } from './combat_vue.js';
 import { genererEmbuscade } from './embuscade.js';
 import { creerHud } from './hud_explore.js';
 import { mod, chargerOptionnels, lierCommun, vib, sfx, sfxA, posPorte, verifierCondition, compter, niv, message, afficherLieu, caseLibrePres } from './commun.js';
-import { lierButin, avancerFouille, interrompreFouille, fermerButin, fournisseurSol } from './butin.js';
+import { lierButin, avancerFouille, interrompreFouille, fermerButin, fournisseurSol, fournisseurProximite, majProximite, ouvrirSol, nombreAuSol } from './butin.js';
 import { lierInteractions, chercherCible, majInvite, interagir, basculerChoix, fermerChoix, choisir, avancerAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
 import { lierCombatLieu, combatIci as combatIci_, embuscade as embuscade_, suivreCombat, finArene } from './combat_lieu.js';
 import { lierNature, majRecherche, basculerRecherche, vitesseRecherche, enRecherche } from './nature.js';
 import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, viserPlacement, majConstruction, feuxCommeLampes, fantome, grilleToits } from './construction.js';
+import { intensiteRuee, rueeIdActive, etatRuee, lieuDansZone } from '../game/ruees.js';
 
 export { verifierCondition };
 const RX = REGLAGES.exploration, RL = REGLAGES.lumiere;
@@ -58,6 +59,7 @@ export async function obtenirCanal(lieuId, niveau, L) {
     minutes: W.minutes, typeButin: L.typeButin || L.type || niveau.typeButin, mortsN: (L.morts && L.morts.n) || (niveau.morts && niveau.morts.n),
     repeuplement: L.repeuplement, coop: G.mode !== 'solo', difficulte: diff, mult: L.abondance || 1,
     getFlag: (k) => getFlag(k),
+    getRuee: () => { const i = intensiteRuee(lieuId); return i ? { i, id: rueeIdActive() } : null; },
   });
   return creerCanalLocal(sim, JOUEUR_ID);
 }
@@ -148,6 +150,7 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     clicDroit: (appui) => { if (!V || !V.cbt || V.occupe) return; if (enPlacement()) { if (appui) tournerPlacement(); return; } if (appui) stopperActions(); V.cbt.clicDroit(appui); },
     secondaire: () => basculerChoix(),
     recherche: () => { if (V && !V.arene) basculerRecherche(); },
+    sol: () => { if (V && !V.occupe && !V.enPause) ouvrirSol(); },
     viser: (sx, sy) => viserPlacement(sx, sy),
     tourner: () => tournerPlacement(),
     pousser: () => { if (!V || !V.cbt || V.occupe) return; stopperActions(); V.cbt.pousser(); },
@@ -200,6 +203,8 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     else if (e.source !== (C.joueurId || JOUEUR_ID) && (e.action === 'ouvre' || e.action === 'ferme') && pp) sfxA('porte', ...pp, 12);
   }));
   V.off.push(C.on('zombie', (e) => { if (e.etat === 'chasse') { const z = V.zInterp.get(e.uid); if (z && z._vu) sfx('alerte'); else if (z) sfxA('zombie_loin', z.x, z.y, z.etage, 14); } }));
+  // les sirènes arrivent ici (simulation : réveil + renforts) : on le voit et on l'entend tout de suite
+  V.off.push(C.on('ruee', () => { V.tSirene = 0; message('Les sirènes ! Partout, les morts se lèvent et courent vers le bruit.', 3800); }));
   V.off.push(C.on('hurlement', (e) => { const z = e && V.zInterp.get(e.uid); if (z) sfxA('hurlement', z.x, z.y, z.etage, 40); else sfx('hurlement', { volume: 0.5 }); }));
   V.off.push(avantSauvegarde(() => {
     if (!V || !V.canal.sauver || V.arene) return;
@@ -223,6 +228,7 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   V.off.push(on('flag', () => { if (V) { V.tGuide = 0; majObjetsDrapeaux(); } }));
   majObjetsDrapeaux();
   if (mod.inv && mod.inv.setSol) mod.inv.setSol(fournisseurSol());
+  if (mod.inv && mod.inv.setProximite) mod.inv.setProximite(fournisseurProximite());
   if (!mod.panneaux) import('../ui/panels/index.js').then(m => { mod.panneaux = m; }).catch(() => {});
 
   V.raf = requestAnimationFrame(boucle);
@@ -269,6 +275,7 @@ export function sortir() {
   try { v.rendu && v.rendu.fermer(); } catch (e) {}
   try { v.canal.fermer && v.canal.fermer(); } catch (e) {}
   if (mod.inv && mod.inv.setSol) { const pile = []; mod.inv.setSol({ lister: () => pile, deposer: (it) => pile.push({ ...it }), prendre: (i) => pile.splice(i, 1)[0] || null }); }
+  if (mod.inv && mod.inv.setProximite) mod.inv.setProximite(null);
   try { mod.audio && mod.audio.setTension && mod.audio.setTension(0); } catch (e) {}
   try { mod.audio && mod.audio.setHorde && mod.audio.setHorde(0); } catch (e) {}
   try { mod.audio && mod.audio.setNature && mod.audio.setNature(null); } catch (e) {}
@@ -444,7 +451,8 @@ function image(t, dt) {
 
   // --- interactions, zones, pièce, guide ---
   V.tCible -= dt;
-  if (V.tCible <= 0) { V.tCible = 90; V.cible = chercherCible(); majInvite(); zones(); piece(); }
+  if (V.tCible <= 0) { V.tCible = 90; V.cible = chercherCible(); majInvite(); zones(); piece(); V.entrees.setSol && V.entrees.setSol(nombreAuSol()); }
+  majProximite(dt);
   if (V.fouille) avancerFouille(dt);
   if (V.action) avancerAction(dt);
   majConstruction(dt);
@@ -608,6 +616,15 @@ function tension() {
   { const ii = icase(V.E, V.j.x, V.j.y), pi = ii >= 0 ? V.E.piece[ii] : -1, Pc = pi >= 0 ? V.niveau.pieces[pi] : null;
     const pieceExt = Pc ? !!Pc.exterieur : !!V.niveau.exterieur;
     V.abri = { abrite: !V.dehorsSon, exterieur: pieceExt && !(!V.dehorsSon && prof === Infinity) }; }
+  // Les sirènes de l'armée : dans la zone qui hurle, toutes les 35 à 80 s ; ailleurs (les collines), on les devine au loin.
+  const ru = etatRuee();
+  if (ru && ru.active && !V.arene) {
+    const ici = lieuDansZone(V.lieuId), t = performance.now(), S = REGLAGES.ruees.SIRENE_S;
+    if (!V.tSirene || t >= V.tSirene) {
+      V.tSirene = t + (S[0] + Math.random() * (S[1] - S[0])) * 1000 * (ici ? 1 : 2.2);
+      sfx('sirene', { volume: ici ? 1 : 0.22 });
+    }
+  }
   // Les cloches du soir : tant que Maud guette, elles sonnent sur Salon chaque soir à 21 h 10
   // (l'heure où l'horloge s'est arrêtée). Une fois par jour, dehors, en ville.
   const C2 = RX.CLOCHES_SOIR, h = clock.heureDecimale(), jr = clock.jour();

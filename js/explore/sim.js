@@ -23,7 +23,7 @@ import { deplacer, ligneLibre, obstaclesSon } from './physique.js';
 import { profilMelee, geometrie, resoudreCoup, resoudreAttaque, tapsEmpoignade, bruitCoup } from './combat.js';
 import { CONSTRUCTIONS, DEMONTABLES, RECOLTES, casesConstruction, casesFinesConstruction, appliquerConstructions, cassableC } from '../data/construction.js';
 
-const RX = REGLAGES.exploration, RP = RX.PERCEPTION, RF = REGLAGES.fouille, RC = REGLAGES.combat;
+const RX = REGLAGES.exploration, RP = RX.PERCEPTION, RF = REGLAGES.fouille, RC = REGLAGES.combat, RU = REGLAGES.ruees;
 const RAYON_JOUEUR = 0.3, RAYON_MORT = 0.3;
 const DEG = Math.PI / 180;
 const angDiff = (a, b) => { let d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; };
@@ -31,6 +31,7 @@ const angDiff = (a, b) => { let d = (a - b) % (2 * Math.PI); if (d > Math.PI) d 
 export function creerSimLieu(opts) {
   const {
     lieuId, seed = 1, danger = 0.3, minutes = 480, coop = false, getFlag = () => undefined,
+    getRuee = () => null,     // les sirènes (js/game/ruees.js) : () → { i: 0..1, id } | null
   } = opts;
   const niveau = opts.niveau && opts.niveau.etages && opts.niveau.etages[0] && opts.niveau.etages[0].code ? opts.niveau : parserNiveau(opts.niveau || {});
   const pool = (opts.pool && opts.pool.length ? opts.pool : niveau.pool) || ['errant'];
@@ -58,6 +59,8 @@ export function creerSimLieu(opts) {
   const bruits = [];                 // file de bruits à traiter au prochain tick
   let evts = [];
   let tFlag = 0;
+  // Les sirènes : intensité courante (0..1) et la dernière ruée déjà « arrivée » ici (renforts et réveil une seule fois).
+  let ruee = 0, rueeVue = null;
   let T = 0;                         // temps de simulation (ms) : horloge des télégraphies, empoignades
   let rngCbt = seedRng(`${seed}:combat:${lieuId}:${minutes}`);
 
@@ -95,6 +98,7 @@ export function creerSimLieu(opts) {
     for (const [cle, s] of Object.entries(etat.portes || {})) if (portes[cle]) Object.assign(portes[cle], s);
     for (const [cle, c] of Object.entries(etat.conteneurs || {})) conteneurs[cle] = { items: c.items, progres: c.progres || 0 };
     sol = (etat.sol || []).slice();
+    rueeVue = etat.rueeVue || null;
     cadavres = (etat.cadavres || []).slice();
     joues = (etat.joues || []).slice();
     for (const c of etat.constructions || []) { const cc = { ...c, items: c.items ? c.items.map(i => ({ ...i })) : c.items }; constructions.push(cc); consSeq = Math.max(consSeq, (+String(c.uid).slice(1) || 0) + 1); }
@@ -175,6 +179,7 @@ export function creerSimLieu(opts) {
     for (let a = 0; a < libres.length && k < n; a++) {
       const c = libres[Math.floor(r() * Math.min(libres.length, 30 + n * 12))];
       if (!c || zombies.some(z => z.etage === c.etage && Math.hypot(z.x - c.x, z.y - c.y) < 3)) continue;
+      if ([...joueurs.values()].some(j => j.etage === c.etage && Math.hypot(j.x - c.x, j.y - c.y) < 9)) continue;   // jamais sous le nez d'un joueur
       const type = pool[Math.floor(r() * pool.length)];
       const z = nouveauMort(type, c.etage, c.x, c.y, etatDepart(type, r), { proc: true, dir: r() * Math.PI * 2 });
       if (z) { zombies.push(z); k++; }
@@ -491,7 +496,7 @@ export function creerSimLieu(opts) {
         return;
       }
       case 'erre': {
-        const v = def.vitesse || 0.5;
+        const v = (def.vitesse || 0.5) * (1 + ruee * RU.VITESSE_ERRE);   // les sirènes : ils courent partout
         if (z.tEtat > 0) { z.tEtat -= dt; return; }
         if (!z.chemin.length || z.ci >= z.chemin.length) {
           const c = chemin(z, -1, -1, 6, true);
@@ -499,14 +504,14 @@ export function creerSimLieu(opts) {
         }
         const r = suivreChemin(z, v, dt);
         z.vitesse = v;
-        if (r === 'fini' || r === 'porte') { z.chemin = []; z.tEtat = 2000 + rngSim() * 5000; }
+        if (r === 'fini' || r === 'porte') { z.chemin = []; z.tEtat = (2000 + rngSim() * 5000) * (1 - 0.8 * ruee); }
         return;
       }
       case 'alerte': {
         z.tEtat -= dt;
         if (z.tEtat <= 0) { retourBase(z); return; }
         if (!z.cible) return;
-        const v = ((def.vitesse || 0.5) + (def.vitesseChasse || 1.8)) / 2;
+        const v = ((def.vitesse || 0.5) + (def.vitesseChasse || 1.8)) / 2 * (1 + ruee * RU.VITESSE_ALERTE);
         z.tChemin -= dt;
         if (z.tChemin <= 0 && (!z.chemin.length || z.ci >= z.chemin.length)) {
           z.tChemin = 800;
@@ -521,7 +526,7 @@ export function creerSimLieu(opts) {
       }
       case 'chasse': {
         const j = joueurs.get(z.joueur);
-        const vC = (def.vitesseChasse || 1.8);
+        const vC = (def.vitesseChasse || 1.8) * (1 + ruee * RU.VITESSE_CHASSE);
         // charge (colosse, fauve, sanglier)
         if (def.special === 'charge' && def.params) {
           const P = def.params;
@@ -1108,8 +1113,9 @@ export function creerSimLieu(opts) {
     if (c && progres != null) { c.progres = Math.max(c.progres || 0, Math.min(1, progres)); vm++; }
     j.fouille = null;
   }
-  // prendre(joueurId, cle, index, qty?) : toute la pile, ou seulement `qty` exemplaires (le reste reste en place).
-  function prendre(joueurId, cle, index, qty) {
+  // prendre(joueurId, cle, index, qty?, idAttendu?) : toute la pile, ou seulement `qty` exemplaires (le reste reste en place).
+  // idAttendu : si la case a bougé entre-temps (un coéquipier s'est servi), on cherche l'objet par son id.
+  function prendre(joueurId, cle, index, qty, idAttendu) {
     if (cle.startsWith('#sol:')) { // objet posé par terre (« #sol:uid ») — pas un meuble de l'étage « sol »
       const uid = +cle.slice(5);
       const k = sol.findIndex(o => o.uid === uid);
@@ -1121,13 +1127,22 @@ export function creerSimLieu(opts) {
       return o.doc ? { doc: o.doc } : etatObjet(o);
     }
     const c = cle.startsWith('#c:') ? constructions.find(q => q.uid === cle.slice(3)) : conteneurs[cle];
-    if (!c || !c.items || index < 0 || index >= c.items.length) return null;
+    if (!c || !c.items) return null;
+    if (idAttendu && (!c.items[index] || c.items[index].id !== idAttendu)) index = c.items.findIndex(i => i.id === idAttendu);
+    if (index < 0 || index >= c.items.length) return null;
     const src = c.items[index];
     let it;
     if (qty > 0 && qty < (src.qty || 1)) { src.qty -= qty; it = { ...src, qty }; }
     else it = c.items.splice(index, 1)[0];
     evts.push({ type: 'conteneur', cle, reste: c.items.length, joueur: joueurId }); vm++;
     return it;
+  }
+  // contenu(cle) : ce qu'il y a dans un rangement DÉJÀ fouillé (meuble, caisse construite) — pour fabriquer avec
+  // ce qu'on a sous la main. Un meuble pas encore fouillé jusqu'au bout ne dit rien.
+  function contenu(joueurId, cle) {
+    const c = cle.startsWith('#c:') ? constructions.find(q => q.uid === cle.slice(3)) : conteneurs[cle];
+    if (!c || !c.items || (!cle.startsWith('#c:') && (c.progres || 0) < 1)) return [];
+    return c.items.map(i => ({ ...i }));
   }
   // Un objet du sol sans sa position (id, qty et son état : reste, ouvert, dur, eau…).
   function etatObjet(o) { const { uid: _u, etage: _e, x: _x, y: _y, doc: _d, ...r } = o; return r; }
@@ -1208,7 +1223,7 @@ export function creerSimLieu(opts) {
       v: 1, minutes: m, uid: uidSeq, abords: niveau.abords ? { version: niveau.abords.version, dx: niveau.abords.dx, dy: niveau.abords.dy } : null,
       zombies: zombies.map(z => ({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: +z.x.toFixed(2), y: +z.y.toFixed(2), dir: +z.dir.toFixed(2),
         etat: z.etat === 'chasse' || z.etat === 'alerte' ? 'erre' : z.etat, base: z.base, hp: z.hp, proc: z.proc })),
-      portes: pp, conteneurs: cc, sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })), joues: joues.slice(),
+      portes: pp, conteneurs: cc, sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })), joues: joues.slice(), rueeVue,
       constructions: constructions.map(c => ({ ...c, items: c.items ? c.items.map(i => ({ ...i })) : undefined })), retires: [...retires],
       eau: { ...eauReste },
     };
@@ -1315,6 +1330,13 @@ export function creerSimLieu(opts) {
     return { ok: pris > 0, L: pris, reste: eauReste[cle] };
   }
 
+  // Les sirènes arrivent ici : tous les morts se lèvent, d'autres accourent du dehors (une fois par ruée).
+  function arriveeRuee() {
+    const n = Math.round(Math.max(2, mortsN[1] || 0) * RU.DENSITE);
+    placerProceduraux(n, rngSim);
+    for (const z of zombies) if (z.etat === 'dort' || z.etat === 'immobile' || z.etat === 'fait_le_mort') { z.etat = 'erre'; z.base = 'erre'; z.tEtat = 0; z.chemin = []; }
+    evts.push({ type: 'ruee', n }); vm++;
+  }
   function tick(dtMs) {
     cache = null;
     let reste = Math.min(Math.max(0, dtMs || 0), 500);
@@ -1323,6 +1345,9 @@ export function creerSimLieu(opts) {
       tFlag -= dt;
       if (tFlag <= 0) {
         tFlag = 1000;
+        const rr = getRuee();
+        ruee = rr ? Math.max(0, Math.min(1, rr.i || 0)) : 0;
+        if (ruee > 0 && rr.id && rueeVue !== rr.id) { rueeVue = rr.id; arriveeRuee(); }
         for (const p of niveau.portes) {
           const s = portes[p.cle];
           if (s.etat === 'verrouillee' && p.verrou && p.verrou.flag && flagOk(p.verrou)) { s.etat = 'fermee'; setPorte(p.cle, 'fermee', 'flag', null); }
@@ -1344,7 +1369,7 @@ export function creerSimLieu(opts) {
 
   return {
     lieuId, niveau, seed,
-    ajouterJoueur, majJoueur, retirerJoueur, bruit, porte, fouiller, arreterFouille, prendre, deposer,
+    ajouterJoueur, majJoueur, retirerJoueur, bruit, porte, fouiller, arreterFouille, prendre, contenu, deposer,
     construire, agirConstruction, ranger, demonterMeuble, puiserEau, constructions: () => constructions,
     retirerZombies, repousserZombies, finCombat, blesserZombie, tick, instantane, sauver,
     action, faireApparaitre, viderEvenements, temps: () => T,

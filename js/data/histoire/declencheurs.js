@@ -24,6 +24,10 @@ export const DECLENCHEURS = [
   { quand: 'marqueur', lieu: 'tour_horloge', marqueur: 'mecanisme_horloge', scene: 'pro_mecanisme', unique: true },
   { quand: 'marqueur', lieu: 'tour_horloge', marqueur: 'sommet_maud', si: { flag: 'pro_cloches_faites', pasFlag: 'prologue_fini' }, scene: 'pro_maud' },
 
+  // ─────────── LES SIRÈNES (js/data/histoire/ruees.js, posés par js/game/ruees.js) ───────────
+  { quand: 'flag', flag: 'ruee_annonce_salon_1', scene: 'ru_salon_annonce', unique: true },
+  { quand: 'flag', flag: 'ruee_annonce_plaine_1', scene: 'ru_plaine_annonce', unique: true },
+
   // ─────────── CHAPITRE 1 : maison de Nostradamus ───────────
   { quand: 'entree_lieu', lieu: 'nostradamus', si: { flag: 'prologue_fini', pasFlag: 'ch1_matin_fait' }, scene: 'ch1_matin', unique: true },
   { quand: 'entree_lieu', lieu: 'nostradamus', si: { quete: ['q_protocole', 'confrontation'] }, scene: 'ch1_confrontation', unique: true },

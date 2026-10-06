@@ -248,6 +248,22 @@ Quête principale `q_traversee` :
 8. **Le témoignage** (facultatif, `q_temoignage`) — Lou filme ta confession ; tu peux filmer aussi Maud et Rose.
 9. `ch2_veille` — exige d’être allé à Vernègues — la dernière nuit, la guitare à cinq cordes, le vent qui arrive.
 
+### TRANSVERSAL — « Les sirènes » (le rabattage de l’armée : tenir dans la nature)
+
+Avant Cautère, l’armée **rabat** les morts vers le sud : elle a repris le réseau des sirènes d’alerte (celles du
+premier mercredi du mois) et fait passer des drones à haut-parleurs. Quand une zone hurle, **tous** les morts qui
+l’entendent se lèvent et **courent** vers le bruit pendant un jour ou deux, d’autres accourent : la zone devient un
+abattoir, et les collines se vident. Il faut sortir et **tenir** : la **chaîne des Côtes** (pinède, le cabanon de chasse
+du grand-père de Lou, une source), la **Crau** (coussouls, bergerie, puits) ou la **Touloubre** (rivière, vieux moulin,
+jardins ouvriers). Données : `js/data/histoire/ruees.js`, scènes `scenes_ruees.js`, moteur `js/game/ruees.js`.
+- Ch1 : une fois la radio de l’Empéri essayée (`radio_essayee`), elle capte l’armée en clair (`ru_salon_annonce`) :
+  sirènes sur **Salon** 16 h plus tard, pendant 30 h (quête `q_sirenes` : quitter la ville → tenir → fin).
+- Ch2 : à l’étape `ba701`, la fréquence 4 annonce le rabattage des **villages de la plaine** (`ru_plaine_annonce`,
+  quête `q_sirenes_plaine`).
+- Ensuite, les sirènes reviennent tous les 3 à 5 jours (Salon avant `troupeau_passe`, la plaine après), annoncées
+  ~12 h avant par une **radio portable** (+ piles), sinon par les drones ~1 h 30 avant. Jamais pendant la nuit des
+  sonnailles, le siège, ni après `mistral_leve`.
+
 ### FINAL — « Le mistral »
 
 Cinématique `le_mistral` → `fin_depart` (devant ou derrière la colonne ; le troupeau loin ou proche selon
