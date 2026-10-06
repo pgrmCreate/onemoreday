@@ -105,6 +105,8 @@ export function volumeDe(id) {
   const V = I().VOLUME_DEFAUT; return V[Math.min(V.length - 1, Math.max(0, d.espace || 0))];
 }
 export const estLong = (id) => { const d = def(id); return !!(d && d.long); };
+// Encombrant (un gros poste radio) : ni dans le sac, ni dans le dos — à deux mains, ou posé.
+export const estEncombrant = (id) => { const d = def(id); return !!(d && d.encombrant); };
 // Petit objet : il entre dans une poche.
 export const estPetit = (id) => volumeDe(id) <= I().POCHE_MAX_L;
 export function contenanceSac(id) { const c = CLOTHES[id]; if (!c || c.slot !== 'sac') return 0; return c.contenance ?? Math.round((c.espace || 0) * I().CONTENANCE_PAR_ESPACE); }
@@ -131,6 +133,7 @@ export function occupation(p) {
 // Combien d'exemplaires de `id` tiennent encore (poches + sac).
 export function combienTient(id, qty = 1, p) {
   p = joueur(p); const v = volumeDe(id);
+  if (estEncombrant(id)) return 0;
   if (v <= 0) return qty;
   const cap = capacites(p), o = occupation(p);
   const libreTotal = cap.total - o.total + 1e-9;
@@ -142,6 +145,7 @@ export function combienTient(id, qty = 1, p) {
 export function raisonPlace(id, p) {
   p = joueur(p);
   if (combienTient(id, 1, p) >= 1) return null;
+  if (estEncombrant(id)) return 'Trop encombrant pour un sac : ça se porte à deux mains.';
   if (!estPetit(id) && !p.equip.sac) return estLong(id) ? 'Trop grand pour tes poches : prends-le en main ou dans le dos.' : 'Trop gros pour tes poches : il te faut un sac.';
   return 'Plus de place dans ton sac.';
 }
@@ -306,11 +310,12 @@ export function mains(p) {
   return { droite, gauche, deux, uneMainPenalite: !!(droite && deuxMainsDef(droite) && !deux) };
 }
 // Peut-on sangler cet objet dans le dos ?
-export function peutDos(id) { const d = def(id); if (!d || CLOTHES[id]) return false; return !!d.long || volumeDe(id) >= I().DOS_VOLUME_MIN; }
+export function peutDos(id) { const d = def(id); if (!d || CLOTHES[id] || d.encombrant) return false; return !!d.long || volumeDe(id) >= I().DOS_VOLUME_MIN; }
 // Où « porter » un objet trouvé (bouton Porter du butin) : 'vetement' | 'main' | 'dos' | 'lampe' | null.
 export function ouPorter(id, p) {
   p = joueur(p);
   if (CLOTHES[id]) return 'vetement';
+  if (estEncombrant(id)) return 'deux';
   if (estLampe(id)) return 'lampe';
   if (estArme(id) || (def(id) || {}).melee) return 'main';
   if (peutDos(id)) return p.equip.dos ? 'main' : 'dos';

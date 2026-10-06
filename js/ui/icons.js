@@ -175,7 +175,7 @@ const ARME = {
   brique: 'brique', cocktail_molotov: 'molotov',
 };
 const PAR_ID = {
-  piles: 'pile', radio_portable: 'radio', jumelles: 'jumelles', briquet: 'feu', allumettes: 'feu', torche: 'feu',
+  piles: 'pile', radio_portable: 'radio', radio_manivelle: 'radio', jumelles: 'jumelles', briquet: 'feu', allumettes: 'feu', torche: 'feu',
   rechaud_camping: 'feu', casserole: 'cuisine', bouteille_vide: 'recipient', gourde: 'recipient', thermos: 'recipient', bidon_vide: 'recipient',
   canette_vide: 'recipient', bandage: 'bander', bandage_fortune: 'bander', pansement_miel: 'bander', desinfectant: 'desinfecter',
   lingette: 'desinfecter', kit_suture: 'suturer', attelle: 'attelle', trousse_outils: 'outil', pierre_aiguiser: 'reparer',

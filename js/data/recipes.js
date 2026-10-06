@@ -440,6 +440,15 @@ export const RECIPES = [
     desc: 'Scotcher la lampe sur un bandeau de chiffon, régler l\'angle en la calant. Tes deux mains sont enfin à toi.',
   },
   {
+    id: 'r_radio_manivelle', cat: 'lumiere', nom: 'Radio à manivelle',
+    resultat: { id: 'radio_manivelle', qty: 1 },
+    ingredients: [{ id: 'reveil', qty: 1 }, { id: 'cable_electrique', qty: 1 }, { id: 'telephone_mort', qty: 1 }, { id: 'boite_vide', qty: 1 },
+      { id: 'visserie', qty: 2 }, { id: 'scotch', qty: 1 }],
+    outils: ['visser', 'couper'], poste: 'etabli', skill: { mecanique: 1 }, tempsMin: 90, xp: { mecanique: 14 },
+    connue: false, apprise_par: ['revue_mecanique', 'manuel_bricolage', 'guide_survie'], apprise_niveau: { mecanique: 2 },
+    desc: 'Le mécanisme du réveil devient une dynamo, le câble une bobine, le téléphone un haut-parleur. Ce qui sort de la boîte de conserve est laid, lourd, et capte Calès. Plus jamais pris par surprise.',
+  },
+  {
     id: 'r_piles_recup', cat: 'lumiere', nom: 'Piles de récupération',
     resultat: { id: 'piles', qty: 1 },
     ingredients: [{ id: 'batterie_telephone', qty: 2 }, { id: 'scotch', qty: 1 }],

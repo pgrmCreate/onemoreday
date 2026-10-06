@@ -10,6 +10,7 @@ let courante = null, off = null;
 export function meteo() { return courante || 'clair'; }
 // Intensité visuelle de la pluie 0..1 (forte ou légère selon la demi-journée).
 export function pluie() {
+  if (meteo() === 'orage' && G) return 1;          // l'orage : pluie battante
   if (meteo() !== 'pluie' || !G) return 0;
   const r = seedRng(`${G.world.seed}:averse:${Math.floor(G.world.minutes / 720)}`);
   return r() < 0.4 ? 1 : 0.55;

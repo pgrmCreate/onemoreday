@@ -1,50 +1,68 @@
-// ============ Les sirènes (« ruées ») — l'état du monde, les annonces, la quête « tenir » (sans DOM) ============
-// L'armée fait hurler une zone (Salon, ou les villages de la plaine) : tous les morts qui l'entendent COURENT, d'autres
-// arrivent ; les collines et la Crau se vident. Histoire et textes : js/data/histoire/ruees.js ; nombres : REGLAGES.ruees.
+// ============ Les événements qui viennent : SIRÈNES et HORDES — état du monde, annonces, quête « tenir » (sans DOM) ============
+// Sirènes : l'armée fait hurler une zone (Salon, ou les villages de la plaine) : tous les morts qui l'entendent COURENT,
+//   d'autres arrivent ; les collines et la Crau se vident.
+// Hordes : une colonne de morts traverse UN lieu (un village, un quartier, ta base) pendant quelques heures : il s'y
+//   entasse des morts en plus, qui marchent.
+// Histoire et textes : js/data/histoire/ruees.js ; nombres : REGLAGES.ruees. Une RADIO (js/game/radio.js) les annonce
+// des heures à l'avance ; sans radio, on n'a que quelques minutes de signes — ou rien : on est pris par surprise.
 // Tourne chez l'hôte (ou en solo) à chaque minute de jeu. L'état actif est recopié dans des DRAPEAUX (partagés en co-op) :
-//   ruee_zone ('salon' | 'villages'), ruee_fin (minute), ruee_id — que lisent la simulation des lieux, le voyage, le HUD.
-// Cycle : prévue (annonce : scène d'histoire, ou radio portable + piles ~12 h avant, ou signes ~1 h 30 avant)
-//         → active (les sirènes hurlent) → finie (prochaine dans 3 à 5 jours).
+//   ruee_type ('sirenes' | 'horde'), ruee_zone ('salon' | 'villages' | 'lieu:<id>'), ruee_fin, ruee_id, ruee_prevue.
+// Cycle : prévue → active → finie (le suivant dans 3 à 5 jours ; les hordes commencent dès le jour 3).
 import { G, setFlag, retirerFlag, noteJournal } from '../core/state.js';
 import { emit, on } from '../core/bus.js';
 import { REGLAGES } from '../data/reglages.js';
 import { LIEUX_GEO } from '../data/lieux.js';
-import { RUEES_HISTOIRE, SANS_RUEE, ZONES_RUEE, RADIO_RUEE, SIGNES_RUEE, DEBUT_RUEE, FIN_RUEE, JOURNAL_RUEE } from '../data/histoire/ruees.js';
+import {
+  RUEES_HISTOIRE, SANS_RUEE, ZONES_RUEE, RADIO_RUEE, SIGNES_RUEE, DEBUT_RUEE, FIN_RUEE, JOURNAL_RUEE,
+  RADIO_HORDE, SIGNES_HORDE, DEBUT_HORDE, FIN_HORDE, JOURNAL_HORDE,
+} from '../data/histoire/ruees.js';
 import { verifier } from './conditions.js';
 import * as quetes from './quetes.js';
-import * as inv from './inventory.js';
+import { aUneRadio, capter } from './radio.js';
+import { lieu as lieuDe } from './donnees.js';
 import { seedRng } from '../core/rng.js';
 
 const R = () => REGLAGES.ruees;
 const maintenant = () => (G ? G.world.minutes : 0);
 const etat = () => { const w = G.world; return w.ruees || (w.ruees = { prevue: null, faites: [], prochaine: null, n: 0 }); };
 const flags = () => (G ? G.world.flags : {});
+const SANS_HORDE = new Set(['nature', 'ruines', 'grotte']);   // les hordes passent par les routes, les bourgs, les quartiers
 
 // ---------- Lecture (partout : solo, hôte, invité) ----------
 export const zoneActive = () => flags().ruee_zone || null;
+export const typeActif = () => (flags().ruee_zone ? flags().ruee_type || 'sirenes' : null);
 export const rueeIdActive = () => flags().ruee_id || null;
-// Un lieu est-il dans la zone qui hurle ? (la nature, les ruines, les grottes : jamais)
+// Un lieu est-il dans la zone touchée ? (la nature, les ruines, les grottes : jamais par les sirènes)
 export function lieuDansZone(lieuId, zone = zoneActive()) {
   if (!zone) return false;
+  if (zone.startsWith('lieu:')) return zone.slice(5) === lieuId;
   const g = LIEUX_GEO[lieuId]; if (!g) return false;
   if (zone === 'salon') return g.echelle === 'salon';
   const Z = ZONES_RUEE[zone];
   return !!(Z && Z.types && g.echelle === 'region' && Z.types.includes(g.type));
 }
-// 0 (calme) … 1 (les sirènes hurlent ici) — lue par la simulation du lieu.
+// 0 (calme) … 1 (les sirènes hurlent ici / la horde est là).
 export const intensiteRuee = (lieuId) => (lieuDansZone(lieuId) ? 1 : 0);
-// Voyage : sur un tronçon d'échelle donnée → { mult (× rencontres), danger (+) }.
+// Pour la simulation du lieu : { i, id, course (ils courent ?), densite (× morts max du lieu en plus) } | null.
+export function rueeSim(lieuId) {
+  if (!lieuDansZone(lieuId)) return null;
+  const horde = typeActif() === 'horde';
+  return { i: 1, id: rueeIdActive(), course: !horde, densite: horde ? R().HORDE.DENSITE : R().DENSITE };
+}
+// Voyage : sur un tronçon d'échelle donnée → { mult (× rencontres), danger (+) } — seulement les sirènes.
 export function rueeTroncon(echelle) {
-  const z = zoneActive(); if (!z) return { mult: 1, danger: 0 };
+  const z = zoneActive(); if (!z || typeActif() !== 'sirenes') return { mult: 1, danger: 0 };
   const Rr = R();
   if ((z === 'salon' && echelle === 'salon') || (z === 'villages' && echelle === 'region')) return { mult: z === 'salon' ? Rr.RENCONTRES_ZONE : (1 + Rr.RENCONTRES_ZONE) / 2, danger: Rr.DANGER_ZONE };
   return { mult: Rr.RENCONTRES_NATURE, danger: 0 };
 }
-// Pour le HUD : { zone, nom, fin } si les sirènes hurlent ; { prevue, nom, debut } si la radio l'a annoncée.
+const nomZone = (z) => (!z ? '' : z.startsWith('lieu:') ? nomLieu(z.slice(5)) : (ZONES_RUEE[z] || {}).nom || z);
+function nomLieu(id) { const l = lieuDe(id); return l ? (l.court || l.nom) : (LIEUX_GEO[id] || {}).nom || id; }
+// Pour le HUD : { active, type, nom, fin } — ou { active: false, type, nom, debut } si une radio l'a annoncé.
 export function etatRuee() {
   const f = flags();
-  if (f.ruee_zone) return { active: true, zone: f.ruee_zone, nom: (ZONES_RUEE[f.ruee_zone] || {}).nom, fin: f.ruee_fin };
-  if (f.ruee_prevue) return { active: false, zone: f.ruee_prevue.zone, nom: (ZONES_RUEE[f.ruee_prevue.zone] || {}).nom, debut: f.ruee_prevue.debut };
+  if (f.ruee_zone) return { active: true, type: f.ruee_type || 'sirenes', zone: f.ruee_zone, nom: nomZone(f.ruee_zone), fin: f.ruee_fin };
+  if (f.ruee_prevue) return { active: false, type: f.ruee_prevue.type || 'sirenes', zone: f.ruee_prevue.zone, nom: nomZone(f.ruee_prevue.zone), debut: f.ruee_prevue.debut };
   return null;
 }
 
@@ -59,7 +77,10 @@ export function quandTexte(debut, t = maintenant()) {
   if (jd === 1) return h < 5 ? `cette nuit ${vers}` : `demain ${vers}`;
   return `dans ${jd} jours`;
 }
-const remplir = (s, z, debut) => s.replace('{quand}', quandTexte(debut)).replace('{dans}', (ZONES_RUEE[z] || {}).dans || '');
+const remplir = (s, P) => s.replace('{quand}', quandTexte(P.debut)).replace('{dans}', (ZONES_RUEE[P.zone] || {}).dans || '').replace('{lieu}', nomZone(P.zone));
+const textes = (P) => (P.type === 'horde'
+  ? { radio: RADIO_HORDE, signes: SIGNES_HORDE, debut: DEBUT_HORDE, fin: FIN_HORDE, journal: JOURNAL_HORDE }
+  : { radio: RADIO_RUEE[P.zone] || [], signes: SIGNES_RUEE[P.zone], debut: DEBUT_RUEE[P.zone], fin: FIN_RUEE[P.zone], journal: JOURNAL_RUEE });
 
 // ---------- Moteur (hôte / solo) ----------
 let offs = [];
@@ -70,49 +91,67 @@ export function demarrerRuees() {
 export function arreterRuees() { offs.forEach(f => f()); offs = []; }
 
 const interdit = () => SANS_RUEE.some(c => verifier(c));
-const aRadio = () => inv.hasItem('radio_portable') && inv.hasItem('piles');
-// Le joueur est-il dans la zone (dans un lieu, ou en route sur sa feuille) ?
+// Le joueur est-il dans la zone (dans un lieu, ou en route depuis / vers elle) ?
 function joueurDansZone(zone) {
   const pos = G.player && G.player.position; if (!pos) return false;
   if (pos.lieu) return lieuDansZone(pos.lieu, zone);
   const v = pos.voyage; return !!(v && (lieuDansZone(v.de, zone) || lieuDansZone(v.vers, zone)));
 }
+// Où passe la horde : un lieu connu (de préférence un lieu où l'on est déjà allé — ta base…), jamais la nature.
+function cibleHorde(rnd) {
+  const W = G.world, cands = [];
+  for (const [id, g] of Object.entries(LIEUX_GEO)) {
+    if (SANS_HORDE.has(g.type)) continue;
+    if (g.echelle === 'salon' && W.flags.troupeau_passe) continue;      // Salon s'est vidé derrière le troupeau
+    const L = W.lieux[id]; if (!L || !L.decouvert) continue;
+    cands.push([id, L.visite ? 3 : 1]);
+  }
+  if (!cands.length) return null;
+  let t = rnd() * cands.reduce((s, c) => s + c[1], 0);
+  for (const [id, p] of cands) { t -= p; if (t <= 0) return id; }
+  return cands[0][0];
+}
 
 function tic() {
   if (!G || G.mode === 'invite') return;
-  const E = etat(), t = maintenant();
-  // 1. Rien de prévu : une sirène écrite par l'histoire ? sinon, le retour régulier des sirènes.
+  const E = etat(), t = maintenant(), Rr = R();
+  // 1. Rien de prévu : un événement écrit par l'histoire ? sinon, le retour régulier des sirènes et des hordes.
   if (!E.prevue) {
     if (interdit()) return;
     const h = RUEES_HISTOIRE.find(r => !E.faites.includes(r.id) && verifier(r.si));
-    if (h) { prevoir({ id: h.id, zone: h.zone, debut: t + h.delaiH * 60, duree: h.dureeH * 60, quete: h.quete, histoire: true }, h.annonce); return; }
-    if (!E.faites.length || E.prochaine == null || t < E.prochaine) return;
-    const rnd = seedRng(`${G.world.seed}:ruee:${E.n}`), Rr = R();
-    const zone = flags().troupeau_passe ? 'villages' : 'salon';
-    const duree = Math.round((Rr.DUREE_H[0] + rnd() * (Rr.DUREE_H[1] - Rr.DUREE_H[0])) * 60);
-    prevoir({ id: `r${E.n}`, zone, debut: t + Math.round((Rr.ANNONCE_RADIO_H + 2 + rnd() * 6) * 60), duree, quete: null, histoire: false });
+    if (h) { prevoir({ id: h.id, type: 'sirenes', zone: h.zone, debut: t + h.delaiH * 60, duree: h.dureeH * 60, quete: h.quete, histoire: true }, h.annonce); return; }
+    if (E.prochaine == null) { if (Math.floor(t / 1440) + 1 >= Rr.PREMIERE_J) E.prochaine = t + Math.round((0.3 + seedRng(`${G.world.seed}:ruee0`)() * 1.2) * 1440); return; }
+    if (t < E.prochaine) return;
+    const rnd = seedRng(`${G.world.seed}:ruee:${E.n}`);
+    const sirenesPossibles = E.faites.some(id => RUEES_HISTOIRE.some(r => r.id === id));   // après les premières sirènes de l'histoire
+    let type = sirenesPossibles && rnd() < 0.5 ? 'sirenes' : 'horde', zone;
+    if (type === 'horde') { const c = cibleHorde(rnd); if (c) zone = 'lieu:' + c; else if (sirenesPossibles) type = 'sirenes'; else { E.prochaine = t + 720; return; } }
+    if (type === 'sirenes') zone = flags().troupeau_passe ? 'villages' : 'salon';
+    const DH = type === 'horde' ? Rr.HORDE.DUREE_H : Rr.DUREE_H, avance = type === 'horde' ? Rr.HORDE.ANNONCE_H : Rr.ANNONCE_RADIO_H;
+    const duree = Math.round((DH[0] + rnd() * (DH[1] - DH[0])) * 60);
+    prevoir({ id: `${type[0]}${E.n}`, type, zone, debut: t + Math.round((avance + 1 + rnd() * 5) * 60), duree, quete: null, histoire: false });
     return;
   }
-  const P = E.prevue;
-  // 2. Prévue, pas encore là : la radio prévient, puis les drones.
+  const P = E.prevue, X = textes(P);
+  // 2. Prévu, pas encore là : la radio prévient des heures avant ; sans radio, quelques minutes de signes, sur place.
   if (!P.active) {
     if (interdit()) { if (P.histoire) { P.debut = Math.max(P.debut, t + 60); } else { E.prevue = null; retirerFlag('ruee_prevue'); } return; }
-    if (!P.radio && !P.histoire && t >= P.debut - R().ANNONCE_RADIO_H * 60 && aRadio()) {
+    const avance = (P.type === 'horde' ? Rr.HORDE.ANNONCE_H : Rr.ANNONCE_RADIO_H) * 60;
+    if (!P.radio && !P.histoire && t >= P.debut - avance && aUneRadio()) {
       P.radio = true;
-      const l = RADIO_RUEE[P.zone] || [];
-      const txt = l.length ? l[(E.n + P.id.length) % l.length] : '';
-      emit('toast', { texte: `Ta radio grésille : ${remplir(txt, P.zone, P.debut)}`, type: 'alerte', duree: 9000 });
-      noteJournal(remplir(JOURNAL_RUEE.annonce, P.zone, P.debut), 'objectif');
-      setFlag('ruee_prevue', { zone: P.zone, debut: P.debut });
+      const l = X.radio; const txt = l.length ? l[(E.n + P.id.length) % l.length] : '';
+      capter(remplir(txt, P), remplir(X.journal.annonce, P));
+      setFlag('ruee_prevue', { type: P.type, zone: P.zone, debut: P.debut });
     }
-    if (!P.signes && t >= P.debut - R().SIGNES_H * 60) {
+    const signes = (P.type === 'horde' ? Rr.HORDE.SIGNES_H : Rr.SIGNES_H) * 60;
+    if (!P.signes && t >= P.debut - signes) {
       P.signes = true;
-      if (joueurDansZone(P.zone)) emit('toast', { texte: SIGNES_RUEE[P.zone], type: 'alerte', duree: 7000 });
+      if (joueurDansZone(P.zone) && X.signes) emit('toast', { texte: X.signes, type: 'alerte' });
     }
     if (t >= P.debut) debuter(P);
     return;
   }
-  // 3. Elles hurlent : jusqu'à la fin (ou si l'histoire l'interdit soudain : le siège, le mistral).
+  // 3. En cours : jusqu'à la fin (ou si l'histoire l'interdit soudain : le siège, le mistral).
   if (t >= P.debut + P.duree || interdit()) finir(P);
 }
 
@@ -121,29 +160,30 @@ function prevoir(P, drapeauAnnonce) {
   E.prevue = { ...P, active: false, radio: false, signes: false };
   if (drapeauAnnonce) {
     setFlag(drapeauAnnonce, true);              // la scène de l'annonce (déclencheur 'flag')
-    setFlag('ruee_prevue', { zone: P.zone, debut: P.debut });
-    noteJournal(remplir(JOURNAL_RUEE.annonce, P.zone, P.debut), 'objectif');
+    setFlag('ruee_prevue', { type: P.type, zone: P.zone, debut: P.debut });
+    noteJournal(remplir(textes(P).journal.annonce, P), 'objectif');
   }
   if (P.quete) quetes.avancer(P.quete, 'debut');
-  emit('ruee', { action: 'prevue', zone: P.zone, debut: P.debut });
+  emit('ruee', { action: 'prevue', type: P.type, zone: P.zone, debut: P.debut });
 }
 function debuter(P) {
   P.active = true;
-  setFlag('ruee_id', P.id); setFlag('ruee_fin', P.debut + P.duree); setFlag('ruee_zone', P.zone);
+  const X = textes(P);
+  setFlag('ruee_type', P.type); setFlag('ruee_id', P.id); setFlag('ruee_fin', P.debut + P.duree); setFlag('ruee_zone', P.zone);
   retirerFlag('ruee_prevue');
-  emit('toast', { texte: DEBUT_RUEE[P.zone], type: 'alerte', duree: 9000 });
-  noteJournal(remplir(JOURNAL_RUEE.debut, P.zone, P.debut), 'objectif');
+  // une horde ailleurs, loin de toi, sans radio : tu n'en sais rien (tu la découvriras en arrivant)
+  if (P.type !== 'horde' || joueurDansZone(P.zone) || P.radio) emit('toast', { texte: remplir(X.debut, P), type: 'alerte' });
+  if (P.type !== 'horde' || P.radio || joueurDansZone(P.zone)) noteJournal(remplir(X.journal.debut, P), 'objectif');
   if (P.quete) quetes.avancer(P.quete, 'tenir');
-  emit('ruee', { action: 'debut', zone: P.zone, id: P.id });
+  emit('ruee', { action: 'debut', type: P.type, zone: P.zone, id: P.id });
 }
 function finir(P) {
-  const E = etat();
+  const E = etat(), X = textes(P);
   E.faites.push(P.id); E.n++; E.prevue = null;
   const rnd = seedRng(`${G.world.seed}:ruee_suivante:${E.n}`), Rr = R();
   E.prochaine = maintenant() + Math.round((Rr.INTERVALLE_J[0] + rnd() * (Rr.INTERVALLE_J[1] - Rr.INTERVALLE_J[0])) * 1440);
-  retirerFlag('ruee_zone'); retirerFlag('ruee_fin'); retirerFlag('ruee_id'); retirerFlag('ruee_prevue');
-  emit('toast', { texte: FIN_RUEE[P.zone], type: 'info', duree: 7000 });
-  noteJournal(remplir(JOURNAL_RUEE.fin, P.zone, P.debut), 'objectif');
+  for (const k of ['ruee_zone', 'ruee_fin', 'ruee_id', 'ruee_type', 'ruee_prevue']) retirerFlag(k);
+  if (P.type !== 'horde' || joueurDansZone(P.zone) || P.radio) { emit('toast', { texte: remplir(X.fin, P), type: 'info' }); noteJournal(remplir(X.journal.fin, P), 'objectif'); }
   if (P.quete) quetes.avancer(P.quete, 'fin');
-  emit('ruee', { action: 'fin', zone: P.zone, id: P.id });
+  emit('ruee', { action: 'fin', type: P.type, zone: P.zone, id: P.id });
 }

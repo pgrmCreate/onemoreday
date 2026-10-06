@@ -55,13 +55,14 @@ export const REGLAGES = {
   // ===========================================================================
   meteo: {
     CHANGE_A: [6, 18],          // la météo est retirée à 6 h et 18 h (seedRng(seed + ':meteo:' + jour + ':' + demi)).
-    POIDS: { clair: 40, couvert: 25, mistral: 18, pluie: 12, brouillard: 5 }, // probabilités relatives.
+    POIDS: { clair: 40, couvert: 25, mistral: 18, pluie: 12, brouillard: 5, orage: 4 }, // probabilités relatives (la radio les annonce).
     EFFETS: {                   // bruit = multiplicateur des rayons de bruit ; vue = portée de vue (joueur ET morts)
       clair:      { bruit: 1,   vue: 1,   froid: 0, rencontres: 1 },
       couvert:    { bruit: 1,   vue: 0.9, froid: 0, rencontres: 1 },
       mistral:    { bruit: 0.75, vue: 1,  froid: 2, rencontres: 0.9 },  // le vent couvre les pas, glace les os.
       pluie:      { bruit: 0.7, vue: 0.8, froid: 1, rencontres: 0.85, mouille: true }, // mouillé sans imperméable : +1 froid.
       brouillard: { bruit: 1,   vue: 0.5, froid: 1, rencontres: 1.1, surprise: true }, // combats de voyage « surpris ».
+      orage:      { bruit: 0.55, vue: 0.7, froid: 2, rencontres: 0.8, mouille: true }, // pluie battante, tonnerre : on n'entend plus rien.
     },
   },
 
@@ -801,8 +802,15 @@ export const REGLAGES = {
   ruees: {
     INTERVALLE_J: [3, 5],       // après les premières sirènes de l'histoire, d'autres reviennent tous les 3 à 5 jours…
     DUREE_H: [18, 34],          // … et hurlent 18 à 34 h de jeu.
-    ANNONCE_RADIO_H: 12,        // une radio portable (+ piles) dans le sac : la radio prévient ~12 h avant.
-    SIGNES_H: 1.5,              // sans radio : on remarque les drones ~1 h 30 avant (si on est dans la zone).
+    PREMIERE_J: 3,              // les premiers événements « au hasard » (hordes) à partir du jour 3.
+    ANNONCE_RADIO_H: 12,        // une radio (js/game/radio.js) prévient des sirènes ~12 h avant…
+    SIGNES_H: 0.25,             // … sans radio : à peine un quart d'heure de drones, et seulement si l'on est dans la zone.
+    HORDE: {                    // une horde traverse UN lieu (un bourg, un quartier, ta base)
+      ANNONCE_H: 8,             //   la radio la voit venir ~8 h avant ;
+      SIGNES_H: 0.4,            //   sans radio : on l'entend ~25 min avant, sur place ;
+      DUREE_H: [6, 14],         //   elle met 6 à 14 h à passer ;
+      DENSITE: 1.8,             //   + 1,8 × (morts max du lieu) morts en plus, qui marchent (ils ne courent pas).
+    },
     VITESSE_ERRE: 1.7,          // pendant les sirènes, un mort qui erre va (1 + 1,7) × plus vite : ils courent partout…
     VITESSE_ALERTE: 0.6,        // … × 1,6 quand il cherche…
     VITESSE_CHASSE: 0.35,       // … × 1,35 quand il te poursuit.

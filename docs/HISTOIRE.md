@@ -260,9 +260,15 @@ jardins ouvriers). Données : `js/data/histoire/ruees.js`, scènes `scenes_ruees
   sirènes sur **Salon** 16 h plus tard, pendant 30 h (quête `q_sirenes` : quitter la ville → tenir → fin).
 - Ch2 : à l’étape `ba701`, la fréquence 4 annonce le rabattage des **villages de la plaine** (`ru_plaine_annonce`,
   quête `q_sirenes_plaine`).
-- Ensuite, les sirènes reviennent tous les 3 à 5 jours (Salon avant `troupeau_passe`, la plaine après), annoncées
-  ~12 h avant par une **radio portable** (+ piles), sinon par les drones ~1 h 30 avant. Jamais pendant la nuit des
-  sonnailles, le siège, ni après `mistral_leve`.
+- Ensuite, tous les 3 à 5 jours (dès le jour 3 pour les hordes) : des **sirènes** (Salon avant `troupeau_passe`, la
+  plaine après) ou une **horde** qui traverse un lieu connu (un bourg, un quartier — souvent un lieu où l'on est déjà
+  allé : ta base). Jamais pendant la nuit des sonnailles, le siège, ni après `mistral_leve`.
+- **La radio** (`js/game/radio.js`) : sans radio, on est **pris par surprise** (un quart d'heure de drones, 25 min de
+  grondement, et seulement sur place). Avec une radio, on le sait ~12 h (sirènes) ou ~8 h (horde) avant, et le
+  bulletin météo annonce pluie, **orage**, mistral, brouillard une heure avant. Une radio est **lourde et encombrante** :
+  ni sac ni dos, on la porte à deux mains, ou on la pose au camp (posée à portée de bras, elle parle encore). Le
+  **poste radio** (trouvé) veut des piles ; la **radio à manivelle** se bricole (mécanique 2, ou la revue de mécanique,
+  le manuel de bricolage, le guide de survie).
 
 ### FINAL — « Le mistral »
 

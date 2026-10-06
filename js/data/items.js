@@ -619,9 +619,17 @@ export const ITEMS = {
     nom: 'Jumelles', type: 'outil', poids: 0.6, espace: 1, volume: 0.7, usage: ['observer'],
     desc: 'Des 10×50 de chasseur. Avant de partir, tu balaies la route : ce que tu vois de loin ne te surprend pas de près.',
   },
+  // Les radios sont LOURDES et ENCOMBRANTES (encombrant : ni sac ni dos, on les porte à deux mains, ou on les pose au
+  // camp — posées tout près, elles parlent encore). Elles annoncent ce qui vient : sirènes, hordes, orages (js/game/radio.js).
   radio_portable: {
-    nom: 'Radio portable', type: 'outil', poids: 0.4, espace: 1, volume: 0.8, usage: ['radio'], carburant: 'piles',
-    desc: 'Une petite radio à molette. Du souffle, surtout. Parfois une voix.',
+    nom: 'Poste radio', type: 'outil', poids: 3.2, espace: 3, volume: 9, usage: ['radio'], carburant: 'piles', radio: 'piles',
+    encombrant: true, deux_mains: true,
+    desc: 'Un gros poste de chantier à antenne télescopique, poignée de métal, haut-parleur grillagé. Il mange des piles, il pèse comme une pierre — et il entend l’armée, Calès, les bulletins. Ça se porte à deux mains.',
+  },
+  radio_manivelle: {
+    nom: 'Radio à manivelle (bricolée)', type: 'outil', poids: 2.4, espace: 3, volume: 7, usage: ['radio'], radio: 'manivelle',
+    encombrant: true, deux_mains: true,
+    desc: 'Une boîte de conserve, le mécanisme d’un réveil en guise de dynamo, une bobine de cuivre et le haut-parleur d’un téléphone. Trente tours de manivelle pour deux minutes de voix. Pas besoin de piles. À deux mains, et c’est fragile.',
   },
   kit_nettoyage: {
     nom: 'Kit de nettoyage d\'arme', type: 'outil', poids: 0.3, espace: 1, volume: 0.3, usage: ['entretien_arme'],

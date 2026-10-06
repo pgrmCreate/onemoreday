@@ -32,7 +32,7 @@ import { lierInteractions, chercherCible, majInvite, interagir, basculerChoix, f
 import { lierCombatLieu, combatIci as combatIci_, embuscade as embuscade_, suivreCombat, finArene } from './combat_lieu.js';
 import { lierNature, majRecherche, basculerRecherche, vitesseRecherche, enRecherche } from './nature.js';
 import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, viserPlacement, majConstruction, feuxCommeLampes, fantome, grilleToits } from './construction.js';
-import { intensiteRuee, rueeIdActive, etatRuee, lieuDansZone } from '../game/ruees.js';
+import { rueeSim, etatRuee, lieuDansZone, typeActif } from '../game/ruees.js';
 
 export { verifierCondition };
 const RX = REGLAGES.exploration, RL = REGLAGES.lumiere;
@@ -59,7 +59,7 @@ export async function obtenirCanal(lieuId, niveau, L) {
     minutes: W.minutes, typeButin: L.typeButin || L.type || niveau.typeButin, mortsN: (L.morts && L.morts.n) || (niveau.morts && niveau.morts.n),
     repeuplement: L.repeuplement, coop: G.mode !== 'solo', difficulte: diff, mult: L.abondance || 1,
     getFlag: (k) => getFlag(k),
-    getRuee: () => { const i = intensiteRuee(lieuId); return i ? { i, id: rueeIdActive() } : null; },
+    getRuee: () => rueeSim(lieuId),
   });
   return creerCanalLocal(sim, JOUEUR_ID);
 }
@@ -204,7 +204,7 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   }));
   V.off.push(C.on('zombie', (e) => { if (e.etat === 'chasse') { const z = V.zInterp.get(e.uid); if (z && z._vu) sfx('alerte'); else if (z) sfxA('zombie_loin', z.x, z.y, z.etage, 14); } }));
   // les sirènes arrivent ici (simulation : réveil + renforts) : on le voit et on l'entend tout de suite
-  V.off.push(C.on('ruee', () => { V.tSirene = 0; message('Les sirènes ! Partout, les morts se lèvent et courent vers le bruit.', 3800); }));
+  V.off.push(C.on('ruee', () => { V.tSirene = 0; message(typeActif() === 'horde' ? 'La horde arrive. Ils sont des dizaines, et ils viennent par ici.' : 'Les sirènes ! Partout, les morts se lèvent et courent vers le bruit.', 3800); }));
   V.off.push(C.on('hurlement', (e) => { const z = e && V.zInterp.get(e.uid); if (z) sfxA('hurlement', z.x, z.y, z.etage, 40); else sfx('hurlement', { volume: 0.5 }); }));
   V.off.push(avantSauvegarde(() => {
     if (!V || !V.canal.sauver || V.arene) return;
@@ -618,12 +618,18 @@ function tension() {
     V.abri = { abrite: !V.dehorsSon, exterieur: pieceExt && !(!V.dehorsSon && prof === Infinity) }; }
   // Les sirènes de l'armée : dans la zone qui hurle, toutes les 35 à 80 s ; ailleurs (les collines), on les devine au loin.
   const ru = etatRuee();
-  if (ru && ru.active && !V.arene) {
+  if (ru && ru.active && ru.type === 'sirenes' && !V.arene) {
     const ici = lieuDansZone(V.lieuId), t = performance.now(), S = REGLAGES.ruees.SIRENE_S;
     if (!V.tSirene || t >= V.tSirene) {
       V.tSirene = t + (S[0] + Math.random() * (S[1] - S[0])) * 1000 * (ici ? 1 : 2.2);
       sfx('sirene', { volume: ici ? 1 : 0.22 });
     }
+  }
+  // L'orage : le tonnerre roule de temps en temps (étouffé à l'intérieur, par le canal du dehors)
+  if (V.meteo === 'orage' && !V.arene) {
+    const t = performance.now();
+    if (!V.tTonnerre) V.tTonnerre = t + 4000 + Math.random() * 8000;
+    if (t >= V.tTonnerre) { V.tTonnerre = t + 20000 + Math.random() * 45000; sfx('tonnerre', { volume: 0.6 + Math.random() * 0.4 }); }
   }
   // Les cloches du soir : tant que Maud guette, elles sonnent sur Salon chaque soir à 21 h 10
   // (l'heure où l'horloge s'est arrêtée). Une fois par jour, dehors, en ville.

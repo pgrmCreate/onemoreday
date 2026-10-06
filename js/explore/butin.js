@@ -62,7 +62,7 @@ export function rendreButin() {
     const tient = !inv || !inv.combienTient || inv.combienTient(it.id, it.qty || 1) >= (it.qty || 1);
     const ou = inv && inv.ouPorter ? inv.ouPorter(it.id) : null;
     const portable = !!ou;
-    const libPorter = { vetement: 'Porter', lampe: 'Équiper', main: 'En main', dos: 'Dans le dos' }[ou] || 'Porter';
+    const libPorter = { vetement: 'Porter', lampe: 'Équiper', main: 'En main', dos: 'Dans le dos', deux: 'À deux mains' }[ou] || 'Porter';
     const libConso = mod.survie && mod.survie.libelleConsommer ? mod.survie.libelleConsommer(it.id) : null;
     ul.append(el('li', { class: (tient ? '' : 'plein') + (i >= (B.dejaVus || 0) ? ' neuf' : '') }, el('button', { class: 'ex-b-nom', type: 'button', onclick: () => (portable ? porterItem(i) : prendreItem(i)) }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
       portable ? el('button', { class: 'ex-b', type: 'button', onclick: () => porterItem(i) }, libPorter) : null,

@@ -68,3 +68,28 @@ export const JOURNAL_RUEE = {
   debut: 'Les sirènes hurlent {dans}. Ne pas y aller. Tenir dehors, dans les collines, le temps que ça passe.',
   fin: 'Les sirènes se sont tues {dans}. On peut redescendre, prudemment : il y a plus de morts qu’avant, et ils sont partout.',
 };
+
+// ─────────── Les HORDES de passage : une colonne de morts traverse un lieu (un village, un quartier, ta base) ───────────
+// Une radio les annonce (les guetteurs de Calès, les drones de l'armée) ; sans radio, on les entend arriver… tard.
+export const RADIO_HORDE = [
+  '« Ici Jo, à Calès. Les guetteurs de la falaise ont vu une colonne de morts. Deux cents, peut-être plus. Ils vont vers {lieu}, ils y seront {quand}. Si vous êtes là-bas, partez. »',
+  'Une voix militaire, monocorde : « Contact. Groupe d’éléments, effectif estimé deux cents, axe {lieu}. Arrivée estimée {quand}. Pas d’engagement. » Un bip, puis le souffle.',
+  '« … quelqu’un m’entend ? Ici Fernand, sur la route. Il y en a plein la route, ils descendent tous vers {lieu}. Ils y seront {quand}, je pense. Je me cache. Je me cache. »',
+];
+export const SIGNES_HORDE = 'Un grondement de voix monte, au loin, de plus en plus près. Pas un mort : des centaines.';
+export const DEBUT_HORDE = 'La horde arrive sur {lieu}. Les rues se remplissent de morts qui marchent tous dans le même sens.';
+export const FIN_HORDE = 'La horde a quitté {lieu}. Il en reste derrière elle, accrochés aux portes.';
+export const JOURNAL_HORDE = {
+  annonce: 'La radio annonce une horde vers {lieu}, {quand}. Ne pas y être.',
+  debut: 'Une horde traverse {lieu}.',
+  fin: 'La horde est passée sur {lieu}. Il en reste.',
+};
+
+// ─────────── La MÉTÉO à la radio : le bulletin de la veille (France Bleu tourne en boucle sur un groupe électrogène) ───────────
+// Annoncé une heure avant que le temps change (5 h et 17 h) : de quoi rentrer, s'abriter, faire du feu.
+export const METEO_RADIO = {
+  pluie: 'Le bulletin enregistré, toujours le même speaker : « … averses en fin de période sur le pays salonais. » Il pleuvra bientôt : à l’abri, au sec.',
+  orage: '« … vigilance orange orages sur les Bouches-du-Rhône : pluies intenses, rafales, grêle par endroits. » Un gros orage arrive. Trouve un toit.',
+  mistral: '« … mistral fort, rafales à cent kilomètres-heure dans la vallée du Rhône et sur la Crau. » Le vent va se lever : il couvrira tes pas, et il glace.',
+  brouillard: '« … brouillards denses en plaine au lever du jour, visibilité réduite. » On ne verra rien venir.',
+};

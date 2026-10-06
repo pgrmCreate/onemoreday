@@ -1404,6 +1404,23 @@ export function sfx(nom, opts = {}) {
       tonAt(t, 100, 72, 1.1, 'sawtooth', 0.05, { filtre: 240, q: 3, a: 0.3, vib: 7, vibAmp: 10, echo: true });
       break;
     }
+    case 'radio': { // une radio qu'on accroche : friture, deux bips, la friture qui retombe
+      const s = ctx.createBufferSource(); s.buffer = noiseBuffer(1.4);
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 0.8;
+      const gn = ctx.createGain(); gn.gain.setValueAtTime(0.0001, t); gn.gain.linearRampToValueAtTime(0.09, t + 0.06); gn.gain.setValueAtTime(0.09, t + 0.5); gn.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+      s.connect(f); f.connect(gn); gn.connect(master); s.start(t); s.stop(t + 1.4);
+      tonAt(t + 0.55, 1250, 1250, 0.08, 'sine', 0.05, { a: 0.005 }); tonAt(t + 0.72, 1250, 1250, 0.08, 'sine', 0.05, { a: 0.005 });
+      break;
+    }
+    case 'tonnerre': { // un roulement : craquement, puis un grondement grave qui s'éloigne (canal du dehors)
+      const v = Math.max(0.05, Math.min(1, opts.volume ?? 1)), dur = 5.5;
+      const s = ctx.createBufferSource(); s.buffer = noiseBuffer(dur + 0.2);
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(1600, t); f.frequency.exponentialRampToValueAtTime(140, t + 1.2);
+      const gn = ctx.createGain(); gn.gain.setValueAtTime(0.0001, t); gn.gain.linearRampToValueAtTime(0.5 * v, t + 0.08);
+      gn.gain.linearRampToValueAtTime(0.3 * v, t + 0.9); gn.gain.linearRampToValueAtTime(0.38 * v, t + 1.8); gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(f); f.connect(gn); gn.connect(bus()); if (echo) gn.connect(echo); s.start(t); s.stop(t + dur + 0.1);
+      break;
+    }
     case 'sirene': { // une sirène d'alerte au loin (les sirènes de l'armée) : longue montée, palier, descente — par le canal du dehors
       const v = Math.max(0.05, Math.min(1, opts.volume ?? 1)), dur = 13;
       const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);

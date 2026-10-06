@@ -31,7 +31,7 @@ const angDiff = (a, b) => { let d = (a - b) % (2 * Math.PI); if (d > Math.PI) d 
 export function creerSimLieu(opts) {
   const {
     lieuId, seed = 1, danger = 0.3, minutes = 480, coop = false, getFlag = () => undefined,
-    getRuee = () => null,     // les sirènes (js/game/ruees.js) : () → { i: 0..1, id } | null
+    getRuee = () => null,     // sirènes / horde (js/game/ruees.js rueeSim) : () → { i: 0..1, id, course, densite } | null
   } = opts;
   const niveau = opts.niveau && opts.niveau.etages && opts.niveau.etages[0] && opts.niveau.etages[0].code ? opts.niveau : parserNiveau(opts.niveau || {});
   const pool = (opts.pool && opts.pool.length ? opts.pool : niveau.pool) || ['errant'];
@@ -60,7 +60,8 @@ export function creerSimLieu(opts) {
   let evts = [];
   let tFlag = 0;
   // Les sirènes : intensité courante (0..1) et la dernière ruée déjà « arrivée » ici (renforts et réveil une seule fois).
-  let ruee = 0, rueeVue = null;
+  let ruee = 0, rueeVue = null, rueeCourse = true;   // rueeCourse : les sirènes les font courir ; une horde marche
+  const rc = () => (rueeCourse ? ruee : 0);
   let T = 0;                         // temps de simulation (ms) : horloge des télégraphies, empoignades
   let rngCbt = seedRng(`${seed}:combat:${lieuId}:${minutes}`);
 
@@ -496,7 +497,7 @@ export function creerSimLieu(opts) {
         return;
       }
       case 'erre': {
-        const v = (def.vitesse || 0.5) * (1 + ruee * RU.VITESSE_ERRE);   // les sirènes : ils courent partout
+        const v = (def.vitesse || 0.5) * (1 + rc() * RU.VITESSE_ERRE);   // les sirènes : ils courent partout
         if (z.tEtat > 0) { z.tEtat -= dt; return; }
         if (!z.chemin.length || z.ci >= z.chemin.length) {
           const c = chemin(z, -1, -1, 6, true);
@@ -504,14 +505,14 @@ export function creerSimLieu(opts) {
         }
         const r = suivreChemin(z, v, dt);
         z.vitesse = v;
-        if (r === 'fini' || r === 'porte') { z.chemin = []; z.tEtat = (2000 + rngSim() * 5000) * (1 - 0.8 * ruee); }
+        if (r === 'fini' || r === 'porte') { z.chemin = []; z.tEtat = (2000 + rngSim() * 5000) * (1 - 0.8 * rc()); }
         return;
       }
       case 'alerte': {
         z.tEtat -= dt;
         if (z.tEtat <= 0) { retourBase(z); return; }
         if (!z.cible) return;
-        const v = ((def.vitesse || 0.5) + (def.vitesseChasse || 1.8)) / 2 * (1 + ruee * RU.VITESSE_ALERTE);
+        const v = ((def.vitesse || 0.5) + (def.vitesseChasse || 1.8)) / 2 * (1 + rc() * RU.VITESSE_ALERTE);
         z.tChemin -= dt;
         if (z.tChemin <= 0 && (!z.chemin.length || z.ci >= z.chemin.length)) {
           z.tChemin = 800;
@@ -526,7 +527,7 @@ export function creerSimLieu(opts) {
       }
       case 'chasse': {
         const j = joueurs.get(z.joueur);
-        const vC = (def.vitesseChasse || 1.8) * (1 + ruee * RU.VITESSE_CHASSE);
+        const vC = (def.vitesseChasse || 1.8) * (1 + rc() * RU.VITESSE_CHASSE);
         // charge (colosse, fauve, sanglier)
         if (def.special === 'charge' && def.params) {
           const P = def.params;
@@ -1330,9 +1331,9 @@ export function creerSimLieu(opts) {
     return { ok: pris > 0, L: pris, reste: eauReste[cle] };
   }
 
-  // Les sirènes arrivent ici : tous les morts se lèvent, d'autres accourent du dehors (une fois par ruée).
-  function arriveeRuee() {
-    const n = Math.round(Math.max(2, mortsN[1] || 0) * RU.DENSITE);
+  // Les sirènes (ou une horde) arrivent ici : tous les morts se lèvent, d'autres accourent du dehors (une fois par événement).
+  function arriveeRuee(densite) {
+    const n = Math.round(Math.max(2, mortsN[1] || 0) * densite);
     placerProceduraux(n, rngSim);
     for (const z of zombies) if (z.etat === 'dort' || z.etat === 'immobile' || z.etat === 'fait_le_mort') { z.etat = 'erre'; z.base = 'erre'; z.tEtat = 0; z.chemin = []; }
     evts.push({ type: 'ruee', n }); vm++;
@@ -1347,7 +1348,8 @@ export function creerSimLieu(opts) {
         tFlag = 1000;
         const rr = getRuee();
         ruee = rr ? Math.max(0, Math.min(1, rr.i || 0)) : 0;
-        if (ruee > 0 && rr.id && rueeVue !== rr.id) { rueeVue = rr.id; arriveeRuee(); }
+        rueeCourse = rr ? rr.course !== false : true;
+        if (ruee > 0 && rr.id && rueeVue !== rr.id) { rueeVue = rr.id; arriveeRuee(rr.densite ?? RU.DENSITE); }
         for (const p of niveau.portes) {
           const s = portes[p.cle];
           if (s.etat === 'verrouillee' && p.verrou && p.verrou.flag && flagOk(p.verrou)) { s.etat = 'fermee'; setPorte(p.cle, 'fermee', 'flag', null); }

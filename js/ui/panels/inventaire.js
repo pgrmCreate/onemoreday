@@ -331,7 +331,7 @@ function remplirFiche(f, p, racine, api) {
     it = inv.objetsAuSol()[s.ref]; if (!it) { etat.sel = null; f.append(vide('—')); return; } id = it.id;
     acts = [];
     const ou = inv.ouPorter(it.id);
-    if (ou) acts.push({ label: { vetement: 'Porter', lampe: 'Prendre la lampe', main: 'Prendre en main', dos: 'Dans le dos' }[ou], icone: 'equiper', principal: true,
+    if (ou) acts.push({ label: { vetement: 'Porter', lampe: 'Prendre la lampe', main: 'Prendre en main', dos: 'Dans le dos', deux: 'Porter à deux mains' }[ou], icone: 'equiper', principal: true,
       f: () => { const r = inv.equiperDepuisSol(s.ref, p, ou); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
     if (ou === 'dos' || (ou === 'main' && inv.peutDos(it.id) && !p.equip.dos)) {
       if (ou === 'dos') acts.push({ label: 'Prendre en main', icone: 'main_arme', f: () => { const r = inv.equiperDepuisSol(s.ref, p, 'main'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });

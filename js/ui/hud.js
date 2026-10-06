@@ -92,7 +92,8 @@ export function majHUD() {
   const l = texteLieu(); els.lieu.textContent = l; els.lieuBox.hidden = !l;
   // Les sirènes : quand elles hurlent (et quand la radio les a annoncées)
   const ru = etatRuee();
-  const rt = !ru ? '' : ru.active ? `Sirènes : ${ru.nom}` : `Sirènes · ${ru.nom} · ${quandTexte(ru.debut).replace('vers ', '')}`;
+  const quoi = ru && ru.type === 'horde' ? 'Horde' : 'Sirènes';
+  const rt = !ru ? '' : ru.active ? `${quoi} : ${ru.nom}` : `${quoi} · ${ru.nom} · ${quandTexte(ru.debut).replace('vers ', '')}`;
   if (els.rueeTxt.textContent !== rt) els.rueeTxt.textContent = rt;
   els.ruee.hidden = !rt; els.ruee.classList.toggle('active', !!(ru && ru.active));
   const o = objectifCourant();
