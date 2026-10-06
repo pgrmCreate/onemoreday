@@ -94,7 +94,7 @@ const BANQUE_SFX = {
   amb_hibou:        { f: ['environnement/owl.mp3'], vol: 0.35 },
   amb_pigeons:      { f: ['environnement/pigeons-flight.mp3'], vol: 0.4 },
   amb_porte_lointaine: { f: ['environnement/door-slam-distant.mp3'], vol: 0.4 },
-  amb_gemissement:  { f: [1, 2, 3].map(i => `monster/moan-distant-${i}.mp3`).concat('monster/moan-distant-long.mp3'), vol: 0.4 },
+  amb_gemissement:  { f: [1, 2, 3].map(i => `monster/moan-distant-${i}.mp3`).concat('monster/moan-distant-long.mp3'), vol: 0.12 }, // un FOND : à peine audible
   amb_cigales:      { f: ['environnement/cicadas-burst.mp3'], vol: 0.3 },
   amb_insectes_nuit: { f: ['environnement/crickets-burst.mp3'], vol: 0.3 },
   amb_oiseau_isole: { f: ['environnement/bird-call.mp3'], vol: 0.3 },
@@ -121,8 +121,8 @@ const BANQUE_NATURE = {
   vent_fort:      { f: 'environnement/wind-strong-loop.mp3', vol: 0.10 },
 };
 const BANQUE_HORDES = {
-  calme: { f: ['monster/zombie-horde-calme-1.mp3', 'monster/zombie-horde-calme-2.mp3'], vol: 0.35 },
-  forte: { f: ['monster/zombie-horde-distant.mp3'], vol: 0.45 },
+  calme: { f: ['monster/zombie-horde-calme-1.mp3', 'monster/zombie-horde-calme-2.mp3'], vol: 0.14 }, // fond : sous l'ambiance, jamais devant
+  forte: { f: ['monster/zombie-horde-distant.mp3'], vol: 0.26 },
 };
 // Chaque thème est une PLAYLIST (liste de fichiers). Le lecteur enchaîne les
 // morceaux en variant l'ordre — jamais deux fois le même de suite : fini la
@@ -171,6 +171,8 @@ const BANQUE_THEMES = {
 const FICHIER_CHRONO = 'effect/chrono.mp3';
 const FICHIERS_PLUIE = { legere: 'environnement/light-rain-background.mp3', forte: 'environnement/rain-hard-background.mp3' };
 const SCENES_EXTERIEURES = new Set(['rue', 'region', 'village', 'triage', 'gare']);
+// Bruits ponctuels qui se produisent DANS la pièce : jamais étouffés.
+const STINGERS_DEDANS = new Set(['feu_crepite']);
 let sons = {};         // nom sfx -> [{buffer, gain}]
 let chronoBuf = null;  // tampon du tic-tac (barre d'attente)
 let chronoNode = null; // boucle chrono en cours
@@ -268,8 +270,10 @@ function jouerSonFichier(entree, opts = {}) {
   const src = ctx.createBufferSource(); src.buffer = entree.buffer;
   const g = ctx.createGain(); g.gain.value = entree.gain * (opts.volume ?? 1);
   src.connect(g);
-  if (opts.pan && ctx.createStereoPanner) { const pn = ctx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, opts.pan)); g.connect(pn); pn.connect(master); }
-  else g.connect(master);
+  let sortie = g;
+  if (opts.etouffe) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 600; g.connect(f); sortie = f; } // à travers les murs
+  if (opts.pan && ctx.createStereoPanner) { const pn = ctx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, opts.pan)); sortie.connect(pn); pn.connect(master); }
+  else sortie.connect(master);
   src.start();
   src.onended = () => { try { src.disconnect(); g.disconnect(); } catch (e) {} };
   // Poignée pour couper un son long en cours (fouille interrompue…), en fondu bref.
@@ -1075,8 +1079,13 @@ const STINGERS = {
 
 function jouerStinger(nom) {
   // un fichier pour ce bruit ? Joué d'un côté ou de l'autre, jamais pile au centre (le monde est autour)
+  // Dans un lieu fermé, ce qui vient du dehors arrive étouffé et plus bas (le feu du refuge, lui, est dans la pièce).
   const f = sons['amb_' + nom];
-  if (f && f.length) { jouerSonFichier(f[Math.floor(Math.random() * f.length)], { volume: 0.6 + Math.random() * 0.4, pan: (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.5) }); return; }
+  if (f && f.length) {
+    const dedans = !SCENES_EXTERIEURES.has(String(ambianceCourante || '').split(':')[0]) && !STINGERS_DEDANS.has(nom);
+    jouerSonFichier(f[Math.floor(Math.random() * f.length)], { volume: (0.6 + Math.random() * 0.4) * (dedans ? 0.6 : 1), etouffe: dedans, pan: (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.5) });
+    return;
+  }
   const fn = STINGERS[nom];
   if (fn) fn(ctx.currentTime + 0.02);
 }
