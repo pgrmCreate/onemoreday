@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v38';
+const CACHE = 'onemoreday-v39';
 const FICHIERS = [
   './',
   './index.html',
@@ -400,6 +400,8 @@ const FICHIERS = [
   './img/objets/fontaine_1.webp',
   './img/objets/fosse_0.webp',
   './img/objets/four_pierre_0.webp',
+  './img/objets/fourgon_postal_0.webp',
+  './img/objets/fourgon_postal_1.webp',
   './img/objets/frigo_0.webp',
   './img/objets/frigo_1.webp',
   './img/objets/frigo_2.webp',
@@ -533,6 +535,9 @@ const FICHIERS = [
   './img/objets/tapis_3.webp',
   './img/objets/tapis_4.webp',
   './img/objets/tapis_5.webp',
+  './img/objets/taxi_0.webp',
+  './img/objets/taxi_1.webp',
+  './img/objets/taxi_2.webp',
   './img/objets/televiseur_0.webp',
   './img/objets/televiseur_1.webp',
   './img/objets/televiseur_2.webp',
@@ -561,8 +566,11 @@ const FICHIERS = [
   './img/objets/voiture_5.webp',
   './img/objets/voiture_6.webp',
   './img/objets/voiture_7.webp',
+  './img/objets/voiture_calcinee_0.webp',
+  './img/objets/voiture_calcinee_1.webp',
   './img/objets/voiture_police_0.webp',
   './img/objets/voiture_police_1.webp',
+  './img/objets/voiture_pompiers_0.webp',
   './img/objets/wc_0.webp',
   './img/objets/wc_1.webp',
   './img/sols/beton.jpg',

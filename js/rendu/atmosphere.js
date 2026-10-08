@@ -34,7 +34,7 @@ const CIEL = { clair: 1, mistral: 0.95, couvert: 0.3, pluie: 0.12, brouillard: 0
 const H_TOIT = { tuiles: 8, ardoise: 6, zinc: 9, terrasse: 8, tole: 3.5, verriere: 4 };
 const H_MUR = { pierre: 2.6, crepi: 3, brique: 3, beton: 3, bois: 2.4, tole: 2.4, platre: 3, haie: 2.2, muret: 0.9, rocher: 4 };
 const H_ARBRE = { platane: 11, pin: 10, cypres: 9, olivier: 4.5, figuier: 4, amandier: 5, arbre: 7 };
-const H_OBJET = { voiture: 1.8, citadine: 1.6, break: 1.8, suv: 2, pickup: 1.9, voiture_police: 1.8, camping_car: 3, bus: 3.2, camionnette: 2.6, ambulance: 3, camion_mil: 3.5, conteneur: 3.2, benne: 1.8, tente: 2, caveau: 3, statue: 3, cloche: 2, fontaine: 1.2 };
+const H_OBJET = { voiture: 1.8, citadine: 1.6, break: 1.8, suv: 2, pickup: 1.9, voiture_police: 1.8, camping_car: 3, bus: 3.2, taxi: 1.8, voiture_pompiers: 1.9, fourgon_postal: 2.6, voiture_calcinee: 1.4, camionnette: 2.6, ambulance: 3, camion_mil: 3.5, conteneur: 3.2, benne: 1.8, tente: 2, caveau: 3, statue: 3, cloche: 2, fontaine: 1.2 };
 
 // Les « lanceurs d'ombre » d'un étage, calculés une fois : rectangles (unités) et cercles (houppiers).
 function lanceurs(niveau, E) {

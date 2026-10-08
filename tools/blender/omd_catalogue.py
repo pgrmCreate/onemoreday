@@ -411,6 +411,69 @@ def camping_car(v, rnd):
     return o
 camping_car.n = 2
 
+PTS_BERLINE = [(-2.05, 0.28), (-2.05, 0.78), (-1.9, 0.9), (-1.45, 0.95), (-1.05, 1.38), (0.3, 1.43), (0.95, 0.98), (1.9, 0.84), (2.05, 0.62), (2.05, 0.28)]
+
+def taxi(v, rnd):
+    """Taxi : une berline ordinaire (blanche, noire ou grise) avec son lumineux sur le toit, éteint pour toujours."""
+    c = ['#e8e6e0', '#1a1a1a', '#5a5a58'][v % 3]
+    L, l = 4.1, 1.76
+    o = [profil_extrude(PTS_BERLINE, l, [peinture(c), vitre()], 0.97)]
+    o += roues(L, l, (-1.3, 1.3)) + phares(L, l * 0.86, 0.62) + phares(L, l * 0.86, 0.75, avant=False) + retros(c, l)
+    o.append(boite(-0.35, 0, 1.43, 0.32, 0.62, 0.14, mat_uni(lin(hexc('#f2ead0')), 0.3, 0, emission=(1.0, 0.9, 0.6, 0.0)), 0.03))   # le lumineux
+    o.append(boite(-0.35, 0, 1.43, 0.36, 0.66, 0.03, mat_uni(lin(hexc('#202020')), 0.5), 0.01))
+    return o
+taxi.n = 3
+
+def voiture_pompiers(v, rnd):
+    """Véhicule léger des pompiers : break rouge, bandes blanches, rampe bleue, coffre chargé."""
+    c = '#b81e1e'
+    L, l = 4.6, 1.8
+    pts = [(-2.3, 0.3), (-2.3, 0.9), (-2.22, 1.48), (0.45, 1.52), (1.1, 1.02), (2.15, 0.86), (2.3, 0.64), (2.3, 0.3)]
+    o = [profil_extrude(pts, l, [peinture(c, 0.4), vitre()], 1.0)]
+    blanc = mat_uni(lin(hexc('#ecebe6')), 0.3, 0.2)
+    o.append(boite(1.6, 0, 0.92, 0.9, 1.2, 0.02, blanc, 0.0))                                          # capot
+    o += roues(L, l, (-1.45, 1.45), 0.33, 0.22) + phares(L, l * 0.86, 0.64) + phares(L, l * 0.86, 0.8, avant=False) + retros(c, l, 0.95, 1.0)
+    o.append(boite(0.1, 0, 1.52, 0.3, 1.4, 0.07, mat_uni(lin(hexc('#202020')), 0.5), 0.01))
+    for sy in (-0.35, 0.35): o.append(boite(0.1, sy, 1.59, 0.26, 0.6, 0.1, mat_uni(lin(hexc('#2050e0')), 0.15, 0, emission=(0.15, 0.3, 1.0, 0.0)), 0.02))
+    o += barres_toit(-1.9, -0.4, l * 0.86, 1.52)
+    return o
+voiture_pompiers.n = 1
+
+def fourgon_postal(v, rnd):
+    """Fourgon de distribution du courrier : jaune, une bande bleue, sans marque ; parfois des sacs sur la galerie."""
+    L, l = 5.0, 1.95
+    pts = [(-2.5, 0.3), (-2.5, 2.05), (1.25, 2.05), (1.7, 1.25), (2.4, 1.0), (2.5, 0.7), (2.5, 0.3)]
+    o = [profil_extrude(pts, l, [peinture('#f0ac00', 0.3), vitre()], 1.05, tumble=0.97)]
+    me = o[0].data
+    for poly in me.polygons:
+        cc = sum((me.vertices[k].co for k in poly.vertices), __import__('mathutils').Vector()) / len(poly.vertices)
+        if cc.x < 1.0: poly.material_index = 0
+    bleu = mat_uni(lin(hexc('#1e3a8a')), 0.35, 0.2)
+    for sy in (-1, 1): o.append(boite(-0.6, sy * (l / 2 + 0.005), 0.95, 3.7, 0.02, 0.22, bleu, 0.0))
+    o.append(boite(-0.6, 0, 2.05, 3.7, 0.25, 0.015, bleu, 0.0))                                        # bande sur le toit
+    o += roues(L, l, (-1.6, 1.6), 0.34, 0.23) + phares(L, l, 0.75)
+    if v == 1:
+        for k in range(3): o.append(coussin(-1.8 + k * 0.85, (rnd.random() - 0.5) * 0.6, 2.07, 0.7, 0.55, 0.32, mat_tex('hessian_230', 0.6, teinte=lin(hexc('#c8b890'))), 0.45))
+    return o
+fourgon_postal.n = 2
+
+def voiture_calcinee(v, rnd):
+    """Une voiture qui a brûlé : tôle noircie et rouillée, plus une vitre, l'habitacle carbonisé, posée sur les jantes."""
+    L, l = 4.1, 1.76
+    suie = mat_uni(lin(hexc(['#262220', '#2e2622'][v % 2])), 0.95, 0.3)
+    o = [profil_extrude([(x, z - 0.12) for x, z in PTS_BERLINE], l, [suie, mat_uni(lin(hexc('#0c0a09')), 0.98)], 0.85)]
+    rouille = [mat_uni(lin(hexc(c)), 0.9, 0.2) for c in ('#6a3a1e', '#8a4a22', '#4a2a18')]
+    for k in range(26):   # taches de rouille irrégulières sur le toit et le capot
+        x, y = -1.8 + rnd.random() * 3.6, (rnd.random() - 0.5) * 1.3
+        sp = sphere(x, y, 0.78 if abs(x) > 0.95 else 1.26, 0.08 + rnd.random() * 0.2, rouille[k % 3], 0.06)
+        sp.scale.x *= 0.6 + rnd.random() * 1.2; sp.rotation_euler.z = rnd.random() * 3.14; o.append(sp)
+    jante = mat_uni(lin(hexc('#3a3632')), 0.8, 0.6)
+    for x in (-1.3, 1.3):
+        for sy in (-1, 1):
+            w = cylindre(x, sy * (l / 2 - 0.12), 0, 0.22, 0.12, jante, 16); w.rotation_euler.x = math.pi / 2; w.location = (x, sy * (l / 2 - 0.12), 0.18); o.append(w)
+    return o
+voiture_calcinee.n = 2
+
 def bus(v, rnd):
     """Bus urbain de 12 m : caisse droite, longues vitres latérales, toit chargé (climatisation, trappes), filets de couleur."""
     caisse = ['#ecebe6', '#dfe3d6'][v % 2]; filet = ['#2a7a4a', '#2a4a8a'][v % 2]
@@ -1061,6 +1124,10 @@ CATALOGUE = {
     'voiture_police': E([3, 2], voiture_police, remplir=0.98, etirer=True),
     'camping_car':  E([4, 2], camping_car, remplir=0.98, etirer=True),
     'bus':          E([9, 2], bus, remplir=0.98, etirer=True),
+    'taxi':         E([3, 2], taxi, remplir=0.98, etirer=True),
+    'voiture_pompiers': E([3, 2], voiture_pompiers, remplir=0.98, etirer=True),
+    'fourgon_postal': E([4, 2], fourgon_postal, remplir=0.98, etirer=True),
+    'voiture_calcinee': E([3, 2], voiture_calcinee, remplir=0.98, etirer=True),
     'camion_mil':   E([5, 2], camion_mil, remplir=0.98, etirer=True),
     'ambulance':    E([4, 2], ambulance, remplir=0.98, etirer=True),
     'gravats':      E([1, 1], gravats, remplir=0.95),

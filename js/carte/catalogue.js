@@ -149,6 +149,10 @@ export const OBJETS = {
   voiture_police: { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'la voiture de gendarmerie' },
   camping_car:{ cat: 'voiture', bloque: 1, opaque: 1, t: [4, 2], nom: 'le camping-car' },
   bus:        { cat: 'voiture', bloque: 1, opaque: 1, t: [9, 2], nom: 'le bus' },
+  taxi:       { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'le taxi' },
+  voiture_pompiers: { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'la voiture des pompiers' },
+  fourgon_postal: { cat: 'voiture', bloque: 1, opaque: 1, t: [4, 2], nom: 'le fourgon postal' },
+  voiture_calcinee: { cat: null, bloque: 1, t: [3, 2], nom: 'la carcasse calcinée' },   // rien à fouiller : tout a brûlé
   camionnette:{ cat: 'voiture', bloque: 1, opaque: 1, t: [4, 2], nom: 'la camionnette' },
   camion_mil: { cat: 'voiture', bloque: 1, opaque: 1, t: [5, 2], nom: 'le camion militaire', lumiere: 'gyrophare' },
   ambulance:  { cat: 'voiture', bloque: 1, opaque: 1, t: [4, 2], nom: 'l\'ambulance' },
@@ -219,7 +223,7 @@ export const OBJETS = {
 export const ETIRER_MAX = 1.4;
 export const DESSIN_SEUL = new Set(['lit_camp', 'matelas', 'arbre', 'platane', 'cypres', 'pin', 'olivier', 'figuier', 'amandier', 'lampadaire', 'plan_mural', 'tableau_cles', 'cadavre', 'grille']);
 const ETIRE_TOUJOURS = new Set(['tapis', 'haie']);
-const UNIQUES = new Set(['baignoire', 'piano', 'cheminee', 'fontaine', 'statue', 'tente', 'generateur', 'caveau', 'autel', 'cloche', 'televiseur']);
+const UNIQUES = new Set(['baignoire', 'piano', 'cheminee', 'fontaine', 'statue', 'tente', 'generateur', 'caveau', 'autel', 'cloche', 'televiseur', 'voiture_calcinee']);
 export function disposition(type, w, h) {
   const d = OBJETS[type];
   if (!d || !d.t || DESSIN_SEUL.has(type) || ETIRE_TOUJOURS.has(type) || !(w > 0 && h > 0)) return { mode: 'etirer', nx: 1, ny: 1 };

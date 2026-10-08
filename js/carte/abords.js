@@ -62,6 +62,10 @@ const LEG = {
   'Ϩ': { prop: 'pickup', nom: 'le pick-up' }, 'ϩ': { prop: 'pickup', nom: 'le pick-up (déjà fouillé)', conteneur: false },
   'Ϫ': { prop: 'voiture_police', nom: 'la voiture de gendarmerie' }, 'ϫ': { prop: 'voiture_police', nom: 'la voiture de gendarmerie (déjà fouillée)', conteneur: false },
   'Ϭ': { prop: 'camping_car', nom: 'le camping-car' },
+  'Ϯ': { prop: 'taxi', nom: 'le taxi' }, 'ϯ': { prop: 'taxi', nom: 'le taxi (déjà fouillé)', conteneur: false },
+  'Ͱ': { prop: 'voiture_pompiers', nom: 'la voiture des pompiers' }, 'ͱ': { prop: 'voiture_pompiers', nom: 'la voiture des pompiers (déjà fouillée)', conteneur: false },
+  'Ͳ': { prop: 'voiture_calcinee', nom: 'la carcasse calcinée', conteneur: false },
+  'ͳ': { prop: 'fourgon_postal', nom: 'le fourgon postal' },
   'ϡ': { prop: 'table', nom: 'la table', conteneur: false },
   'ϟ': { prop: 'palette', nom: 'la palette vide', conteneur: false },
 };
@@ -69,13 +73,16 @@ const LEG = {
 const VOITURES_FOUILLABLES = 0.2;
 // Modèles des voitures garées (poids par milieu) : [caractère à fouiller, caractère déjà vidé, poids]. 'v'/'ϛ' = berline.
 const MODELES_VOITURES = {
-  centre:   [['v', 'ϛ', 34], ['Ϣ', 'ϣ', 32], ['Ϥ', 'ϥ', 12], ['Ϧ', 'ϧ', 10], ['Ϩ', 'ϩ', 3], ['Ϫ', 'ϫ', 6]],
-  ville:    [['v', 'ϛ', 32], ['Ϣ', 'ϣ', 28], ['Ϥ', 'ϥ', 14], ['Ϧ', 'ϧ', 12], ['Ϩ', 'ϩ', 7], ['Ϫ', 'ϫ', 5]],
-  zone:     [['v', 'ϛ', 30], ['Ϣ', 'ϣ', 14], ['Ϥ', 'ϥ', 14], ['Ϧ', 'ϧ', 12], ['Ϩ', 'ϩ', 22], ['Ϫ', 'ϫ', 6]],
-  village:  [['v', 'ϛ', 26], ['Ϣ', 'ϣ', 24], ['Ϥ', 'ϥ', 18], ['Ϧ', 'ϧ', 12], ['Ϩ', 'ϩ', 20]],
-  campagne: [['v', 'ϛ', 24], ['Ϣ', 'ϣ', 16], ['Ϥ', 'ϥ', 18], ['Ϧ', 'ϧ', 16], ['Ϩ', 'ϩ', 26]],
+  centre:   [['v', 'ϛ', 34], ['Ϣ', 'ϣ', 32], ['Ϥ', 'ϥ', 12], ['Ϧ', 'ϧ', 10], ['Ϩ', 'ϩ', 3], ['Ϫ', 'ϫ', 6], ['Ϯ', 'ϯ', 6], ['Ͱ', 'ͱ', 2]],
+  ville:    [['v', 'ϛ', 32], ['Ϣ', 'ϣ', 28], ['Ϥ', 'ϥ', 14], ['Ϧ', 'ϧ', 12], ['Ϩ', 'ϩ', 7], ['Ϫ', 'ϫ', 5], ['Ϯ', 'ϯ', 4], ['Ͱ', 'ͱ', 2]],
+  zone:     [['v', 'ϛ', 30], ['Ϣ', 'ϣ', 14], ['Ϥ', 'ϥ', 14], ['Ϧ', 'ϧ', 12], ['Ϩ', 'ϩ', 22], ['Ϫ', 'ϫ', 6], ['Ϯ', 'ϯ', 2], ['Ͱ', 'ͱ', 2]],
+  village:  [['v', 'ϛ', 26], ['Ϣ', 'ϣ', 24], ['Ϥ', 'ϥ', 18], ['Ϧ', 'ϧ', 12], ['Ϩ', 'ϩ', 20], ['Ϯ', 'ϯ', 1], ['Ͱ', 'ͱ', 1]],
+  campagne: [['v', 'ϛ', 24], ['Ϣ', 'ϣ', 16], ['Ϥ', 'ϥ', 18], ['Ϧ', 'ϧ', 16], ['Ϩ', 'ϩ', 26], ['Ͱ', 'ͱ', 1]],
 };
-const CAMPING_CAR = { centre: 0.15, ville: 0.25, zone: 0.2, village: 0.35, campagne: 0.45 };   // part des camionnettes
+// Part des camionnettes qui sont un camping-car, puis un fourgon postal ; part des voitures déjà vidées qui ont brûlé.
+const CAMPING_CAR = { centre: 0.15, ville: 0.25, zone: 0.2, village: 0.35, campagne: 0.45 };
+const FOURGON_POSTAL = { centre: 0.22, ville: 0.2, zone: 0.12, village: 0.15, campagne: 0.08 };
+const CALCINEES = { centre: 0.14, ville: 0.12, zone: 0.12, village: 0.06, campagne: 0.05 };
 // Ce qu'on peut traverser à pied (pour la passe d'accessibilité).
 const MARCHE = new Set([',', '"', ':', '.', ';', '%', 'E', '+', '/', 'ϗ', '@', 'Z', 'α', 'β', 'γ', 'δ', 'ε', 'τ', 'ω', 'ψ', 'χ', 'ϕ', 'ϑ']);
 const FOND_LIBRE = new Set(['"', 'δ', 'γ', 'β', ',', ':']);
@@ -388,14 +395,18 @@ export function agrandirDef(def) {
       if (oc(x, y) === 1) continue;
       const c = G[y][x];
       if (c === 'ξ') {
-        if (get(x - 1, y) === 'ξ' || get(x, y - 1) === 'ξ' || hc(x, y, 11) >= (CAMPING_CAR[milieu] ?? 0.2)) continue;
-        for (let a = 0; a < 2; a++) for (let b = 0; b < 4; b++) if (get(x + b, y + a) === 'ξ') G[y + a][x + b] = 'Ϭ';
+        if (get(x - 1, y) === 'ξ' || get(x, y - 1) === 'ξ') continue;
+        const u = hc(x, y, 11), pc = CAMPING_CAR[milieu] ?? 0.2, pp = FOURGON_POSTAL[milieu] ?? 0.15;
+        const nc = u < pc ? 'Ϭ' : u < pc + pp ? 'ͳ' : null;
+        if (!nc) continue;
+        for (let a = 0; a < 2; a++) for (let b = 0; b < 4; b++) if (get(x + b, y + a) === 'ξ') G[y + a][x + b] = nc;
         continue;
       }
       if ((c !== 'v' && c !== 'ϛ') || get(x - 1, y) === c || get(x, y - 1) === c) continue;
       let u = hc(x, y, 13) * tot, k = 0;
       while (k < MV.length - 1 && u >= MV[k][2]) { u -= MV[k][2]; k++; }
-      const nc = c === 'v' ? MV[k][0] : MV[k][1];
+      // une voiture déjà vidée a parfois brûlé (pillée, puis incendiée)
+      const nc = c === 'v' ? MV[k][0] : hc(x, y, 17) < (CALCINEES[milieu] ?? 0.1) ? 'Ͳ' : MV[k][1];
       if (nc === c) continue;
       for (let a = 0; a < 2; a++) for (let b = 0; b < 3; b++) if (get(x + b, y + a) === c) G[y + a][x + b] = nc;
     }

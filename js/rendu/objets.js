@@ -365,6 +365,10 @@ const DESSINS = {
   pickup(c, W, H, r, R) { vehicule(c, W, H, r, R, R.couleur || pick(r, ['#c8c4b8', '#8a2a1a', '#2a3a4a', '#4a5a3a']), 'pickup'); },
   voiture_police(c, W, H, r, R) { vehicule(c, W, H, r, R, '#1e2e5a', 'police'); },
   camping_car(c, W, H, r, R) { vehicule(c, W, H, r, R, '#ecebe4', 'camping'); },
+  taxi(c, W, H, r, R) { vehicule(c, W, H, r, R, R.couleur || pick(r, ['#e8e6e0', '#1a1a1a', '#5a5a58']), 'taxi'); },
+  voiture_pompiers(c, W, H, r, R) { vehicule(c, W, H, r, R, '#b81e1e', 'pompiers'); },
+  fourgon_postal(c, W, H, r, R) { vehicule(c, W, H, r, R, '#f0ac00', 'camionnette'); },
+  voiture_calcinee(c, W, H, r, R) { vehicule(c, W, H, r, R, '#2a2420', 'calcinee'); },
   bus(c, W, H, r, R) { vehicule(c, W, H, r, R, R.couleur || pick(r, ['#e8e6e0', '#d8dccc']), 'bus'); },
   camion_mil(c, W, H, r, R) { vehicule(c, W, H, r, R, '#3e4630', 'militaire'); },
   gravats(c, W, H, r) {
@@ -758,7 +762,7 @@ function vehicule(c, W, H, r, R, coul, genre) {
   c.fillStyle = g; rr(c, 3, l * 0.1, L - 6, l * 0.8, l * 0.28); c.fill();
   c.strokeStyle = 'rgba(0,0,0,0.6)'; c.lineWidth = 1.2; rr(c, 3, l * 0.1, L - 6, l * 0.8, l * 0.28); c.stroke();
   // capot à gauche (avant), coffre à droite
-  const av = genre === 'voiture' || genre === 'police' ? 0.24 : genre === 'citadine' ? 0.2 : genre === 'suv' ? 0.18 : 0.2;
+  const av = genre === 'voiture' || genre === 'police' || genre === 'taxi' || genre === 'calcinee' ? 0.24 : genre === 'pompiers' ? 0.18 : genre === 'citadine' ? 0.2 : genre === 'suv' ? 0.18 : 0.2;
   if (genre === 'militaire') {
     c.fillStyle = '#4a5238'; rr(c, L * 0.32, l * 0.14, L * 0.64, l * 0.72, 4); c.fill();
     c.strokeStyle = 'rgba(0,0,0,0.3)'; for (let k = 1; k < 5; k++) { c.beginPath(); c.moveTo(L * 0.32 + k * L * 0.128, l * 0.14); c.lineTo(L * 0.32 + k * L * 0.128, l * 0.86); c.stroke(); }
@@ -794,6 +798,15 @@ function vehicule(c, W, H, r, R, coul, genre) {
     vitre(c, L * av, l * 0.17, L * 0.15, l * 0.66);           // pare-brise
     c.fillStyle = teinte(coul, 1.12); rr(c, L * (av + toit[0]), l * 0.2, L * toit[1], l * 0.6, 5); c.fill(); // toit
     if (genre === 'suv' || genre === 'break') { c.fillStyle = 'rgba(20,20,20,0.5)'; c.fillRect(L * (av + toit[0] + 0.03), l * 0.24, L * (toit[1] - 0.06), 1.6); c.fillRect(L * (av + toit[0] + 0.03), l * 0.76 - 1.6, L * (toit[1] - 0.06), 1.6); } // barres de toit
+    if (genre === 'taxi') { c.fillStyle = '#f2ead0'; rr(c, L * (av + 0.24), l * 0.38, L * 0.06, l * 0.24, 2); c.fill(); }   // le lumineux TAXI
+    if (genre === 'pompiers') {
+      c.fillStyle = '#e8e6e0'; c.fillRect(L * 0.06, l * 0.12, L * 0.88, 2.2); c.fillRect(L * 0.06, l * 0.88 - 2.2, L * 0.88, 2.2);
+      c.fillStyle = '#2050d0'; rr(c, L * (av + 0.2), l * 0.26, L * 0.06, l * 0.48, 2); c.fill();
+    }
+    if (genre === 'calcinee') {   // tôle noircie, rouille, plus de vitres : on voit l'intérieur brûlé
+      c.fillStyle = 'rgba(12,10,9,0.85)'; rr(c, L * (av + 0.02), l * 0.2, L * 0.55, l * 0.6, 4); c.fill();
+      for (let k = 0; k < 10; k++) { c.fillStyle = `rgba(${110 + r() * 40},${55 + r() * 20},${25},${0.25 + r() * 0.3})`; ellipse(c, L * (0.1 + r() * 0.8), l * (0.15 + r() * 0.7), 3 + r() * 6, 2 + r() * 4, r() * 3); c.fill(); }
+    }
     if (genre === 'police') {
       c.fillStyle = '#e8e6e0'; c.fillRect(L * 0.08, l * 0.44, L * 0.86, l * 0.12);                         // bande blanche
       c.fillStyle = '#2050d0'; rr(c, L * (av + 0.26), l * 0.24, L * 0.06, l * 0.24, 2); c.fill();          // rampe : bleu…
