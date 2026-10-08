@@ -74,7 +74,7 @@ export default {
     'G': { prop: 'grille', nom: 'la grille de la base' },
     'H': { prop: 'barriere', nom: 'la barrière du poste de garde' },
     'V': { comme: 'v', nom: 'le camion militaire' },
-    'B': { comme: 'v', nom: 'le bus' },
+    'B': { prop: 'bus', nom: 'le bus' },
     'K': { zombie: 'militaire', etat: 'cogne' },
     'U': { zombie: 'militaire', etat: 'dort' },
     'P': { prop: 'palette' },

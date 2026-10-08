@@ -10,7 +10,7 @@
 //   poussieres    grains de poussière dans le faisceau de la lampe
 // Biome : 'ville' | 'sec' | 'vert', d'après les sols autour du joueur (biomeAutour).
 import { TS, canvas, bruit, clamp } from './outils.js';
-import { K, FIN, SOLS_IDS, MURS, MURS_IDS, OBJETS } from '../carte/catalogue.js';
+import { K, FIN, SOLS_IDS, MURS, MURS_IDS, OBJETS, disposition } from '../carte/catalogue.js';
 
 // ---------- Le soleil ----------
 // Début octobre à Salon (43,6° N, heure d'été) : lever ~7 h 45, coucher ~19 h 20, midi solaire ~13 h 30, ~42° à midi.
@@ -34,7 +34,7 @@ const CIEL = { clair: 1, mistral: 0.95, couvert: 0.3, pluie: 0.12, brouillard: 0
 const H_TOIT = { tuiles: 8, ardoise: 6, zinc: 9, terrasse: 8, tole: 3.5, verriere: 4 };
 const H_MUR = { pierre: 2.6, crepi: 3, brique: 3, beton: 3, bois: 2.4, tole: 2.4, platre: 3, haie: 2.2, muret: 0.9, rocher: 4 };
 const H_ARBRE = { platane: 11, pin: 10, cypres: 9, olivier: 4.5, figuier: 4, amandier: 5, arbre: 7 };
-const H_OBJET = { voiture: 1.8, camionnette: 2.6, ambulance: 3, camion_mil: 3.5, conteneur: 3.2, benne: 1.8, tente: 2, caveau: 3, statue: 3, cloche: 2, fontaine: 1.2 };
+const H_OBJET = { voiture: 1.8, citadine: 1.6, break: 1.8, suv: 2, pickup: 1.9, voiture_police: 1.8, camping_car: 3, bus: 3.2, camionnette: 2.6, ambulance: 3, camion_mil: 3.5, conteneur: 3.2, benne: 1.8, tente: 2, caveau: 3, statue: 3, cloche: 2, fontaine: 1.2 };
 
 // Les « lanceurs d'ombre » d'un étage, calculés une fois : rectangles (unités) et cercles (houppiers).
 function lanceurs(niveau, E) {
@@ -68,7 +68,13 @@ function lanceurs(niveau, E) {
       const ht = H_ARBRE[R.haut || d.haut];
       const col = (R.haut || d.haut) === 'cypres';
       cercles.push({ x: R.x + R.w / 2, y: R.y + R.h / 2, r: col ? 0.55 : (R.haut || d.haut) === 'olivier' ? 1.3 : 1.7, ht, colonne: col, objet: R });
-    } else if (H_OBJET[R.type]) rects.push({ x: R.x + 0.1, y: R.y + 0.1, w: R.w - 0.2, h: R.h - 0.2, ht: H_OBJET[R.type], objet: R });
+    } else if (H_OBJET[R.type]) {
+      // l'ombre suit ce qui est dessiné (un véhicule plus petit que son empreinte : catalogue, disposition)
+      const q = (R.rot || 0) % 2 === 1, dp = disposition(R.type, q ? R.h : R.w, q ? R.w : R.h);
+      const w = dp.mode === 'centrer' ? (q ? dp.h : dp.w) : R.w, h = dp.mode === 'centrer' ? (q ? dp.w : dp.h) : R.h;
+      const x = R.x + (R.w - w) / 2, y = R.y + (R.h - h) / 2;
+      rects.push({ x: x + 0.1, y: y + 0.1, w: w - 0.2, h: h - 0.2, ht: H_OBJET[R.type], objet: R });
+    }
   }
   E._ombres = { rects, cercles, empreintes };
   return E._ombres;

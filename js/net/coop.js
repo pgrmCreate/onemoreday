@@ -331,6 +331,7 @@ function canalDistant(lieuId, niveau) {
     ranger: (cle, item) => appel('ranger', [cle, item]).then(r => r || { ok: false, raison: 'réseau' }),
     demonterMeuble: (cle) => appel('demonterMeuble', [cle]).then(r => r || { ok: false, raison: 'réseau' }),
     puiserEau: (cle, L) => appel('puiserEau', [cle, L]).then(r => r || { ok: false, raison: 'réseau' }),
+    ouvrirVoiture: (cle, mode) => appel('ouvrirVoiture', [cle, mode]).then(r => r || { ok: false, raison: 'réseau' }),
     deposer: (pos, item) => appel('deposer', [pos, item]),
     action(a) { if (majTimer) { clearTimeout(majTimer); majTimer = null; if (majEnAttente) envoyer({ t: 'x:maj', lieu: lieuId, p: majEnAttente }); majEnAttente = null; } envoyer({ t: 'x:act', lieu: lieuId, a }); return Promise.resolve({ ok: true }); },
     faireApparaitre: (l, o) => appel('faireApparaitre', [l, o]).then(r => r || []),

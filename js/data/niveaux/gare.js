@@ -116,7 +116,7 @@ export default {
   legende: {
     'L': { prop: 'machine', nom: 'le locotracteur orange', conteneur: false },
     'M': { prop: 'conteneur', nom: 'le wagon de marchandises' },
-    'B': { comme: 'v', nom: 'le bus' },
+    'B': { prop: 'bus', nom: 'le bus' },
     'A': { comme: 'a', nom: 'le porte-bagages' },
     'H': { prop: 'grille', nom: 'le panneau d’affichage' },
     'G': { prop: 'caisson', nom: 'la caisse à outils de l’équipement', conteneur: { nom: 'la caisse à outils de l’équipement', items: [{ id: 'cle_molette', qty: 1 }, { id: 'essence', qty: 1 }], table: 'usine.machine' } },

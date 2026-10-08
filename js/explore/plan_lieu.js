@@ -3,6 +3,7 @@
 // sorties, ta position et ta direction, l'allié en co-op. Rien sur les morts ni le butin : c'est ce dont tu te souviens.
 // La mémoire est gardée dans la sauvegarde (G.world.lieux[id].plan) : en revenant, le plan est toujours là.
 // Ouverture : Tab ou M au clavier, bouton « Plan » sur l'écran. En solo le jeu est en pause tant que le plan est ouvert.
+// Il s'ouvre centré sur toi ; 3 crans de zoom (+ / −, molette, pincer) ; on le fait glisser pour voir le reste.
 import { G } from '../core/state.js';
 import { el } from '../core/util.js';
 import { K, FIN } from '../carte/catalogue.js';
@@ -34,32 +35,47 @@ export function sauverMemoire(v) {
 }
 
 // ---------- Fenêtre ----------
+// Le plan s'ouvre centré sur toi, au zoom moyen. Trois crans de zoom (boutons + / −, molette, pincer, touches + / −),
+// et on le fait glisser au doigt ou à la souris pour tout voir ; « Me recentrer » revient sur toi.
+// Le HUD général (heure, menus) est masqué tant que le plan est ouvert : rien ne passe par-dessus ses boutons.
+const ZOOMS = ['loin', 'moyen', 'pres'];
 export function planOuvert() { return !!P; }
 export function basculerPlan(opts = {}) { if (P) fermerPlan(); else ouvrirPlan(opts); }
 export function ouvrirPlan({ surFermeture } = {}) {
   if (!V || P) return;
   const cv = el('canvas', { class: 'ex-plan-cv' });
   const tabs = el('div', { class: 'ex-plan-etages' });
+  const bZoomP = el('button', { type: 'button', class: 'ex-plan-z', 'aria-label': 'Zoomer', onclick: () => zoomer(1) }, '+');
+  const bZoomM = el('button', { type: 'button', class: 'ex-plan-z', 'aria-label': 'Dézoomer', onclick: () => zoomer(-1) }, '−');
+  const bCentre = el('button', { type: 'button', class: 'ex-plan-z ex-plan-centre', 'aria-label': 'Me recentrer', title: 'Me recentrer', onclick: () => recentrer() }, '◎');
+  const zone = el('div', { class: 'ex-plan-zone' }, cv, el('div', { class: 'ex-plan-zooms' }, bZoomP, bZoomM, bCentre));
   const racine = el('div', { class: 'ex-plan', role: 'dialog', 'aria-label': 'Plan du lieu' },
     el('div', { class: 'ex-plan-tete' },
-      el('div', { class: 'ex-plan-titre' }, el('strong', {}, V.niveau.nom || 'Plan du lieu'), el('small', {}, 'Ce que tu as déjà exploré')),
+      el('div', { class: 'ex-plan-titre' }, el('strong', {}, V.niveau.nom || 'Plan du lieu'), el('small', {}, 'Ce que tu as déjà exploré — fais glisser pour te déplacer')),
       tabs,
       el('button', { class: 'ex-plan-fermer', type: 'button', 'aria-label': 'Fermer le plan', onclick: () => fermerPlan() }, 'Fermer')),
-    el('div', { class: 'ex-plan-zone' }, cv),
+    zone,
     el('div', { class: 'ex-plan-legende' },
       el('span', {}, el('i', { class: 'lg-moi' }), 'Toi'),
       G.mode !== 'solo' ? el('span', {}, el('i', { class: 'lg-allie' }), 'Ton allié') : null,
       el('span', {}, el('i', { class: 'lg-porte' }), 'Porte'),
       el('span', {}, el('i', { class: 'lg-esc' }), 'Escalier'),
       el('span', {}, el('i', { class: 'lg-sortie' }), 'Sortie')));
-  // un toucher sur le fond (hors du plan) ferme aussi
-  racine.addEventListener('pointerdown', (e) => { if (e.target === racine) fermerPlan(); });
-  const clavier = (e) => { if (['Tab', 'Escape', 'KeyM'].includes(e.code)) { e.preventDefault(); e.stopPropagation(); if (!e.repeat) fermerPlan(); } };
+  const clavier = (e) => {
+    if (['Tab', 'Escape', 'KeyM'].includes(e.code)) { e.preventDefault(); e.stopPropagation(); if (!e.repeat) fermerPlan(); return; }
+    const pas = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] }[e.code];
+    if (pas && P && P.s) { e.preventDefault(); e.stopPropagation(); P.cx += pas[0] * 60 / P.s; P.cy += pas[1] * 60 / P.s; P.suivre = false; dessiner(); return; }
+    if (['Equal', 'NumpadAdd', 'BracketRight'].includes(e.code) || e.key === '+') { e.preventDefault(); e.stopPropagation(); zoomer(1); return; }
+    if (['Minus', 'NumpadSubtract', 'Digit6'].includes(e.code) || e.key === '-') { e.preventDefault(); e.stopPropagation(); zoomer(-1); return; }
+    if (e.code === 'Space' || e.code === 'KeyC') { e.preventDefault(); e.stopPropagation(); recentrer(); }
+  };
   document.addEventListener('keydown', clavier, true);
   V.racine.append(racine);
-  P = { racine, cv, tabs, etage: V.j.etage, clavier, surFermeture, t: 0 };
+  document.body.classList.add('plan-lieu-ouvert');
+  P = { racine, cv, zone, tabs, etage: V.j.etage, clavier, surFermeture, t: 0, z: 1, cx: null, cy: null, suivre: true, doigts: new Map() };
+  glisser(zone);
   dessiner();
-  // en co-op le jeu continue : le plan suit ta position
+  // en co-op le jeu continue : le plan suit ta position (tant que tu ne l'as pas fait glisser)
   P.timer = setInterval(() => { if (P && V) dessiner(); }, 400);
   window.addEventListener('resize', dessiner);
 }
@@ -69,8 +85,44 @@ export function fermerPlan() {
   clearInterval(p.timer);
   document.removeEventListener('keydown', p.clavier, true);
   window.removeEventListener('resize', dessiner);
+  document.body.classList.remove('plan-lieu-ouvert');
   p.racine.remove();
   if (p.surFermeture) try { p.surFermeture(); } catch (e) { console.warn(e); }
+}
+function zoomer(sens) {
+  if (!P) return;
+  const z = Math.max(0, Math.min(ZOOMS.length - 1, P.z + sens));
+  if (z === P.z) return;
+  P.z = z; dessiner();
+}
+function recentrer() { if (!P || !V) return; P.etage = V.j.etage; P.cleTabs = null; P.cx = null; P.suivre = true; dessiner(); }
+// Faire glisser (souris, un doigt) ; pincer à deux doigts change de cran ; molette = zoom.
+function glisser(zone) {
+  zone.addEventListener('pointerdown', (e) => {
+    if (!P || e.target.closest('button')) return;
+    zone.setPointerCapture && zone.setPointerCapture(e.pointerId);
+    P.doigts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (P.doigts.size === 2) { const [a, b] = [...P.doigts.values()]; P.pince = Math.hypot(a.x - b.x, a.y - b.y); }
+  });
+  zone.addEventListener('pointermove', (e) => {
+    if (!P || !P.doigts.has(e.pointerId)) return;
+    const d = P.doigts.get(e.pointerId), dx = e.clientX - d.x, dy = e.clientY - d.y;
+    d.x = e.clientX; d.y = e.clientY;
+    if (P.doigts.size === 1 && P.s) { P.cx -= dx / P.s; P.cy -= dy / P.s; P.suivre = false; dessiner(); }
+    else if (P.doigts.size === 2 && P.pince) {
+      const [a, b] = [...P.doigts.values()], dist = Math.hypot(a.x - b.x, a.y - b.y);
+      if (dist > P.pince * 1.35) { zoomer(1); P.pince = dist; } else if (dist < P.pince / 1.35) { zoomer(-1); P.pince = dist; }
+    }
+  });
+  const lacher = (e) => { if (!P) return; P.doigts.delete(e.pointerId); if (P.doigts.size < 2) P.pince = null; };
+  zone.addEventListener('pointerup', lacher);
+  zone.addEventListener('pointercancel', lacher);
+  zone.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const t = performance.now();
+    if (Math.abs(e.deltaY) < 2 || t - (P.tRoue || 0) < 280) return;   // un pavé tactile envoie des rafales : un cran à la fois
+    P.tRoue = t; zoomer(e.deltaY < 0 ? 1 : -1);
+  }, { passive: false });
 }
 
 // ---------- Dessin ----------
@@ -93,7 +145,7 @@ function dessiner() {
   if (P.cleTabs !== cleTabs) {
     P.cleTabs = cleTabs; P.tabs.textContent = '';
     if (connus.length > 1) for (const E of connus) {
-      P.tabs.append(el('button', { type: 'button', class: 'ex-plan-etage' + (E.id === P.etage ? ' actif' : ''), onclick: () => { P.etage = E.id; P.cleTabs = null; dessiner(); } },
+      P.tabs.append(el('button', { type: 'button', class: 'ex-plan-etage' + (E.id === P.etage ? ' actif' : ''), onclick: () => { P.etage = E.id; P.cleTabs = null; P.cx = null; P.suivre = E.id === V.j.etage; dessiner(); } },
         E.nom || E.id, E.id === V.j.etage ? el('em', {}, ' · tu es ici') : null));
     }
   }
@@ -132,8 +184,19 @@ function dessiner() {
   const ctx = P.cv.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, ZW, ZH);
-  const s = Math.min(ZW / bw, ZH / bh, 9);             // pixels écran par petite case (plafonné : petit lieu = pas énorme)
-  const ox = (ZW - bw * s) / 2, oy = (ZH - bh * s) / 2;
+  // trois crans : « loin » montre tout ce qui est exploré (ou presque), « moyen » à l'ouverture, « près » pour les détails
+  const sFit = Math.min(ZW / bw, ZH / bh);
+  const sLoin = Math.max(1, Math.min(sFit, 6)), sMoyen = Math.max(sLoin * 1.8, 7), sPres = sMoyen * 1.8;
+  const s = [sLoin, sMoyen, sPres][P.z] || sMoyen;
+  P.s = s;
+  // centre de la vue (petites cases) : sur toi à l'ouverture (et tant que tu ne fais pas glisser), sinon là où on l'a laissé
+  if (P.cx == null || (P.suivre && ici)) {
+    if (ici) { P.cx = V.j.x * FIN; P.cy = V.j.y * FIN; }
+    else { P.cx = x0 + bw / 2; P.cy = y0 + bh / 2; }
+  }
+  P.cx = Math.max(x0, Math.min(x0 + bw, P.cx)); P.cy = Math.max(y0, Math.min(y0 + bh, P.cy));
+  const ox = ZW / 2 - (P.cx - x0) * s, oy = ZH / 2 - (P.cy - y0) * s;
+  P.zone.querySelectorAll('.ex-plan-z').forEach((b, k) => { if (k < 2) b.disabled = k === 0 ? P.z >= ZOOMS.length - 1 : P.z <= 0; });
   const X = (ux) => ox + (ux * FIN - x0) * s, Y = (uy) => oy + (uy * FIN - y0) * s;   // unités → écran
   if (vu.indexOf(1) < 0) {
     ctx.fillStyle = 'rgba(230,223,204,.6)'; ctx.font = '16px "EB Garamond", Georgia, serif'; ctx.textAlign = 'center';
@@ -158,17 +221,17 @@ function dessiner() {
   // escaliers et sorties vus
   for (const e of n.escaliers) if (e.etage === E.id && vuU(e.cx, e.cy)) {
     const cible = e.vers && n.etageIdx[e.vers] != null ? n.etages[n.etageIdx[e.vers]].nom : null;
-    texte(`${e.sens === 'monte' ? '↑' : '↓'} ${cible || (e.sens === 'monte' ? 'Monter' : 'Descendre')}`, X(e.cx), Y(e.cy) - s * 2.2, Math.max(10, taille - 1), '#d9b56a');
+    texte(`${e.sens === 'monte' ? '↑' : '↓'} ${cible || (e.sens === 'monte' ? 'Monter' : 'Descendre')}`, X(e.cx), Y(e.cy) - Math.min(18, s * 2.2), Math.max(10, taille - 1), '#d9b56a');
   }
-  for (const so of n.sorties) if (so.etage === E.id && vuU(so.cx, so.cy)) texte('Sortie', X(so.cx), Y(so.cy) - s * 2, Math.max(10, taille - 1), '#e8c45a');
+  for (const so of n.sorties) if (so.etage === E.id && vuU(so.cx, so.cy)) texte('Sortie', X(so.cx), Y(so.cy) - Math.min(18, s * 2), Math.max(10, taille - 1), '#e8c45a');
   // l'allié
   for (const p of V.pairsDerniers || []) if (p.etage === E.id) {
     ctx.fillStyle = '#7cc8ff'; ctx.strokeStyle = '#0b0b0c'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), Math.max(5, s * 1.1), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), Math.min(10, Math.max(5, s * 1.1)), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
   // toi : une flèche dans ta direction
   if (ici) {
-    const r = Math.max(8, s * 1.8), px = X(V.j.x), py = Y(V.j.y), a = V.j.dir;
+    const r = Math.min(16, Math.max(8, s * 1.8)), px = X(V.j.x), py = Y(V.j.y), a = V.j.dir;
     ctx.save(); ctx.translate(px, py); ctx.rotate(a);
     ctx.beginPath(); ctx.moveTo(r, 0); ctx.lineTo(-r * 0.7, r * 0.65); ctx.lineTo(-r * 0.35, 0); ctx.lineTo(-r * 0.7, -r * 0.65); ctx.closePath();
     ctx.fillStyle = '#e8c45a'; ctx.strokeStyle = '#0b0b0c'; ctx.lineWidth = 2; ctx.fill(); ctx.stroke();

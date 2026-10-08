@@ -14,6 +14,7 @@ export function lierButin(v) { V = v; }
 export async function commencerFouille(cle, nom, x, y) {
   const r = await V.canal.fouiller(cle);
   if (!V || r.erreur) return;
+  if (r.verrouillee) { message(`${capitaliser(r.nom || nom)} est fermée à clé : il faut casser une vitre.`); return; }
   V.fouille = { cle, nom: r.nom || nom, items: r.items, duree: Math.max(400, r.dureeMs), p: r.progres || 0, x, y, reveles: -1, tb: 0, tSon: 0, son: null };
   ouvrirButin(V.fouille);
   majRevele();

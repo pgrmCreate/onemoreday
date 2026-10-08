@@ -5,7 +5,8 @@
 // Interface (identique pour le futur canal distant de l'invité) :
 //   majJoueur(patch), bruit(b), porte(cle, action) → Promise, fouiller(cle) → Promise, prendre(cle, i, qty?, id?) → Promise, contenu(cle) → Promise,
 //   deposer(pos, item) → Promise, instantane(), pairs(), on(evt, fn) → off ;
-//   construire(o), agirConstruction(uid, action, patch), ranger(cle, item), demonterMeuble(cle), puiserEau(cle, L) → Promise
+//   construire(o), agirConstruction(uid, action, patch), ranger(cle, item), demonterMeuble(cle), puiserEau(cle, L),
+//   ouvrirVoiture(cle, 'vitre' | 'forcer') → Promise
 // Combat : action(a) → Promise ({ type: 'frapper'|'pousser'|'tirer'|'marteler', … }), faireApparaitre(liste, o) → Promise<uids>.
 // Extensions : ajouterJoueur(pos, info), arreterFouille(progres), blesserZombie(uid, n), retirerZombies(uids, o),
 //   repousserZombies(uids, depuis), pause(), reprise(), fermer(), niveau, joueurId, grilles(etage).
@@ -61,6 +62,7 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } 
     ranger(cle, item) { return this._act(() => sim.ranger(joueurId, cle, item)); },
     demonterMeuble(cle) { return this._act(() => sim.demonterMeuble(joueurId, cle)); },
     puiserEau(cle, L) { return this._act(() => sim.puiserEau(joueurId, cle, L)); },
+    ouvrirVoiture(cle, mode) { return this._act(() => sim.ouvrirVoiture(joueurId, cle, mode)); },
     _act(f) { const r = f(); const evts = sim.viderEvenements(); if (evts.length) for (const c of liste) c._recevoir(evts, false); return ok(r); },
     action(a) {
       const r = sim.action(joueurId, a);

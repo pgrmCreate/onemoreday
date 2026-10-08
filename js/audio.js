@@ -76,6 +76,7 @@ const BANQUE_SFX = {
   fouille:          { f: ['effect/rummage-search.mp3', 'effect/rummage-search-2.mp3'], vol: 0.45 },
   fouille_corps:    { f: ['effect/body-search.mp3', 'effect/body-search-2.mp3'], vol: 0.28 }, // fouiller un cadavre : froissements de vêtements
   vitre:            { f: ['effect/glass-break.mp3'], vol: 0.8 },
+  alarme_voiture:   { f: ['effect/car-alarm.mp3'], vol: 0.75 },   // une alarme de voiture qui hurle (vitre cassée), ~2,1 s rejouées
   boire:            { f: ['action/drink-gulp.mp3'], vol: 0.6 },
   clouer:           { f: ['effect/hammer-nail.mp3'], vol: 0.6 },
   sac_zip:          { f: ['effect/bag-zip.mp3'], vol: 0.45 },

@@ -16,6 +16,7 @@
 import { REGLAGES, paramsJour } from '../data/reglages.js';
 import { ZOMBIES, typeMort, sexeMort } from '../data/zombies.js';
 import { tirerButin, tirerButinTable, tirerLignes } from '../data/butin.js';
+import { VOITURES } from '../data/voitures.js';
 import { seedRng } from '../core/rng.js';
 import { K, parserNiveau, cleCase, MATIERES } from './niveau.js';
 import { FIN, icase, cxCase, cyCase } from '../carte/catalogue.js';
@@ -32,6 +33,8 @@ export function creerSimLieu(opts) {
   const {
     lieuId, seed = 1, danger = 0.3, minutes = 480, coop = false, getFlag = () => undefined,
     getRuee = () => null,     // sirènes / horde (js/game/ruees.js rueeSim) : () → { i: 0..1, id, course, densite } | null
+    arrivees = false,         // des morts entrent par les sorties (exploration.ARRIVEES) — pas dans une arène
+    getMinutes = () => minutes, // l'heure du monde (la nuit, il en vient plus)
   } = opts;
   const niveau = opts.niveau && opts.niveau.etages && opts.niveau.etages[0] && opts.niveau.etages[0].code ? opts.niveau : parserNiveau(opts.niveau || {});
   const pool = (opts.pool && opts.pool.length ? opts.pool : niveau.pool) || ['errant'];
@@ -48,7 +51,7 @@ export function creerSimLieu(opts) {
 
   // --- état ---
   const portes = {};                 // cle → { etat, pv, pvMax, barricadee }
-  const conteneurs = {};             // cle → { items: [...]|null, progres }
+  const conteneurs = {};             // cle → { items: [...]|null, progres, ouverte? ('vitre' | 'forcee' : voiture fermée à clé qu'on a ouverte) }
   let sol = [];                      // { uid, etage, x, y, id, qty } | { uid, etage, x, y, doc }
   let cadavres = [];                 // { uid, type, etage, x, y, dir }
   let zombies = [];
@@ -58,6 +61,8 @@ export function creerSimLieu(opts) {
   let vm = 1;                        // version du « monde statique » (portes, sol, cadavres, conteneurs) : réseau en différentiel
   const joueurs = new Map();
   const bruits = [];                 // file de bruits à traiter au prochain tick
+  const rngArr = seedRng(`${seed}:arrivees:${lieuId}:${minutes}`);
+  let finBruitFort = -1, dernierBruitFort = null, zombiesDepart = null; // dernier gros bruit (exploration.ARRIVEES) : des morts viennent de dehors
   let evts = [];
   let tFlag = 0;
   // Les sirènes : intensité courante (0..1) et la dernière ruée déjà « arrivée » ici (renforts et réveil une seule fois).
@@ -99,7 +104,7 @@ export function creerSimLieu(opts) {
   if (etat) {
     uidSeq = etat.uid || 1;
     for (const [cle, s] of Object.entries(etat.portes || {})) if (portes[cle]) Object.assign(portes[cle], s);
-    for (const [cle, c] of Object.entries(etat.conteneurs || {})) conteneurs[cle] = { items: c.items, progres: c.progres || 0 };
+    for (const [cle, c] of Object.entries(etat.conteneurs || {})) conteneurs[cle] = { items: c.items, progres: c.progres || 0, ...(c.ouverte ? { ouverte: c.ouverte } : {}) };
     sol = (etat.sol || []).slice();
     rueeVue = etat.rueeVue || null;
     cadavres = (etat.cadavres || []).slice();
@@ -267,6 +272,69 @@ export function creerSimLieu(opts) {
   function bruit(b) {
     if (!b || EI(b.etage) == null || !(b.rayon > 0)) return;
     bruits.push({ etage: b.etage, x: b.x, y: b.y, rayon: b.rayon, source: b.source || null });
+    // un gros bruit (pas un cri de mort) : le quartier l'a entendu, d'autres morts peuvent venir de dehors
+    if (b.rayon >= RX.ARRIVEES.BRUIT_FORT && !(b.source && zombies.some(q => q.uid === b.source))) { finBruitFort = T + RX.ARRIVEES.BRUIT_MS; dernierBruitFort = { etage: b.etage, x: b.x, y: b.y }; }
+  }
+  // ---------- Arrivées par les bords de la carte (les sorties) ----------
+  function contexteArrivees() {
+    if (alarmes.some(a => (a.venus || 0) < maxAlarme())) return 'ALARME';
+    if (ruee > 0) return 'RUEE';
+    if (T < finBruitFort) return 'BRUIT';
+    return 'CALME';
+  }
+  const maxAlarme = () => { const m = RX.ARRIVEES.ALARME_MAX; return Math.round(m[0] + (m[1] - m[0]) * Math.max(0, Math.min(1, danger))); };
+  // Une sortie d'où un mort peut entrer sans être vu : loin des joueurs, hors de leur vue, pas dans une pièce sûre.
+  function sortiesCachees() {
+    const A = RX.ARRIVEES, out = [];
+    for (const s of niveau.sorties) {
+      const ei = EI(s.etage); if (ei == null) continue;
+      const E = niveau.etages[ei], D = dyn[ei];
+      const pc = E.piece[s.cases[0]] >= 0 ? niveau.pieces[E.piece[s.cases[0]]] : null;
+      if (pc && (pc.sansMorts || (niveau.mortsDehorsSeulement && !pc.exterieur))) continue;
+      let ok = true;
+      for (const j of joueurs.values()) {
+        if (j.etage !== s.etage) continue;
+        const d = Math.hypot(j.x - s.cx, j.y - s.cy);
+        if (d < A.DIST_JOUEUR || (d < A.VUE && ligneLibre(E.w, E.h, D.bloque, j.x, j.y, s.cx, s.cy))) { ok = false; break; }
+      }
+      if (ok) out.push(s);
+    }
+    return out;
+  }
+  function tickArrivees() {
+    if (!arrivees || !niveau.sorties.length || !joueurs.size) return;
+    const A = RX.ARRIVEES, ctx = contexteArrivees();
+    if (zombiesDepart == null) zombiesDepart = zombies.length;   // la population du lieu à l'arrivée du joueur
+    if (ctx !== 'ALARME' && zombies.length >= Math.max(A.PLANCHER, mortsN[1] || 0, zombiesDepart) * A.PLAFOND) return;
+    const h = (getMinutes() % 1440) / 60, H = REGLAGES.temps.HEURES;
+    const nuit = h >= H.NUIT || h < H.AUBE;
+    const taux = A[ctx] * (A.DANGER_MIN + danger) * (nuit ? A.NUIT : 1) * (diff.mortsLieux ?? 1) * (coop ? A.COOP : 1);
+    if (rngArr() >= taux / 60) return;
+    // vers quoi il vient : l'alarme qui n'a pas encore fait venir tous ses morts, le dernier gros bruit, ou rien (il passe)
+    const al = ctx === 'ALARME' ? alarmes.find(a => (a.venus || 0) < maxAlarme()) : null;
+    const but = al || (ctx === 'BRUIT' || ctx === 'RUEE' ? dernierBruitFort : null);
+    let sorties = sortiesCachees();
+    if (but) { const memes = sorties.filter(s => s.etage === but.etage); if (memes.length) sorties = memes; }
+    if (!sorties.length) return;
+    // il arrive plutôt du côté du bruit (tirage pondéré par la proximité)
+    let s = sorties[Math.floor(rngArr() * sorties.length)];
+    if (but) {
+      const p = sorties.map(q => 1 / (8 + Math.hypot(q.cx - but.x, q.cy - but.y)));
+      let u = rngArr() * p.reduce((a, b) => a + b, 0);
+      for (let k = 0; k < sorties.length; k++) { u -= p[k]; if (u <= 0) { s = sorties[k]; break; } }
+    }
+    const E = niveau.etages[EI(s.etage)], D = dyn[EI(s.etage)];
+    const c = s.cases.find(i => !D.bloque[i] && !zombies.some(z => z.etage === s.etage && Math.hypot(z.x - cxCase(E, i), z.y - cyCase(E, i)) < 0.8));
+    if (c == null) return;
+    const x = cxCase(E, c), y = cyCase(E, c);
+    const type = pool[Math.floor(rngArr() * pool.length)];
+    const z = nouveauMort(type, s.etage, x, y, but ? 'alerte' : 'erre', { proc: true, dir: but ? Math.atan2(but.y - y, but.x - x) : rngArr() * Math.PI * 2 });
+    if (!z) return;
+    if (but) { z.cible = { x: but.x, y: but.y }; z.tEtat = al ? Math.max(A.ALERTE_MS, al.fin - T) : A.ALERTE_MS; }
+    z.venu = true;
+    zombies.push(z);
+    if (al) al.venus = (al.venus || 0) + 1;
+    evts.push({ type: 'arrivee', uid: z.uid, etage: s.etage, x, y, contexte: ctx }); vm++; cache = null;
   }
   const tmpObs = { murs: 0, portes: 0 };
   function traiterBruits() {
@@ -875,7 +943,7 @@ export function creerSimLieu(opts) {
       const dos = Math.abs(angDiff(Math.atan2(j.y - z.y, j.x - z.x), z.dir)) > RX.FURTIF.DOS_DEG * DEG;
       const furtif = nonAlerte(z) && (dos || z.etat === 'dort' || z.etat === 'fait_le_mort');
       const r = resoudreCoup({ stats: st, prof, def: z.def, c, combo, achever: !!(auSol && auSol.z === z), critForce: !!a.crit && !critDonne,
-        aTerre: z.aTerre > 0, vacille: z.vacille > 0, telegraphie: !!(z.atk || z.fente), furtif, ess: !!a.ess, rnd: rngCbt });
+        aTerre: z.aTerre > 0, vacille: z.vacille > 0, telegraphie: !!(z.atk || z.fente), furtif, ess: !!a.ess, accroupi: !!a.accroupi, rnd: rngCbt });
       critDonne = true;
       touches++;
       const tue = encaisser(z, j, r, prof, c, { furtif });
@@ -883,7 +951,13 @@ export function creerSimLieu(opts) {
       if (!(furtif && tue)) silencieux = false;
     }
     if (!cibles.length) evts.push({ type: 'coup_vide', joueur: j.id, lourd: c >= RC.CHARGE.SEUIL_LOURD });
-    if (touches) bruit({ etage: j.etage, x: j.x, y: j.y, rayon: silencieux ? 1 : bruitCoup(prof), source: j.id });
+    // attaquer fait du bruit, même dans le vide ; accroupi(e) : aucun bruit (le coup est retenu, voir resoudreCoup)
+    const BA = RC.BRUIT_ATTAQUE || { MIN: 4, VIDE: 2.5 };
+    const kDis = Math.max(0.5, 1 - RX.BRUIT_DISCRETION * (j.discretion || 0));
+    if (!a.accroupi) {
+      if (touches) bruit({ etage: j.etage, x: j.x, y: j.y, rayon: silencieux ? 1 : Math.max(BA.MIN, bruitCoup(prof)) * kDis, source: j.id });
+      else bruit({ etage: j.etage, x: j.x, y: j.y, rayon: BA.VIDE * kDis, source: j.id });
+    }
     return { ok: true, touches, tues, cibles: cibles.length };
   }
   function pousser(j) {
@@ -936,7 +1010,7 @@ export function creerSimLieu(opts) {
     return { ok: true, touche };
   }
   // Une action de combat d'un joueur (le client a déjà payé l'endurance et joue l'animation).
-  //   a = { type: 'frapper' { charge, combo, crit } | 'pousser' | 'tirer' { visee, crit } | 'marteler', x, y, dir, ess, stats? }
+  //   a = { type: 'frapper' { charge, combo, crit, accroupi } | 'pousser' | 'tirer' { visee, crit } | 'marteler', x, y, dir, ess, stats? }
   function action(joueurId, a) {
     const j = joueurs.get(joueurId);
     if (!j || !a || j.mort) return { ok: false, raison: 'absent' };
@@ -1119,6 +1193,54 @@ export function creerSimLieu(opts) {
     return { ok: false, raison: 'action' };
   }
 
+  // ---------- Voitures fermées à clé, vitres cassées, alarmes ----------
+  // Une voiture fouillable d'un modèle à serrure (js/data/voitures.js, verrou) est fermée selon la graine du lieu (les deux
+  // joueurs voient la même). Pas celles qui portent un objet de l'histoire ou un marqueur : on ne bloque pas une quête.
+  let verrous = null;
+  const alarmes = [];                // { cle, etage, x, y, fin, tb } : un bruit de RX.VOITURES.ALARME.RAYON par période
+  function verrousVoitures() {
+    if (verrous) return verrous;
+    verrous = new Set();
+    for (const m of niveau.meubles) {
+      if (m.cat !== 'voiture' || !m.conteneur || m.items || m.marqueur || retires.has(m.cle)) continue;
+      const c = conteneurs[m.cle];
+      if (c && (c.ouverte || (c.progres || 0) > 0)) continue;
+      const d = VOITURES[m.type] || VOITURES.voiture;
+      if (seedRng(`${seed}:verrou:${lieuId}:${m.cle}`)() < (d.verrou || 0)) verrous.add(m.cle);
+    }
+    return verrous;
+  }
+  // ouvrirVoiture(joueurId, cle, mode) : 'vitre' (casser une vitre : vite, bruyant) | 'forcer' (pied-de-biche : lent, discret).
+  // → { ok, alarme, raison? }. Le butin est tiré à ce moment-là ; on fouille ensuite comme une voiture ouverte.
+  function ouvrirVoiture(joueurId, cle, mode = 'vitre') {
+    const m = niveau.meubleParCle[cle];
+    if (!m || m.cat !== 'voiture') return { ok: false, raison: 'pas une voiture' };
+    if (!verrousVoitures().has(cle)) return { ok: true, alarme: false, deja: true };
+    const j = joueurs.get(joueurId), VV = RX.VOITURES;
+    const c = tirer(cle, j);
+    c.ouverte = mode === 'forcer' ? 'forcee' : 'vitre';
+    verrous.delete(cle);
+    const x = (m.x0 + m.x1 + 1) / 2, y = (m.y0 + m.y1 + 1) / 2;
+    if (mode !== 'forcer') bruit({ etage: m.etage, x, y, rayon: RX.BRUIT.vitre, source: joueurId });
+    const d = VOITURES[m.type] || VOITURES.voiture;
+    const p = (d.alarme || 0) * (mode === 'forcer' ? VV.FORCER.ALARME_MULT : 1);
+    const alarme = seedRng(`${seed}:alarme:${lieuId}:${cle}`)() < p;
+    if (alarme) alarmes.push({ cle, etage: m.etage, x, y, fin: T + VV.ALARME.MS, tb: VV.ALARME.PERIODE_MS });
+    evts.push({ type: 'voiture', action: 'ouverte', cle, mode: c.ouverte, alarme, x, y, etage: m.etage, joueur: joueurId });
+    vm++; cache = null;
+    return { ok: true, alarme };
+  }
+  function tickAlarmes(dt) {
+    if (!alarmes.length) return;
+    const A = RX.VOITURES.ALARME;
+    for (let k = alarmes.length - 1; k >= 0; k--) {
+      const a = alarmes[k];
+      a.tb += dt;
+      if (a.tb >= A.PERIODE_MS) { a.tb -= A.PERIODE_MS; bruit({ etage: a.etage, x: a.x, y: a.y, rayon: A.RAYON }); }
+      if (T >= a.fin) { alarmes.splice(k, 1); evts.push({ type: 'voiture', action: 'alarme_fin', cle: a.cle }); vm++; }
+    }
+  }
+
   function sansLumiere(j) { return j && !j.lampe && j.lumiere < REGLAGES.lumiere.SEUILS.penombre; }
   function tirer(cle, j) {
     const c = conteneurs[cle];
@@ -1131,6 +1253,9 @@ export function creerSimLieu(opts) {
       if (m.items) items = m.items.map(i => ({ ...i }));
       if (m.table === undefined) items = items.concat(tirerButin(typeButin, m.cat, r, optsB));
       else if (m.table) items = items.concat(tirerButinTable(m.table, Math.min(RF.TIRAGES_MAX, Math.ceil(RF.TIRAGES + RF.TIRAGES_PAR_CASE * (m.taille - 1))), r, optsB));
+      // une voiture d'un modèle particulier (gendarmerie, camping-car…) : une passe de plus dans ce qui lui est propre
+      const vd = m.cat === 'voiture' && VOITURES[m.type];
+      if (vd && vd.butin && m.table === undefined) items = items.concat(tirerLignes(vd.butin, r, { ...optsB, passes: 1 }));
     } else if (cle.startsWith('cad:')) {
       const cad = cadavres.find(c2 => 'cad:' + c2.uid === cle);
       const def = cad && ZOMBIES[cad.type];
@@ -1149,6 +1274,7 @@ export function creerSimLieu(opts) {
     const m = niveau.meubleParCle[cle];
     const estCad = cle.startsWith('cad:');
     if ((!m || !m.conteneur) && !estCad) return { items: [], dureeMs: 0, progres: 1, erreur: 'pas un conteneur' };
+    if (verrousVoitures().has(cle)) return { items: [], dureeMs: 0, progres: 0, verrouillee: true, nom: m.nom };
     const c = tirer(cle, j);
     let s;
     if (estCad) s = 2;
@@ -1248,14 +1374,15 @@ export function creerSimLieu(opts) {
     const pp = {};
     for (const k in portes) { const s = portes[k]; pp[k] = { etat: s.etat, pv: s.pv, pvMax: s.pvMax, barricadee: s.barricadee }; }
     const cc = {};
-    for (const k in conteneurs) cc[k] = { tire: !!conteneurs[k].items, reste: conteneurs[k].items ? conteneurs[k].items.length : null, progres: conteneurs[k].progres };
+    for (const k in conteneurs) cc[k] = { tire: !!conteneurs[k].items, reste: conteneurs[k].items ? conteneurs[k].items.length : null, progres: conteneurs[k].progres, ouverte: conteneurs[k].ouverte };
     cache = {
       zombies: zombies.map(z => ({ uid: z.uid, type: z.type, sexe: z.sexe, x: z.x, y: z.y, etage: z.etage, dir: z.dir, etat: z.etat, alerte: z.alerte,
         hp: z.hp, hpMax: z.hpMax, vitesse: z.vitesse, etourdi: z.etourdi > 0,
         atk: z.atk ? { type: z.atk.type, p: Math.min(1, (T - z.atk.t0) / z.atk.duree), reste: Math.max(0, z.atk.fin - T), cible: z.atk.cible } : null,
         fente: z.fente ? Math.min(1, (T - z.fente.t0) / RC.FENTE.MS) : null, eq: z.equilibreMax ? Math.round(100 * z.equilibre / z.equilibreMax) / 100 : 1,
         saisit: z.saisit, vac: z.vacille > 0, terre: z.aTerre > 0, touche: T - z.tTouche < 160 })),
-      portes: pp, conteneurs: cc,
+      portes: pp, conteneurs: cc, voituresFermees: [...verrousVoitures()],
+      alarmes: alarmes.map(a => ({ cle: a.cle, etage: a.etage, x: a.x, y: a.y, reste: Math.max(0, a.fin - T) })),
       sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })),
       constructions: constructions.map(c => ({ ...c, items: undefined, n: c.items ? c.items.length : undefined })), retires: [...retires], eau: { ...eauReste },
       joueurs: [...joueurs.values()].map(j => ({ id: j.id, nom: j.nom, x: j.x, y: j.y, etage: j.etage, dir: j.dir, lampe: j.lampe, lampeSource: j.lampeSource, allure: j.allure, mort: j.mort,
@@ -1272,7 +1399,7 @@ export function creerSimLieu(opts) {
     const pp = {};
     for (const p of niveau.portes) { const s = portes[p.cle]; if (s.etat !== p.etat || s.pv !== s.pvMax || s.barricadee) pp[p.cle] = { etat: s.etat, pv: s.pv, pvMax: s.pvMax, barricadee: s.barricadee }; }
     const cc = {};
-    for (const k in conteneurs) cc[k] = { items: conteneurs[k].items, progres: conteneurs[k].progres };
+    for (const k in conteneurs) cc[k] = { items: conteneurs[k].items, progres: conteneurs[k].progres, ...(conteneurs[k].ouverte ? { ouverte: conteneurs[k].ouverte } : {}) };
     return {
       v: 1, planV: niveau.planVersion || 0, minutes: m, uid: uidSeq, abords: niveau.abords ? { version: niveau.abords.version, dx: niveau.abords.dx, dy: niveau.abords.dy } : null,
       zombies: zombies.map(z => ({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: +z.x.toFixed(2), y: +z.y.toFixed(2), dir: +z.dir.toFixed(2),
@@ -1408,9 +1535,11 @@ export function creerSimLieu(opts) {
           if (s.etat === 'verrouillee' && p.verrou && p.verrou.flag && flagOk(p.verrou)) { s.etat = 'fermee'; setPorte(p.cle, 'fermee', 'flag', null); }
         }
         majConditionnels();
+        tickArrivees();
       }
       T += dt;
       tickJoueurs(dt);
+      tickAlarmes(dt);
       traiterBruits();
       for (const z of zombies) majMort(z, dt);
       if (constructions.length) for (const z of zombies.slice()) pieges(z);
@@ -1426,7 +1555,7 @@ export function creerSimLieu(opts) {
   return {
     lieuId, niveau, seed,
     ajouterJoueur, majJoueur, retirerJoueur, bruit, porte, fouiller, arreterFouille, prendre, contenu, deposer,
-    construire, agirConstruction, ranger, demonterMeuble, puiserEau, constructions: () => constructions,
+    construire, agirConstruction, ranger, demonterMeuble, puiserEau, ouvrirVoiture, constructions: () => constructions,
     retirerZombies, repousserZombies, finCombat, blesserZombie, tick, instantane, sauver,
     action, faireApparaitre, viderEvenements, temps: () => T,
     // accès pratiques (hôte / vue locale)

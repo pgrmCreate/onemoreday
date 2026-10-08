@@ -169,6 +169,38 @@ export const REGLAGES = {
       XP_DISCRETION: 6,
     },
 
+    // --- ARRIVÉES : des morts entrent par les bords de la carte (les sorties, là où l'on fuit) ---
+    // Chaque seconde, chance = taux / 60, avec taux (morts par minute réelle) = CONTEXTE × (DANGER_MIN + danger du lieu)
+    // × NUIT (la nuit) × difficulté (mortsLieux) × COOP (à deux). Le contexte est le plus fort du moment :
+    //   ALARME  une alarme de voiture hurle (ils viennent vers elle, alertés, du côté de la carte le plus proche) ;
+    //   RUEE    les sirènes ou une horde sont sur le lieu ;
+    //   BRUIT   un gros bruit récent (≥ BRUIT_FORT cases : vitre, coup de feu, porte forcée…) pendant BRUIT_MS ;
+    //   CALME   le reste du temps : un mort qui passe de temps en temps.
+    // Jamais à moins de DIST_JOUEUR unités d'un joueur, ni à sa vue (à moins de VUE unités sans obstacle entre eux).
+    // Hors alarme, plus d'arrivée quand les morts présents atteignent PLAFOND × (ceux qu'il y avait à ton arrivée, ou les
+    // morts max du lieu, au moins PLANCHER) : tuer les morts d'un quartier en fait venir d'autres, sans fin mais sans déluge.
+    // Une alarme fait venir au plus ALARME_MAX[0] (danger 0) à ALARME_MAX[1] (danger 1) morts.
+    // Ordres de grandeur (danger 0,5, de jour) : alarme de 45 s ≈ 3 à 4 morts ; un coup de feu ≈ 1 mort sur 2 ;
+    // au calme ≈ 3 morts par heure réelle passée dans le lieu.
+    ARRIVEES: {
+      CALME: 0.06, BRUIT: 0.6, RUEE: 2.5, ALARME: 6,
+      DANGER_MIN: 0.3, NUIT: 1.4, COOP: 1.2,
+      BRUIT_FORT: 10, BRUIT_MS: 60000,
+      PLAFOND: 1.2, PLANCHER: 3, ALARME_MAX: [2, 8],
+      DIST_JOUEUR: 12, VUE: 24,
+      ALERTE_MS: 30000,         // un mort arrivé à cause du bruit va jusqu'au bruit (30 s, ou toute la durée de l'alarme).
+    },
+
+    // --- VOITURES fermées à clé (js/data/voitures.js : part fermée et chance d'alarme par modèle) ---
+    VOITURES: {
+      VITRE_MS: 1600,           // casser une vitre (coude, crosse, outil) : 1,6 s, bruit BRUIT.vitre (12) d'un coup.
+      COUPURE_MAINS_NUES: 0.35, // sans rien en main (le coude dans un vêtement) : 35 % de s'entailler la main sur le verre.
+      FORCER: { MS: 7000, BRUIT_S: 2, ALARME_MULT: 0.4, OUTIL: 'forcer' }, // pied-de-biche dans la portière : lent, discret,
+                                // et l'alarme ne se déclenche qu'une fois sur 2,5 par rapport à la vitre.
+      ALARME: { MS: 45000, PERIODE_MS: 1000, RAYON: 30, SON_MS: 2100 }, // l'alarme hurle 45 s : chaque seconde un bruit
+                                // de 30 cases (tout le quartier) ; on l'entend à 40 cases.
+    },
+
     // --- PORTES & VERROUS ---
     PORTES: {
       PV: 60,                   // PV d'une porte intérieure fermée.
@@ -452,10 +484,17 @@ export const REGLAGES = {
       CRITIQUE_MIN: 0.05,
     },
     BRUIT_ARME: [1.5, 3, 8, 25], // bruit (cases) d'un coup qui porte selon le `bruit` de l'arme 0..3 (tir : 25).
+    // Attaquer fait du bruit (le choc, le souffle, le corps qui tombe contre un meuble) : jamais moins de MIN cases quand le
+    // coup porte, VIDE cases quand il fend l'air. ACCROUPI : frapper accroupi(e) ne fait AUCUN bruit, mais le coup est
+    // retenu (× DEGATS). Une mise à mort furtive reste silencieuse dans tous les cas.
+    BRUIT_ATTAQUE: { MIN: 4, VIDE: 2.5 },
+    ACCROUPI: { DEGATS: 0.7 },
     // --- Endurance ---
     ENDURANCE: {
       SEUIL_ESSOUFFLE: 15,      // sta < 15 : ESSOUFFLÉ(E) — les coups partent quand même, ×0,6 dégâts, ×1,5 durée.
       ESSOUFFLE_DEGATS: 0.6,
+      MIN_ACTION: 4,            // sous 4 d'endurance : plus de coup, plus de poussée (et plus de course : exploration.COURSE_STA_MIN).
+                                // Seule la lutte pour se dégager d'une empoignade reste possible : on se débat jusqu'au bout.
     },
     MAINS_NUES: {               // « arme » par défaut quand la main est vide
       nom: 'Mains nues', dmg: [3, 6], vitesse: 380, sta: 4, allonge: 0, charge: 1.5,

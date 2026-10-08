@@ -41,7 +41,7 @@ export function creerHud(racine, { arene = false } = {}) {
   h.aide.append(
     el('div', { class: 'ex-aide-t' }, 'Commandes', el('small', {}, ' — H pour afficher / masquer')),
     el('div', { class: 'ex-aide-g' },
-      el('div', {}, el('h4', {}, 'Bouger'), ligne('ZQSD', 'se déplacer'), ligne('Maj', 'courir'), ligne('C', 'accroupi (discret)'), ligne('Souris', 'regarder / viser')),
+      el('div', {}, el('h4', {}, 'Bouger'), ligne('ZQSD', 'se déplacer'), ligne('Maj', 'courir'), ligne('C', 'accroupi (discret : coups silencieux mais moins forts)'), ligne('Souris', 'regarder / viser')),
       el('div', {}, el('h4', {}, 'Se battre'), ligne('Clic', 'frapper — 3 clics en rythme : enchaînement'), ligne('Clic maintenu', 'coup chargé'), ligne('Clic droit · Espace', 'repousser'), ligne('Arme à feu', 'clic droit maintenu : viser, clic : tirer — sans viser : crosse')),
       el('div', {}, el('h4', {}, 'Construire'), ligne('Marteau', 'menu Construire'), ligne('Clic', 'placer puis bâtir'), ligne('T', 'tourner'), ligne('Échap', 'arrêter')),
       el('div', {}, el('h4', {}, 'Faire'), ligne('E', 'interagir / fouiller'), ligne('O', 'chercher par terre'), ligne('P', 'objets au sol autour'), ligne('G', 'autres actions ici'), ligne('F', 'lampe'), ligne('I', 'sac'), ligne('Tab / M', 'plan du lieu'), ligne('X / B', 'mains / dos'), ligne('1-4', 'ceinture (réappuyer : ranger)'))),

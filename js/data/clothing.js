@@ -265,6 +265,11 @@ export const CLOTHES = {
     nom: 'Sac de jute', slot: 'sac', poids: 0.4, espace: 4, contenance: 30, protection: 0, chaleur: 0, portage: 2, tissu: 2,
     desc: 'Un ancien sac à pommes de terre, noué d\'une ficelle en guise de bretelle. Ça gratte, ça tient.',
   },
+  // Sac de fortune noué (js/data/recipes.js : r_baluchon, r_baluchon_couverture) : un drap suffit.
+  baluchon: {
+    nom: 'Baluchon', slot: 'sac', poids: 0.5, espace: 3, contenance: 12, protection: 0, chaleur: 0, portage: 1, tissu: 4,
+    desc: "Un drap noué aux quatre coins, passé sur l'épaule. Tout s'y entasse en boule et il faut le dénouer pour retrouver quoi que ce soit, mais il porte.",
+  },
   musette: {
     nom: 'Musette de l\'armée', slot: 'sac', poids: 0.6, espace: 4, contenance: 15, protection: 0, chaleur: 0, portage: 4,
     desc: 'Toile kaki, boucles en laiton, un numéro de matricule effacé. Elle a déjà fait une guerre.',

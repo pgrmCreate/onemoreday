@@ -158,8 +158,43 @@ function secondaire(c) {
   if (c.type === 'construction') return secondaireConstruction(c.c);
   if (c.type === 'porte') return secondairePorte(c.p, c.s);
   if (c.type === 'meuble' && !c.decl && recoltable(c.m)) return secondaireNature(c.m);
+  if (c.type === 'meuble' && !c.decl && voitureFermee(c.m)) return secondaireVoiture(c.m);
   if (c.type === 'meuble' && !c.decl && (c.m.conteneur || estLit(c.m))) return secondaireMeuble(c.m);
   return null;
+}
+
+// ---------- Voitures fermées à clé ----------
+// Une voiture verrouillée ne se fouille qu'après avoir cassé une vitre (E) : vite, mais bruyant, et l'alarme peut se
+// déclencher et rameuter tout le quartier. Avec un pied-de-biche (menu des actions) : forcer la portière, plus lent et
+// plus discret, l'alarme se déclenche plus rarement.
+const voitureFermee = (m) => !!(m && m.cat === 'voiture' && V.snap && (V.snap.voituresFermees || []).includes(m.cle));
+function secondaireVoiture(m) {
+  const VV = RX.VOITURES;
+  if (!mod.inv || !mod.inv.hasTag || !mod.inv.hasTag(VV.FORCER.OUTIL)) return null;
+  return { libelle: `Forcer la portière (${m.nom})`, f: () => ouvrirVoiture(m, 'forcer') };
+}
+function ouvrirVoiture(m, mode) {
+  const VV = RX.VOITURES, cx = (m.x0 + m.x1 + 1) / 2, cy = (m.y0 + m.y1 + 1) / 2;
+  const forcer = mode === 'forcer';
+  const ms = forcer ? VV.FORCER.MS * Math.max(0.5, 1 - 0.08 * niv('force')) : VV.VITRE_MS;
+  lancerAction(forcer ? 'Forcer la portière…' : 'Casser la vitre…', ms, cx, cy, async () => {
+    const r = await V.canal.ouvrirVoiture(m.cle, mode);
+    if (!r || !r.ok) { message('Impossible de l’ouvrir.'); return; }
+    if (r.deja) { commencerFouille(m.cle, m.nom, cx, cy); return; }
+    if (forcer) sfx('porte_casse', { volume: 0.5 }); else sfx('vitre');
+    // à mains nues, le coude dans la manche : le verre peut entailler la main
+    const mainVide = !G.player.equip || !G.player.equip.arme;
+    let coupe = false;
+    if (!forcer && mainVide && Math.random() < VV.COUPURE_MAINS_NUES && mod.survie && mod.survie.infligerBlessure) {
+      try { mod.survie.infligerBlessure(G.player, { type: 'entaille', zone: 'à la main' }, { degats: 4 }); coupe = true; sfx('degats'); } catch (e) {}
+    }
+    if (r.alarme) {
+      message('L’alarme se déclenche ! Elle hurle dans toute la rue : les morts vont venir. Fouille vite ou va-t’en.', 4200);
+      return;
+    }
+    message(forcer ? 'La portière cède sans trop de bruit.' : coupe ? 'La vitre cède, et un éclat t’entaille la main.' : 'La vitre vole en éclats. Le bruit porte loin.', 2400);
+    commencerFouille(m.cle, m.nom, cx, cy);
+  }, forcer ? VV.FORCER.BRUIT_S : 0);
 }
 // Identité stable d'une cible (le menu des actions reste ouvert tant qu'elle ne change pas).
 function cleCible(c) {
@@ -232,6 +267,7 @@ function libelle(c) {
       if (!c.m.conteneur && c.m.rendu && c.m.rendu.message) return `Examiner ${c.m.nom}`;   // un meuble qui a quelque chose à dire
       if (!c.m.conteneur && !estLit(c.m)) return (secondaireMeuble(c.m) || {}).libelle || `Démonter ${c.m.nom}`;
       const st = V.snap.conteneurs[c.m.cle];
+      if (voitureFermee(c.m)) return `Casser une vitre (${c.m.nom})`;
       if (estLit(c.m) && (!c.m.conteneur || (st && st.progres >= 1 && st.reste === 0))) return `Dormir ${/^(lit|lit_simple|lit_hopital|abri_branches)$/.test(c.m.type) ? 'dans' : 'sur'} ${c.m.nom}`;
       if (st && st.progres >= 1 && st.reste === 0) return `Fouiller ${c.m.nom} (vide)`;
       return `Fouiller ${c.m.nom}`;
@@ -285,6 +321,7 @@ export function agirSur(c) {
     case 'meuble': if (c.decl) return jouerDeclencheur(c.decl); if (recoltable(c.m)) return agirNature(c.m); if (c.libelle && c.libelle.startsWith('Dormir')) return ouvrirSommeil({ couchage: couchageMeuble(c.m) });
       if (!c.m.conteneur && c.m.rendu && c.m.rendu.message) { message(c.m.rendu.message, 4200); return; }
       if (!c.m.conteneur) { const s = secondaireMeuble(c.m); if (s) s.f(); return; }
+      if (voitureFermee(c.m)) return ouvrirVoiture(c.m, 'vitre');
       return commencerFouille(c.m.cle, c.m.nom, (c.m.x0 + c.m.x1 + 1) / 2, (c.m.y0 + c.m.y1 + 1) / 2);
     case 'escalier': return prendreEscalier(c.s);
     case 'sortie': return sortirDuLieu(c.s);

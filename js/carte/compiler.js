@@ -14,7 +14,7 @@
 // arrivées d'escalier. Meubles : x0..x1 / y0..y1 en unités (centre = (x0 + x1 + 1) / 2). Clés (cle) : en unités, comme
 // avant la grille fine (les sauvegardes restent valables).
 // Aucune dépendance au DOM.
-import { K, SOLS_IDS, SOL_IDX, SOL_AUCUN, MURS, MURS_IDS, MUR_IDX, OBJETS, LUMIERES, DECALS, FIN, MURS_MINCES } from './catalogue.js';
+import { K, SOLS_IDS, SOL_IDX, SOL_AUCUN, MURS, MURS_IDS, MUR_IDX, OBJETS, LUMIERES, DECALS, FIN, MURS_MINCES, disposition } from './catalogue.js';
 import { creerChamp, calculerLOS } from '../explore/vision.js';
 import { solsAscii } from './ascii.js';
 
@@ -162,10 +162,18 @@ export function compilerPlan(plan, def = {}) {
         }
         // empreinte réelle plus petite (tronc, poteau) : centrée ; le dessin garde sa taille, centré sur elle
         let ex = fx, ey = fy, ew = fw, eh = fh;
+        const q = (ob.rot || 0) % 2 === 1;
         if (d.tf && !ob.w && !ob.h || d.tf && ob.w === d.t[0] && ob.h === d.t[1]) {
-          const q = (ob.rot || 0) % 2 === 1;
           const tw = Math.min(fw, q ? d.tf[1] : d.tf[0]), th = Math.min(fh, q ? d.tf[0] : d.tf[1]);
           ex = fx + Math.floor((fw - tw) / 2); ey = fy + Math.floor((fh - th) / 2); ew = tw; eh = th;
+        } else {
+          // un objet unique posé sur une empreinte d'autres proportions : il est dessiné plus petit, centré (catalogue,
+          // disposition) — l'empreinte réelle (collision, surlignage) se réduit à ce qui est dessiné, au plus près
+          const dp = disposition(ob.type, q ? ob.h : ob.w, q ? ob.w : ob.h);
+          if (dp.mode === 'centrer') {
+            const tw = Math.min(fw, Math.max(1, Math.round((q ? dp.h : dp.w) * F))), th = Math.min(fh, Math.max(1, Math.round((q ? dp.w : dp.h) * F)));
+            ex = fx + Math.floor((fw - tw) / 2); ey = fy + Math.floor((fh - th) / 2); ew = tw; eh = th;
+          }
         }
         for (let y = ey; y < ey + eh; y++) for (let x = ex; x < ex + ew; x++) if (x >= 0 && y >= 0 && x < w && y < h) cases.push(y * w + x);
         // boîte de dessin (unités) : centrée sur l'empreinte, à la taille du plan

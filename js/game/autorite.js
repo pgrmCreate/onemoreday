@@ -27,6 +27,7 @@ function creerSim(lieuId, niveau, L) {
     repeuplement: L.repeuplement, coop: true, difficulte: diff, mult: L.abondance || 1,
     getFlag: (k) => getFlag(k),
     getRuee: () => rueeSim(lieuId),
+    arrivees: true, getMinutes: () => G.world.minutes,
   });
 }
 

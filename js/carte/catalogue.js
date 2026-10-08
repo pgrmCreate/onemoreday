@@ -141,6 +141,14 @@ export const OBJETS = {
   classeur:   { cat: 'bureau', bloque: 1, t: [1, 1], nom: 'le classeur' },
   // — extérieur, ville —
   voiture:    { c: 'v', cat: 'voiture', bloque: 1, t: [3, 2], nom: 'la voiture' },
+  // modèles de voitures (js/data/voitures.js : serrure, alarme, butin propre) — même empreinte que la berline
+  citadine:   { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'la citadine' },
+  break:      { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'le break' },
+  suv:        { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'le 4 × 4' },
+  pickup:     { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'le pick-up' },
+  voiture_police: { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'la voiture de gendarmerie' },
+  camping_car:{ cat: 'voiture', bloque: 1, opaque: 1, t: [4, 2], nom: 'le camping-car' },
+  bus:        { cat: 'voiture', bloque: 1, opaque: 1, t: [9, 2], nom: 'le bus' },
   camionnette:{ cat: 'voiture', bloque: 1, opaque: 1, t: [4, 2], nom: 'la camionnette' },
   camion_mil: { cat: 'voiture', bloque: 1, opaque: 1, t: [5, 2], nom: 'le camion militaire', lumiere: 'gyrophare' },
   ambulance:  { cat: 'voiture', bloque: 1, opaque: 1, t: [4, 2], nom: 'l\'ambulance' },
@@ -196,6 +204,37 @@ export const OBJETS = {
   haie:       { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'la haie' },
   grille:     { cat: null, bloque: 1, t: [1, 1], nom: 'la grille' },
 };
+// ---------- Comment un objet remplit son empreinte (le dessin, la collision et le surlignage disent la même chose) ----------
+// Un plan pose souvent un objet sur une empreinte qui n'a pas ses proportions (une rangée de bancs de 6 × 1, un comptoir de
+// 5 × 1, un tas de gravats de 20 × 1, une voiture sur 2 × 1…). Avant, le dessin se réduisait pour garder ses proportions
+// et la collision gardait toute l'empreinte : des « objets invisibles » qui bloquaient, un carré orange trop grand.
+// disposition(type, w, h) — w × h unités dans le sens du dessin — dit maintenant comment l'objet l'occupe :
+//   'etirer'  proportions proches (écart ≤ ETIRER_MAX) : le dessin s'étire un peu et remplit l'empreinte ;
+//   'repeter' un objet qui se range en rang (bancs, étagères, gravats, frigos…) : nx × ny exemplaires côte à côte,
+//             si chacun garde au moins 70 % de sa taille (sinon : 'centrer') ;
+//   'centrer' un objet unique (voiture, baignoire, autel…) : il garde ses proportions, centré (w, h = taille dessinée),
+//             tourné d'un quart (tourne) quand il remplit ainsi nettement mieux l'empreinte ;
+//             le compilateur réduit alors l'empreinte réelle (collision, surlignage) à ce qui est dessiné.
+// DESSIN_SEUL : types sans sprite, dessinés à la main pour remplir leur empreinte (toujours 'etirer').
+export const ETIRER_MAX = 1.4;
+export const DESSIN_SEUL = new Set(['lit_camp', 'matelas', 'arbre', 'platane', 'cypres', 'pin', 'olivier', 'figuier', 'amandier', 'lampadaire', 'plan_mural', 'tableau_cles', 'cadavre', 'grille']);
+const ETIRE_TOUJOURS = new Set(['tapis', 'haie']);
+const UNIQUES = new Set(['baignoire', 'piano', 'cheminee', 'fontaine', 'statue', 'tente', 'generateur', 'caveau', 'autel', 'cloche', 'televiseur']);
+export function disposition(type, w, h) {
+  const d = OBJETS[type];
+  if (!d || !d.t || DESSIN_SEUL.has(type) || ETIRE_TOUJOURS.has(type) || !(w > 0 && h > 0)) return { mode: 'etirer', nx: 1, ny: 1 };
+  const r = (w / h) / (d.t[0] / d.t[1]);
+  if (r <= ETIRER_MAX && r >= 1 / ETIRER_MAX) return { mode: 'etirer', nx: 1, ny: 1 };
+  if (!UNIQUES.has(type) && d.cat !== 'voiture') {
+    const nx = r > 1 ? Math.max(1, Math.round(r)) : 1, ny = r < 1 ? Math.max(1, Math.round(1 / r)) : 1;
+    // en rang seulement si chaque exemplaire garde à peu près sa taille (un banc sur une seule case : un petit banc centré)
+    if (Math.min(w / nx / d.t[0], h / ny / d.t[1]) >= 0.7) return { mode: 'repeter', nx, ny };
+  }
+  // centré ; tourné d'un quart s'il remplit nettement mieux ainsi (un autel posé en long, un caveau en travers)
+  const k = Math.min(w / d.t[0], h / d.t[1]), k2 = Math.min(w / d.t[1], h / d.t[0]);
+  if (k2 > k * 1.15) return { mode: 'centrer', tourne: true, nx: 1, ny: 1, w: d.t[1] * k2, h: d.t[0] * k2 };
+  return { mode: 'centrer', nx: 1, ny: 1, w: d.t[0] * k, h: d.t[1] * k };
+}
 export const OBJET_PAR_CAR = Object.fromEntries(Object.entries(OBJETS).filter(([, o]) => o.c).map(([n, o]) => [o.c, n]));
 
 // ---------- 5. Décals (visuels, sans effet de jeu) ----------

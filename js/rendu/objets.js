@@ -3,6 +3,7 @@
 // Les houppiers d'arbres, têtes de lampadaires (partie « haut ») sont dessinés à part, AU-DESSUS des personnages
 // (spriteHaut), pour qu'on passe dessous.
 import { TS, TF, rng, canvas, rr, cercle, ellipse, avecOmbre, boite, teinte, hex, rgb } from './outils.js';
+import { disposition } from '../carte/catalogue.js';
 
 const BOIS = '#5d4128', BOIS_C = '#7a5838', BOIS_F = '#3b2819', METAL = '#6e7272', BLANC = '#c9c4b6', DRAP = '#b9b2a0';
 const pick = (r, a) => a[Math.floor(r() * a.length)];
@@ -57,10 +58,10 @@ function flammes(c, W, H, R, k) {
   const g = c.createRadialGradient(W / 2, H / 2, 1, W / 2, H / 2, rr2); g.addColorStop(0, 'rgba(255,225,130,0.95)'); g.addColorStop(0.5, 'rgba(255,140,50,0.75)'); g.addColorStop(1, 'rgba(160,40,10,0)');
   c.fillStyle = g; cercle(c, W / 2, H / 2, rr2); c.fill();
 }
-function dessinerSprite(c, R, S, W, H, r) {
+function dessinerSprite(c, R, S, W, H, r, centrer = false) {
   const mg = (S.m.m ?? 0.12) * TS;
-  // une carte qui pose l'objet sur une empreinte d'une autre forme (housse sur une seule case…) : on garde ses proportions
-  if (S.m.t && Math.abs((W / H) / (S.m.t[0] / S.m.t[1]) - 1) > 0.15) {
+  // un objet unique sur une empreinte d'une autre forme (catalogue, disposition 'centrer') : on garde ses proportions
+  if (centrer && S.m.t) {
     const k = Math.min(W / S.m.t[0], H / S.m.t[1]), w2 = S.m.t[0] * k, h2 = S.m.t[1] * k;
     c.save(); c.translate((W - w2) / 2, (H - h2) / 2); dessinerSprite(c, R, { ...S, m: { ...S.m, t: null, m: (S.m.m ?? 0.12) * k / TS } }, w2, h2, r); c.restore();
     return;
@@ -80,6 +81,9 @@ function dessinerSprite(c, R, S, W, H, r) {
   if (R.c) usure(c, W, H, R);
 }
 
+// Dans un rang, ces objets changent d'un exemplaire à l'autre (un tas de gravats, une haie de buissons) ; les autres
+// (bancs d'église, rayonnages, frigos) restent pareils : on les a posés ensemble.
+const VARIE = new Set(['gravats', 'buisson', 'roncier', 'cannier', 'palette', 'caisse', 'fut', 'poubelle', 'sacs_sable', 'tombe', 'housse', 'caisson']);
 export function dessinerObjet(c, R) {
   const D = DESSINS[R.type] || DESSINS._defaut;
   const r = rng((R.variante || 0) * 7919 + R.x * 131 + R.y * 977 + 1);
@@ -91,7 +95,21 @@ export function dessinerObjet(c, R) {
     c.translate((R.x + R.w / 2) * TS, (R.y + R.h / 2) * TS);
     if (rot) c.rotate(rot * Math.PI / 2);
     c.translate(-W / 2, -H / 2);
-    dessinerSprite(c, R, S, W, H, r);
+    // le dessin remplit l'empreinte comme la collision (catalogue, disposition) : étiré, en rang, ou centré
+    const dp = disposition(R.type, W / TS, H / TS);
+    if (dp.mode === 'repeter') {
+      const cw = W / dp.nx, ch = H / dp.ny;
+      for (let iy = 0; iy < dp.ny; iy++) for (let ix = 0; ix < dp.nx; ix++) {
+        const k = ix + iy * dp.nx;
+        const S2 = (k && VARIE.has(R.type) && spriteObjet({ ...R, variante: (R.variante || 0) + k * 7 })) || S;
+        c.save(); c.translate(ix * cw, iy * ch);
+        dessinerSprite(c, R, S2, cw, ch, k ? rng((R.variante || 0) * 7919 + k * 389 + 1) : r);
+        c.restore();
+      }
+    } else if (dp.tourne) {
+      c.translate(W / 2, H / 2); c.rotate(Math.PI / 2); c.translate(-H / 2, -W / 2);
+      dessinerSprite(c, R, S, H, W, r, true);
+    } else dessinerSprite(c, R, S, W, H, r, dp.mode === 'centrer');
     c.restore();
     return;
   }
@@ -341,6 +359,13 @@ const DESSINS = {
   voiture(c, W, H, r, R) { vehicule(c, W, H, r, R, R.couleur || pick(r, ['#5a1e1e', '#1e2e4a', '#3a3a3a', '#b8b4a8', '#2a4a3a', '#6a5a3a', '#8a8a86', '#1a1a1a']), 'voiture'); },
   camionnette(c, W, H, r, R) { vehicule(c, W, H, r, R, R.couleur || pick(r, ['#c8c4b8', '#3a4a5a', '#7a2a1a']), 'camionnette'); },
   ambulance(c, W, H, r, R) { vehicule(c, W, H, r, R, '#d8d6cc', 'ambulance'); },
+  citadine(c, W, H, r, R) { vehicule(c, W, H, r, R, R.couleur || pick(r, ['#b83a2a', '#e0dcd0', '#2a5a8a', '#d8b84a', '#3a3a3a', '#7a8a4a']), 'citadine'); },
+  break(c, W, H, r, R) { vehicule(c, W, H, r, R, R.couleur || pick(r, ['#3a3a3a', '#5a5a58', '#1e2e4a', '#6a5a3a', '#a8a49a']), 'break'); },
+  suv(c, W, H, r, R) { vehicule(c, W, H, r, R, R.couleur || pick(r, ['#1a1a1a', '#e8e6e0', '#3a4a3a', '#5a5a58', '#4a2a1a']), 'suv'); },
+  pickup(c, W, H, r, R) { vehicule(c, W, H, r, R, R.couleur || pick(r, ['#c8c4b8', '#8a2a1a', '#2a3a4a', '#4a5a3a']), 'pickup'); },
+  voiture_police(c, W, H, r, R) { vehicule(c, W, H, r, R, '#1e2e5a', 'police'); },
+  camping_car(c, W, H, r, R) { vehicule(c, W, H, r, R, '#ecebe4', 'camping'); },
+  bus(c, W, H, r, R) { vehicule(c, W, H, r, R, R.couleur || pick(r, ['#e8e6e0', '#d8dccc']), 'bus'); },
   camion_mil(c, W, H, r, R) { vehicule(c, W, H, r, R, '#3e4630', 'militaire'); },
   gravats(c, W, H, r) {
     for (let k = 0; k < 18; k++) {
@@ -733,7 +758,7 @@ function vehicule(c, W, H, r, R, coul, genre) {
   c.fillStyle = g; rr(c, 3, l * 0.1, L - 6, l * 0.8, l * 0.28); c.fill();
   c.strokeStyle = 'rgba(0,0,0,0.6)'; c.lineWidth = 1.2; rr(c, 3, l * 0.1, L - 6, l * 0.8, l * 0.28); c.stroke();
   // capot à gauche (avant), coffre à droite
-  const av = genre === 'voiture' ? 0.24 : 0.2;
+  const av = genre === 'voiture' || genre === 'police' ? 0.24 : genre === 'citadine' ? 0.2 : genre === 'suv' ? 0.18 : 0.2;
   if (genre === 'militaire') {
     c.fillStyle = '#4a5238'; rr(c, L * 0.32, l * 0.14, L * 0.64, l * 0.72, 4); c.fill();
     c.strokeStyle = 'rgba(0,0,0,0.3)'; for (let k = 1; k < 5; k++) { c.beginPath(); c.moveTo(L * 0.32 + k * L * 0.128, l * 0.14); c.lineTo(L * 0.32 + k * L * 0.128, l * 0.86); c.stroke(); }
@@ -747,10 +772,36 @@ function vehicule(c, W, H, r, R, coul, genre) {
       c.fillStyle = '#b81e1e'; rr(c, L * 0.27, l * 0.36, 6, l * 0.28, 2); c.fill();
       c.fillStyle = '#d82a2a'; c.fillRect(L * 0.6, l * 0.44, 3, l * 0.12); c.fillRect(L * 0.6 - l * 0.06 + 1.5, l * 0.5 - 1.5, l * 0.12, 3);
     }
+  } else if (genre === 'bus') {
+    c.fillStyle = teinte(coul, 1.05); rr(c, L * 0.03, l * 0.14, L * 0.94, l * 0.72, 5); c.fill();                 // le toit
+    c.fillStyle = 'rgba(40,46,52,0.5)'; rr(c, L * 0.2, l * 0.32, L * 0.1, l * 0.36, 3); c.fill(); rr(c, L * 0.62, l * 0.32, L * 0.1, l * 0.36, 3); c.fill(); // trappes
+    c.fillStyle = 'rgba(30,30,30,0.3)'; rr(c, L * 0.4, l * 0.26, L * 0.14, l * 0.48, 3); c.fill();             // climatisation
+    c.fillStyle = '#2a7a4a'; c.fillRect(L * 0.03, l * 0.14, L * 0.94, 2); c.fillRect(L * 0.03, l * 0.86 - 2, L * 0.94, 2); // filets de couleur
+  } else if (genre === 'camping') {
+    vitre(c, L * 0.16, l * 0.18, L * 0.08, l * 0.64);
+    c.fillStyle = teinte(coul, 1.04); rr(c, L * 0.26, l * 0.12, L * 0.7, l * 0.76, 6); c.fill();   // la cellule
+    c.fillStyle = '#7a5a3a'; c.fillRect(L * 0.26, l * 0.12, L * 0.7, 2.5); c.fillRect(L * 0.26, l * 0.88 - 2.5, L * 0.7, 2.5); // bandes
+    c.fillStyle = 'rgba(40,50,60,0.55)'; rr(c, L * 0.5, l * 0.36, L * 0.14, l * 0.28, 3); c.fill();                              // lanterneau
+    c.fillStyle = 'rgba(30,30,30,0.35)'; rr(c, L * 0.74, l * 0.3, L * 0.12, l * 0.4, 2); c.fill();                                // climatiseur
+  } else if (genre === 'pickup') {
+    vitre(c, L * av, l * 0.17, L * 0.13, l * 0.66);
+    c.fillStyle = teinte(coul, 1.12); rr(c, L * (av + 0.14), l * 0.2, L * 0.18, l * 0.6, 4); c.fill();   // cabine
+    c.fillStyle = teinte(coul, 0.55); rr(c, L * 0.56, l * 0.16, L * 0.38, l * 0.68, 3); c.fill();         // benne
+    c.strokeStyle = teinte(coul, 0.4); c.lineWidth = 1; for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(L * (0.56 + k * 0.095), l * 0.18); c.lineTo(L * (0.56 + k * 0.095), l * 0.82); c.stroke(); }
+    if (r() < 0.6) { c.fillStyle = pick(r, ['#5a4a32', '#3a4a5a', '#6a6a60']); rr(c, L * (0.6 + r() * 0.15), l * (0.25 + r() * 0.2), L * 0.12, l * 0.25, 2); c.fill(); } // quelque chose dans la benne
   } else {
+    const toit = genre === 'citadine' ? [0.14, 0.34] : genre === 'break' ? [0.16, 0.44] : genre === 'suv' ? [0.15, 0.46] : [0.16, 0.3];
     vitre(c, L * av, l * 0.17, L * 0.15, l * 0.66);           // pare-brise
-    c.fillStyle = teinte(coul, 1.12); rr(c, L * (av + 0.16), l * 0.2, L * 0.3, l * 0.6, 5); c.fill(); // toit
-    vitre(c, L * (av + 0.47), l * 0.2, L * 0.1, l * 0.6);     // lunette arrière
+    c.fillStyle = teinte(coul, 1.12); rr(c, L * (av + toit[0]), l * 0.2, L * toit[1], l * 0.6, 5); c.fill(); // toit
+    if (genre === 'suv' || genre === 'break') { c.fillStyle = 'rgba(20,20,20,0.5)'; c.fillRect(L * (av + toit[0] + 0.03), l * 0.24, L * (toit[1] - 0.06), 1.6); c.fillRect(L * (av + toit[0] + 0.03), l * 0.76 - 1.6, L * (toit[1] - 0.06), 1.6); } // barres de toit
+    if (genre === 'police') {
+      c.fillStyle = '#e8e6e0'; c.fillRect(L * 0.08, l * 0.44, L * 0.86, l * 0.12);                         // bande blanche
+      c.fillStyle = '#2050d0'; rr(c, L * (av + 0.26), l * 0.24, L * 0.06, l * 0.24, 2); c.fill();          // rampe : bleu…
+      c.fillStyle = '#c02020'; rr(c, L * (av + 0.26), l * 0.52, L * 0.06, l * 0.24, 2); c.fill();          // … et rouge
+    }
+    vitre(c, L * (av + toit[0] + toit[1] + 0.01), l * 0.2, L * 0.08, l * 0.6);     // lunette arrière
+  }
+  if (genre !== 'militaire' && genre !== 'ambulance' && genre !== 'camionnette' && genre !== 'camping' && genre !== 'bus') {
     // rétroviseurs
     c.fillStyle = teinte(coul, 0.6); c.fillRect(L * (av + 0.02), l * 0.04, 5, l * 0.08); c.fillRect(L * (av + 0.02), l * 0.88, 5, l * 0.08);
   }

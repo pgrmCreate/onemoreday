@@ -61,6 +61,7 @@ export async function obtenirCanal(lieuId, niveau, L) {
     repeuplement: L.repeuplement, coop: G.mode !== 'solo', difficulte: diff, mult: L.abondance || 1,
     getFlag: (k) => getFlag(k),
     getRuee: () => rueeSim(lieuId),
+    arrivees: true, getMinutes: () => G.world.minutes,
   });
   return creerCanalLocal(sim, JOUEUR_ID);
 }
@@ -198,7 +199,16 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   const C = V.canal;
   V.off.push(C.on('tick', () => {
     const t = performance.now(); V.periode = Math.max(30, Math.min(200, V.periode * 0.8 + (t - V.tSnapPrec) * 0.2)); V.tSnapPrec = t;
-    V.snap = C.instantane(); V.tSnap = t; V.tSnapVis = V.tVis; majInterp(false); ecouter();
+    V.snap = C.instantane(); V.tSnap = t; V.tSnapVis = V.tVis; majInterp(false); ecouter(); majAlarmes();
+  }));
+  // voitures : une vitre qui vole en éclats (la sienne s'entend déjà dans interactions.js) ; une alarme qui se déclenche
+  V.off.push(C.on('voiture', (e) => {
+    if (!V || !e || e.action !== 'ouverte') return;
+    if (e.mode === 'vitre') {
+      V.rendu.effets.eclats(e.etage, e.x, e.y, Math.random() * 6.28, '#b8d0d8');
+      if (e.joueur !== (C.joueurId || JOUEUR_ID)) sfxA('vitre', e.x, e.y, e.etage, 24);
+    }
+    if (e.alarme) V.tAlarme = 0;
   }));
   V.off.push(C.on('porte', (e) => {
     const pp = posPorte(e.cle);
@@ -567,6 +577,15 @@ function lisserPairs(dt) {
     out.push(q);
   }
   return out;
+}
+// Une alarme de voiture hurle tant qu'elle dure : on l'entend d'où l'on est (la plus proche seulement).
+function majAlarmes() {
+  const al = V.snap && V.snap.alarmes; if (!al || !al.length) return;
+  const t = performance.now(); if (t < (V.tAlarme || 0)) return;
+  V.tAlarme = t + RX.VOITURES.ALARME.SON_MS;
+  let a = null, bd = Infinity;
+  for (const q of al) { const d = Math.hypot(q.x - V.j.x, q.y - V.j.y) * (q.etage === V.j.etage ? 1 : 1.6); if (d < bd) { bd = d; a = q; } }
+  if (a) sfxA('alarme_voiture', a.x, a.y, a.etage, 40);
 }
 function ecouter() {
   const j = V.j, now = performance.now();

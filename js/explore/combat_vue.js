@@ -56,6 +56,15 @@ export function creerCombatVue(o) {
   const estTir = () => !!(arme() && arme().tir);
   const sta = () => G.player.sta ?? 100;
   const depenser = (n) => { G.player.sta = Math.max(0, sta() - n); };
+  // Sans endurance, ni coup ni poussée (ni course : vue.js) — seule la lutte d'une empoignade reste possible.
+  const aBout = () => sta() < (RC.ENDURANCE.MIN_ACTION ?? 4);
+  let tEpuise = 0;
+  function epuise() {
+    const t = now(); if (t - tEpuise < 1300) return; tEpuise = t;
+    o.message('À bout de souffle : tu n’as plus la force de frapper ni de pousser. Recule, reprends ton souffle.', 1800);
+    o.sfx('souffle_course', { volume: 0.5 });
+  }
+  const accroupi = () => !!(o.mouvement && o.mouvement() && o.mouvement().accroupi);
   const occupe = (t = now()) => (S.geste && t < S.geste.t0 + S.geste.duree) || !!S.recharge;
 
   // ---------- Visée assistée (tactile) ----------
@@ -89,6 +98,7 @@ export function creerCombatVue(o) {
     }
     if (appui) {
       if (S.charge) return;
+      if (aBout()) { epuise(); return; }
       S.charge = { t0: now() };
       tourner(viserAuto());
       return;
@@ -101,6 +111,7 @@ export function creerCombatVue(o) {
   }
   function coup(tenu) {
     if (S.mort) return;
+    if (aBout()) { epuise(); return; }
     const st = majStats(false), prof = profilMelee(st.arme);
     const ess = essouffle(sta());
     const c = chargeDepuisAppui(prof, tenu, ess);
@@ -114,8 +125,9 @@ export function creerCombatVue(o) {
     tourner(viserAuto() ?? j.dir);
     depenser(coutCoup(prof, c, st) * (combo === 2 ? 1.3 : 1));
     const lourd = c >= RC.CHARGE.SEUIL_LOURD;
+    const acc = accroupi();          // accroupi(e) : un coup retenu, sans bruit
     S.geste = { type: lourd ? 'lourd' : 'rapide', t0: t, duree, dir: j.dir, charge: c, combo };
-    o.sfx(lourd || combo === 2 ? 'puissance' : 'rate', { volume: 0.32 });
+    o.sfx(lourd || combo === 2 ? 'puissance' : 'rate', { volume: acc ? 0.16 : 0.32 });
     const impact = Math.round(duree * RC.IMPACT * (lourd ? 1.25 : 1));
     S.finCombo = t + impact + RC.COMBO.FENETRE_MS;
     setTimeout(() => {
@@ -124,7 +136,7 @@ export function creerCombatVue(o) {
       const crit = false;
       const fx2 = o.effets && o.effets();
       if (fx2) fx2.trainee(jj.etage, jj.x, jj.y, dir, { R: 1.05 + (prof.allonge || 0) * 0.35, lourd: lourd || combo === 2, sens: combo % 2 === 1 ? -1 : 1, duree: lourd ? 200 : 150 });
-      C.action({ type: 'frapper', charge: c, combo, crit, x: jj.x, y: jj.y, dir, ess, stats: S.stats });
+      C.action({ type: 'frapper', charge: c, combo, crit, x: jj.x, y: jj.y, dir, ess, accroupi: acc, stats: S.stats });
     }, impact);
   }
   // ---------- Pousser ----------
@@ -134,6 +146,7 @@ export function creerCombatVue(o) {
     const P = RC.POUSSEE, t = now();
     if (t < S.pousseePret) return;
     if (occupe(t) && S.geste && S.geste.type !== 'tir' && S.geste.type !== 'rapide') return;
+    if (aBout()) { epuise(); return; }
     S.charge = null; S.combo = 0;
     tourner(viserAuto(1.8));
     depenser(P.STA * (1 + 0.5 * (stats().surpoids || 0)));
@@ -266,7 +279,7 @@ export function creerCombatVue(o) {
       if (z.terre && d < RC.ACHEVER.PORTEE + 0.3) auSol = true;
     }
     o.entrees.setCombat({
-      libelle: S.empoigne ? 'Dégage !' : estTir() ? (etatArmeTir().balles > 0 ? 'Tirer' : 'Vide') : auSol ? 'Achever' : 'Frapper',
+      libelle: S.empoigne ? 'Dégage !' : estTir() ? (etatArmeTir().balles > 0 ? 'Tirer' : 'Vide') : aBout() ? 'À bout' : auSol ? 'Achever' : 'Frapper',
       charge: ch, proche, empoigne: !!S.empoigne, combo: t <= S.finCombo ? S.combo : -1,
       pousseeCd: S.pousseePret > t ? (S.pousseePret - t) / RC.POUSSEE.COOLDOWN_MS : 0,
     });

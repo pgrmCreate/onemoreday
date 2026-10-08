@@ -572,6 +572,27 @@ export const RECIPES = [
 
   // ======================== ÉQUIPEMENT ========================
   {
+    id: 'r_baluchon', cat: 'equipement', nom: 'Baluchon (drap)',
+    resultat: { id: 'baluchon', qty: 1 },
+    ingredients: [{ id: 'drap', qty: 1 }],
+    outils: [], poste: null, skill: null, tempsMin: 5, xp: {}, connue: true,
+    desc: "Étaler le drap, nouer deux coins en bretelle et rabattre les deux autres par-dessus. Ce n'est pas un sac, mais tu as de nouveau de quoi emporter quelque chose.",
+  },
+  {
+    id: 'r_baluchon_couverture', cat: 'equipement', nom: 'Baluchon (couverture)',
+    resultat: { id: 'baluchon', qty: 1 },
+    ingredients: [{ id: 'couverture', qty: 1 }],
+    outils: [], poste: null, skill: null, tempsMin: 5, xp: {}, connue: true,
+    desc: "La couverture est plus épaisse qu'un drap et les nœuds tiennent mal, mais une fois serrés ils ne bougent plus. Tu la portes en bandoulière comme un ballot de colporteur.",
+  },
+  {
+    id: 'r_sac_fortune_tissu', cat: 'equipement', nom: 'Sac de fortune (tout en tissu)',
+    resultat: { id: 'sac_fortune', qty: 1 },
+    ingredients: [{ id: 'chiffon', qty: 6 }],
+    outils: [], poste: null, skill: null, tempsMin: 30, xp: { construction: 4 }, connue: true,
+    desc: "Sans corde, il faut tresser trois bandes de tissu pour chaque bretelle et nouer le reste en poche. C'est plus long et ça tient moins bien qu'avec une vraie corde, mais ça porte.",
+  },
+  {
     id: 'r_sac_fortune', cat: 'equipement', nom: 'Sac de fortune',
     resultat: { id: 'sac_fortune', qty: 1 },
     ingredients: [{ id: 'chiffon', qty: 4 }, { id: 'corde', qty: 1 }],

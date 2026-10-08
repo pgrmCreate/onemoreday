@@ -42,12 +42,13 @@ export function coutCoup(prof, c, stats) {
 }
 
 // Résout un coup de mêlée (ou un tir) d'un joueur sur un mort.
-//   o = { stats, prof, def, c (charge 0..1), combo (0..2), achever, critForce, aTerre, vacille, telegraphie, furtif, ess, tir, visee, rnd }
+//   o = { stats, prof, def, c (charge 0..1), combo (0..2), achever, critForce, aTerre, vacille, telegraphie, furtif, ess, tir, visee,
+//         accroupi (coup porté accroupi : moins fort), rnd }
 // → { touche, raison?, degats, crit, vacille (le coup le fait vaciller d'office), interrompt, equilibre (entame), terre (mise à terre) }
 // MÊLÉE : AUCUN raté au hasard — si le mort est dans l'arc au moment de l'impact, le coup porte (c'est la sim qui juge l'arc).
 export function resoudreCoup(o) {
   const { stats = {}, prof, def, c = 0, combo = 0, achever = false, critForce = false, aTerre = false, vacille = false, telegraphie = false,
-    furtif = false, ess = false, tir = false, visee = 0, rnd = Math.random } = o;
+    furtif = false, ess = false, tir = false, visee = 0, accroupi = false, rnd = Math.random } = o;
   const D = R().DEGATS, CR = R().CRIT, CO = R().COUP, CB = R().COMBO, CH = R().CHARGE;
   if (tir) {
     const TI = R().TIR;
@@ -71,6 +72,7 @@ export function resoudreCoup(o) {
   else if (aTerre) d *= prof.skill === 'mainsNues' ? R().MAINS_NUES.A_TERRE_MULT : R().A_TERRE.DEGATS;
   if (furtif) d *= REGLAGES.exploration.FURTIF.MULT;
   if (!tir && ess) d *= R().ENDURANCE.ESSOUFFLE_DEGATS;
+  if (!tir && accroupi) d *= (R().ACCROUPI || {}).DEGATS ?? 0.7;   // accroupi(e) : silencieux, mais le geste est retenu
   if ((stats.faim ?? 100) < 15) d *= D.AFFAME;
   if (prof.durMax && prof.dur != null && prof.dur / prof.durMax < D.SEUIL_USEE) d *= D.USEE;
   if (!tir) d *= stats.degatsMult ?? 1;

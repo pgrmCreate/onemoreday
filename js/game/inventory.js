@@ -508,12 +508,54 @@ export function equiper(index, p) {
     if (p.equip.mainG) return { ok: false, raison: `Ta main gauche tient déjà : ${nomObjet(p.equip.mainG)}.` };
   }
   const sorti = removeIndex(index, 1, p);
-  if (p.equip[slot]) desequiper(slot, p, true);
+  // l'ancien vêtement / sac : on enfile d'abord le nouveau, puis l'ancien rejoint le sac (rangé avec la NOUVELLE place)
+  let ancien = null;
+  if (p.equip[slot]) {
+    if (SLOTS_TENUS.includes(slot)) desequiper(slot, p, true);
+    else { ancien = { id: p.equip[slot], inst: slot === 'lampe' ? { charge: (p.equipEtat[slot] || {}).charge || 0 } : {} }; p.equip[slot] = null; delete p.equipEtat[slot]; }
+  }
   p.equip[slot] = it.id;
   if (slot === 'lampe') { const src = REGLAGES.lumiere.SOURCES[it.id] || {}; p.equipEtat.lampe = { charge: sorti.charge ?? Math.round((src.minParCharge || 0) * 0.6), allumee: false }; }
+  // un sac plus petit (ou un vêtement sans poches) : ce qui ne tient plus tombe par terre
+  const tombes = deborder(p);
+  if (ancien) addItem(ancien.id, 1, ancien.inst, p);
+  avertirDebordement(tombes, slot === 'sac' ? 'Ton nouveau sac est plus petit' : 'Moins de poches');
   nettoyerAccesRapide(p);
   emit('inventaire', { equip: slot });
   return { ok: true, slot };
+}
+// Ce qui ne tient plus (sac plus petit, sac retiré, vêtement à poches enlevé) est posé au sol : les plus gros objets
+// d'abord, pour en laisser le moins possible. → [{ id, qty, … }] ce qui est tombé. En voyage (pas de sol) : « À trier ».
+export function deborder(p) {
+  p = joueur(p); const tombes = [];
+  for (let garde = 0; garde < 400; garde++) {
+    const cap = capacites(p), o = occupation(p);
+    const exces = o.sac - cap.sac;
+    if (exces <= 1e-6) break;
+    // trop de gros objets pour le sac : ce sont eux qui sortent ; sinon les petits qui débordent des poches
+    const grosTrop = o.gros > cap.sac + 1e-6;
+    let best = -1, bv = -1;
+    p.inventaire.forEach((it, i) => {
+      if (p.accesRapide.includes(it.id)) return;
+      if (grosTrop && estPetit(it.id)) return;
+      const v = volumeDe(it.id); if (v > bv) { bv = v; best = i; }
+    });
+    if (best < 0 || bv <= 0) break;
+    const it = p.inventaire[best];
+    const n = Math.max(1, Math.min(it.qty || 1, Math.ceil((exces - 1e-6) / bv)));
+    const sorti = removeIndex(best, n, p);
+    if (!sorti) break;
+    try { sol.deposer(sorti); } catch (e) { mettreATrier(sorti); }
+    const deja = tombes.find(x => x.id === sorti.id);
+    if (deja) deja.qty += sorti.qty || 1; else tombes.push({ ...sorti });
+  }
+  if (tombes.length) emit('inventaire', { sol: true });
+  return tombes;
+}
+function avertirDebordement(tombes, pourquoi) {
+  if (!tombes || !tombes.length) return;
+  const liste = tombes.map(t => `${nomObjet(t.id)}${(t.qty || 1) > 1 ? ' ×' + t.qty : ''}`).join(', ');
+  emit('toast', { texte: `${pourquoi} : tout ne tient plus. Posé par terre : ${liste}.`, type: 'alerte' });
 }
 // Retirer (vers le sac ; ce qui ne tient pas va au sol).
 export function desequiper(slot, p, silencieux = false) {
@@ -524,7 +566,10 @@ export function desequiper(slot, p, silencieux = false) {
     p.equip[slot] = null; delete p.equipEtat[slot];
     const inst = {};
     if (slot === 'lampe') inst.charge = etat.charge || 0;
+    // sans ce sac (ou ce vêtement à poches), le surplus tombe d'abord ; puis on range ce qu'on vient d'ôter
+    const tombes = deborder(p);
     addItem(id, 1, inst, p);
+    avertirDebordement(tombes, slot === 'sac' ? 'Sans sac' : 'Moins de poches');
   }
   nettoyerAccesRapide(p);
   if (!silencieux) emit('inventaire', { desequip: slot });

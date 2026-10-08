@@ -324,7 +324,7 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
 .ex-plan-btn:hover, .ex-plan-btn:active { opacity: 1; }
 .ex-plan-btn svg { width: 100%; height: 100%; display: block; }
 .ex-plan-btn::after { content: ''; position: absolute; inset: -6px; }
-.ex-plan { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; gap: 8px; padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+.ex-plan { position: absolute; inset: 0; z-index: 35; display: flex; flex-direction: column; gap: 8px; padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   background: rgba(8,8,9,.94); color: var(--ex-creme); }
 .ex-plan-tete { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ex-plan-titre { display: flex; flex-direction: column; line-height: 1.15; margin-right: auto; }
@@ -336,7 +336,15 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
 .ex-plan-etage em { font-style: normal; color: var(--ex-ambre-c); font-size: 12px; }
 .ex-plan-fermer { min-height: 40px; padding: 0 16px; border-radius: 6px; border: 1px solid rgba(230,223,204,.3); background: rgba(230,223,204,.06); color: var(--ex-creme); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
 .ex-plan-zone { position: relative; flex: 1; min-height: 0; border: 1px solid rgba(230,223,204,.1); border-radius: 6px; background: #0d0c0b; overflow: hidden; }
-.ex-plan-cv { position: absolute; inset: 0; display: block; }
+.ex-plan-cv { position: absolute; inset: 0; display: block; cursor: grab; touch-action: none; }
+.ex-plan-zone:active .ex-plan-cv { cursor: grabbing; }
+.ex-plan-zooms { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 8px; z-index: 2; }
+.ex-plan-z { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(230,223,204,.3); background: rgba(11,11,12,.72); color: var(--ex-creme);
+  font: 500 22px/1 Oswald, system-ui, sans-serif; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.ex-plan-z:disabled { opacity: .35; cursor: default; }
+.ex-plan-z.ex-plan-centre { font-size: 20px; color: var(--ex-ambre-c); }
+/* le HUD général (heure, menus en haut) ne passe pas par-dessus le plan ni sur son bouton Fermer */
+body.plan-lieu-ouvert .ui-hud { visibility: hidden; }
 .ex-plan-legende { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; letter-spacing: .05em; color: rgba(230,223,204,.65); }
 .ex-plan-legende span { display: inline-flex; align-items: center; gap: 6px; }
 .ex-plan-legende i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }

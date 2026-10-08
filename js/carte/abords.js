@@ -55,11 +55,27 @@ const LEG = {
   'ϖ': { comme: '.', sol: 'parquet', bloque: true },                                // intérieur d'une maison close : on ne voit que le toit
   'ϙ': { comme: '"', sol: 'herbe', bloque: true },                                  // fourré impénétrable (poche sans accès)
   'ϛ': { prop: 'voiture', nom: 'la voiture (déjà fouillée)', conteneur: false },     // la plupart des voitures ont été vidées
+  // modèles de voitures (4 ter) : majuscule = encore à fouiller, minuscule = déjà vidée
+  'Ϣ': { prop: 'citadine', nom: 'la citadine' }, 'ϣ': { prop: 'citadine', nom: 'la citadine (déjà fouillée)', conteneur: false },
+  'Ϥ': { prop: 'break', nom: 'le break' }, 'ϥ': { prop: 'break', nom: 'le break (déjà fouillé)', conteneur: false },
+  'Ϧ': { prop: 'suv', nom: 'le 4 × 4' }, 'ϧ': { prop: 'suv', nom: 'le 4 × 4 (déjà fouillé)', conteneur: false },
+  'Ϩ': { prop: 'pickup', nom: 'le pick-up' }, 'ϩ': { prop: 'pickup', nom: 'le pick-up (déjà fouillé)', conteneur: false },
+  'Ϫ': { prop: 'voiture_police', nom: 'la voiture de gendarmerie' }, 'ϫ': { prop: 'voiture_police', nom: 'la voiture de gendarmerie (déjà fouillée)', conteneur: false },
+  'Ϭ': { prop: 'camping_car', nom: 'le camping-car' },
   'ϡ': { prop: 'table', nom: 'la table', conteneur: false },
   'ϟ': { prop: 'palette', nom: 'la palette vide', conteneur: false },
 };
 // Part des voitures générées qu'on peut encore fouiller.
 const VOITURES_FOUILLABLES = 0.2;
+// Modèles des voitures garées (poids par milieu) : [caractère à fouiller, caractère déjà vidé, poids]. 'v'/'ϛ' = berline.
+const MODELES_VOITURES = {
+  centre:   [['v', 'ϛ', 34], ['Ϣ', 'ϣ', 32], ['Ϥ', 'ϥ', 12], ['Ϧ', 'ϧ', 10], ['Ϩ', 'ϩ', 3], ['Ϫ', 'ϫ', 6]],
+  ville:    [['v', 'ϛ', 32], ['Ϣ', 'ϣ', 28], ['Ϥ', 'ϥ', 14], ['Ϧ', 'ϧ', 12], ['Ϩ', 'ϩ', 7], ['Ϫ', 'ϫ', 5]],
+  zone:     [['v', 'ϛ', 30], ['Ϣ', 'ϣ', 14], ['Ϥ', 'ϥ', 14], ['Ϧ', 'ϧ', 12], ['Ϩ', 'ϩ', 22], ['Ϫ', 'ϫ', 6]],
+  village:  [['v', 'ϛ', 26], ['Ϣ', 'ϣ', 24], ['Ϥ', 'ϥ', 18], ['Ϧ', 'ϧ', 12], ['Ϩ', 'ϩ', 20]],
+  campagne: [['v', 'ϛ', 24], ['Ϣ', 'ϣ', 16], ['Ϥ', 'ϥ', 18], ['Ϧ', 'ϧ', 16], ['Ϩ', 'ϩ', 26]],
+};
+const CAMPING_CAR = { centre: 0.15, ville: 0.25, zone: 0.2, village: 0.35, campagne: 0.45 };   // part des camionnettes
 // Ce qu'on peut traverser à pied (pour la passe d'accessibilité).
 const MARCHE = new Set([',', '"', ':', '.', ';', '%', 'E', '+', '/', 'ϗ', '@', 'Z', 'α', 'β', 'γ', 'δ', 'ε', 'τ', 'ω', 'ψ', 'χ', 'ϕ', 'ϑ']);
 const FOND_LIBRE = new Set(['"', 'δ', 'γ', 'β', ',', ':']);
@@ -361,6 +377,28 @@ export function agrandirDef(def) {
     const c = G[y][x], u = hc(x, y, 7);
     if (c === 'κ') { if (u < 0.3) G[y][x] = 'Ϝ'; else if (u < 0.42 && milieu !== 'centre') G[y][x] = 'Ϟ'; }
     else if (c === 'θ' && milieu !== 'zone') { if (u < 0.18) G[y][x] = 'Ϙ'; else if (u < 0.3) G[y][x] = 'Ϛ'; }
+  }
+
+  // ---------- 4 ter. modèles de voitures (sans toucher au plan : mêmes empreintes, même tirage du reste) ----------
+  // Chaque voiture garée (3 × 2, « v » ou « ϛ ») prend un modèle selon le milieu ; une camionnette (4 × 2) peut être un
+  // camping-car. Hasard par voiture (coin haut-gauche), indépendant du tirage : les sauvegardes restent valables.
+  {
+    const MV = MODELES_VOITURES[milieu] || MODELES_VOITURES.ville, tot = MV.reduce((s, m) => s + m[2], 0);
+    for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
+      if (oc(x, y) === 1) continue;
+      const c = G[y][x];
+      if (c === 'ξ') {
+        if (get(x - 1, y) === 'ξ' || get(x, y - 1) === 'ξ' || hc(x, y, 11) >= (CAMPING_CAR[milieu] ?? 0.2)) continue;
+        for (let a = 0; a < 2; a++) for (let b = 0; b < 4; b++) if (get(x + b, y + a) === 'ξ') G[y + a][x + b] = 'Ϭ';
+        continue;
+      }
+      if ((c !== 'v' && c !== 'ϛ') || get(x - 1, y) === c || get(x, y - 1) === c) continue;
+      let u = hc(x, y, 13) * tot, k = 0;
+      while (k < MV.length - 1 && u >= MV[k][2]) { u -= MV[k][2]; k++; }
+      const nc = c === 'v' ? MV[k][0] : MV[k][1];
+      if (nc === c) continue;
+      for (let a = 0; a < 2; a++) for (let b = 0; b < 3; b++) if (get(x + b, y + a) === c) G[y + a][x + b] = nc;
+    }
   }
 
   // ---------- 5. sorties sur les bords (au bout des rues / pistes) ----------

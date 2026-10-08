@@ -301,6 +301,134 @@ def voiture(v, rnd):
 voiture.n = 8
 voiture.couleurs = COUL_VOITURES
 
+def retros(c, l, x=0.85, z=0.95):
+    return [boite(x, sy * (l / 2 + 0.06), z, 0.12, 0.14, 0.09, peinture(c), 0.02) for sy in (-1, 1)]
+
+def barres_toit(x0, x1, l, z):
+    noir = mat_uni(lin(hexc('#1c1c1c')), 0.5, 0.6)
+    return [boite((x0 + x1) / 2, sy * (l / 2 - 0.18), z, x1 - x0, 0.05, 0.05, noir, 0.01) for sy in (-1, 1)]
+
+COUL_CITADINES = ['#b83a2a', '#e0dcd0', '#2a5a8a', '#d8b84a', '#3a3a3a', '#7a8a4a']
+def citadine(v, rnd):
+    """Petite citadine à hayon (Clio, 208…) : courte, haute, le toit qui tombe droit derrière."""
+    c = COUL_CITADINES[v % len(COUL_CITADINES)]
+    L, l = 3.7, 1.7
+    pts = [(-1.85, 0.28), (-1.85, 0.98), (-1.72, 1.42), (0.3, 1.5), (0.92, 1.0), (1.7, 0.86), (1.85, 0.62), (1.85, 0.28)]
+    o = [profil_extrude(pts, l, [peinture(c), vitre()], 0.98)]
+    o += roues(L, l, (-1.15, 1.2), 0.29, 0.2)
+    o += phares(L, l * 0.86, 0.62) + phares(L, l * 0.86, 0.8, avant=False)
+    o += retros(c, l, 0.8, 0.97)
+    if v % 3 == 2:   # un carton oublié sur le toit
+        o.append(boite(-0.6, 0.15, 1.5, 0.45, 0.35, 0.3, mat_uni(lin(hexc('#a07a4a')), 0.9), 0.01))
+    return o
+citadine.n = 6
+
+COUL_BREAKS = ['#3a3a3a', '#5a5a58', '#1e2e4a', '#6a5a3a', '#a8a49a']
+def break_(v, rnd):
+    """Break familial : long toit plat jusqu'à l'arrière, barres de toit."""
+    c = COUL_BREAKS[v % len(COUL_BREAKS)]
+    L, l = 4.6, 1.8
+    pts = [(-2.3, 0.28), (-2.3, 0.86), (-2.22, 1.42), (0.45, 1.47), (1.1, 1.0), (2.15, 0.84), (2.3, 0.62), (2.3, 0.28)]
+    o = [profil_extrude(pts, l, [peinture(c), vitre()], 0.98)]
+    o += roues(L, l, (-1.45, 1.45))
+    o += phares(L, l * 0.86, 0.62) + phares(L, l * 0.86, 0.78, avant=False)
+    o += retros(c, l, 0.95, 0.97) + barres_toit(-1.9, 0.2, l * 0.86, 1.47)
+    if v % 2 == 1:   # un coffre de toit
+        o.append(coussin(-0.85, 0, 1.52, 1.5, 0.75, 0.32, mat_uni(lin(hexc('#1a1a1a')), 0.35, 0.2), 0.5))
+    return o
+break_.n = 5
+
+COUL_SUV = ['#1a1a1a', '#e8e6e0', '#3a4a3a', '#5a5a58', '#4a2a1a']
+def suv(v, rnd):
+    """4 × 4 / SUV : haut, carré, roues larges, roue de secours au hayon."""
+    c = COUL_SUV[v % len(COUL_SUV)]
+    L, l = 4.5, 1.92
+    pts = [(-2.25, 0.42), (-2.25, 1.12), (-2.15, 1.74), (0.55, 1.8), (1.18, 1.2), (2.15, 1.04), (2.25, 0.78), (2.25, 0.42)]
+    o = [profil_extrude(pts, l, [peinture(c, 0.45), vitre()], 1.12, tumble=0.9)]
+    o += roues(L, l, (-1.4, 1.4), 0.38, 0.26)
+    o += phares(L, l * 0.86, 0.85) + phares(L, l * 0.86, 0.95, avant=False)
+    o += retros(c, l, 1.0, 1.15) + barres_toit(-1.8, 0.3, l * 0.86, 1.8)
+    w = cylindre(-2.33, 0, 0.6, 0.36, 0.22, mat_uni(lin(hexc('#151515')), 0.75), 24); w.rotation_euler.y = math.pi / 2; w.location = (-2.36, 0, 0.95); o.append(w)
+    return o
+suv.n = 5
+
+COUL_PICKUP = ['#c8c4b8', '#8a2a1a', '#2a3a4a', '#4a5a3a']
+def pickup(v, rnd):
+    """Pick-up : cabine et longue benne ouverte (des affaires dedans, parfois)."""
+    c = COUL_PICKUP[v % len(COUL_PICKUP)]
+    L, l = 5.2, 1.86
+    pts = [(-0.45, 0.34), (-0.45, 1.66), (0.6, 1.68), (1.25, 1.14), (2.48, 0.98), (2.6, 0.68), (2.6, 0.34)]
+    o = [profil_extrude(pts, l, [peinture(c, 0.4), vitre()], 1.1, tumble=0.92, galbe=0.04)]
+    tole = peinture(c, 0.4)
+    o.append(boite(-1.55, 0, 0.34, 2.15, l, 0.1, mat_uni(lin(hexc('#2a2a2a')), 0.8, 0.3), 0.01))   # plancher
+    for sy in (-1, 1): o.append(boite(-1.55, sy * (l / 2 - 0.04), 0.34, 2.15, 0.08, 0.66, tole, 0.02))
+    o.append(boite(-2.6, 0, 0.34, 0.08, l, 0.66, tole, 0.02))                                       # hayon
+    o.append(boite(-0.5, 0, 0.34, 0.08, l, 0.66, tole, 0.02))
+    o += roues(L, l, (-1.7, 1.7), 0.37, 0.25) + phares(L, l * 0.86, 0.85)
+    o += retros(c, l, 0.95, 1.12)
+    if v % 2 == 0:   # dans la benne : une bâche, un bidon, des planches
+        o.append(coussin(-1.9, 0.25, 0.44, 0.9, 0.8, 0.28, mat_tex('hessian_230', 0.6, teinte=lin(hexc('#6a6a50'))), 0.4))
+        o.append(cylindre(-1.1, -0.45, 0.44, 0.17, 0.42, mat_uni(lin(hexc('#b02a1a')), 0.4, 0.3), 16))
+    else:
+        for k in range(3): o.append(boite(-1.5, -0.4 + k * 0.28, 0.44 + 0.04 * k, 1.9, 0.22, 0.04, mat_uni(lin(hexc('#8a6a42')), 0.85), 0.005))
+    return o
+pickup.n = 4
+
+def voiture_police(v, rnd):
+    """Voiture de la gendarmerie : berline bleu nuit, bande blanche, rampe de gyrophares bleu et rouge."""
+    c = '#1c2a52'
+    L, l = 4.3, 1.8
+    pts = [(-2.15, 0.28), (-2.15, 0.8), (-2.0, 0.92), (-1.5, 0.97), (-1.08, 1.4), (0.32, 1.45), (0.98, 0.99), (2.0, 0.84), (2.15, 0.62), (2.15, 0.28)]
+    o = [profil_extrude(pts, l, [peinture(c), vitre()], 0.98)]
+    blanc = mat_uni(lin(hexc('#ecebe6')), 0.3, 0.2)
+    o.append(boite(1.55, 0, 0.88, 0.9, 0.36, 0.02, blanc, 0.0))          # bande sur le capot
+    o.append(boite(-1.75, 0, 0.94, 0.6, 0.36, 0.02, blanc, 0.0))         # et sur le coffre
+    o += roues(L, l, (-1.35, 1.35))
+    o += phares(L, l * 0.86, 0.62) + phares(L, l * 0.86, 0.75, avant=False)
+    o += retros(c, l, 0.9, 0.97)
+    o.append(boite(-0.3, 0, 1.45, 0.28, 1.25, 0.06, mat_uni(lin(hexc('#202020')), 0.5), 0.01))
+    o.append(boite(-0.3, -0.32, 1.51, 0.24, 0.55, 0.09, mat_uni(lin(hexc('#2050e0')), 0.15, 0, emission=(0.15, 0.3, 1.0, 0.6 if v else 0.0)), 0.02))
+    o.append(boite(-0.3, 0.32, 1.51, 0.24, 0.55, 0.09, mat_uni(lin(hexc('#d02020')), 0.15, 0, emission=(1.0, 0.1, 0.1, 0.0)), 0.02))
+    return o
+voiture_police.n = 2
+
+def camping_car(v, rnd):
+    """Camping-car profilé : cabine d'utilitaire, grande cellule blanche, lanterneaux, panneau solaire."""
+    L, l = 6.4, 2.25
+    pts = [(-3.2, 0.36), (-3.2, 2.92), (1.25, 2.92), (1.6, 2.5), (1.75, 2.15), (2.05, 1.32), (3.05, 1.06), (3.2, 0.72), (3.2, 0.36)]
+    o = [profil_extrude(pts, l, [peinture('#ecebe4', 0.15), vitre()], 1.2, tumble=0.98, galbe=0.03)]
+    me = o[0].data
+    for poly in me.polygons:   # vitres : seulement la cabine
+        cc = sum((me.vertices[k].co for k in poly.vertices), __import__('mathutils').Vector()) / len(poly.vertices)
+        if cc.x < 1.5: poly.material_index = 0
+    o += roues(L, l, (-1.9, 2.0), 0.36, 0.24) + phares(L, l * 0.9, 0.8)
+    o.append(boite(-1.4, 0, 2.92, 0.7, 0.7, 0.12, mat_uni(lin(hexc('#d8d8d2')), 0.2, 0), 0.03))        # lanterneau
+    o.append(boite(0.4, 0, 2.92, 0.55, 0.55, 0.1, mat_uni(lin(hexc('#d8d8d2')), 0.2), 0.03))
+    o.append(boite(-2.4, 0, 2.92, 0.9, 0.7, 0.28, mat_uni(lin(hexc('#c8c8c2')), 0.4), 0.05))                        # climatiseur
+    o.append(boite(-0.5, 0.45 if v else -0.45, 2.94, 1.1, 0.7, 0.03, mat_uni(lin(hexc('#16203a')), 0.1, 0.4), 0.005))  # panneau solaire
+    brun = mat_uni(lin(hexc('#7a5a3a' if v else '#3a4a6a')), 0.4)
+    for sy in (-1, 1): o.append(boite(-0.9, sy * (l / 2 - 0.005), 1.0, 4.4, 0.02, 0.12, brun, 0.0))                 # bandes de décor
+    return o
+camping_car.n = 2
+
+def bus(v, rnd):
+    """Bus urbain de 12 m : caisse droite, longues vitres latérales, toit chargé (climatisation, trappes), filets de couleur."""
+    caisse = ['#ecebe6', '#dfe3d6'][v % 2]; filet = ['#2a7a4a', '#2a4a8a'][v % 2]
+    L, l = 12.0, 2.55
+    pts = [(-6.0, 0.35), (-6.0, 3.0), (5.75, 3.0), (5.95, 2.75), (6.0, 1.0), (5.9, 0.35)]
+    o = [profil_extrude(pts, l, [peinture(caisse, 0.2), vitre()], 1.05, tumble=0.985, galbe=0.015)]
+    o += roues(L, l, (-3.6, 3.9), 0.5, 0.3) + phares(L, l * 0.9, 0.7) + phares(L, l * 0.9, 0.9, avant=False)
+    gris = mat_uni(lin(hexc('#b8bab4')), 0.45, 0.3)
+    o.append(boite(-0.6, 0, 3.0, 2.8, 1.6, 0.32, gris, 0.06))                                   # climatisation
+    for x in (-4.0, 2.6): o.append(boite(x, 0, 3.0, 0.9, 0.9, 0.06, mat_uni(lin(hexc('#3a4048')), 0.3, 0.2), 0.02))   # trappes
+    o.append(boite(5.2, 0, 3.0, 0.9, 1.9, 0.04, mat_uni(lin(hexc('#2a2e34')), 0.4), 0.01))         # bandeau de girouette
+    col = mat_uni(lin(hexc(filet)), 0.35, 0.2)
+    for sy in (-1, 1): o.append(boite(0, sy * (l / 2 - 0.02), 3.0, 11.9, 0.06, 0.04, col, 0.0))   # filets sur le bord du toit
+    if v % 2 == 1:   # des feuilles et de la poussière accumulées sur le toit
+        for k in range(14): o.append(sphere(-5 + rnd.random() * 10, (rnd.random() - 0.5) * 1.8, 3.02, 0.07, mat_uni(lin(hexc(['#8a5a22', '#a8782a', '#6a4a1a'][k % 3])), 0.8), 0.15))
+    return o
+bus.n = 2
+
 def camionnette(v, rnd):
     c = ['#e8e6e0', '#3a4a5a', '#7a2a1a'][v % 3]
     L, l = 5.0, 1.95
@@ -926,6 +1054,13 @@ CATALOGUE = {
     # — extérieur, ville —
     'voiture':      E([3, 2], voiture, remplir=0.98, etirer=True, couleurs=COUL_VOITURES),
     'camionnette':  E([4, 2], camionnette, remplir=0.98, etirer=True),
+    'citadine':     E([3, 2], citadine, remplir=0.9, etirer=True),
+    'break':        E([3, 2], break_, remplir=0.98, etirer=True),
+    'suv':          E([3, 2], suv, remplir=0.98, etirer=True),
+    'pickup':       E([3, 2], pickup, remplir=0.98, etirer=True),
+    'voiture_police': E([3, 2], voiture_police, remplir=0.98, etirer=True),
+    'camping_car':  E([4, 2], camping_car, remplir=0.98, etirer=True),
+    'bus':          E([9, 2], bus, remplir=0.98, etirer=True),
     'camion_mil':   E([5, 2], camion_mil, remplir=0.98, etirer=True),
     'ambulance':    E([4, 2], ambulance, remplir=0.98, etirer=True),
     'gravats':      E([1, 1], gravats, remplir=0.95),
