@@ -220,7 +220,7 @@ export function donner(it, silencieux) {
     if (s) s.qty += it.qty || 1; else G.player.inventaire.push({ id: it.id, qty: it.qty || 1 });
     emit('inventaire', { ajout: it.id });
   }
-  if (!silencieux) message(auSol ? `${nomObjet(it.id)} : plus de place, posé au sol.` : `Pris : ${nomObjet(it.id)}${it.qty > 1 ? ' ×' + it.qty : ''}.`, 1600);
+  if (!silencieux) message(auSol ? `Plus de place. Laissé par terre : ${nomObjet(it.id)}.` : `Pris : ${nomObjet(it.id)}${it.qty > 1 ? ' ×' + it.qty : ''}.`, 1600);
 }
 export async function ramasser(o) {
   const it = await V.canal.prendre('#sol:' + o.uid, 0);

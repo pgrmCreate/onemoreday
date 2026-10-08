@@ -299,6 +299,9 @@ const DESSINS = {
     if (r() < 0.25) { c.fillStyle = 'rgba(70,8,10,0.75)'; ellipse(c, W * (0.3 + r() * 0.4), H * (0.45 + r() * 0.3), 8 + r() * 8, 5 + r() * 6, r()); c.fill(); }
   },
   lit_simple(c, W, H, r, R) { DESSINS.lit(c, W, H, r, R); },
+  // lit de camp : toile kaki tendue sur un cadre de tubes ; matelas : posé à même le sol, un drap froissé
+  lit_camp(c, W, H) { c.fillStyle = '#5b5f55'; c.fillRect(2, 2, W - 4, H - 4); boite(c, 4, 4, W - 8, H - 8, '#6b6a44', { r: 1.5 }); c.fillStyle = 'rgba(0,0,0,.25)'; for (let k = 1; k < 4; k++) c.fillRect(4, 4 + k * (H - 8) / 4, W - 8, 1); },
+  matelas(c, W, H, r) { boite(c, 2, 2, W - 4, H - 4, '#9a8f7a', { r: 4 }); c.fillStyle = '#d8d2c2'; rr(c, 4, H * 0.3, W - 8, H * 0.6, 4); c.fill(); if (r() < 0.6) { c.fillStyle = 'rgba(90,60,30,.25)'; rr(c, W * 0.3, H * 0.5, W * 0.3, H * 0.2, 6); c.fill(); } },
   lit_hopital(c, W, H, r) {
     boite(c, 3, 3, W - 6, H - 6, '#9aa2a4', { r: 3 });
     c.fillStyle = '#e4e8e6'; rr(c, 6, 6, W - 12, H - 12, 3); c.fill();

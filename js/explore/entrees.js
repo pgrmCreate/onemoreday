@@ -36,7 +36,7 @@ export function creerEntrees({ racine, canvas, actions }) {
   ecoute(window, 'keydown', (e) => {
     if (!actif || tape(e)) return;
     const c = e.code;
-    if (c === 'Tab') { e.preventDefault(); if (!e.repeat) actions.carte && actions.carte(); return; }
+    if (c === 'Tab' || c === 'KeyM') { e.preventDefault(); if (!e.repeat) actions.carte && actions.carte(); return; }
     if (e.repeat) { if (bas.has(c)) return; }
     bas.add(c);
     if (c === 'KeyE' || c === 'Enter') { e.preventDefault(); actions.interagir && actions.interagir(); }

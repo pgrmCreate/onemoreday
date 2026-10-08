@@ -586,7 +586,99 @@ rechute** : on redevient l'un d'eux.
   et vue tremblée. Antidouleurs −40 pendant 4 h ; alcool −15 pendant 1 h (toucher −5 %).
 - **Sommeil** : possible si fatigue < 80 ; 2 à 10 h ; +0,22 fatigue/min (8 h ≈ +105). Lieu **non sûr** avec des morts
   vivants dans le niveau : intrusion à (4 % + 10 % × danger) par heure. Un **piège sonore** te réveille avant (combat
-  « normal » au lieu de « surpris »). Pièce barricadée ou refuge : aucun risque.
+  « normal » au lieu de « surpris »). Pièce barricadée ou refuge : aucun risque. **Ce qu'on récupère dépend du
+  couchage : voir §5.7.**
+
+### 5.7 Dormir : le couchage compte (retour du propriétaire, 7 oct. 2026)
+
+> Demande : « façon Project Zomboid — mauvais (fauteuil, canapé, voiture…), moyen (lit de camp, matelas au sol…),
+> correct (vrai lit). Par terre, on ne récupère pas, voire on se réveille avec des douleurs. » Voir aussi
+> `docs/RETOURS_JOUEUR.md` §5. Implémenté le 8 oct. 2026 : `REGLAGES.survie.SOMMEIL.COUCHAGE` / `COUCHAGES`.
+
+**But de design.** Le sommeil devient un choix de préparation, pas un bouton. Dormir n'importe où reste possible (on ne
+bloque jamais le joueur), mais on se réveille encore las et courbaturé. Le premier vrai confort (lit de fortune :
+2 planches + 2 draps, 20 min, sans compétence) est accessible dès le jour 1 ou 2 : la rareté pousse à s'installer, sans
+punir. Un vrai lit reste la récompense d'une base dans une maison.
+
+**Quatre catégories.**
+
+| Catégorie | Ce qui la donne (types réels) | Libellé affiché |
+|---|---|---|
+| **Par terre** (`sol`) | aucun couchage : « Dormir » depuis le panneau Corps, ou à côté d'un meuble qui n'est pas un couchage | « par terre » |
+| **Mauvais** (`mauvais`) | objets de plan `fauteuil`, `canape`, `brancard` ; construction `abri_branches` ; (à ajouter) siège de `voiture`, `camionnette`, `ambulance`, `camion_mil` via une action « Dormir dans la voiture » | « mauvais couchage » |
+| **Moyen** (`moyen`) | construction `lit_fortune` ; nouveaux objets de plan `lit_camp` (1 × 2) et `matelas` (1 × 2, posé au sol) ; `tente` (une fois fouillée) ; **n'importe quel couchage par terre ou mauvais + un sac de couchage** (nouvel objet `sac_couchage`) | « couchage correct pour une nuit » |
+| **Correct** (`correct`) | objets de plan `lit`, `lit_simple`, `lit_hopital` | « un vrai lit » |
+
+- Un plan peut forcer la catégorie d'un objet : `objet('lit', x, y, { couchage: 'moyen' })` (un lit sans matelas,
+  souillé…), ou dans l'ancien format `{ prop: 'lit', couchage: 'moyen' }`.
+- Les « lits de camp » déjà posés comme `lit` ou `lit_simple` (`nostradamus.js` : `'5'` ; `touloubre.js` : `lit_simple`
+  nommé « le lit de camp ») passent au type `lit_camp` ou reçoivent `couchage: 'moyen'`.
+- `sac_couchage` (nouvel objet) : 1,6 kg, 10 L, se fixe au sac comme un tapis de sol. On le déroule automatiquement
+  quand on dort par terre ou sur un mauvais couchage (rien à faire). Butin : tentes 30 %, militaire 15 %, camping et
+  bricolage 8 %. `couverture` (nouvel objet) : 1,2 kg, 6 L ; elle ne change pas la catégorie, elle tient chaud (ci-dessous).
+  Butin : lits 10 %, armoires 8 %.
+
+**Les chiffres** (proposition de réglage `REGLAGES.survie.SOMMEIL.COUCHAGE`) :
+
+```js
+COUCHAGE: {
+  // fatigue : × SOMMEIL.FATIGUE_PAR_MIN (0,22/min) · plafond : le sommeil s'arrête quand la fatigue l'atteint ·
+  // pv : × PV_REGEN.sommeil (0,07/min) · guerison : × durée de guérison des plaies pendant le sommeil (< 1 = plus vite) ·
+  // froid : + besoin de chaleur pendant le sommeil · courbatures : au réveil, si on a dormi au moins apresH heures
+  sol:     { fatigue: 0.5,  plafond: 60,  pv: 0.5,  guerison: 1,   froid: 1, courbatures: { apresH: 2, douleur: 20, min: 240, regenSta: 0.85 } },
+  mauvais: { fatigue: 0.75, plafond: 80,  pv: 0.75, guerison: 0.9, froid: 0, courbatures: { apresH: 4, douleur: 10, min: 120, regenSta: 1 } },
+  moyen:   { fatigue: 0.9,  plafond: 95,  pv: 1,    guerison: 0.8, froid: 0 },
+  correct: { fatigue: 1.2,  plafond: 100, pv: 1.25, guerison: 0.7, froid: 0 },
+},
+CHALEUR_SOMMEIL: { sac_couchage: 3, couverture: 2 },   // chaleur ajoutée pendant le sommeil (on s'enroule dedans)
+```
+
+| | Fatigue/h | 8 h de sommeil | Plafond | PV/h | 8 h | Guérison des plaies | Au réveil |
+|---|---|---|---|---|---|---|---|
+| Par terre | 6,6 | +53 | **60** | 2,1 | +17 | normale | **courbatures** : douleur +20 pendant 4 h, récup. d'endurance ×0,85 pendant 4 h |
+| Mauvais | 9,9 | +79 | 80 | 3,2 | +25 | ×0,9 (un peu plus vite) | courbatures légères si ≥ 4 h : douleur +10 pendant 2 h |
+| Moyen | 11,9 | +95 | 95 | 4,2 | +34 | ×0,8 | rien |
+| Correct | 15,8 | +127 | 100 | 5,3 | +42 | ×0,7 | rien |
+
+Pourquoi ces nombres :
+- Une journée éveillée de 16 h, en marchant, en fouillant et en se battant un peu, coûte environ −60 de fatigue.
+  **Correct** la rattrape en ~4 h : le vrai lit est un luxe. **Moyen** la rattrape en une nuit de 8 h : c'est le
+  niveau « normal » d'une base. **Mauvais** plafonne à 80 : on fonctionne, mais on commence la journée un peu entamé.
+  **Par terre** plafonne à 60 : on se lève juste au-dessus de « Las » (55) et on y retombe en ~1 h 30. On ne meurt pas
+  de dormir par terre, on le paie toute la journée.
+- Le plafond remplace l'ancien bonus du lit (`+4 fatigue/h` codé en dur dans `js/game/sommeil.js`, à **retirer**).
+- Si la fatigue est déjà au plafond du couchage, on ne s'endort pas : « Tu n'arrives pas à dormir ici : tu n'es pas
+  assez fatigué{|e} pour un sol aussi dur. » (Pas de sommeil inutile qui ferait tourner l'horloge pour rien.)
+- Le sommeil s'arrête tout seul quand la fatigue atteint le plafond (aujourd'hui : à 99,5).
+- Les courbatures utilisent ce qui existe déjà : `douleurAigue(p, v, min)` de `js/game/survival.js`
+  (`p.effets.douleurAigue` = minutes, `douleurAigueV` = valeur), plus un effet `courbatures` (minutes) qui multiplie la
+  récupération d'endurance. Une douleur de 20 seule affiche « Douleur légère » sans malus au toucher (seuil 30) ; avec
+  une plaie, on passe vite au-dessus de 30 : dormir par terre blessé se sent. Antidouleur et tisane la soulagent
+  normalement.
+- Froid : dormir par terre ajoute +1 au besoin de chaleur pendant le sommeil (le sol pompe la chaleur). Sac de couchage
+  +3 de chaleur, couverture +2, pendant le sommeil seulement. Exemple : dehors la nuit en fin d'été, par terre (besoin
+  4 − 1 + 1 = 4), en t-shirt et jean (chaleur 1) : déficit 3, on perd des PV en dormant ; avec un sweat (chaleur 3) :
+  déficit 1, on grelotte ; avec une couverture ou un sac de couchage : plus de déficit.
+- Le risque d'intrusion ne change pas avec le couchage (il dépend des portes et des morts, §5.6). Option à
+  l'implémentation de « Dormir dans la voiture » : portières fermées, risque ×0,5.
+- Co-op : chacun récupère selon son propre couchage ; l'horloge est commune (sommeil à deux, inchangé).
+
+**Textes affichés** (charte : courts, une idée par phrase, accords `{m|f}`) :
+- Fenêtre « Dormir », sous le titre, une ligne « Couchage » :
+  - par terre : « Par terre. Tu dormiras mal : tu ne seras pas vraiment {reposé|reposée}, et tu te réveilleras {courbaturé|courbaturée}. »
+  - mauvais : « {Le canapé} : on y dort mal. Tu ne récupéreras pas complètement. » (le nom de l'objet, avec son article)
+  - moyen : « {Le lit de camp} : ça ira pour une nuit. » ; avec le sac de couchage par terre : « Par terre, dans ton sac de couchage : ça ira pour une nuit. »
+  - correct : « Un vrai lit : tu récupéreras bien. »
+- Réveil (toast, sans chiffres, avec le mot d'état de fatigue) : « Tu as dormi 6 h par terre. Tu te réveilles encore
+  {las|lasse}, et {courbaturé|courbaturée}. » ; plafond atteint : « Le sol est trop dur : impossible de te rendormir. »
+- État (moodle) « Courbatures », niveau 1 : « Une nuit à même le sol. Ça passera dans quelques heures. »
+
+**À implémenter** (pour l'agent qui code) : `ouvrirSommeil({ lit })` devient `ouvrirSommeil({ couchage: { categorie,
+nom } })` ; la catégorie vient du type de l'objet (`interactions.js`, ensemble `LITS` à remplacer par la table ci-dessus)
+ou de la construction (`construction.js` : `lit: true` → `couchage: 'moyen'` pour `lit_fortune`, `'mauvais'` pour
+`abri_branches`) ; depuis le panneau Corps : `sol`, sauf si un couchage est à moins d'1 unité (on propose alors celui-là).
+`survival.tickMinutes` applique `fatigue`, `pv` et `guerison` de la catégorie courante pendant le sommeil ; `dormir()`
+s'arrête au plafond ; les courbatures sont posées au réveil.
 
 ---
 

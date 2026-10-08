@@ -146,7 +146,7 @@ export function raisonPlace(id, p) {
   p = joueur(p);
   if (combienTient(id, 1, p) >= 1) return null;
   if (estEncombrant(id)) return 'Trop encombrant pour un sac : ça se porte à deux mains.';
-  if (!estPetit(id) && !p.equip.sac) return estLong(id) ? 'Trop grand pour tes poches : prends-le en main ou dans le dos.' : 'Trop gros pour tes poches : il te faut un sac.';
+  if (!estPetit(id) && !p.equip.sac) return estLong(id) ? 'Trop grand pour tes poches : à porter en main ou dans le dos.' : 'Trop gros pour tes poches : il te faut un sac.';
   return 'Plus de place dans ton sac.';
 }
 // Compatibilité (anciens appels en « emplacements ») : tout est désormais en litres.
@@ -190,7 +190,8 @@ export function bilan(p) {
 // ---------- Ajout / retrait ----------
 // addItem(id, qty, inst) : range dans les poches / le sac ; ce qui ne rentre pas (volume) est posé au sol.
 // → { ajoute, auSol }
-export function addItem(id, qty = 1, inst = {}, p) {
+// opts.siPlein === 'tri' : le surplus part dans la pile « à trier » (le joueur choisit ce qu'il garde) au lieu du sol.
+export function addItem(id, qty = 1, inst = {}, p, opts = {}) {
   p = joueur(p); const d = def(id);
   if (!d) { console.warn('[inventaire] objet inconnu', id); return { ajoute: 0, auSol: 0 }; }
   if (qty <= 0) return { ajoute: 0, auSol: 0 };
@@ -209,11 +210,18 @@ export function addItem(id, qty = 1, inst = {}, p) {
     ajoute++;
   }
   const reste = qty - ajoute;
+  if (reste > 0 && opts.siPlein === 'tri') {
+    const item = { id, qty: reste, ...inst };
+    if (d.dur && item.dur == null && d.type === 'arme') { item.dur = d.dur; item.durMax = d.dur; }
+    mettreATrier(item);
+    emit('inventaire', { ajout: id, qty: ajoute });
+    return { ajoute, auSol: 0, aTrier: reste };
+  }
   if (reste > 0) {
     const item = { id, qty: reste, ...inst };
     if (d.dur && item.dur == null && d.type === 'arme') { item.dur = d.dur; item.durMax = d.dur; }
     try { sol.deposer(item); } catch (e2) { console.warn('[inventaire] dépôt au sol impossible', e2); }
-    emit('toast', { texte: `${raisonPlace(id, p) || 'Plus de place'} ${d.nom}${reste > 1 ? ' ×' + reste : ''} : posé au sol.`, type: 'alerte' });
+    emit('toast', { texte: `${raisonPlace(id, p) || 'Plus de place.'} Laissé par terre : ${d.nom}${reste > 1 ? ' ×' + reste : ''}.`, type: 'alerte' });
   }
   emit('inventaire', { ajout: id, qty: ajoute });
   return { ajoute, auSol: reste };
@@ -273,6 +281,52 @@ export function ramasser(indexSol, p) {
   p = joueur(p); const item = sol.prendre(indexSol); if (!item) return { ajoute: 0, auSol: 0 };
   const { id, qty, ...inst } = item;
   return addItem(id, qty || 1, inst, p);
+}
+
+// ---------- À trier : ce qu'on t'a donné et qui ne rentre pas ----------
+// Une scène (voiture fouillée, cadeau, butin de rencontre) donne plus que ce que tu peux porter : au lieu de tomber
+// au sol sans prévenir, le surplus attend ici. Le panneau du sac ouvre l'onglet « À trier » : on prend, on laisse des
+// affaires de son sac pour faire de la place, puis « Terminé » abandonne le reste sur place.
+let aTrier = [];
+export function listeATrier() { return aTrier; }
+export function mettreATrier(item) {
+  const pile = !aEtat(item) && aTrier.find(x => x.id === item.id && !aEtat(x));
+  if (pile) pile.qty += item.qty || 1; else aTrier.push({ ...item, qty: item.qty || 1 });
+  emit('inventaire', { tri: true });
+  emit('tri', { n: aTrier.length });
+}
+// Prendre la i-ème pile à trier (ce qui rentre). → { ok, raison? }
+export function prendreATrier(i, p) {
+  p = joueur(p); const it = aTrier[i]; if (!it) return { ok: false };
+  const { id, qty, ...inst } = it;
+  const n = Math.min(qty, combienTient(id, qty, p));
+  if (n < 1) return { ok: false, raison: raisonPlace(id, p) || 'Plus de place.' };
+  addItem(id, n, inst, p);
+  it.qty -= n; if (it.qty <= 0) aTrier.splice(i, 1);
+  emit('inventaire', { tri: true });
+  return { ok: true };
+}
+// Porter directement (sac à dos, vêtement, arme en main…) la i-ème pile à trier.
+export function porterATrier(i, p) {
+  p = joueur(p); const it = aTrier[i]; if (!it) return { ok: false };
+  const un = { ...it, qty: 1 };
+  const r = porterObjet(un, p);
+  if (r && r.ok) { it.qty -= 1; if (it.qty <= 0) aTrier.splice(i, 1); emit('inventaire', { tri: true }); }
+  return r || { ok: false };
+}
+// Laisser une affaire du sac pour faire de la place : elle rejoint la pile à trier.
+export function laisserPourTri(index, qty, p) {
+  p = joueur(p); const it = p.inventaire[index]; if (!it) return false;
+  const sorti = removeIndex(index, qty ?? it.qty, p);
+  if (sorti) mettreATrier(sorti);
+  return !!sorti;
+}
+// Fin du tri : ce qui reste est abandonné sur place (au sol si on est dans un lieu). → la liste abandonnée
+export function finirTri() {
+  const reste = aTrier; aTrier = [];
+  for (const it of reste) { try { sol.deposer(it); } catch (e) { /* en voyage : laissé au bord de la route */ } }
+  if (reste.length) emit('inventaire', { tri: true, sol: true });
+  return reste;
 }
 
 // ---------- Sac porté ----------

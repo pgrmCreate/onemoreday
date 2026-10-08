@@ -30,7 +30,7 @@ export function creerRendu(cv, niveau) {
   const lumiere = creerLumiere();
   const effets = creerEffets();
   const atmo = creerAtmosphere();
-  let grain = null, vignette = null, carteCv = null, carteT = 0, premier = false;
+  let grain = null, vignette = null, premier = false;
   const anim = new Map();          // uid → { x, y, ph }
   const portesA = new Map();       // cle → { o (0..1), t }
   const cadavresVus = new Map();   // uid → t de première apparition (null = déjà là)
@@ -207,7 +207,7 @@ export function creerRendu(cv, niveau) {
     }
     // personnages, triés par y
     tmpListe.length = 0;
-    for (const n of S.pnj) if (n.etage === E.id && visCase(n.x, n.y) >= 0.2) tmpListe.push({ y: n.y, f: () => dessinerHumain(ctx, n.x * TS, n.y * TS, n.dir || Math.PI / 2, STYLE_PNJ, { t, marche: 0, phase: 0 }) });
+    for (const n of S.pnj) if (n.etage === E.id && visCase(n.x, n.y) >= 0.2) tmpListe.push({ y: n.y, f: () => dessinerHumain(ctx, n.x * TS, n.y * TS, n.dir ?? Math.PI / 2, n.style ? (n._st || (n._st = { ...STYLE_PNJ, ...n.style })) : STYLE_PNJ, { t, marche: 0, phase: 0 }) });
     for (const z of S.zombies) {
       if (z.etage !== E.id) continue;
       const v = visCase(z.x, z.y);
@@ -304,7 +304,6 @@ export function creerRendu(cv, niveau) {
     ctx.translate(-((t * 0.37) % 160) | 0, -((t * 0.61) % 160) | 0);
     ctx.fillStyle = grain; ctx.fillRect(0, 0, W + 160, H + 160);
     ctx.restore();
-    if (S.carte) dessinerCarte(S);
     // pré-rendu des blocs restants quand il reste du temps
     if (performance.now() - t0 < 6) {
       for (let by = 0; by < Math.ceil(E.h / FIN / CHUNK); by++) for (let bx = 0; bx < Math.ceil(E.w / FIN / CHUNK); bx++) {
@@ -716,43 +715,12 @@ export function creerRendu(cv, niveau) {
     vignette = c;
   }
 
-  // ---------- Plan du lieu (Tab) ----------
-  function dessinerCarte(S) {
-    const E = S.E, C = S.C;
-    if (!carteCv || S.t - carteT > 500 || carteCv._e !== E.id) {
-      carteT = S.t;
-      carteCv = carteCv && carteCv._e === E.id ? carteCv : document.createElement('canvas');
-      carteCv._e = E.id; carteCv.width = E.w; carteCv.height = E.h;
-      const g = carteCv.getContext('2d'); const im = g.createImageData(E.w, E.h);
-      for (let i = 0; i < E.w * E.h; i++) {
-        const o = i * 4; if (!C.vu[i]) { im.data[o + 3] = 0; continue; }
-        const k = E.code[i];
-        const v = k === K.MUR || k === K.FENETRE ? 200 : k === K.MEUBLE ? 110 : k === K.PORTE ? 170 : k === K.SORTIE ? 240 : 60;
-        im.data[o] = k === K.SORTIE ? 201 : v; im.data[o + 1] = k === K.SORTIE ? 162 : v * 0.96; im.data[o + 2] = k === K.SORTIE ? 39 : v * 0.85; im.data[o + 3] = 230;
-      }
-      g.putImageData(im, 0, 0);
-    }
-    const s0 = Math.min((W * 0.7) / E.w, (H * 0.75) / E.h);
-    const x = (W - E.w * s0) / 2, y = (H - E.h * s0) / 2;
-    const s = s0 * FIN;          // échelle des positions (unités)
-    ctx.fillStyle = 'rgba(8,8,9,0.9)'; rr(ctx, x - 14, y - 34, E.w * s0 + 28, E.h * s0 + 48, 6); ctx.fill();
-    ctx.fillStyle = '#e6dfcc'; ctx.font = '600 15px Oswald, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.fillText(`${niveau.nom} — ${E.nom}`, x, y - 12);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(carteCv, x, y, E.w * s0, E.h * s0);
-
-    ctx.imageSmoothingEnabled = true;
-    for (const p of S.pairs) if (p.etage === E.id) { ctx.fillStyle = '#7cc8ff'; cercle(ctx, x + p.x * s, y + p.y * s, Math.max(3, s * 0.6)); ctx.fill(); }
-    if (S.objectif && S.objectif.etage === E.id) { ctx.strokeStyle = '#e8c45a'; ctx.lineWidth = 2; ctx.strokeRect(x + S.objectif.x * s - 4, y + S.objectif.y * s - 4, 8, 8); }
-    ctx.fillStyle = '#c9a227'; cercle(ctx, x + S.joueur.x * s, y + S.joueur.y * s, Math.max(3, s * 0.6)); ctx.fill();
-  }
-
   resize();
   return {
     cam, resize, dessiner, ecranVersMonde, mondeVersEcran, suivre, recaler, setZoom, effets,
     zoom: () => cam.zoom, taille: () => ({ W, H }),
     viderCache() { blocs.clear(); toitsCache.clear(); },
-    fermer() { offSols(); offObjets(); blocs.clear(); toitsCache.clear(); grain = null; vignette = null; carteCv = null; lumiere.fermer(); effets.fermer(); anim.clear(); },
+    fermer() { offSols(); offObjets(); blocs.clear(); toitsCache.clear(); grain = null; vignette = null; lumiere.fermer(); effets.fermer(); anim.clear(); },
   };
 }
 

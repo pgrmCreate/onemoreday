@@ -228,18 +228,16 @@ body:not([data-temps=exploration]) .hud-btn-construire { display: none; }
 .cat-arme { --cat: #c98b6b; } .cat-munition { --cat: #b59a7a; } .cat-nourriture { --cat: #c7a55a; } .cat-boisson { --cat: #7fa6bd; }
 .cat-soin { --cat: #d7646f; } .cat-outil { --cat: #a9a18e; } .cat-vetement { --cat: #9c93b5; } .cat-materiau { --cat: #8e8676; }
 .cat-livre { --cat: #c9b27f; } .cat-quete { --cat: var(--ui-ambre); } .cat-divers { --cat: #8e8676; }
-/* Filtre du sac : le sac porté en petit + petites icônes par type */
+/* En tête de la liste du sac : le sac porté en petit (les types sont dans la colonne .inv-types) */
 .inv-filtre { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 6px 0 4px; background: var(--ui-fond-2, #141315); }
-.inv-puces { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 4px 6px 4px 1px; }
 /* Le sac porté, en petit : une pastille (nom + litres) à gauche des filtres */
-.inv-sac-mini { flex: 0 1 auto; max-width: 46%; min-width: 0; display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px 0 8px; cursor: pointer;
+.inv-sac-mini { flex: 0 1 auto; max-width: 100%; min-width: 0; display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px 0 8px; cursor: pointer;
   border: 1px solid #3a3222; border-radius: 20px; background: rgba(201,162,39,.08); color: var(--ui-texte) !important; text-align: left; }
 .inv-sac-mini.sans { border-color: #4a2226; background: rgba(142,27,36,.10); }
 .inv-sac-mini > .ico { width: 18px; height: 18px; flex: none; color: var(--ui-ambre); }
 .inv-sac-mini > span { display: flex; flex-direction: column; min-width: 0; line-height: 1.1; }
 .inv-sac-mini strong { font-family: var(--f-ui); font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inv-sac-mini em { font-style: normal; font-size: 11px; color: var(--ui-texte-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.inv-puces::-webkit-scrollbar { display: none; }
 .inv-puce { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; padding: 0; cursor: pointer;
   border: 1px solid var(--ui-bord); background: #0f0e10; color: var(--cat, var(--ui-texte-2)) !important; }
 .inv-puce .ico { width: 19px; height: 19px; }
@@ -255,6 +253,20 @@ body:not([data-temps=exploration]) .hud-btn-construire { display: none; }
 .inv-charge { display: flex; gap: 14px; margin-left: auto; flex: 1 1 260px; max-width: 420px; }
 .inv-charge .pn-jauge { flex: 1; }
 .pn-grille { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; }
+/* Sac : colonne des types à gauche (défile en hauteur, jamais en largeur) */
+.pn-grille.avec-types { grid-template-columns: 56px minmax(0, 1fr); }
+.inv-types { min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; overflow-y: auto; overflow-x: hidden; touch-action: pan-y;
+  padding: 10px 6px 14px; border-right: 1px solid var(--ui-bord); scrollbar-width: none; }
+.inv-types::-webkit-scrollbar { display: none; }
+.inv-puce-nom { display: none; }
+.pn-grille-seule { grid-template-columns: 1fr !important; }
+/* Onglet À trier */
+.tri-intro { margin: 8px 2px 4px; font-family: 'EB Garamond', Georgia, serif; font-size: 16px; line-height: 1.35; color: var(--ui-texte-2); }
+.tri-ligne { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 4px 4px 4px 6px; margin: 0 0 2px; border-radius: var(--ui-rayon); background: rgba(230, 223, 204, .025); }
+.tri-ligne .inv-txt { flex: 1; min-width: 0; }
+.tri-btns { display: flex; gap: 6px; flex: none; }
+.pn-btn.mini { min-height: 38px; padding: 0 10px; font-size: var(--ui-t-s); }
+.tri-fin { display: flex; justify-content: center; padding: 16px 0 8px; }
 .pn-col-liste { min-height: 0; overflow-y: auto; padding: 4px 10px 14px; scrollbar-width: thin; }
 .pn-grille > .pn-fiche { display: none; }
 .pn-grille.avec-fiche > .pn-fiche { display: block; position: absolute; left: 0; right: 0; bottom: 0; max-height: 78%; border-left: 0; border-top: 1px solid var(--ui-bord-fort);
@@ -262,7 +274,9 @@ body:not([data-temps=exploration]) .hud-btn-construire { display: none; }
 .pn-grille.avec-fiche > .pn-fiche .fi-fermer { display: grid; }
 @keyframes fi-monte { from { transform: translateY(20px); opacity: 0; } }
 @container (min-width: 620px) {
-  .pn-grille { grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); }
+  /* la fiche de détail est plus étroite que la liste */
+  .pn-grille { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+  .pn-grille.avec-types { grid-template-columns: 58px minmax(0, 1.5fr) minmax(0, 1fr); }
   .pn-grille > .pn-fiche, .pn-grille.avec-fiche > .pn-fiche { display: block; position: static; max-height: none; box-shadow: none; border-top: 0; border-left: 1px solid var(--ui-bord); animation: none; }
   .pn-grille.avec-fiche > .pn-fiche .fi-fermer { display: none; }
 }
@@ -403,6 +417,11 @@ body:not([data-temps=exploration]) .hud-btn-construire { display: none; }
   .fa-grille.avec-fiche > .pn-fiche .fi-fermer { display: none; }
 }
 @container (min-width: 900px) {
+  .pn-grille.avec-types { grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr); }
+  .inv-types { align-items: stretch; padding: 10px 8px 14px; }
+  .inv-types .inv-puce { width: auto; height: 40px; border-radius: 20px; display: flex; justify-content: flex-start; gap: 8px; padding: 0 10px; }
+  .inv-types .inv-puce-nom { display: inline; font-size: var(--ui-t-s); letter-spacing: .04em; text-transform: uppercase; color: var(--ui-texte-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .inv-types .inv-puce em { position: static; margin-left: auto; }
   .fa-grille { grid-template-columns: 168px minmax(0, 1fr) minmax(0, 1.05fr); }
   .fa-cat { justify-content: flex-start; padding: 0 10px; }
   .fa-cat > span:not(.ico) { display: inline; }

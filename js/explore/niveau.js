@@ -74,7 +74,7 @@ export function validerNiveau(def, ctx = {}) {
   } else if (def.plan) {
     for (const P of def.plan.etages) {
       for (const z of P.zombies) verifRef(`mort (${z.x},${z.y})`, { zombie: z.type });
-      for (const q of P.pnj) verifRef(`PNJ (${q.x},${q.y})`, { pnj: q.id });
+      for (const q of P.pnjs) { if (q.repliques) { if (!q.nom) err.push(`figurant « ${q.id} » (${q.x},${q.y}) : il faut un nom`); continue; } verifRef(`PNJ (${q.x},${q.y})`, { pnj: q.id }); }   // un figurant (répliques) n'est pas un PNJ de l'histoire
       for (const o of P.solItems) verifRef(`objet au sol (${o.x},${o.y})`, o.doc ? { document: o.doc } : { objet: o.id });
       for (const o of P.objets) if (o.conteneur) verifRef(`${o.type} (${o.x},${o.y})`, { conteneur: o.conteneur });
     }

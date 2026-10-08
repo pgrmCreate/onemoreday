@@ -675,6 +675,14 @@ export const ITEMS = {
     nom: 'Chiffon', type: 'materiau', poids: 0.1, espace: 0, volume: 0.1,
     desc: 'Du tissu déchiré. Bandage, mèche, filtre.',
   },
+  sac_couchage: {
+    nom: 'Sac de couchage', type: 'outil', poids: 1.6, espace: 4, volume: 10,
+    desc: 'Un duvet de randonnée roulé serré, sanglé sous le sac. Par terre ou sur un mauvais couchage, tu le déroules et tu dors bien mieux. Il tient chaud.',
+  },
+  couverture: {
+    nom: 'Couverture', type: 'outil', poids: 1.2, espace: 3, volume: 6,
+    desc: 'Une couverture de laine qui gratte. Elle ne rend pas le sol plus doux, mais la nuit, enroulé{|e} dedans, tu n’as plus froid.',
+  },
   drap: {
     nom: 'Drap', type: 'materiau', poids: 0.5, espace: 1, volume: 2,
     desc: 'Un drap de lit roulé en boule. Déchiré en bandes, il fait quatre chiffons propres.',

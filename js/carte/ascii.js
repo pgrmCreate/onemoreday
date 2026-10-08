@@ -80,7 +80,7 @@ export function asciiVersPlan(def, avert = () => {}) {
           case K.VIDE: e.sol[i] = SOL_AUCUN; break;
           case K.MUR: e.mur[i] = 1; break; // style fixé plus bas
           case K.EAU: e.ouv[i] = K.EAU; e.sol[i] = SOL_IDX.eau; break;
-          case K.PORTE: e.ouv[i] = K.PORTE; e.mur[i] = 1; e.portes.set(i, { etat: d.etat, verrou: L && L.verrou, flag: L && L.flag, exterieure: L && L.exterieure, marqueur: L && L.marqueur, nom: L && L.nom, deux: L && L.deux, style: L && L.style }); break;
+          case K.PORTE: e.ouv[i] = K.PORTE; e.mur[i] = 1; e.portes.set(i, { etat: d.etat, verrou: L && L.verrou, flag: L && L.flag, exterieure: L && L.exterieure, marqueur: L && L.marqueur, nom: L && L.nom, deux: L && L.deux, style: L && L.style, message: L && L.message }); break;
           case K.FENETRE: e.ouv[i] = K.FENETRE; e.mur[i] = 1; break;
           case K.ESC_MONTE: case K.ESC_DESCEND: e.ouv[i] = d.k; break;
           case K.SORTIE: e.ouv[i] = K.SORTIE; e.sorties.set(i, { echelle: (L && L.echelle) || null }); break;
@@ -91,8 +91,8 @@ export function asciiVersPlan(def, avert = () => {}) {
           if (d.zombie) e.zombies.push({ type: null, x, y, etat: null });
           if (L) {
             if (L.entree) e.entrees[L.entree] = { x, y };
-            if (L.zombie) e.zombies.push({ type: L.zombie, x, y, etat: L.etat || null, hp: L.hp || null, dir: L.dir });
-            if (L.pnj) e.pnj.push({ id: L.pnj, x, y, si: L.si || null, marqueur: L.marqueur || null, nom: L.nom || null });
+            if (L.zombie) e.zombies.push({ type: L.zombie, x, y, etat: L.etat || null, hp: L.hp || null, dir: L.dir, si: L.si || null });
+            if (L.pnj) e.pnjs.push({ id: L.pnj, x, y, si: L.si || null, marqueur: L.marqueur || null, nom: L.nom || null, dir: L.dir ?? null, style: L.style || null, repliques: L.repliques || null });
             if (L.document) e.solItems.push({ x, y, doc: L.document, marqueur: L.marqueur || null });
             if (L.objet) { const o = Array.isArray(L.objet) ? { id: L.objet[0], qty: L.objet[1] || 1 } : { id: L.objet, qty: 1 }; e.solItems.push({ x, y, ...o }); }
             if (L.marqueur && d.k !== K.PORTE && !(d.prop && !d.decor)) e.marqueurs.push({ id: L.marqueur, x, y, eau: L.eau || null, pnj: L.pnj || null, meuble: false });

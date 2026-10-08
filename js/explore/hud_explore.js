@@ -17,6 +17,9 @@ export function creerHud(racine, { arene = false } = {}) {
     invite: el('div', { class: 'ex-invite' }),
     choix: el('div', { class: 'ex-choix cache', role: 'menu', 'aria-label': 'Actions possibles' }),
     zoom: el('button', { class: 'ex-zoom', type: 'button', 'aria-label': 'Zoom', title: 'Zoom' }, el('i'), el('i'), el('i')),
+    // le plan du lieu (ce qu'on a exploré), au-dessus du zoom
+    plan: el('button', { class: 'ex-plan-btn' + (arene ? ' cache' : ''), type: 'button', 'aria-label': 'Plan du lieu (Tab ou M)', title: 'Plan du lieu (Tab ou M)',
+      html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20" opacity=".6"/></svg>' }),
     etat: el('div', { class: 'ex-etat' }),
     butin: el('div', { class: 'ex-butin cache' }),
     barre: el('div', { class: 'ex-action cache' }, el('div', { class: 'ex-action-l' }), el('div', { class: 'ex-action-b' }, el('i'))),
@@ -41,9 +44,9 @@ export function creerHud(racine, { arene = false } = {}) {
       el('div', {}, el('h4', {}, 'Bouger'), ligne('ZQSD', 'se déplacer'), ligne('Maj', 'courir'), ligne('C', 'accroupi (discret)'), ligne('Souris', 'regarder / viser')),
       el('div', {}, el('h4', {}, 'Se battre'), ligne('Clic', 'frapper — 3 clics en rythme : enchaînement'), ligne('Clic maintenu', 'coup chargé'), ligne('Clic droit · Espace', 'repousser'), ligne('Arme à feu', 'clic droit maintenu : viser, clic : tirer — sans viser : crosse')),
       el('div', {}, el('h4', {}, 'Construire'), ligne('Marteau', 'menu Construire'), ligne('Clic', 'placer puis bâtir'), ligne('T', 'tourner'), ligne('Échap', 'arrêter')),
-      el('div', {}, el('h4', {}, 'Faire'), ligne('E', 'interagir / fouiller'), ligne('O', 'chercher par terre'), ligne('P', 'objets au sol autour'), ligne('G', 'autres actions ici'), ligne('F', 'lampe'), ligne('I', 'sac'), ligne('Tab', 'plan du lieu'), ligne('X / B', 'mains / dos'), ligne('1-4', 'ceinture (réappuyer : ranger)'))),
+      el('div', {}, el('h4', {}, 'Faire'), ligne('E', 'interagir / fouiller'), ligne('O', 'chercher par terre'), ligne('P', 'objets au sol autour'), ligne('G', 'autres actions ici'), ligne('F', 'lampe'), ligne('I', 'sac'), ligne('Tab / M', 'plan du lieu'), ligne('X / B', 'mains / dos'), ligne('1-4', 'ceinture (réappuyer : ranger)'))),
   );
-  racine.append(h.sang, h.lieu, h.guide, h.coop, h.msg, h.invite, h.choix, h.etat, h.zoom, h.barre, h.butin, h.mains, h.degage, h.route, h.aide);
+  racine.append(h.sang, h.lieu, h.guide, h.coop, h.msg, h.invite, h.choix, h.etat, h.zoom, h.plan, h.barre, h.butin, h.mains, h.degage, h.route, h.aide);
   if (!arene && !pref('aideExploreVue')) { h.aide.classList.remove('cache'); setTimeout(() => h.aide.classList.add('cache'), 16000); setPref('aideExploreVue', true); }
 
   const cache = {};

@@ -17,30 +17,46 @@ let etat = { onglet: 'sac', sel: null, cat: 'tout' }; // sel : { zone: 'sac'|'sl
 
 export function monter(racine, opts = {}, api) {
   if (opts.onglet) etat.onglet = opts.onglet;
+  else if (inv.listeATrier().length) etat.onglet = 'tri';
   etat.sel = null;
   const rendre = () => avecScroll(racine, () => dessiner(racine, api));
   rendre();
-  return { maj: rendre };
+  // Fermer le sac avec des affaires encore « à trier » : elles restent sur place.
+  return { maj: rendre, demonter: () => annoncerLaisses(inv.finirTri()) };
+}
+function annoncerLaisses(laisses) {
+  if (laisses.length) emit('toast', { texte: `Laissé ici : ${laisses.map(x => inv.nomObjet(x.id) + (x.qty > 1 ? ' ×' + x.qty : '')).join(', ')}.`, type: 'info' });
 }
 
 function dessiner(racine, api) {
   const p = G.player; racine.textContent = '';
-  const nSol = inv.objetsAuSol().length;
+  const nSol = inv.objetsAuSol().length, nTri = inv.listeATrier().length;
+  if (etat.onglet === 'tri' && !nTri) etat.onglet = 'sac';
   const barre = el('div', { class: 'pn-barre' },
     onglets([
+      ...(nTri ? [{ id: 'tri', label: 'À trier', icone: 'ramasser', badge: nTri }] : []),
       { id: 'sac', label: 'Sac', icone: 'sac' },
       { id: 'equip', label: 'Équipement', icone: 'equiper' },
       { id: 'sol', label: 'Au sol', icone: 'poser', badge: nSol || null },
     ], etat.onglet, (id) => { etat.onglet = id; etat.sel = null; dessiner(racine, api); }),
     jaugesCharge(p));
   racine.append(barre);
-  const grille = el('div', { class: 'pn-grille' + (etat.sel ? ' avec-fiche' : '') });
+  if (etat.onglet === 'tri') {
+    const col = el('div', { class: 'pn-col-liste', 'data-scroll': 'liste-tri' });
+    listeTri(col, p, racine, api);
+    racine.append(el('div', { class: 'pn-grille pn-grille-seule' }, col));
+    return;
+  }
+  // Sac : les types d'objets en COLONNE à gauche (comme Fabriquer), la liste au milieu, la fiche à droite.
+  const cats = etat.onglet === 'sac' && p.inventaire.length ? colonneTypes(p, racine, api) : null;
+  const grille = el('div', { class: 'pn-grille' + (etat.sel ? ' avec-fiche' : '') + (cats ? ' avec-types' : '') });
   const gauche = el('div', { class: 'pn-col-liste', 'data-scroll': 'liste-' + etat.onglet });
   if (etat.onglet === 'sac') listeSac(gauche, p, racine, api);
   else if (etat.onglet === 'equip') poupee(gauche, p, racine, api);
   else listeSol(gauche, p, racine, api);
   const fiche = el('aside', { class: 'pn-fiche', 'data-scroll': 'fiche' });
   remplirFiche(fiche, p, racine, api);
+  if (cats) grille.append(cats);
   grille.append(gauche, fiche);
   racine.append(grille);
 }
@@ -78,7 +94,7 @@ function ligneObjet({ index, it, def: d }, p, actif, onclick) {
   if (p.accesRapide.includes(it.id)) b.append(el('span', { class: 'inv-tag', title: 'À la ceinture (accès rapide)' }, icoEl('ceinture')));
   return b;
 }
-// Le sac porté, en PETIT (une pastille à gauche des filtres) : la place va à la liste des objets.
+// Le sac porté, en PETIT (une pastille en tête de la liste) : la place va à la liste des objets.
 // Toucher la pastille ouvre l'emplacement « Sac » de l'équipement.
 function enteteSac(p, racine, api) {
   const sac = inv.sacPorte(p);
@@ -92,18 +108,22 @@ function enteteSac(p, racine, api) {
     el('span', {}, el('strong', {}, sac ? sac.nom : 'Pas de sac'),
       el('em', {}, sac ? `${fmtL(b.sac.utilise)} / ${fmtL(b.sac.max)}` : `poches ${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)}`)));
 }
-// Filtre du sac : le sac porté en petit + une rangée de petites icônes (Tout, Soins, Nourriture…), collées en haut.
-// Le choix est gardé d'une ouverture à l'autre.
-function listeSac(col, p, racine, api) {
+// Les types d'objets du sac (Tout, Soins, Nourriture…) : une colonne verticale à gauche, qui défile de haut en bas
+// (une rangée horizontale se cassait sous le doigt). Le choix est gardé d'une ouverture à l'autre.
+function colonneTypes(p, racine, api) {
   const groupes = inv.sacParCategorie(p);
-  if (!groupes.length) { col.append(el('div', { class: 'inv-filtre' }, enteteSac(p, racine, api)), vide('Ton sac est vide. Fouille les meubles, les voitures, les morts.', 'sac')); return; }
   if (etat.cat !== 'tout' && !groupes.some(gr => gr.cat === etat.cat)) etat.cat = 'tout';   // plus rien de ce type
   const total = (gr) => gr.items.reduce((s, x) => s + x.it.qty, 0);
   const puce = (cat, nom, icone, n) => el('button', { type: 'button', class: `inv-puce cat-${cat}${etat.cat === cat ? ' actif' : ''}`, title: nom, 'aria-label': nom, 'aria-pressed': etat.cat === cat ? 'true' : 'false',
-    onclick: () => { etat.cat = etat.cat === cat ? 'tout' : cat; dessiner(racine, api); } }, icoEl(icone), el('em', {}, String(n)));
-  const puces = el('div', { class: 'inv-puces', role: 'toolbar', 'aria-label': 'Trier par type' },
+    onclick: () => { etat.cat = etat.cat === cat ? 'tout' : cat; etat.sel = null; dessiner(racine, api); } }, icoEl(icone), el('span', { class: 'inv-puce-nom' }, nom), el('em', {}, String(n)));
+  return el('nav', { class: 'inv-types', 'data-scroll': 'types', 'aria-label': 'Trier par type' },
     puce('tout', 'Tout', 'tout', groupes.reduce((s, gr) => s + total(gr), 0)),
     ...groupes.map(gr => puce(gr.cat, gr.nom, gr.cat, total(gr))));
+}
+function listeSac(col, p, racine, api) {
+  const groupes = inv.sacParCategorie(p);
+  if (!groupes.length) { col.append(el('div', { class: 'inv-filtre' }, enteteSac(p, racine, api)), vide('Ton sac est vide. Fouille les meubles, les voitures, les morts.', 'sac')); return; }
+  const total = (gr) => gr.items.reduce((s, x) => s + x.it.qty, 0);
   const liste = el('div', { class: 'inv-liste' });
   for (const gr of groupes) {
     if (etat.cat !== 'tout' && gr.cat !== etat.cat) continue;
@@ -113,7 +133,37 @@ function listeSac(col, p, racine, api) {
       liste.append(ligneObjet(x, p, actif, () => { etat.sel = { zone: 'sac', ref: x.index, id: x.it.id }; dessiner(racine, api); }));
     }
   }
-  col.append(el('div', { class: 'inv-filtre' }, enteteSac(p, racine, api), puces), liste);
+  col.append(el('div', { class: 'inv-filtre' }, enteteSac(p, racine, api)), liste);
+}
+
+// ---------- Onglet À trier ----------
+// Ce qu'une scène t'a donné et qui ne rentrait pas. On prend, on laisse des affaires de son sac pour faire de la place ;
+// « Terminé » (ou fermer le sac) abandonne le reste sur place.
+function listeTri(col, p, racine, api) {
+  const apres = (r) => { if (r && r.ok === false && r.raison) emit('toast', { texte: r.raison, type: 'alerte' }); dessiner(racine, api); };
+  const ligne = (it, boutons) => el('div', { class: `tri-ligne cat-${inv.categorie(it.id)}` },
+    el('span', { class: 'inv-ic' }, icoEl(iconeObjet(it.id))),
+    el('span', { class: 'inv-txt' }, el('span', { class: 'inv-nom' }, inv.nomObjet(it.id), it.qty > 1 ? el('em', { class: 'inv-qty' }, `×${it.qty}`) : null), el('span', { class: 'inv-meta' }, metaObjet(it, inv.def(it.id) || {}))),
+    el('span', { class: 'tri-btns' }, ...boutons.filter(Boolean)));
+  col.append(el('p', { class: 'tri-intro' }, 'Tu n’as pas la place de tout emporter. Prends ce que tu veux garder. Pour faire de la place, laisse des affaires de ton sac. Ce qui reste ici sera abandonné.'));
+  col.append(el('h3', { class: 'pn-section' }, 'Trouvé', el('em', {}, String(inv.listeATrier().length))));
+  inv.listeATrier().forEach((it, i) => {
+    const tient = inv.combienTient(it.id, 1) >= 1, ou = inv.ouPorter(it.id);
+    col.append(ligne(it, [
+      ou ? bouton({ label: { vetement: 'Porter', lampe: 'Équiper', main: 'En main', dos: 'Dans le dos', deux: 'À deux mains' }[ou] || 'Porter', cls: 'second mini', onclick: () => apres(inv.porterATrier(i)) }) : null,
+      bouton({ label: tient ? 'Prendre' : 'Pas de place', cls: tient ? 'principal mini' : 'second mini', disabled: !tient, titre: tient ? null : inv.raisonPlace(it.id), onclick: () => apres(inv.prendreATrier(i)) }),
+    ]));
+  });
+  col.append(el('h3', { class: 'pn-section' }, 'Ton sac', el('em', {}, String(p.inventaire.length))));
+  if (!p.inventaire.length) col.append(vide('Ton sac est vide.', 'sac'));
+  p.inventaire.forEach((it, i) => col.append(ligne(it, [
+    it.qty > 1 ? bouton({ label: 'Laisser 1', cls: 'second mini', onclick: () => { inv.laisserPourTri(i, 1); dessiner(racine, api); } }) : null,
+    bouton({ label: it.qty > 1 ? 'Tout laisser' : 'Laisser', cls: 'second mini', onclick: () => { inv.laisserPourTri(i); dessiner(racine, api); } }),
+  ])));
+  col.append(el('div', { class: 'tri-fin' }, bouton({ label: 'Terminé : laisser le reste ici', icone: 'poser', cls: 'principal', onclick: () => {
+    annoncerLaisses(inv.finirTri());
+    etat.onglet = 'sac'; dessiner(racine, api);
+  } })));
 }
 
 // ---------- Onglet Équipement (paper-doll) ----------

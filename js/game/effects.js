@@ -17,9 +17,10 @@ const nom = (id) => (objet(id) || {}).nom || id;
 
 export function donner(id, qty = 1) {
   if (qty > 0) {
-    const r = inv.addItem(id, qty);
+    // ce qui ne rentre pas attend dans « À trier » : le joueur choisit ce qu'il garde à la fin de la scène
+    const r = inv.addItem(id, qty, {}, undefined, { siPlein: 'tri' });
     const ajoute = r && r.ajoute != null ? r.ajoute : qty;
-    emit('toast', { texte: `+ ${nom(id)}${qty > 1 ? ' ×' + qty : ''}${r && r.auSol ? ' (posé au sol : trop chargé)' : ''}`, type: 'objet' });
+    emit('toast', { texte: `+ ${nom(id)}${qty > 1 ? ' ×' + qty : ''}${r && r.aTrier ? ' (pas la place : à trier)' : ''}`, type: 'objet' });
     return ajoute;
   }
   if (qty < 0) { inv.removeItem(id, -qty); emit('toast', { texte: `− ${nom(id)}${qty < -1 ? ' ×' + (-qty) : ''}`, type: 'objet' }); }

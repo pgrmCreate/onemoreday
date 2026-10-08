@@ -33,7 +33,7 @@ export class EtagePlan {
     this.force = new Map();                 // i → { bloque, opaque } (forçages de légende)
     this.portes = new Map();                // i → options de porte
     this.sorties = new Map();               // i → { echelle }
-    this.objets = []; this.decals = []; this.lumieres = []; this.zombies = []; this.pnj = [];
+    this.objets = []; this.decals = []; this.lumieres = []; this.zombies = []; this.pnjs = [];   // (pnjs : le tableau ; pnj() : la méthode)
     this.entrees = {}; this.marqueurs = []; this.solItems = []; this.declencheurs = []; this.nommages = []; this.toits = [];
     this.rng = seedRng(`${plan.meta.id}:${id}`);
   }
@@ -125,6 +125,8 @@ export class EtagePlan {
   //   a = décalage le long du côté depuis le coin intérieur (0 = première case intérieure).
   piece(x, y, w, h, o = {}) {
     const mur = o.mur || (this.plan.meta.murInterieur || 'platre');
+    // l'intérieur d'une pièce n'est jamais du mur : on peut « creuser » une pièce dans une maçonnerie pleine
+    this._rect(x + 1, y + 1, w - 2, h - 2, (i) => { if (this.mur[i] && !this.ouv[i]) this.mur[i] = 0; });
     if (o.sol !== null) this.solRect(o.sol || (this.plan.meta.exterieur ? 'beton' : 'parquet'), x + 1, y + 1, w - 2, h - 2);
     this.contour(mur, x, y, w, h);
     // sous les murs : même sol (pour les transitions et les portes)
@@ -139,7 +141,7 @@ export class EtagePlan {
     for (const p of o.portes || []) { const [px, py] = posCote(p.cote, p.a || 0); this.porte(px, py, p); }
     for (const s of o.ouvertures || []) { const [sx, sy, sw, sh] = posCote(s.cote, s.a || 0, s.l || 1); this._rect(sx, sy, sw, sh, (i) => { this.mur[i] = 0; this.ouv[i] = 0; }); }
     const r = { x0: x + 1, y0: y + 1, x1: x + w - 2, y1: y + h - 2, w: w - 2, h: h - 2, cx: x + w / 2, cy: y + h / 2, X: x, Y: y, W: w, H: h };
-    if (o.nom || o.sombre != null || o.sol) this.nommer(r.x0, r.y0, o.nom || null, { sol: o.sol, sombre: o.sombre, exterieur: o.exterieur });
+    if (o.nom || o.sombre != null || o.sol || o.sansMorts) this.nommer(r.x0, r.y0, o.nom || null, { sol: o.sol, sombre: o.sombre, exterieur: o.exterieur, sansMorts: o.sansMorts });
     if (o.toit) this.toits.push({ x, y, w, h, type: o.toit, ref: [r.x0, r.y0] });
     return r;
   }
@@ -172,10 +174,14 @@ export class EtagePlan {
   lumiere(type, x, y, o = {}) { this.lumieres.push({ type, x, y, ...o }); return this; }
 
   // ---------- Couche 7 : le vivant et l'histoire ----------
-  zombie(type, x, y, o = {}) { this.zombies.push({ type: type || null, x, y, etat: o.etat || null, hp: o.hp || null, dir: o.dir }); return this; }
+  // zombie(type, x, y, { etat, hp, dir, si }) — si : CONDITION (drapeaux) ; le mort apparaît quand elle devient vraie
+  //   et s'en va quand elle redevient fausse (s'il ne te chasse pas).
+  zombie(type, x, y, o = {}) { this.zombies.push({ type: type || null, x, y, etat: o.etat || null, hp: o.hp || null, dir: o.dir, si: o.si || null }); return this; }
   entree(nom, x, y) { this.entrees[nom] = { x, y }; return this; }
   marqueur(id, x, y, o = {}) { this.marqueurs.push({ id, x, y, ...o }); return this; }
-  pnj(id, x, y, o = {}) { this.pnj.push({ id, x, y, si: o.si || null, marqueur: o.marqueur || null, nom: o.nom || null }); if (o.marqueur) this.marqueur(o.marqueur, x, y, { pnj: id }); return this; }
+  // pnj(id, x, y, { si, marqueur, nom, dir, style, repliques }) — un PNJ de l'histoire (id de PNJ) ou un FIGURANT (id libre,
+  //   nom + repliques : quelques phrases dites au hasard quand on lui parle ; style : couleurs/coiffure, dir : regard).
+  pnj(id, x, y, o = {}) { this.pnjs.push({ id, x, y, si: o.si || null, marqueur: o.marqueur || null, nom: o.nom || null, dir: o.dir ?? null, style: o.style || null, repliques: o.repliques || null }); if (o.marqueur) this.marqueur(o.marqueur, x, y, { pnj: id }); return this; }
   document(id, x, y, o = {}) { this.solItems.push({ x, y, doc: id, marqueur: o.marqueur || null }); return this; }
   objetSol(id, x, y, qty = 1) { this.solItems.push({ x, y, id, qty }); return this; }
   declencheur(x, y, w, h, o = {}) { this.declencheurs.push({ x, y, w, h, ...o }); return this; }

@@ -119,6 +119,8 @@ export const OBJETS = {
   machine:    { c: 'm', cat: 'machine', bloque: 1, t: [1, 1], nom: 'la machine' },
   lit:        { c: 'b', cat: 'lit', bloque: 1, t: [2, 3], nom: 'le lit' },
   lit_simple: { cat: 'lit', bloque: 1, t: [1, 2], nom: 'le lit' },
+  lit_camp:   { cat: 'lit', bloque: 1, t: [1, 2], nom: 'le lit de camp' },   // couchage « moyen »
+  matelas:    { cat: 'lit', bloque: 1, t: [1, 2], nom: 'le matelas' },       // posé au sol : couchage « moyen »
   canape:     { c: 'p', cat: 'canape', bloque: 1, t: [3, 1], nom: 'le canapé' },
   fauteuil:   { cat: 'canape', bloque: 1, t: [1, 1], nom: 'le fauteuil' },
   banc:       { c: 'n', cat: null, bloque: 1, t: [2, 1], nom: 'le banc' },

@@ -142,6 +142,10 @@ export const REGLAGES = {
       VUE_LUMIERE: { eclaire: 1, penombre: 0.55, noir: 0.2 }, // × portée `vue` du mort selon la lumière SUR LE JOUEUR.
       LAMPE_ALLUMEE: 1.8,       // un joueur lampe allumée est vu de (vue × 1,8), même dans le noir, s'il est dans le cône.
       FAISCEAU_VU: 2.0,         // un mort DANS le faisceau de la lampe la voit à vue × 2 (on éclaire, on appelle).
+      // La lampe réveille (docs/RETOURS_JOUEUR.md §4.3) : un faisceau braqué sur un mort à ≤ portee unités le « touche »,
+      // même de dos (il voit la lumière) : il compte comme dans son champ de vision. Un mort ENDORMI éclairé ainsi se
+      // réveille après ms de faisceau cumulé ; hors du faisceau, le compteur redescend de oubliParS secondes par seconde.
+      FAISCEAU_REVEIL: { portee: 3.5, ms: 1500, oubliParS: 0.5 },
       ACCROUPI: 0.6,            // accroupi : on est vu de 60 % de la distance.
       DISCRETION_VUE: 0.06,     // −6 % de portée de vue des morts par niveau de Discrétion.
       DETECTION_MS: { pres: 350, loin: 2200 }, // temps de repérage : de 350 ms (collé) à 2,2 s (au bout de la vue).
@@ -536,6 +540,24 @@ export const REGLAGES = {
       RISQUE_H: { base: 0.04, parDanger: 0.1 }, // lieu NON sûr avec des morts vivants dans le niveau : risque/h d'intrusion.
       PIEGE_SONORE: 'reveil',   // piège sonore posé : l'intrusion te réveille (combat « normal », pas « surpris »).
       SUR: ['barricade', 'refuge'], // pièce barricadée / refuge : risque 0.
+      // --- Le couchage compte (docs/GAMEPLAY.md §5.7) ---
+      // fatigue : × FATIGUE_PAR_MIN · plafond : on ne récupère pas au-delà (on se réveille) · pv : × PV_REGEN.sommeil ·
+      // guerison : × durée de guérison des plaies pendant le sommeil (< 1 = plus vite) · froid : + besoin de chaleur ·
+      // courbatures : au réveil, si on a dormi au moins apresH h → douleur pendant min minutes, endurance × regenSta.
+      COUCHAGE: {
+        sol:     { fatigue: 0.5,  plafond: 60,  pv: 0.5,  guerison: 1,   froid: 1, courbatures: { apresH: 2, douleur: 20, min: 240, regenSta: 0.85 } },
+        mauvais: { fatigue: 0.75, plafond: 80,  pv: 0.75, guerison: 0.9, froid: 0, courbatures: { apresH: 4, douleur: 10, min: 120, regenSta: 1 } },
+        moyen:   { fatigue: 0.9,  plafond: 95,  pv: 1,    guerison: 0.8, froid: 0 },
+        correct: { fatigue: 1.2,  plafond: 100, pv: 1.25, guerison: 0.7, froid: 0 },
+      },
+      // la catégorie de chaque couchage (objets de plan et constructions) ; un plan peut la forcer : { couchage: 'moyen' }
+      COUCHAGES: {
+        fauteuil: 'mauvais', canape: 'mauvais', brancard: 'mauvais', abri_branches: 'mauvais',
+        lit_fortune: 'moyen', lit_camp: 'moyen', matelas: 'moyen',
+        lit: 'correct', lit_simple: 'correct', lit_hopital: 'correct',
+      },
+      SAC_COUCHAGE: 'sac_couchage', // par terre ou sur un mauvais couchage, un sac de couchage le fait passer à « moyen »
+      CHALEUR_SOMMEIL: { sac_couchage: 3, couverture: 2 }, // chaleur ajoutée pendant le sommeil (on s'enroule dedans)
     },
     // --- Froid ---
     FROID: {

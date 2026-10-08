@@ -8,6 +8,10 @@ const ZONES = '.ui-panneau, .ex-butin, .dlg';
 const SEUIL = 14; // px de glissement toléré (au-delà, c'est un défilement)
 let depart = null;
 let synthetique = null; // { el, t } : dernier bouton activé par nous
+// Où le doigt (ou la souris) s'est posé : un clic natif dans une fenêtre de jeu n'est accepté que s'il a COMMENCÉ
+// dans cette fenêtre. Sinon c'est un clic fantôme : le doigt a appuyé sur un bouton du jeu (objets au sol, sac…),
+// la fenêtre s'est ouverte sous lui, et le relâcher « cliquait » sur ce qui s'y trouvait (Fermer, Prendre…).
+let posePointeur = null; // { zone: Element|null, t }
 
 function boutonSous(x, y) {
   const n = document.elementFromPoint(x, y);
@@ -19,6 +23,7 @@ function boutonSous(x, y) {
 export function installerTapFiable() {
   if (installerTapFiable.fait) return; installerTapFiable.fait = true;
   document.addEventListener('pointerdown', (e) => {
+    if (e.isPrimary) posePointeur = { zone: e.target && e.target.closest ? e.target.closest(ZONES) : null, t: performance.now() };
     if (e.pointerType !== 'touch' || !e.isPrimary) { depart = null; return; }
     const b = boutonSous(e.clientX, e.clientY);
     depart = b ? { x: e.clientX, y: e.clientY, id: e.pointerId, t: performance.now() } : null;
@@ -27,15 +32,20 @@ export function installerTapFiable() {
   document.addEventListener('pointerup', (e) => {
     const d = depart; depart = null;
     if (!d || e.pointerId !== d.id) return;
-    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > SEUIL || performance.now() - d.t > 1500) return;
+    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > SEUIL || performance.now() - d.t > 3000) return;   // un appui long compte aussi
     // Le bouton SOUS LE DOIGT maintenant (même s'il a été recréé entre-temps).
     const b = boutonSous(e.clientX, e.clientY);
     if (!b) return;
     synthetique = { el: b, t: performance.now(), x: e.clientX, y: e.clientY };
     b.click();
   }, true);
+  // Pas de menu du navigateur sur un appui long dans une fenêtre de jeu.
+  document.addEventListener('contextmenu', (e) => { if (e.target && e.target.closest && e.target.closest(ZONES)) e.preventDefault(); }, true);
   // Le click natif qui suit notre déclenchement est ignoré (pas de double action).
   document.addEventListener('click', (e) => {
+    if (e.isTrusted && e.detail > 0 && posePointeur && !posePointeur.zone && e.target && e.target.closest && e.target.closest(ZONES)) {
+      e.stopImmediatePropagation(); e.preventDefault(); return;   // clic fantôme (voir posePointeur)
+    }
     const s = synthetique;
     if (!s || !e.isTrusted) return;
     if (performance.now() - s.t > 700) { synthetique = null; return; }

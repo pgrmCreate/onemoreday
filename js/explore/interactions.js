@@ -72,7 +72,7 @@ export function chercherCible() {
       if (!decl && recoltable(m)) {
         const pn = propositionNature(m); if (!pn) continue;          // arbre sans hache en main, hors saison : rien
         seul2 = !pn.principal;
-      } else if (!decl && !m.conteneur && !estLit(m)) {
+      } else if (!decl && !m.conteneur && !estLit(m) && !(m.rendu && m.rendu.message)) {
         if (!DEMONTABLES[m.type] || !secondaireMeuble(m)) continue;   // démonter : seulement avec l'outil
         seul2 = true;
       }
@@ -229,13 +229,15 @@ function libelle(c) {
     case 'meuble': {
       if (c.decl) return c.decl.libelle || `Examiner ${c.m.nom}`;
       if (recoltable(c.m)) return libelleNature(c.m);
+      if (!c.m.conteneur && c.m.rendu && c.m.rendu.message) return `Examiner ${c.m.nom}`;   // un meuble qui a quelque chose à dire
       if (!c.m.conteneur && !estLit(c.m)) return (secondaireMeuble(c.m) || {}).libelle || `Démonter ${c.m.nom}`;
       const st = V.snap.conteneurs[c.m.cle];
-      if (estLit(c.m) && (!c.m.conteneur || (st && st.progres >= 1 && st.reste === 0))) return `Dormir dans ${c.m.nom}`;
+      if (estLit(c.m) && (!c.m.conteneur || (st && st.progres >= 1 && st.reste === 0))) return `Dormir ${/^(lit|lit_simple|lit_hopital|abri_branches)$/.test(c.m.type) ? 'dans' : 'sur'} ${c.m.nom}`;
       if (st && st.progres >= 1 && st.reste === 0) return `Fouiller ${c.m.nom} (vide)`;
       return `Fouiller ${c.m.nom}`;
     }
-    case 'escalier': return c.s.sens === 'monte' ? 'Monter' : 'Descendre';
+    case 'escalier': { const n = V.niveau, E2 = c.s.vers && n.etageIdx[c.s.vers] != null ? n.etages[n.etageIdx[c.s.vers]] : null;
+      return `${c.s.sens === 'monte' ? 'Monter' : 'Descendre'}${E2 && E2.nom ? ' : ' + E2.nom : ''}`; }
     case 'sortie': return 'Sortir (carte)';
     case 'marqueur': return (c.decl && c.decl.libelle) || (c.m && c.m.def && c.m.def.nom ? `Examiner ${c.m.def.nom}` : 'Examiner');
     case 'doc': return `${(G.documents || []).includes(c.doc) ? 'Relire' : 'Lire'} : ${(DOCUMENTS[c.doc] || {}).titre || 'document'}`;
@@ -246,8 +248,9 @@ function libelle(c) {
   }
   return 'Interagir';
 }
-const LITS = new Set(['lit', 'lit_simple', 'lit_hopital', 'canape', 'brancard', 'fauteuil']);
-const estLit = (m) => LITS.has(m.type);
+// on peut dormir sur tout ce qui a une catégorie de couchage (REGLAGES.survie.SOMMEIL.COUCHAGES), ou que le plan déclare
+const estLit = (m) => !!(REGLAGES.survie.SOMMEIL.COUCHAGES[m.type] || (m.rendu && m.rendu.couchage));
+const couchageMeuble = (m) => ({ type: m.type, nom: m.nom, force: (m.rendu && m.rendu.couchage) || null });
 export function majInvite() {
   majChoix();
   const c = V.cible;
@@ -279,7 +282,8 @@ export function agirSur(c) {
   switch (c.type) {
     case 'porte': return actionPorte(c);
     case 'construction': return agirConstruction(c.c);
-    case 'meuble': if (c.decl) return jouerDeclencheur(c.decl); if (recoltable(c.m)) return agirNature(c.m); if (c.libelle && c.libelle.startsWith('Dormir')) return ouvrirSommeil({ lit: true });
+    case 'meuble': if (c.decl) return jouerDeclencheur(c.decl); if (recoltable(c.m)) return agirNature(c.m); if (c.libelle && c.libelle.startsWith('Dormir')) return ouvrirSommeil({ couchage: couchageMeuble(c.m) });
+      if (!c.m.conteneur && c.m.rendu && c.m.rendu.message) { message(c.m.rendu.message, 4200); return; }
       if (!c.m.conteneur) { const s = secondaireMeuble(c.m); if (s) s.f(); return; }
       return commencerFouille(c.m.cle, c.m.nom, (c.m.x0 + c.m.x1 + 1) / 2, (c.m.y0 + c.m.y1 + 1) / 2);
     case 'escalier': return prendreEscalier(c.s);
@@ -319,6 +323,7 @@ async function actionPorte(c) {
       return lancerAction('Crocheter…', RX.PORTES.CROCHETER_MS * Math.max(0.4, 1 - 0.12 * niv('mecanique')), p.x + 0.5, p.y + 0.5, async () => { await C.porte(p.cle, 'crocheter'); sfx('clic'); });
     } else {
       sfx('porte_verrouillee');
+      if (p.message) { message(p.message, 3600); return; }   // le plan dit pourquoi elle ne s'ouvre pas
       message(v.flag && !v.cle && !v.forcer ? 'Fermée. Ça ne s\'ouvre pas de ce côté.' : v.cle ? `Verrouillée. Il faudrait ${nomObjet(v.cle).toLowerCase()}.` : v.forcer ? `Verrouillée. Un ${nomObjet(v.forcer).toLowerCase()} en viendrait à bout.` : 'Verrouillée.');
       return;
     }
@@ -358,7 +363,7 @@ export function majPnj() {
   for (const q of n.pnj) {
     const P = PNJ[q.id] || {};
     if (!verifierCondition(q.si || P.si)) continue;
-    out.push({ id: q.id, nom: q.nom || P.nom || q.id, scene: P.scene, marqueur: q.marqueur, etage: q.etage, x: q.x + 0.5, y: q.y + 0.5, dir: Math.PI / 2 });
+    out.push({ id: q.id, nom: q.nom || P.nom || q.id, scene: P.scene, marqueur: q.marqueur, etage: q.etage, x: q.x + 0.5, y: q.y + 0.5, dir: q.dir ?? Math.PI / 2, style: q.style, repliques: q.repliques || P.repliques || null });
   }
   for (const [id, P] of Object.entries(PNJ)) {
     if (P.lieu !== V.lieuId || !P.marqueur || !n.marqueurs[P.marqueur]) continue;
@@ -374,6 +379,13 @@ async function parler(q) {
   const d = declencheurMarqueur(q.marqueur);
   if (d) return jouerDeclencheur(d);
   if (q.scene) return jouerScene(q.scene);
+  // un figurant : une de ses répliques, sans se répéter deux fois de suite
+  if (q.repliques && q.repliques.length) {
+    const k = q.repliques.length > 1 ? (((q._k ?? -1) + 1 + Math.floor(Math.random() * (q.repliques.length - 1))) % q.repliques.length) : 0;
+    const vrai = V.pnj.find(o => o.id === q.id); if (vrai) vrai._k = k; q._k = k;
+    message(`${q.nom} : « ${q.repliques[k]} »`, 4200);
+    return;
+  }
   message(`${q.nom} ne dit rien.`);
 }
 export const cleDecl = (d) => `${d.quand}:${d.lieu || ''}:${d.marqueur || ''}:${d.scene || d.cinematique || ''}`;

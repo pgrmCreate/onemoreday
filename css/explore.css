@@ -317,3 +317,31 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
   .ex-coop { top: 84px; }
   .ex-lieu { top: 108px; }
 }
+
+/* ---------- Plan du lieu (bouton au-dessus du zoom ; fenêtre plein écran) ---------- */
+.ex-plan-btn { position: absolute; left: 12px; bottom: 56px; z-index: 3; width: 34px; height: 34px; padding: 6px; border-radius: 50%; cursor: pointer;
+  background: rgba(11,11,12,.45); border: 1px solid rgba(230,223,204,.2); color: var(--ex-creme); opacity: .75; transition: opacity .2s; }
+.ex-plan-btn:hover, .ex-plan-btn:active { opacity: 1; }
+.ex-plan-btn svg { width: 100%; height: 100%; display: block; }
+.ex-plan-btn::after { content: ''; position: absolute; inset: -6px; }
+.ex-plan { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; gap: 8px; padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgba(8,8,9,.94); color: var(--ex-creme); }
+.ex-plan-tete { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ex-plan-titre { display: flex; flex-direction: column; line-height: 1.15; margin-right: auto; }
+.ex-plan-titre strong { font-family: Oswald, system-ui, sans-serif; font-weight: 500; font-size: 18px; letter-spacing: .06em; text-transform: uppercase; color: var(--ex-ambre-c); }
+.ex-plan-titre small { font-family: 'EB Garamond', Georgia, serif; font-style: italic; font-size: 14px; color: rgba(230,223,204,.6); }
+.ex-plan-etages { display: flex; gap: 6px; flex-wrap: wrap; }
+.ex-plan-etage { min-height: 38px; padding: 0 12px; border-radius: 19px; border: 1px solid rgba(230,223,204,.2); background: none; color: rgba(230,223,204,.75); font-size: 13px; letter-spacing: .04em; cursor: pointer; }
+.ex-plan-etage.actif { border-color: var(--ex-ambre); color: var(--ex-creme); background: rgba(201,162,39,.16); }
+.ex-plan-etage em { font-style: normal; color: var(--ex-ambre-c); font-size: 12px; }
+.ex-plan-fermer { min-height: 40px; padding: 0 16px; border-radius: 6px; border: 1px solid rgba(230,223,204,.3); background: rgba(230,223,204,.06); color: var(--ex-creme); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.ex-plan-zone { position: relative; flex: 1; min-height: 0; border: 1px solid rgba(230,223,204,.1); border-radius: 6px; background: #0d0c0b; overflow: hidden; }
+.ex-plan-cv { position: absolute; inset: 0; display: block; }
+.ex-plan-legende { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; letter-spacing: .05em; color: rgba(230,223,204,.65); }
+.ex-plan-legende span { display: inline-flex; align-items: center; gap: 6px; }
+.ex-plan-legende i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+.ex-plan-legende .lg-moi { background: #e8c45a; clip-path: polygon(100% 50%, 0 0, 25% 50%, 0 100%); }
+.ex-plan-legende .lg-allie { background: #7cc8ff; border-radius: 50%; }
+.ex-plan-legende .lg-porte { background: rgb(201,162,39); height: 5px; }
+.ex-plan-legende .lg-esc { background: rgb(178,146,92); }
+.ex-plan-legende .lg-sortie { background: rgb(232,196,90); }

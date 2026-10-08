@@ -192,20 +192,46 @@ function cadrePorte(c, E, p) {
   else { c.fillRect(px, py + e - 1, W, 1.2); c.fillRect(px, py + H - e, W, 1.2); }
 }
 
+// Un escalier se dessine EN ENTIER (des marches en travers, des limons sur les côtés, une flèche) puis chaque petite
+// case n'en peint que sa part : on reconnaît un escalier au premier coup d'œil, plus des « dalles » éparses.
+// Sens de la montée : vers le côté qui touche le plus de mur (l'escalier s'enfonce dans le mur) ; à défaut, le long.
+function geomEscalier(E, s) {
+  if (s._g) return s._g;
+  let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+  for (const j of s.cases) { const x = j % E.w, y = (j / E.w) | 0; if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+  const mur = (x, y) => x < 0 || y < 0 || x >= E.w || y >= E.h || E.code[y * E.w + x] === K.MUR || E.code[y * E.w + x] === K.VIDE;
+  const part = (n, f) => { let k = 0; for (let i = 0; i < n; i++) k += f(i) ? 1 : 0; return k / n; };
+  const cotes = { n: part(x1 - x0 + 1, i => mur(x0 + i, y0 - 1)), e: part(y1 - y0 + 1, i => mur(x1 + 1, y0 + i)), s: part(x1 - x0 + 1, i => mur(x0 + i, y1 + 1)), o: part(y1 - y0 + 1, i => mur(x0 - 1, y0 + i)) };
+  let dir = Object.entries(cotes).sort((a, b) => b[1] - a[1])[0];
+  dir = dir[1] > 0 ? dir[0] : (x1 - x0 > y1 - y0 ? 'e' : 'n');
+  return (s._g = { x0, y0, x1, y1, dir });
+}
 function marche(c, E, s, x, y) {
-  const px = x * T, py = y * T, monte = s.sens === 'monte';
-  const xs = s.cases.map(j => j % E.w);
-  const vertical = s.cases.length > 1 && Math.max(...xs) - Math.min(...xs) < (s.cases.length > 4 ? 2 : 1);
+  const g = geomEscalier(E, s), monte = s.sens === 'monte';
+  const X0 = g.x0 * T, Y0 = g.y0 * T, W = (g.x1 - g.x0 + 1) * T, H = (g.y1 - g.y0 + 1) * T;
+  const vertical = g.dir === 'n' || g.dir === 's';            // on monte vers le haut / le bas de l'écran
+  const L = vertical ? H : W, larg = vertical ? W : H;
+  const n = Math.max(4, Math.round(L / (T * 0.55)));          // nombre de marches
   c.save();
-  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(px, py, T, T);
-  const n = 2;
+  c.beginPath(); c.rect(x * T, y * T, T, T); c.clip();
+  c.translate(X0 + W / 2, Y0 + H / 2);
+  c.rotate({ n: -Math.PI / 2, s: Math.PI / 2, e: 0, o: Math.PI }[g.dir]);   // repère local : on monte vers +x
+  const a = -L / 2, ep = L / n;
+  c.fillStyle = 'rgba(10,9,8,0.9)'; c.fillRect(-L / 2, -larg / 2, L, larg);
   for (let k = 0; k < n; k++) {
-    const f = monte ? 0.55 + 0.45 * (k / n) : 1 - 0.55 * (k / n);
-    c.fillStyle = `rgba(${Math.round(120 * f)},${Math.round(108 * f)},${Math.round(92 * f)},0.85)`;
-    if (vertical) c.fillRect(px + 1, py + k * T / n + 1, T - 2, T / n - 2); else c.fillRect(px + k * T / n + 1, py + 1, T / n - 2, T - 2);
-    c.fillStyle = 'rgba(0,0,0,0.5)';
-    if (vertical) c.fillRect(px + 1, py + (k + 1) * T / n - 1.6, T - 2, 1.4); else c.fillRect(px + (k + 1) * T / n - 1.6, py + 1, 1.4, T - 2);
+    const t = k / (n - 1);                                     // 0 = départ, 1 = arrivée
+    const f = monte ? 0.5 + 0.5 * t : 1 - 0.62 * t;            // ça monte vers la lumière, ça descend dans le noir
+    c.fillStyle = `rgb(${Math.round(150 * f)},${Math.round(136 * f)},${Math.round(112 * f)})`;
+    c.fillRect(a + k * ep + 0.6, -larg / 2 + 2, ep - 1.2, larg - 4);
+    c.fillStyle = 'rgba(255,240,210,0.18)'; c.fillRect(a + (k + 1) * ep - 2.2, -larg / 2 + 2, 1.4, larg - 4);   // nez de marche
+    c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(a + k * ep, -larg / 2 + 2, 1, larg - 4);                       // contremarche
   }
+  c.fillStyle = 'rgba(40,30,22,0.95)'; c.fillRect(-L / 2, -larg / 2, L, 2.4); c.fillRect(-L / 2, larg / 2 - 2.4, L, 2.4);   // limons
+  // flèche : dans le sens où l'on va
+  const r = Math.min(larg, L) * 0.22;
+  c.strokeStyle = 'rgba(232,196,90,0.75)'; c.lineWidth = Math.max(1.6, r * 0.28); c.lineCap = 'round'; c.lineJoin = 'round';
+  c.beginPath(); c.moveTo(-r, -r); c.lineTo(r * 0.4, 0); c.lineTo(-r, r); c.stroke();
+  c.beginPath(); c.moveTo(-r * 1.9, 0); c.lineTo(r * 0.3, 0); c.stroke();
   c.restore();
 }
 

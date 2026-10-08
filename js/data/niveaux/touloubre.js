@@ -28,7 +28,7 @@ export default parcelle({
     e.objet('machine', m.x0 + 4, m.y0 + 2, { w: 2, h: 2, nom: 'la meule', conteneur: false });
     e.objet('etagere', m.x0, m.y0, { w: 2, h: 1, nom: 'l’étagère du meunier' });
     e.objet('caisse', m.x1, m.y0, { nom: 'le coffre du moulin' });
-    e.objet('lit_simple', m.x1, m.y1 - 1, { w: 1, h: 2, nom: 'le lit de camp' });
+    e.objet('lit_camp', m.x1, m.y1 - 1, { w: 1, h: 2, nom: 'le lit de camp' });
     e.objet('cuisine', m.x0, m.y1, { w: 3, h: 1, nom: 'l’évier de pierre' });
     e.decal('papiers', m.x0 + 6, m.y1 - 0.5, { n: 2 });
     e.zombie('errant', m.x0 + 8, m.y0 + 4, { etat: 'dort' });

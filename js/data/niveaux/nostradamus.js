@@ -122,7 +122,7 @@ export default {
     { etage: 'e2', x: 20, y: 5, nom: 'Le grenier', sol: 'parquet', sombre: 2 },
   ],
   legende: {
-    '5': { prop: 'lit', marqueur: 'cave_patiente', nom: 'le lit de camp', conteneur: false },
+    '5': { prop: 'lit_camp', marqueur: 'cave_patiente', nom: 'le lit de camp', conteneur: false },
     'I': { prop: 'pilier', nom: 'le pilier' },
     'C': { marqueur: 'cartel_peste', nom: 'le cartel du musée' },
     'H': { prop: 'cheminee', nom: 'la grande cheminée', conteneur: false },

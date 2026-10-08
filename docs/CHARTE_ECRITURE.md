@@ -22,6 +22,20 @@ clair et compréhensible du premier coup, sans perdre le ton adulte et sombre.
 7. **Objectifs de quête** (`objectif`) : une phrase d'action simple, avec le lieu (« Rejoindre la Tour de l'Horloge, place Crousillat »).
 8. **On garde** : le ton adulte, la violence, le gore, le réel salonais, le tutoiement, la syntaxe `{masculin|féminin}`.
 
+## Le style des récits (retour du propriétaire, 8 oct. 2026)
+Le propriétaire trouve le style des récits « écrit d'une manière assez chelou » : trop littéraire, trop haché. Exemple
+qu'il cite : « Du plastique contre ta bouche. Tu inspires. Le plastique se colle à tes lèvres, froid et humide. » Il
+préfère : « Tu prends une inspiration, et tu sens le plastique se coller à tes lèvres, froid et humide. »
+9. **Une narration fluide, qui se lit à voix haute** : des phrases complètes et liées (et, alors, puis, quand, pendant
+   que, si bien que), pas une suite de petites phrases sèches. Une phrase peut être longue si elle reste claire.
+10. **Pas de phrases sans verbe** en série (« Du plastique contre ta bouche. », « Puis rien. », « Des dizaines. ») ;
+    au plus une, rarement, pour un vrai effet de choc.
+11. **Les sensations passent par le personnage** : « tu sens », « tu entends », « tu vois », « tu te mets à… »,
+    plutôt que des constats posés tout seuls.
+12. **Pas d'effets d'écriture appuyés** : pas d'anaphores (« Puis… Puis… »), pas de répétitions rythmiques, pas de
+    métaphores en cascade. On garde l'horreur, la tension et les détails concrets.
+13. **Le même contenu** : mêmes informations, mêmes personnages, même ton adulte ; seule la manière de le dire change.
+
 ## Contraintes techniques (STRICTES)
 - Ne modifie QUE les chaînes de texte affichées : `texte`, `label`, `titre`, `sousTitre`, `objectif`, `desc`, `nom`,
   `court`, `orateur`, `resume`, `journal` (dans les effets), et les champs texte des documents. Ne touche JAMAIS aux ids,

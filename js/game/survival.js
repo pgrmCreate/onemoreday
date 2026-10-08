@@ -78,7 +78,28 @@ function majMouille(p) {
   if (sousLaPluie(p)) p.mouille = Math.min(100, (p.mouille || 0) + MO.PLUIE_PAR_MIN[contexte.pluie >= 1 ? 'forte' : 'legere'] * inv.facteurPluie(p));
   else if (p.mouille > 0) p.mouille = Math.max(0, p.mouille - (contexte.feuProche ? MO.SECHE_PAR_MIN.feu : estDehors(p) && !contexte.abrite ? MO.SECHE_PAR_MIN.dehors_sec : MO.SECHE_PAR_MIN.abri));
 }
-export function deficitFroid(p) { p = joueur(p); if (!p) return 0; return Math.max(0, besoinChaleur(p) - inv.chaleurVetements(p)); }
+export function deficitFroid(p) {
+  p = joueur(p); if (!p) return 0;
+  let besoin = besoinChaleur(p), chaleur = inv.chaleurVetements(p);
+  // en dormant : le sol pompe la chaleur ; un sac de couchage, une couverture tiennent chaud (sur soi ou à portée de main)
+  if (activiteCourante === 'sommeil') {
+    const SO = S().SOMMEIL;
+    besoin += (SO.COUCHAGE[couchageEnCours] || {}).froid || 0;
+    for (const [id, c] of Object.entries(SO.CHALEUR_SOMMEIL)) if (inv.countDispo(id, p) > 0) chaleur += c;
+  }
+  return Math.max(0, besoin - chaleur);
+}
+// ---------- Couchage (docs/GAMEPLAY.md §5.7) ----------
+// Catégorie d'un couchage : 'sol' | 'mauvais' | 'moyen' | 'correct'. type = objet de plan ou construction ; force = ce
+// que le plan impose ({ couchage: 'moyen' }). Par terre ou sur un mauvais couchage, un sac de couchage donne « moyen ».
+export function categorieCouchage(type, force, p) {
+  const SO = S().SOMMEIL;
+  let c = force || (type && SO.COUCHAGES[type]) || 'sol';
+  if ((c === 'sol' || c === 'mauvais') && inv.countDispo(SO.SAC_COUCHAGE, joueur(p)) > 0) c = 'moyen';
+  return c;
+}
+export const parametresCouchage = (c) => S().SOMMEIL.COUCHAGE[c] || S().SOMMEIL.COUCHAGE.sol;
+let couchageEnCours = 'sol';
 
 // ---------- Blessures ----------
 // b = { type, zone, gravite?, saigne?, mal? (points déjà calculés), zombie? (id du mort : points calculés ici),
@@ -160,7 +181,8 @@ function uneMinute(p, act) {
   p.faim -= SV.FAIM_PAR_MIN * besoins * (mal >= CT.SEUILS.noirceur ? 1.25 : 1);
   p.soif -= SV.SOIF_PAR_MIN * besoins * mAct * (fievre ? SV.MALADIES.fievre.soif : 1) * (mal >= CT.SEUILS.fievre_noire ? 1.5 : 1)
     + (p.maladies.intoxication ? SV.MALADIES.intoxication.soifParMin : 0);
-  if (dort) p.fatigue += SV.SOMMEIL.FATIGUE_PAR_MIN;
+  const CO = dort ? parametresCouchage(couchageEnCours) : null;
+  if (dort) { if (p.fatigue < CO.plafond) p.fatigue = Math.min(CO.plafond, p.fatigue + SV.SOMMEIL.FATIGUE_PAR_MIN * CO.fatigue); }
   else p.fatigue -= SV.FATIGUE_PAR_MIN * besoins * mAct * (fievre ? SV.MALADIES.fievre.fatigue : 1) * (1 + REGLAGES.inventaire.SURPOIDS.fatigue * f) + SV.FROID.FATIGUE_PAR_POINT * d + SV.MOUILLE.FATIGUE_PAR_MIN[sm];
   p.faim = clamp(p.faim); p.soif = clamp(p.soif); p.fatigue = clamp(p.fatigue);
   // Pertes de PV
@@ -203,7 +225,7 @@ function uneMinute(p, act) {
       if (T.suture && !b.suturee) h *= 2;
       if (b.type === 'fracture') h *= b.attelle ? 0.6 : SV.FRACTURE_SANS_ATTELLE.guerison;
       if (b.onguent) h /= 1.5;
-      if (dort) h *= 0.8;
+      if (dort) h *= CO.guerison;
       b.guerison = Math.min(1, (b.guerison || 0) + 1 / (h * 60));
     }
   }
@@ -222,7 +244,7 @@ function uneMinute(p, act) {
   p.maladie = Mx.intoxication ? 'intoxication' : Mx.fievre ? 'fievre' : Mx.rhume ? 'rhume' : null;
   // Effets temporaires
   const Ef = p.effets;
-  for (const k of ['antidouleur', 'alcool', 'tisane', 'vitamines', 'douleurAigue', 'nausee']) if (Ef[k] > 0) Ef[k]--;
+  for (const k of ['antidouleur', 'alcool', 'tisane', 'vitamines', 'douleurAigue', 'nausee', 'courbatures']) if (Ef[k] > 0) Ef[k]--;
   if (Ef.antibioDans > 0 && --Ef.antibioDans <= 0) {
     let n = 0; for (const b of p.blessures) if (b.infecte) { b.infecte = false; n++; }
     delete Mx.fievre; if (n) emit('toast', { texte: 'Les antibiotiques ont fait leur œuvre.', type: 'bon' });
@@ -235,8 +257,8 @@ function uneMinute(p, act) {
   }
   // Régénération
   if (!saigne && !infectee && p.faim >= 40 && p.soif >= 40 && (p.mal || 0) < CT.SEUILS.fievre_noire)
-    p.pv = Math.min(p.pvMax, p.pv + (dort ? SV.PV_REGEN.sommeil : SV.PV_REGEN.eveille));
-  if (act !== 'combat') p.sta = Math.min(p.staMax, p.sta + (dort ? 100 : SV.STA_HORS_COMBAT.repos));
+    p.pv = Math.min(p.pvMax, p.pv + (dort ? SV.PV_REGEN.sommeil * CO.pv : SV.PV_REGEN.eveille));
+  if (act !== 'combat') p.sta = Math.min(p.staMax, p.sta + (dort ? 100 : SV.STA_HORS_COMBAT.repos * ((Ef.courbatures || 0) > 0 ? (Ef.courbaturesSta || 1) : 1)));
   if (perte > 0) retirerPv(p, perte, cause);
   // Évanouissement
   if (p.fatigue <= 0 && !dort && !p._evanoui) { p._evanoui = true; emit('survie:evanoui', {}); emit('toast', { texte: 'Tes jambes lâchent. Tu t\'effondres.', type: 'mauvais' }); }
@@ -289,6 +311,7 @@ export function etatsCorps(p) {
   const M = S().CONTAMINATION.SEUILS, mal = p.mal || 0;
   if (mal > 0) r.push({ id: 'mal', niveau: mal >= M.delire ? 4 : mal >= M.fievre_noire ? 3 : mal >= M.noirceur ? 2 : 1, label: mal >= M.delire ? 'Délire' : mal >= M.fievre_noire ? 'Fièvre noire' : mal >= M.noirceur ? 'Veines noires' : 'Le mal', detail: `Le mal : ${Math.round(mal)}/100. À 100, tu redeviens l'un d'eux.`, mauvais: true });
   if ((p.effets.nausee || 0) > 0) r.push({ id: 'nausee', niveau: 1, label: 'Nauséeux{|se}', detail: 'Trop mangé. Ton souffle revient moins vite.', mauvais: true });
+  if ((p.effets.courbatures || 0) > 0) r.push({ id: 'courbatures', niveau: 1, label: 'Courbatures', detail: 'Une nuit à même le sol. Ça passera dans quelques heures.', mauvais: true });
   if ((p.effets.antidouleur || 0) > 0) r.push({ id: 'calme', niveau: 1, label: 'Sous calmants', detail: 'La douleur est tenue à distance.', mauvais: false });
   return r;
 }
@@ -599,6 +622,10 @@ export function dormir(heures, opts = {}) {
   const SO = S().SOMMEIL;
   if (p.fatigue >= SO.FATIGUE_MAX_POUR_DORMIR && !opts.force) return { ok: false, raison: 'Tu n\'as pas sommeil.' };
   if (G.mode !== 'solo' && !opts.force) return { ok: false, raison: 'À deux, vous devez décider ensemble de dormir.' };
+  // le couchage : par terre si rien n'est dit (évanouissement…)
+  const cat = opts.couchage || 'sol', CO = parametresCouchage(cat);
+  if (p.fatigue >= CO.plafond - 0.5) return { ok: false, plafond: true, raison: cat === 'sol' ? 'Tu n’arrives pas à dormir ici : tu n’es pas assez {fatigué|fatiguée} pour un sol aussi dur.' : 'Tu n’arrives pas à dormir ici : tu n’es pas assez {fatigué|fatiguée}.' };
+  couchageEnCours = cat;
   const sur = opts.sur ?? contexte.lieuSur;
   const risque = sur || opts.mortsPresents === false ? 0 : SO.RISQUE_H.base + SO.RISQUE_H.parDanger * (opts.danger || 0);
   const total = Math.round(heures * 60);
@@ -608,17 +635,20 @@ export function dormir(heures, opts = {}) {
     for (let h = 0; h < heures && !p.mort; h++) {
       const bloc = Math.min(60, total - dormi); if (bloc <= 0) break;
       clock.avancer(bloc); dormi += bloc;
-      if (p.fatigue >= 100) break;
+      if (p.fatigue >= CO.plafond - 0.01) break;
       if (risque && Math.random() < risque) { interrompu = true; break; }
     }
   } finally { setActivite('normal'); }
+  // mal dormi : courbatures au réveil
+  const cb = CO.courbatures;
+  if (cb && !opts.sansCourbatures && dormi >= cb.apresH * 60) { douleurAigue(p, cb.douleur, cb.min); p.effets.courbatures = cb.min; p.effets.courbaturesSta = cb.regenSta; }
   if (interrompu) {
     const piege = opts.piege ?? inv.hasItem(SO.PIEGE_SONORE === 'reveil' ? 'piege_sonore' : SO.PIEGE_SONORE, 1, p);
     emit('survie:intrusion', { surprise: piege ? 'normal' : 'surpris' });
     emit('toast', { texte: piege ? 'Des bouteilles s\'entrechoquent : quelque chose est entré.' : 'Un râle, tout près. Tu te réveilles trop tard.', type: 'mauvais' });
   } else if (!opts.silencieux) emit('toast', { texte: `Tu as dormi ${Math.round(dormi / 60)} h.`, type: 'info' });
   emit('survie', { dormi });
-  return { ok: true, dormi, interrompu };
+  return { ok: true, dormi, interrompu, couchage: cat, plafond: p.fatigue >= CO.plafond - 0.01, courbatures: !!(cb && dormi >= cb.apresH * 60) };
 }
 
 // ---------- Branchement sur l'horloge ----------

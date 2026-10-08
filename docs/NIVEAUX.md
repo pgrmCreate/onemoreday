@@ -1,5 +1,9 @@
 # Concevoir un niveau d'exploration
 
+> **Avant de livrer un plan (nouveau ou refait), passe la check-list de `docs/RETOURS_JOUEUR.md` §3**, et relis les
+> principes durables du §1 (taille justifiée par la fonction, peuplement cohérent, portes et clés logiques, escaliers
+> lisibles, traces de vie, textes clairs). Ce sont les retours du propriétaire du jeu : ils priment sur ce document.
+
 > Vérifier : `node tools/valider_niveaux.mjs` (tous les plans) ou `node tools/valider_niveaux.mjs cimetiere --avertissements`.
 > Voir le résultat : `dev/explore.html?lieu=cimetiere` (options : `&heure=22`, `&entree=caveau`).
 > Deux formats sont lus : le **format à couches** (§0, à utiliser pour tout nouveau niveau) et l'**ancien format ASCII**
@@ -19,6 +23,17 @@ toits, lumières). Catalogue complet de ce qu'on peut poser : `js/carte/catalogu
 | 5. décals | `decal(type, x, y, { r, a })`, `semer(type, x, y, w, h, n)` | sang, feuilles, papiers, verre, fleurs, marquages… (visuel) |
 | 6. lumières | `lumiere(type, x, y, { r, i })` | `feu bougie lanterne lampadaire neon gyrophare gyro_bleu fusee urgence` : éclairent VRAIMENT (vision, détection) |
 | 7. vivant | `zombie(type, x, y, { etat })`, `entree(nom, x, y)`, `marqueur(id, x, y)`, `pnj`, `document`, `objetSol`, `declencheur(x, y, w, h, { scene, deux })`, `nommer` | histoire et peuplement |
+
+**Ce que le moteur sait faire en plus (8 oct. 2026, voir `docs/RETOURS_JOUEUR.md`)** :
+- `zombie(type, x, y, { si })` : un mort CONDITIONNEL (drapeaux `flag`, `pasFlag`, `flagEgal`) ; il apparaît quand la condition
+  devient vraie (jamais sous le nez du joueur) et s'en va quand elle redevient fausse (sauf s'il te chasse).
+- `piece(…, { sansMorts: true })` : ni morts procéduraux ni repeuplement dans cette pièce ; méta `mortsDehorsSeulement: true`.
+- `porte(x, y, { message })` et `objet(type, x, y, { message })` : le jeu dit pourquoi une porte ne s'ouvre pas, ou ce qu'on voit.
+- `pnj(id, x, y, { nom, repliques: […], style, dir, si })` : un FIGURANT (survivant) qui dit une de ses répliques quand on lui parle.
+- `objet('lit_camp' | 'matelas', …)`, `{ couchage: 'moyen' }` : la qualité du sommeil (GAMEPLAY §5.7).
+- méta `version: 2` : un plan refait ; l'ancien état sauvegardé du lieu (morts, fouilles, plan exploré) est oublié.
+- Une pièce creusée dans une maçonnerie pleine (`murRect` puis `piece`) : son intérieur est vidé de ses murs.
+- Exemples : `tour_horloge.js`, `emperi.js`, `saint_laurent.js`.
 
 Pièces toutes faites : `piece(x, y, w, h, { nom, sol, mur, sombre, toit, portes: [{ cote: 'n'|'s'|'e'|'o', a }], fenetres: [{ cote, a, l }] })`
 prend le rectangle EXTÉRIEUR (murs compris) et renvoie l'intérieur `{ x0, y0, x1, y1, cx, cy }` pour y placer les meubles ;

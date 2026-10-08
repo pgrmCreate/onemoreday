@@ -13,6 +13,7 @@ import * as fabrication from './fabrication.js';
 import * as construction from './construction.js';
 import * as journal from './journal.js';
 import * as options from './options.js';
+import { listeATrier, finirTri } from '../../game/inventory.js';
 
 const PANNEAUX = {
   inventaire: { titre: 'Sac', icone: 'sac', m: inventaire },
@@ -83,3 +84,18 @@ export function fermerPanneau() {
   emit('panneau', { nom: null });
 }
 export function panneauOuvert() { return courant; }
+
+// Une scène t'a donné plus que tu ne peux porter : dès qu'elle est finie (plus de scène, de combat ni de cinématique
+// par-dessus) et qu'aucun panneau n'est ouvert, le sac s'ouvre sur l'onglet « À trier ».
+let triPrevu = null;
+on('mort', () => { finirTri(); });
+on('tri', () => {
+  if (triPrevu) return;
+  triPrevu = setInterval(async () => {
+    if (!listeATrier().length) { clearInterval(triPrevu); triPrevu = null; return; }
+    const flow = await import('../../game/flow.js');
+    if (flow.overlayOuvert() || courant) return;
+    clearInterval(triPrevu); triPrevu = null;
+    ouvrirPanneau('inventaire', { onglet: 'tri' });
+  }, 400);
+});

@@ -302,7 +302,7 @@ export async function agirConstruction(c) {
   const C = V.canal;
   if (d.contenance) return commencerFouille('#c:' + c.uid, le(c), c.x + 0.5, c.y + 0.5);
   if (d.porte) { const r = await C.agirConstruction(c.uid, c.ouverte ? 'fermer' : 'ouvrir'); if (r && r.ok) sfx('porte'); else if (r && r.raison === 'occupee') message('Quelque chose bloque le passage.'); return; }
-  if (d.lit) return ouvrirSommeil({ lit: true });
+  if (d.lit) return ouvrirSommeil({ couchage: { type: c.type, nom: le(c) } });
   if (d.poste === 'etabli') { try { (await import('../ui/panels/index.js')).ouvrirPanneau('fabrication'); } catch (e) {} return; }
   if (d.feu) {
     // on met au feu le meilleur bois qu'on a (bûche, planche, branche, brindilles)

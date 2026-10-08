@@ -33,6 +33,7 @@ import { lierCombatLieu, combatIci as combatIci_, embuscade as embuscade_, suivr
 import { lierNature, majRecherche, basculerRecherche, vitesseRecherche, enRecherche } from './nature.js';
 import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, viserPlacement, majConstruction, feuxCommeLampes, fantome, grilleToits } from './construction.js';
 import { rueeSim, etatRuee, lieuDansZone, typeActif } from '../game/ruees.js';
+import { lierPlan, chargerMemoire, sauverMemoire, basculerPlan, planOuvert, fermerPlan } from './plan_lieu.js';
 
 export { verifierCondition };
 const RX = REGLAGES.exploration, RL = REGLAGES.lumiere;
@@ -101,12 +102,13 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     lampes: [], nLampes: 0, lampeMoi: { x: 0, y: 0, dir: 0, forme: 'cone', angle: 60, portee: 9, sec: false },
     snap: null, tSnap: 0, zInterp: new Map(), zListe: [], ondes: [], dernOnde: new Map(),
     pairsVus: [], pInterp: new Map(),
-    cible: null, tCible: 0, fouille: null, butin: null, action: null, carte: false,
+    cible: null, tCible: 0, fouille: null, butin: null, action: null,
     piece: -1, tPos: 0, tPnj: 0, pnj: [], off: [], raf: 0, tPrec: performance.now(), msgT: 0,
     zoom: pref('zoomExplore') || 1, zonesDedans: new Set(), arene, periode: 50, tSnapPrec: performance.now(),
     tVis: 0, tSnapVis: 0, ralenti: null, tGuide: 0,
   };
   lierTout(V);
+  if (!arene) chargerMemoire(V);   // le plan du lieu : ce qu'on en avait déjà vu
   if (arene) {
     const W = G.world;
     const sim = creerSimLieu({ lieuId, niveau, etat: null, seed: `${W.seed}:${arene.seed}`, danger: L.danger, pool: arene.pool || ['errant'],
@@ -143,7 +145,7 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   V.rendu.setZoom(V.zoom);
   V.entrees = creerEntrees({ racine, canvas, actions: {
     interagir: (o) => interagir(o), lampe: basculerLampe, inventaire: ouvrirInventaire,
-    carte: () => { V.carte = !V.carte; }, echap, zoom: (f) => regleZoom(V.zoom * f),
+    carte: basculerPlanLieu, echap, zoom: (f) => regleZoom(V.zoom * f),
     accroupi: () => {}, aide: () => V && V.hud.basculerAide(),
     frapper: (appui, annule, mode) => { if (!V || !V.cbt || V.occupe) return; if (enPlacement()) { if (appui) poserPlacement(); return; } if (appui) stopperActions(); V.cbt.frapper(appui, annule, mode); },
     crosse: (appui, annule) => { if (!V || !V.cbt || V.occupe || enPlacement()) return; if (appui) stopperActions(); V.cbt.frapper(appui, annule, 'crosse'); },
@@ -162,6 +164,8 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   hud.majZoom(cranZoom(V.zoom));
   hud.zoom.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
   hud.zoom.addEventListener('click', () => { if (!V) return; const c = cranZoom(V.zoom); regleZoom(CRANS_ZOOM[(c + 1) % CRANS_ZOOM.length]); });
+  hud.plan.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
+  hud.plan.addEventListener('click', () => basculerPlanLieu());
   V.cbt = creerCombatVue({
     canal: V.canal, j: () => V.j, zombies: () => V.zListe, message, sfx, sfxA, vib, inv: mod.inv, player: mod.player, survie: mod.survie, entrees: V.entrees,
     tactile: () => !!(V.entrees.etat.tactile || matchMedia('(pointer: coarse)').matches), pause: () => !V || V.enPause || V.occupe || !!G.player.agonie,
@@ -207,6 +211,7 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
   V.off.push(C.on('ruee', () => { V.tSirene = 0; message(typeActif() === 'horde' ? 'La horde arrive. Ils sont des dizaines, et ils viennent par ici.' : 'Les sirènes ! Partout, les morts se lèvent et courent vers le bruit.', 3800); }));
   V.off.push(C.on('hurlement', (e) => { const z = e && V.zInterp.get(e.uid); if (z) sfxA('hurlement', z.x, z.y, z.etage, 40); else sfx('hurlement', { volume: 0.5 }); }));
   V.off.push(avantSauvegarde(() => {
+    if (V && !V.arene) sauverMemoire(V);
     if (!V || !V.canal.sauver || V.arene) return;
     const etat = V.canal.sauver(G.world.minutes);
     if (etat) G.world.lieux[V.lieuId] = { ...(G.world.lieux[V.lieuId] || {}), etat };
@@ -244,7 +249,17 @@ function lierTout(v) {
   lierCommun(v); lierButin(v);
   lierInteractions(v, { changerEtage, sortir, finArene, scene: (id) => crochets.scene(id), coop: crochets.coop });
   lierCombatLieu(v, { entrer, sortir, vue });
-  lierConstruction(v); lierNature(v);
+  lierConstruction(v); lierNature(v); lierPlan(v);
+}
+// Plan du lieu (Tab, M, bouton « Plan ») : en solo, le jeu attend pendant qu'on le lit.
+function basculerPlanLieu() {
+  if (!V || V.arene) return;
+  if (planOuvert()) { fermerPlan(); return; }
+  if (V.occupe) return;
+  sauverMemoire(V);
+  const solo = G.mode === 'solo', dejaEnPause = V.enPause;
+  if (solo && !dejaEnPause) pause();
+  basculerPlan({ surFermeture: () => { if (solo && !dejaEnPause) reprise(); } });
 }
 function regleZoom(z) {
   if (!V) return;
@@ -265,7 +280,9 @@ export function sortir() {
   cancelAnimationFrame(v.raf);
   try { interrompreFouille(); } catch (e) {}
   try { v.cbt && v.cbt.fermer(); } catch (e) {}
+  try { fermerPlan(); } catch (e) {}
   if (!v.arene) try {
+    sauverMemoire(v);
     const etat = v.canal.sauver ? v.canal.sauver(G.world.minutes) : null;
     if (etat) G.world.lieux[v.lieuId] = { ...(G.world.lieux[v.lieuId] || {}), etat };
     G.player.position = { mode: 'lieu', lieu: v.lieuId, etage: v.j.etage, x: +v.j.x.toFixed(2), y: +v.j.y.toFixed(2), abords: abordsDe(v) };
@@ -420,6 +437,7 @@ function image(t, dt) {
     V.lampes[V.nLampes++] = L;
   }
   const pairs = lisserPairs(dt);
+  V.pairsDerniers = pairs;   // pour le plan du lieu
   let secondaire = false;
   for (const p of pairs) {
     if (p.etage !== E.id || !p.lampe) continue;
@@ -493,7 +511,7 @@ function image(t, dt) {
   V.hud.sang.style.opacity = (J.cbt.flash * 0.85 + (G.player.pv < 30 ? 0.25 + 0.1 * Math.sin(t / 300) : 0) + (G.player.agonie ? 0.45 : 0)).toFixed(3);
   Sc.pairs = pairs; Sc.zombies = V.zListe; Sc.portes = snap.portes; Sc.sol = snap.sol; Sc.cadavres = snap.cadavres; Sc.pnj = V.pnj;
   Sc.constructions = snap.constructions || []; Sc.placement = fantome(); Sc.minutes = G.world.minutes;
-  Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.carte = V.carte; Sc.objectif = V.objectif || null;
+  Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.objectif = V.objectif || null;
   const Fo = Sc.fouille;
   if (V.fouille) { Fo.x = V.fouille.x; Fo.y = V.fouille.y; Fo.frac = V.fouille.p; Fo.n = V.fouille.items.length; Sc.fouilleOn = true; }
   else if (V.action) { Fo.x = V.action.x; Fo.y = V.action.y; Fo.frac = V.action.t / V.action.duree; Fo.n = 0; Sc.fouilleOn = true; }
@@ -737,7 +755,7 @@ function couperTout() {
   let coupe = false;
   const pn = mod.panneaux;
   if (pn && pn.panneauOuvert && pn.panneauOuvert() && pn.panneauOuvert() !== 'options') { pn.fermerPanneau(); coupe = true; }
-  if (V.carte) { V.carte = false; coupe = true; }
+  if (planOuvert()) { fermerPlan(); coupe = true; }
   if (V.choix) { fermerChoix(); coupe = true; }
   if (annulerPlacement()) coupe = true;
   if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); coupe = true; }
@@ -754,7 +772,6 @@ async function ouvrirInventaire() {
 function echap() {
   if (V.choix) { fermerChoix(); return; }
   if (annulerPlacement()) { message('Construction : arrêtée.', 1200); return; }
-  if (V.carte) { V.carte = false; return; }
   if (V.cbt && V.cbt.etat.charge) { V.cbt.frapper(false, true); return; }
   if (V.butin || V.fouille) { interrompreFouille(); fermerButin(); return; }
   if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); return; }

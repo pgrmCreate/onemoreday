@@ -53,6 +53,7 @@ export function creerSimLieu(opts) {
   let cadavres = [];                 // { uid, type, etage, x, y, dir }
   let zombies = [];
   let joues = [];                    // déclencheurs de zone joués (index)
+  let condFaits = new Set();         // index des morts conditionnels du plan déjà apparus
   let uidSeq = 1;
   let vm = 1;                        // version du « monde statique » (portes, sol, cadavres, conteneurs) : réseau en différentiel
   const joueurs = new Map();
@@ -92,7 +93,8 @@ export function creerSimLieu(opts) {
   }
 
   // ---------- Création / restauration ----------
-  const etat = opts.etat && opts.etat.v ? opts.etat : null;
+  // un plan refait (version différente) : l'ancien état du lieu (morts, meubles fouillés) ne lui correspond plus
+  const etat = opts.etat && opts.etat.v && (opts.etat.planV || 0) === (niveau.planVersion || 0) ? opts.etat : null;
   if (etat) migrerAbords(etat, niveau.abords);
   if (etat) {
     uidSeq = etat.uid || 1;
@@ -102,16 +104,18 @@ export function creerSimLieu(opts) {
     rueeVue = etat.rueeVue || null;
     cadavres = (etat.cadavres || []).slice();
     joues = (etat.joues || []).slice();
+    condFaits = new Set(etat.condFaits || []);
     for (const c of etat.constructions || []) { const cc = { ...c, items: c.items ? c.items.map(i => ({ ...i })) : c.items }; constructions.push(cc); consSeq = Math.max(consSeq, (+String(c.uid).slice(1) || 0) + 1); }
     for (const cle of etat.retires || []) retires.add(cle);
     Object.assign(eauReste, etat.eau || {});
-    for (const z of etat.zombies || []) { const zz = nouveauMort(z.type, z.etage, z.x, z.y, z.etat, z); if (zz) zombies.push(zz); }
+    for (const z of etat.zombies || []) { const zz = nouveauMort(z.type, z.etage, z.x, z.y, z.etat, z); if (zz) { if (z.planIdx != null) zz.planIdx = z.planIdx; zombies.push(zz); } }
     // (les anciens types rangés sont convertis par nouveauMort → typeMort)
     repeupler(etat.minutes);
   } else {
     // 1re visite : morts du plan + procéduraux, objets posés
     const r = seedRng(`${seed}:peuplement:${lieuId}`);
     for (const s of niveau.spawns) {
+      if (s.si) continue;   // les morts conditionnels : majConditionnels()
       const type = s.type || pool[Math.floor(r() * pool.length)];
       const z = nouveauMort(type, s.etage, s.x + 0.5, s.y + 0.5, s.etat || etatDepart(type, r), { hp: s.hp, dir: s.dir != null ? s.dir : r() * Math.PI * 2, plan: true });
       if (z) zombies.push(z);
@@ -166,6 +170,7 @@ export function creerSimLieu(opts) {
         for (const e of entrees) if (e.etage === E.id && Math.hypot(e.x + 0.5 - x, e.y + 0.5 - y) < 6) loin = false;
         if (!loin) continue;
         const P = niveau.pieces[E.piece[i]];
+        if (P.sansMorts || (niveau.mortsDehorsSeulement && !P.exterieur)) continue;   // pièce sûre (refuge, scène)
         const sombre = P.exterieur ? 0 : (P.sombre != null ? P.sombre : 1);
         out.push({ etage: E.id, x, y, poids: 1 + sombre * 2 + r() * 2 });
       }
@@ -228,6 +233,35 @@ export function creerSimLieu(opts) {
     return false;
   }
   function flagOk(v) { return v && v.flag && !!getFlag(v.flag); }
+  // CONDITION simple d'un mort du plan : { flag, pasFlag, flagEgal: [k, v] } (tableaux acceptés)
+  function condOk(si) {
+    if (!si) return true;
+    const liste = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
+    if (liste(si.flag).some(k => !getFlag(k))) return false;
+    if (liste(si.pasFlag).some(k => !!getFlag(k))) return false;
+    if (si.flagEgal && getFlag(si.flagEgal[0]) !== si.flagEgal[1]) return false;
+    return true;
+  }
+  // Les morts conditionnels du plan (foule qui apparaît après une scène, qui se disperse plus tard) :
+  // réévalués chaque seconde ; jamais sous le nez d'un joueur.
+  function majConditionnels() {
+    niveau.spawns.forEach((s, idx) => {
+      if (!s.si) return;
+      const ok = condOk(s.si);
+      if (ok && !condFaits.has(idx)) {
+        if ([...joueurs.values()].some(j => j.etage === s.etage && Math.hypot(j.x - s.x - 0.5, j.y - s.y - 0.5) < 4)) return;
+        const type = s.type || pool[0];
+        const z = nouveauMort(type, s.etage, s.x + 0.5, s.y + 0.5, s.etat || 'erre', { hp: s.hp, dir: s.dir != null ? s.dir : 0, plan: true });
+        if (z) { z.planIdx = idx; zombies.push(z); }
+        condFaits.add(idx); vm++;
+      } else if (!ok && condFaits.has(idx)) {
+        const z = zombies.find(q => q.planIdx === idx);
+        if (z && (z.etat === 'chasse' || z.enCombat)) return;   // il te poursuit : il reste
+        if (z) zombies = zombies.filter(q => q !== z);
+        condFaits.delete(idx); vm++;
+      }
+    });
+  }
 
   // ---------- Bruit ----------
   function bruit(b) {
@@ -291,7 +325,26 @@ export function creerSimLieu(opts) {
     }
     return dansCone ? R : 0;
   }
+  // La lampe réveille : un faisceau braqué de près sur un mort (même de dos, même endormi) finit par le tirer de sa torpeur.
+  function eclairePar(z, j, d) {
+    if (!j.lampe || j.etage !== z.etage || j.mort) return false;
+    const S = REGLAGES.lumiere.SOURCES[j.lampeSource] || REGLAGES.lumiere.SOURCES.lampe_torche;
+    if (d > Math.min(S.portee, RP.FAISCEAU_REVEIL.portee)) return false;
+    return S.forme === 'halo' || Math.abs(angDiff(Math.atan2(z.y - j.y, z.x - j.x), j.dir)) <= (S.angle || 60) * DEG / 2;
+  }
+  function reveilParLumiere(z, dt) {
+    const E = niveau.etages[z.ei], D = dyn[z.ei];
+    for (const j of joueurs.values()) {
+      const d = Math.hypot(j.x - z.x, j.y - z.y);
+      if (!eclairePar(z, j, d) || !ligneLibre(E.w, E.h, D.opaque, z.x, z.y, j.x, j.y)) continue;
+      z.alerte = Math.min(1, z.alerte + dt / RP.FAISCEAU_REVEIL.ms);
+      if (z.alerte >= 1) reveiller(z, j);
+      return;
+    }
+    z.alerte = Math.max(0, z.alerte - RP.FAISCEAU_REVEIL.oubliParS * dt / RP.FAISCEAU_REVEIL.ms);
+  }
   function percevoir(z, dt) {
+    if (z.etat === 'dort' && !(z.etourdi > 0)) { reveilParLumiere(z, dt); return null; }
     if (z.etat === 'dort' || z.etourdi > 0) return null;
     const E = niveau.etages[z.ei], D = dyn[z.ei];
     let vu = null, dVu = Infinity, Rvu = 0;
@@ -302,7 +355,7 @@ export function creerSimLieu(opts) {
       if (d > 30) continue;
       const a = Math.atan2(j.y - z.y, j.x - z.x);
       const chasse = z.etat === 'chasse' && z.joueur === j.id;
-      const dansCone = chasse || Math.abs(angDiff(a, z.dir)) <= RP.CONE_DEG * DEG / 2 || d < 1.1;
+      const dansCone = chasse || Math.abs(angDiff(a, z.dir)) <= RP.CONE_DEG * DEG / 2 || d < 1.1 || eclairePar(z, j, d);
       let R = porteeVue(z, j, d, dansCone);
       if (chasse) R = Math.max(R, 6);
       if (d > R) continue;
@@ -1221,10 +1274,10 @@ export function creerSimLieu(opts) {
     const cc = {};
     for (const k in conteneurs) cc[k] = { items: conteneurs[k].items, progres: conteneurs[k].progres };
     return {
-      v: 1, minutes: m, uid: uidSeq, abords: niveau.abords ? { version: niveau.abords.version, dx: niveau.abords.dx, dy: niveau.abords.dy } : null,
+      v: 1, planV: niveau.planVersion || 0, minutes: m, uid: uidSeq, abords: niveau.abords ? { version: niveau.abords.version, dx: niveau.abords.dx, dy: niveau.abords.dy } : null,
       zombies: zombies.map(z => ({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: +z.x.toFixed(2), y: +z.y.toFixed(2), dir: +z.dir.toFixed(2),
-        etat: z.etat === 'chasse' || z.etat === 'alerte' ? 'erre' : z.etat, base: z.base, hp: z.hp, proc: z.proc })),
-      portes: pp, conteneurs: cc, sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })), joues: joues.slice(), rueeVue,
+        etat: z.etat === 'chasse' || z.etat === 'alerte' ? 'erre' : z.etat, base: z.base, hp: z.hp, proc: z.proc, ...(z.planIdx != null ? { planIdx: z.planIdx } : {}) })),
+      portes: pp, conteneurs: cc, sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })), joues: joues.slice(), rueeVue, condFaits: [...condFaits],
       constructions: constructions.map(c => ({ ...c, items: c.items ? c.items.map(i => ({ ...i })) : undefined })), retires: [...retires],
       eau: { ...eauReste },
     };
@@ -1354,6 +1407,7 @@ export function creerSimLieu(opts) {
           const s = portes[p.cle];
           if (s.etat === 'verrouillee' && p.verrou && p.verrou.flag && flagOk(p.verrou)) { s.etat = 'fermee'; setPorte(p.cle, 'fermee', 'flag', null); }
         }
+        majConditionnels();
       }
       T += dt;
       tickJoueurs(dt);

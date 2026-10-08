@@ -191,11 +191,13 @@ export function agrandirDef(def) {
     for (let yy = y + 2; yy < y + h - 2; yy += 3) { fen(x, yy); fen(x + w - 1, yy); }
     const t = o.type || (r() < 0.7 ? 'close' : r() < 0.6 ? 'verrou' : 'ouverte');
     if (t === 'close') { for (let yy = y + 1; yy < y + h - 1; yy++) for (let xx = x + 1; xx < x + w - 1; xx++) set(xx, yy, 'ϖ', 4); return; }
-    // porte côté rue
-    let px, py;
-    if (cote === 'n') { px = x + ri(1, w - 2); py = y; } else if (cote === 's') { px = x + ri(1, w - 2); py = y + h - 1; }
-    else if (cote === 'o') { px = x; py = y + ri(1, h - 2); } else { px = x + w - 1; py = y + ri(1, h - 2); }
+    // porte côté rue — jamais en face de la cloison du milieu (la porte s'ouvrirait sur un mur)
+    const sepPrevue = !o.vide && w - 2 >= 10 ? x + 1 + ((w - 2) >> 1) : null;
     const large = o.large || 1;
+    const pxLibre = () => { for (let k = 0; k < 8; k++) { const v = x + ri(1, w - 2); if (sepPrevue == null || v + large - 1 < sepPrevue || v > sepPrevue) return v; } return sepPrevue - large >= x + 1 ? sepPrevue - large : sepPrevue + 1; };
+    let px, py;
+    if (cote === 'n') { px = pxLibre(); py = y; } else if (cote === 's') { px = pxLibre(); py = y + h - 1; }
+    else if (cote === 'o') { px = x; py = y + ri(1, h - 2); } else { px = x + w - 1; py = y + ri(1, h - 2); }
     for (let k = 0; k < large; k++) {
       const qx = cote === 'n' || cote === 's' ? Math.min(px + k, x + w - 2) : px, qy = cote === 'n' || cote === 's' ? py : Math.min(py + k, y + h - 2);
       set(qx, qy, t === 'verrou' ? 'ϗ' : o.ouverte ? '/' : '+', 4); portes.push([qx, qy]);

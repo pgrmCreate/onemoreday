@@ -18,13 +18,13 @@ export const LIEUX_GAMEPLAY = {
   // ─────────── Salon — le centre ancien ───────────
   hotel_poste:      { danger: 0.2,  pool: ['errant', 'errant', 'errant', 'rampant', 'putrefie'], morts: { n: [1, 3] }, typeButin: 'hotel', repeuplement: 0.3, ambiance: 'hotel' },
   place_crousillat: { danger: 0.3,  pool: ['errant', 'errant', 'errant', 'rampant', 'coureur'], morts: { n: [2, 4] }, typeButin: 'place', repeuplement: 0.8, ambiance: 'rue' },
-  tour_horloge:     { danger: 0.2,  pool: ['errant', 'rampant'], morts: { n: [0, 2] }, typeButin: 'monument', repeuplement: 0.2, ambiance: 'sombre' },
+  tour_horloge:     { danger: 0.2,  pool: ['errant', 'rampant'], morts: { n: [0, 0] }, typeButin: 'monument', repeuplement: 0.2, ambiance: 'sombre' },
   casino_shop:      { danger: 0.35, pool: ['errant', 'errant', 'putrefie', 'rampant'], morts: { n: [2, 4] }, typeButin: 'superette', repeuplement: 0.5, abondance: 0.8, ambiance: 'magasin' },
   pharmacie_carnot: { danger: 0.4,  pool: ['errant', 'errant', 'putrefie', 'coureur'], morts: { n: [2, 4] }, typeButin: 'pharmacie', repeuplement: 0.5, abondance: 0.75, ambiance: 'magasin' },
   hotel_de_ville:   { danger: 0.35, pool: ['errant', 'errant', 'errant', 'hurleur', 'rampant'], morts: { n: [2, 5] }, typeButin: 'mairie', repeuplement: 0.4, ambiance: 'interieur' },
   nostradamus:      { danger: 0.2,  pool: ['errant', 'rampant'], morts: { n: [1, 2] }, typeButin: 'musee', repeuplement: 0.2, ambiance: 'musee' },
   saint_michel:     { danger: 0.3,  pool: ['errant', 'errant', 'putrefie', 'rampant'], morts: { n: [1, 4] }, typeButin: 'eglise', repeuplement: 0.4, ambiance: 'eglise' },
-  emperi:           { danger: 0.35, pool: ['errant', 'errant', 'rampant', 'hurleur'], morts: { n: [2, 5] }, typeButin: 'chateau', repeuplement: 0.4, ambiance: 'musee' },
+  emperi:           { danger: 0.35, pool: ['errant', 'errant', 'rampant', 'hurleur'], morts: { n: [0, 2] }, typeButin: 'chateau', repeuplement: 0.4, ambiance: 'musee' },
   place_de_gaulle:  { danger: 0.35, pool: ['errant', 'errant', 'coureur', 'rampant'], morts: { n: [3, 6] }, typeButin: 'place', repeuplement: 1, ambiance: 'rue' },
   saint_laurent:    { danger: 0.3,  pool: ['errant', 'errant', 'putrefie'], morts: { n: [1, 3] }, typeButin: 'eglise', repeuplement: 0.3, ambiance: 'eglise' },
 

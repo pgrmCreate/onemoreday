@@ -34,7 +34,7 @@ const D = {
     L('jogging', 1, 1, 0.08), L('gants_laine', 1, 1, 0.06), L('bonnet', 1, 1, 0.06), L('casquette', 1, 1, 0.05),
     L('manteau_hiver', 1, 1, 0.04), L('veste_cuir', 1, 1, 0.025), L('baskets', 1, 1, 0.05), L('bottes_cuir', 1, 1, 0.02),
     L('ceinture_cuir', 1, 1, 0.06), L('sacoche', 1, 1, 0.03), L('sac_a_dos', 1, 1, 0.03),
-    L('drap', 1, 1, 0.12), L('chiffon', 1, 2, 0.15), L('trousse_couture', 1, 1, 0.04), L('photo_famille', 1, 1, 0.03),
+    L('drap', 1, 1, 0.12), L('couverture', 1, 1, 0.08), L('chiffon', 1, 2, 0.15), L('trousse_couture', 1, 1, 0.04), L('photo_famille', 1, 1, 0.03),
   ],
   frigo: [
     L('bouteille_eau', 1, 2, 0.25), L('soda', 1, 2, 0.22), L('jus_fruits', 1, 1, 0.12), L('compote', 1, 2, 0.08),
@@ -69,7 +69,7 @@ const D = {
     L('trousse_couture', 1, 1, 0.02),
   ],
   lit: [
-    L('drap', 1, 1, 0.35), L('chiffon', 1, 1, 0.08), L('photo_famille', 1, 1, 0.05), L('lampe_torche', 1, 1, 0.03),
+    L('drap', 1, 1, 0.35), L('couverture', 1, 1, 0.1), L('chiffon', 1, 1, 0.08), L('photo_famille', 1, 1, 0.05), L('lampe_torche', 1, 1, 0.03),
     L('reveil', 1, 1, 0.1), L('antidouleur', 1, 1, 0.05), L('cafe_soluble', 1, 1, 0.02), L('pistolet_9mm', 1, 1, 0.004),
     L('munitions_9mm', 2, 6, 0.01), L('couteau_cuisine', 1, 1, 0.02),
   ],
@@ -282,7 +282,7 @@ export const BUTIN = {
     etagere: plus(SECOURS, [L('hache_pompier', 1, 1, 0.07), L('pied_de_biche', 1, 1, 0.08), L('corde', 1, 2, 0.25), L('lampe_torche', 1, 1, 0.12), L('lampe_frontale', 1, 1, 0.05), L('piles', 1, 2, 0.14), L('precis_secourisme', 1, 1, 0.04), L('fusee_detresse', 1, 1, 0.05)]),
     machine: [L('trousse_outils', 1, 1, 0.1), L('cle_molette', 1, 1, 0.14), L('tuyau_plastique', 1, 1, 0.1), L('cable_electrique', 1, 1, 0.1), L('essence', 1, 1, 0.08), L('pince_coupante', 1, 1, 0.06)],
     cuisine: plus(D.cuisine, [L('conserve_haricots', 2, 4, 0.2), L('cafe_soluble', 1, 2, 0.2)]),
-    lit: [L('drap', 1, 1, 0.4), L('reveil', 1, 1, 0.12), L('lampe_torche', 1, 1, 0.05), L('antidouleur', 1, 1, 0.05)],
+    lit: [L('drap', 1, 1, 0.4), L('reveil', 1, 1, 0.12), L('lampe_torche', 1, 1, 0.05), L('antidouleur', 1, 1, 0.05), L('sac_couchage', 1, 1, 0.15), L('couverture', 1, 1, 0.2)],
     bureau: plus(D.bureau, [L('precis_secourisme', 1, 1, 0.03)]),
   },
   hopital: {
@@ -311,7 +311,7 @@ export const BUTIN = {
       L('piles', 1, 2, 0.15), L('lampe_torche', 1, 1, 0.07), L('lampe_frontale', 1, 1, 0.04), L('cartouche_gaz', 1, 2, 0.08),
       L('rechaud_camping', 1, 1, 0.03), L('hache_pompier', 1, 1, 0.015), L('pelle', 1, 1, 0.05), L('machette', 1, 1, 0.03),
       L('essence', 1, 1, 0.04), L('manuel_bricolage', 1, 1, 0.04), L('ceinture_outils', 1, 1, 0.04), L('graines', 1, 3, 0.1),
-      L('scie', 1, 1, 0.06), L('hachette', 1, 1, 0.03), L('sac_plastique', 1, 3, 0.1),
+      L('scie', 1, 1, 0.06), L('hachette', 1, 1, 0.03), L('sac_plastique', 1, 3, 0.1), L('sac_couchage', 1, 1, 0.08),
     ]),
     comptoir: plus(D.comptoir, [L('scotch', 1, 2, 0.15), L('piles', 1, 1, 0.1)]),
     caisse: D.caisse,

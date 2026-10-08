@@ -97,7 +97,7 @@ export function compilerPlan(plan, def = {}) {
   const avert = (m) => avertissements.push(m);
   const niv = {
     id: meta.id, nom: meta.nom || meta.id, exterieur: !!meta.exterieur, fin: F,
-    typeButin: meta.typeButin || null, pool: meta.pool || null, morts: meta.morts || null, def,
+    typeButin: meta.typeButin || null, pool: meta.pool || null, morts: meta.morts || null, mortsDehorsSeulement: !!meta.mortsDehorsSeulement, planVersion: meta.version || 0, def,
     etages: [], etageIdx: {}, pieces: [], meubles: [], meubleParCle: {}, portes: [], porteParCle: {},
     escaliers: [], entrees: {}, sorties: [], marqueurs: {}, spawns: [], pnj: [], sol: [], declencheurs: [],
     avertissements, format: 'couches',
@@ -244,6 +244,7 @@ export function compilerPlan(plan, def = {}) {
       if (pd.sol) { if (SOL_IDX[pd.sol] == null) avert(`pièce « ${pd.nom} » : sol inconnu « ${pd.sol} »`); else Pc.sol = pd.sol; }
       if (pd.sombre != null) Pc.sombre = pd.sombre;
       if (pd.exterieur != null) Pc.exterieur = !!pd.exterieur;
+      if (pd.sansMorts) Pc.sansMorts = true;   // ni morts procéduraux ni repeuplement dans cette pièce
     }
     // toits : rattachés à la pièce de leur case de référence (rectangles en unités)
     for (const t of P.toits) {
@@ -324,6 +325,7 @@ export function compilerPlan(plan, def = {}) {
         etat: pd.etat || 'fermee', verrou, exterieure: ext,
         orient: g.orient, marqueur: pd.marqueur || null, nom: pd.nom || null, style: pd.style || null,
         deux: !!(pd.deux || (verrou && verrou.deux)),
+        message: pd.message || null,   // dit à l'essai tant qu'elle ne s'ouvre pas (« barrée de l'intérieur… »)
       };
       if (p.etat === 'verrouillee' && !p.verrou) p.verrou = { forcer: 'pied_de_biche' };
       niv.portes.push(p); niv.porteParCle[p.cle] = p;
@@ -350,8 +352,8 @@ export function compilerPlan(plan, def = {}) {
       if (niv.entrees[nom]) { avert(`entrée « ${nom} » définie deux fois`); continue; }
       niv.entrees[nom] = { etage: E.id, x: e.x | 0, y: e.y | 0 };
     }
-    for (const z of P.zombies) niv.spawns.push({ etage: E.id, x: z.x | 0, y: z.y | 0, type: z.type, etat: z.etat, hp: z.hp, dir: z.dir });
-    for (const q of P.pnj) niv.pnj.push({ id: q.id, etage: E.id, x: q.x | 0, y: q.y | 0, si: q.si, marqueur: q.marqueur, nom: q.nom });
+    for (const z of P.zombies) niv.spawns.push({ etage: E.id, x: z.x | 0, y: z.y | 0, type: z.type, etat: z.etat, hp: z.hp, dir: z.dir, si: z.si || null });
+    for (const q of P.pnjs) niv.pnj.push({ id: q.id, etage: E.id, x: q.x | 0, y: q.y | 0, si: q.si, marqueur: q.marqueur, nom: q.nom, dir: q.dir ?? null, style: q.style || null, repliques: q.repliques || null });
     for (const o of P.solItems) niv.sol.push(o.doc ? { etage: E.id, x: o.x | 0, y: o.y | 0, doc: o.doc, marqueur: o.marqueur || null } : { etage: E.id, x: o.x | 0, y: o.y | 0, id: o.id, qty: o.qty || 1 });
     for (const mk of P.marqueurs) {
       const x = mk.x | 0, y = mk.y | 0;
