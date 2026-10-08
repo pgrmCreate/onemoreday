@@ -38,6 +38,8 @@ const MILIEUX = {
   campagne: { S: 0,  RW: 3, trottoir: false, route: ':', fond: 'δ' },
 };
 
+// Une voiture déjà pillée : ouverte (pas de serrure), on peut encore la fouiller, il n'y reste presque rien (butin defaut.voiture_pillee).
+const PILLEE = { table: 'defaut.voiture_pillee', items: [] };
 // Caractères générés (légende ajoutée à celle du lieu) — lettres grecques, jamais utilisées par les plans écrits à la main.
 const LEG = {
   'α': { comme: ',', sol: 'trottoir' }, 'β': { comme: ',', sol: 'paves' }, 'γ': { comme: '"', sol: 'terre' },
@@ -54,16 +56,16 @@ const LEG = {
   'ϗ': { porte: true, etat: 'verrouillee', nom: 'la porte fermée à clé' },        // forçable au pied-de-biche
   'ϖ': { comme: '.', sol: 'parquet', bloque: true },                                // intérieur d'une maison close : on ne voit que le toit
   'ϙ': { comme: '"', sol: 'herbe', bloque: true },                                  // fourré impénétrable (poche sans accès)
-  'ϛ': { prop: 'voiture', nom: 'la voiture (déjà fouillée)', conteneur: false },     // la plupart des voitures ont été vidées
+  'ϛ': { prop: 'voiture', nom: 'la voiture (pillée)', conteneur: PILLEE },     // la plupart des voitures ont été vidées
   // modèles de voitures (4 ter) : majuscule = encore à fouiller, minuscule = déjà vidée
-  'Ϣ': { prop: 'citadine', nom: 'la citadine' }, 'ϣ': { prop: 'citadine', nom: 'la citadine (déjà fouillée)', conteneur: false },
-  'Ϥ': { prop: 'break', nom: 'le break' }, 'ϥ': { prop: 'break', nom: 'le break (déjà fouillé)', conteneur: false },
-  'Ϧ': { prop: 'suv', nom: 'le 4 × 4' }, 'ϧ': { prop: 'suv', nom: 'le 4 × 4 (déjà fouillé)', conteneur: false },
-  'Ϩ': { prop: 'pickup', nom: 'le pick-up' }, 'ϩ': { prop: 'pickup', nom: 'le pick-up (déjà fouillé)', conteneur: false },
-  'Ϫ': { prop: 'voiture_police', nom: 'la voiture de gendarmerie' }, 'ϫ': { prop: 'voiture_police', nom: 'la voiture de gendarmerie (déjà fouillée)', conteneur: false },
+  'Ϣ': { prop: 'citadine', nom: 'la citadine' }, 'ϣ': { prop: 'citadine', nom: 'la citadine (pillée)', conteneur: PILLEE },
+  'Ϥ': { prop: 'break', nom: 'le break' }, 'ϥ': { prop: 'break', nom: 'le break (pillé)', conteneur: PILLEE },
+  'Ϧ': { prop: 'suv', nom: 'le 4 × 4' }, 'ϧ': { prop: 'suv', nom: 'le 4 × 4 (pillé)', conteneur: PILLEE },
+  'Ϩ': { prop: 'pickup', nom: 'le pick-up' }, 'ϩ': { prop: 'pickup', nom: 'le pick-up (pillé)', conteneur: PILLEE },
+  'Ϫ': { prop: 'voiture_police', nom: 'la voiture de gendarmerie' }, 'ϫ': { prop: 'voiture_police', nom: 'la voiture de gendarmerie (pillée)', conteneur: PILLEE },
   'Ϭ': { prop: 'camping_car', nom: 'le camping-car' },
-  'Ϯ': { prop: 'taxi', nom: 'le taxi' }, 'ϯ': { prop: 'taxi', nom: 'le taxi (déjà fouillé)', conteneur: false },
-  'Ͱ': { prop: 'voiture_pompiers', nom: 'la voiture des pompiers' }, 'ͱ': { prop: 'voiture_pompiers', nom: 'la voiture des pompiers (déjà fouillée)', conteneur: false },
+  'Ϯ': { prop: 'taxi', nom: 'le taxi' }, 'ϯ': { prop: 'taxi', nom: 'le taxi (pillé)', conteneur: PILLEE },
+  'Ͱ': { prop: 'voiture_pompiers', nom: 'la voiture des pompiers' }, 'ͱ': { prop: 'voiture_pompiers', nom: 'la voiture des pompiers (pillée)', conteneur: PILLEE },
   'Ͳ': { prop: 'voiture_calcinee', nom: 'la carcasse calcinée', conteneur: false },
   'ͳ': { prop: 'fourgon_postal', nom: 'le fourgon postal' },
   'ϡ': { prop: 'table', nom: 'la table', conteneur: false },

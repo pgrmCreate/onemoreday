@@ -188,11 +188,9 @@ function ouvrirVoiture(m, mode) {
     if (!forcer && mainVide && Math.random() < VV.COUPURE_MAINS_NUES && mod.survie && mod.survie.infligerBlessure) {
       try { mod.survie.infligerBlessure(G.player, { type: 'entaille', zone: 'à la main' }, { degats: 4 }); coupe = true; sfx('degats'); } catch (e) {}
     }
-    if (r.alarme) {
-      message('L’alarme se déclenche ! Elle hurle dans toute la rue : les morts vont venir. Fouille vite ou va-t’en.', 4200);
-      return;
-    }
-    message(forcer ? 'La portière cède sans trop de bruit.' : coupe ? 'La vitre cède, et un éclat t’entaille la main.' : 'La vitre vole en éclats. Le bruit porte loin.', 2400);
+    // pas de message : le verre qui éclate, l'alarme qui hurle et les phares qui clignotent disent tout (vue.js) ;
+    // seule une coupure se signale (c'est une blessure)
+    if (coupe) message('Un éclat de verre t’entaille la main.', 2200);
     commencerFouille(m.cle, m.nom, cx, cy);
   }, forcer ? VV.FORCER.BRUIT_S : 0);
 }
@@ -491,8 +489,11 @@ async function sortirDuLieu(s) {
   V.occupe = true;
   const echelle = (s && s.echelle) || V.L.echelle || 'salon';
   const id = V.lieuId;
+  // on garde la sortie prise : si l'on revient sans voyager (« Rester ici »), on réapparaît là
+  const ab = V.niveau.abords;
+  const pos = { mode: 'lieu', lieu: id, sorti: true, etage: V.j.etage, x: +V.j.x.toFixed(2), y: +V.j.y.toFixed(2), abords: ab ? { dx: ab.dx, dy: ab.dy } : null };
   api.sortir();
-  G.player.position = { mode: 'lieu', lieu: id, sorti: true };
+  G.player.position = pos;
   try { sauverPartie(); } catch (e) {}
   await flow.ouvrirCarte({ echelle, depuis: id });
 }

@@ -177,6 +177,15 @@ b.r1 { color: #4e6a30; } b.r2 { color: #7a6a10; } b.r3 { color: #a55a10; } b.r4 
 .f-jumelles p { font: 16px/1.2 var(--f-main); color: #1d3d8f; margin: 4px 0; }
 .f-jumelles label { font: 14px var(--f-imp); display: flex; gap: 6px; align-items: center; min-height: 36px; }
 .f-actions { display: flex; gap: 8px; margin-top: 8px; }
+/* Partir : collé en bas de l'écran, au centre, tant qu'un lieu est choisi */
+.carte-partir { position: absolute; z-index: 6; left: 50%; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: flex; gap: 8px; align-items: stretch; }
+.carte-partir .carte-btn { min-height: 50px; padding: 0 26px; font-size: 16px; box-shadow: 0 6px 22px rgba(0,0,0,.55); }
+.carte-partir-btn { min-width: 180px; }
+.carte-attendre { background: #2e241a; }
+.f-jauge i.inconnu { display: inline-grid; place-items: center; font: 600 10px/1 var(--f-ui); color: #8e1b24; background: none; border: 1px dashed #8e1b24; }
+.r-inconnu { color: #8e1b24; }
+.f-raisons.f-migration, .f-raisons.f-horaire { color: #8e1b24; font-weight: 600; }
 .f-actions .carte-btn { flex: 1; }
 
 /* ---- voyage ---- */
@@ -223,7 +232,7 @@ b.r1 { color: #4e6a30; } b.r2 { color: #7a6a10; } b.r3 { color: #a55a10; } b.r4 
   .v-evt-texte { font-size: 15.5px; }
 }
 @media (max-width: 560px) {
-  .carte-fiche { top: auto; left: 8px; right: 8px; width: auto; max-height: 62%; transform: none; }
+  .carte-fiche { top: auto; left: 8px; right: 8px; width: auto; max-height: 56%; transform: none; bottom: 72px; }
   .carte-ici { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {

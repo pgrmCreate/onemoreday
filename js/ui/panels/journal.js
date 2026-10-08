@@ -4,6 +4,7 @@ import { QUETES } from '../../data/histoire/quetes.js';
 import { DOCUMENTS } from '../../data/histoire/documents.js';
 import { ZOMBIES } from '../../data/zombies.js';
 import { lieu as lieuDe } from '../../game/donnees.js';
+import { dateTexte } from '../../core/clock.js';
 import { el, icoEl, onglets, avecScroll, vide, g } from './commun.js';
 
 let etat = { onglet: 'objectifs', doc: null };
@@ -56,7 +57,7 @@ function recit(zone) {
   let jour = null;
   for (const e of j) {
     const d = Math.floor(e.m / 1440) + 1;
-    if (d !== jour) { jour = d; zone.append(el('h3', { class: 'jo-jour' }, `Jour ${d}`)); }
+    if (d !== jour) { jour = d; zone.append(el('h3', { class: 'jo-jour' }, `Jour ${d} — ${dateTexte(d, 'long')}`)); }
     const h = `${String(Math.floor(e.m % 1440 / 60)).padStart(2, '0')}:${String(e.m % 60).padStart(2, '0')}`;
     zone.append(el('p', { class: `jo-entree t-${e.type || 'recit'}` }, el('time', {}, h), el('span', {}, e.texte)));
   }

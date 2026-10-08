@@ -14,7 +14,7 @@ import { ZOMBIES } from '../game/donnees.js';
 import { G } from '../core/state.js';
 import { seedRng, pickPoids } from '../core/rng.js';
 import { pref } from '../core/prefs.js';
-import { rueeTroncon, etatRuee } from '../game/ruees.js';
+import { rueeTroncon, etatRuee, migrationConnue, lieuDansZone } from '../game/ruees.js';
 
 const V = () => REGLAGES.voyage;
 const R = () => REGLAGES.voyage.RENCONTRES;
@@ -173,6 +173,12 @@ export function evaluerRisque(iti, ctx, { de, vers, demiTour = false } = {}) {
   if (RS.coop && ctx.coop) raisons.push('à deux, on se fait remarquer');
   if (RS.saigne && ctx.saigne) raisons.push('tu saignes');
   if (!raisons.length && cran <= 2) raisons.push(ctx.allure === 'discrete' ? 'tu rases les murs' : 'rien ne bouge, en apparence');
+  // une forte migration (sirènes, horde) sur le trajet ou à l'arrivée, et qu'on la sait : on entend les morts au loin,
+  // on ne sait pas où ils sont — le danger est inconnu (sûrement fort)
+  const mz = migrationConnue();
+  if (mz && (lieuDansZone(vers, mz) || lieuDansZone(de, mz) || Ls.some(({ t }) => rueeTroncon(t.echelle).mult > 1))) {
+    return { cran, esperance: E, inconnu: true, raisons: ['forte migration : impossible de savoir où sont les morts'], libelle: 'inconnu' };
+  }
   return { cran, esperance: E, raisons: raisons.slice(0, 2), libelle: LIBELLES[cran - 1] };
 }
 

@@ -11,7 +11,9 @@ export const QUETES = {
       debut:   { objectif: 'Sortir de la housse mortuaire', lieu: 'cimetiere' },
       scelle:  { objectif: 'Ouvrir le sachet agrafé à ta housse, dans le caveau', lieu: 'cimetiere' },
       sortir:  { objectif: 'Trouver une lumière, puis un moyen de sortir du cimetière Saint-Roch', lieu: 'cimetiere' },
-      horloge: { objectif: 'Rejoindre la Tour de l’Horloge, place Crousillat, et lever une lumière vers les cloches', lieu: 'tour_horloge' },
+      // Maud ne guette que le soir (le mot : « je guette tous les soirs ») : la carte n'y mène qu'entre 19 h et 5 h
+      horloge: { objectif: 'Attendre le soir, puis rejoindre la Tour de l’Horloge, place Crousillat, et lever une lumière vers les cloches', lieu: 'tour_horloge',
+        heures: [19, 5], heuresTexte: 'Le mot de M. dit qu’elle guette tous les soirs : il faut attendre la tombée de la nuit (19 h) pour y aller.' },
       monter:  { objectif: 'Monter en haut de la Tour de l’Horloge', lieu: 'tour_horloge' },
       fin:     { objectif: 'Dormir dans la maison de Nostradamus' },
     },

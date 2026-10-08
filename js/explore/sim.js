@@ -463,7 +463,8 @@ export function creerSimLieu(opts) {
     if (E.code[i] === K.PORTE && portes[niveau.portes[E.porte[i]].cle].etat !== 'ouverte') return true;
     const c = consCase[E.idx].get(i); return !!(c && cassableC(c));
   }
-  function chemin(z, tx, ty, maxProf = 60, aleatoire = false) {
+  // plusPres : cible hors de portée de la recherche (une alarme au bout du quartier) → le chemin vers le point le plus proche
+  function chemin(z, tx, ty, maxProf = 60, aleatoire = false, plusPres = false) {
     const E = niveau.etages[z.ei], D = dyn[z.ei], B = bfsBuf[z.ei];
     const w = E.w, h = E.h;
     const s = icase(E, z.x, z.y); if (s < 0) return null;
@@ -474,10 +475,13 @@ export function creerSimLieu(opts) {
     B.file[b++] = s; B.vu[s] = st; B.prev[s] = -1;
     let trouve = -1, prof = 0, finNiv = b;
     const cands = aleatoire ? [] : null;
+    const tfx = t >= 0 ? t % w : 0, tfy = t >= 0 ? (t / w) | 0 : 0;
+    let meilleur = -1, md = Infinity;
     while (a < b) {
       if (a === finNiv) { prof++; finNiv = b; if (prof > maxProf) break; }
       const i = B.file[a++];
       if (i === t) { trouve = i; break; }
+      if (plusPres && t >= 0) { const ddx = (i % w) - tfx, ddy = ((i / w) | 0) - tfy, dd = ddx * ddx + ddy * ddy; if (dd < md) { md = dd; meilleur = i; } }
       if (cands && i !== s && !D.bloque[i] && prof >= FIN) cands.push(i);
       const x = i % w, y = (i / w) | 0;
       for (let k = 0; k < 8; k++) {
@@ -491,6 +495,7 @@ export function creerSimLieu(opts) {
       }
     }
     if (cands) { if (!cands.length) return null; trouve = cands[Math.floor(rngSim() * cands.length)]; }
+    if (trouve < 0 && plusPres && meilleur >= 0 && meilleur !== s) trouve = meilleur;
     if (trouve < 0) return null;
     const out = [];
     for (let i = trouve; i !== s && i >= 0; i = B.prev[i]) out.push(i);
@@ -637,7 +642,7 @@ export function creerSimLieu(opts) {
         z.tChemin -= dt;
         if (z.tChemin <= 0 && (!z.chemin.length || z.ci >= z.chemin.length)) {
           z.tChemin = 800;
-          const c = chemin(z, z.cible.x, z.cible.y, 50);
+          const c = chemin(z, z.cible.x, z.cible.y, 50, false, true);
           z.chemin = c || []; z.ci = 0;
         }
         const r = suivreChemin(z, v, dt);
@@ -1230,13 +1235,28 @@ export function creerSimLieu(opts) {
     vm++; cache = null;
     return { ok: true, alarme };
   }
+  // L'alarme appelle tout le quartier : chaque mort du même étage à ≤ APPEL unités l'entend, murs ou pas, même endormi,
+  // et marche vers la voiture (un peu à côté : ils s'y entassent) jusqu'à la fin de l'alarme, et un moment après.
+  function appelAlarme(a) {
+    const A = RX.VOITURES.ALARME;
+    for (const z of zombies) {
+      if (z.etage !== a.etage || z.etat === 'chasse' || z.etat === 'cogne' || z.enCombat || z.saisit) continue;
+      const d = Math.hypot(z.x - a.x, z.y - a.y); if (d > A.APPEL) continue;
+      if (z.etat !== 'alerte') changerEtat(z, 'alerte');
+      if (!z.cible || Math.hypot(z.cible.x - a.x, z.cible.y - a.y) > 3) {
+        const ang = rngCbt() * Math.PI * 2, r = 1 + rngCbt() * 2;
+        z.cible = { x: a.x + Math.cos(ang) * r, y: a.y + Math.sin(ang) * r }; z.chemin = []; z.tChemin = 0;
+      }
+      z.tEtat = Math.max(z.tEtat || 0, a.fin - T + A.APRES_MS);
+    }
+  }
   function tickAlarmes(dt) {
     if (!alarmes.length) return;
     const A = RX.VOITURES.ALARME;
     for (let k = alarmes.length - 1; k >= 0; k--) {
       const a = alarmes[k];
       a.tb += dt;
-      if (a.tb >= A.PERIODE_MS) { a.tb -= A.PERIODE_MS; bruit({ etage: a.etage, x: a.x, y: a.y, rayon: A.RAYON }); }
+      if (a.tb >= A.PERIODE_MS) { a.tb -= A.PERIODE_MS; bruit({ etage: a.etage, x: a.x, y: a.y, rayon: A.RAYON }); appelAlarme(a); }
       if (T >= a.fin) { alarmes.splice(k, 1); evts.push({ type: 'voiture', action: 'alarme_fin', cle: a.cle }); vm++; }
     }
   }

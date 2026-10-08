@@ -85,6 +85,11 @@ const D = {
     L('briquet', 1, 1, 0.06), L('sac_a_dos', 1, 1, 0.03), L('photo_famille', 1, 1, 0.04), L('telephone_mort', 1, 1, 0.1),
     L('bidon_vide', 1, 1, 0.02), L('fusee_detresse', 1, 1, 0.02), L('carte_routiere', 1, 1, 0.07),
   ],
+  // une voiture déjà pillée : ce que les pillards ont laissé (abords : voitures « pillées »)
+  voiture_pillee: [
+    L('canette_vide', 1, 1, 0.12), L('chiffon', 1, 1, 0.08), L('eclat_verre', 1, 1, 0.1), L('journal_papier', 1, 1, 0.08), L('bouteille_vide', 1, 1, 0.06),
+    L('telephone_mort', 1, 1, 0.05), L('ressort', 1, 1, 0.04), L('cable_electrique', 1, 1, 0.03), L('carte_routiere', 1, 1, 0.03), L('barre_cereales', 1, 1, 0.015),
+  ],
   poubelle: [
     L('canette_vide', 1, 2, 0.32), L('bouteille_vide', 1, 1, 0.22), L('sac_plastique', 1, 2, 0.28), L('journal_papier', 1, 1, 0.14),
     L('chiffon', 1, 1, 0.1), L('eclat_verre', 1, 1, 0.08), L('boite_vide', 1, 2, 0.2), L('telephone_mort', 1, 1, 0.04),
@@ -476,7 +481,7 @@ const SACS = {
 }
 
 export const CATEGORIES_MEUBLE = ['vetements', 'frigo', 'cuisine', 'etagere', 'bureau', 'comptoir', 'caisse', 'lit',
-  'salle_de_bain', 'voiture', 'poubelle', 'machine', 'table', 'canape'];
+  'salle_de_bain', 'voiture', 'voiture_pillee', 'poubelle', 'machine', 'table', 'canape'];   // voiture_pillee : voitures déjà vidées des abords
 
 // ---------------------------------------------------------------------------
 // Tirage

@@ -206,6 +206,7 @@ function fermerFiche() {
   if (!E) return;
   E.sel = null;
   if (E.fiche) { E.fiche.remove(); E.fiche = null; }
+  if (E.barrePartir) { E.barrePartir.remove(); E.barrePartir = null; }
   if (E.F) E.F.couches.route.innerHTML = '';
   E.racine.classList.remove('avec-fiche');
   for (const m of E.marqueurs) m.g.classList.remove('choisi');
@@ -213,6 +214,7 @@ function fermerFiche() {
 function ouvrirFiche(id) {
   const l = LIEUX[id]; if (!l) return;
   if (E.fiche) E.fiche.remove();
+  if (E.barrePartir) { E.barrePartir.remove(); E.barrePartir = null; }
   E.sel = id;
   for (const m of E.marqueurs) m.g.classList.toggle('choisi', m.g.dataset.id === id);
   const st = etatLieu(id);
@@ -236,11 +238,15 @@ function ouvrirFiche(id) {
         el('b', {}, a.nom), el('small', {}, `${a.kmh} km/h`)));
     }
     E.fJumelles = el('div', { class: 'f-jumelles' });
-    E.fPartir = el('button', { class: 'carte-btn principal', onclick: partir }, 'Partir');
-    fiche.append(E.fInfos, allures, E.fJumelles, el('div', { class: 'f-actions' }, E.fPartir));
+    // Partir : hors de la fiche, collé en bas de l'écran, au centre ; il n'existe que tant qu'un lieu est choisi
+    E.fPartir = el('button', { class: 'carte-btn principal carte-partir-btn', onclick: partir }, 'Partir');
+    E.fAttendre = el('button', { class: 'carte-btn carte-attendre', hidden: true, onclick: attendreFenetre }, 'Attendre');
+    E.barrePartir = el('div', { class: 'carte-partir' }, E.fAttendre, E.fPartir);
+    fiche.append(E.fInfos, allures, E.fJumelles);
   }
   E.fiche = fiche; E.contourner = false;
   E.racine.append(fiche); E.racine.classList.add('avec-fiche');
+  if (E.barrePartir) E.racine.append(E.barrePartir);
   if (!ici) majFiche(true);
   else E.F.couches.route.innerHTML = '';
 }
@@ -254,14 +260,23 @@ function majFiche(cadrer = false) {
   const r = evaluerRisque(iti, ctx, { de: E.depuis, vers: id });
   E.iti = iti;
   let crans = '';
-  for (let i = 1; i <= 5; i++) crans += `<i class="${i <= r.cran ? 'on r' + r.cran : ''}"></i>`;
+  // forte migration en cours (et connue) : on entend les morts, on ne sait pas où ils sont — le danger est inconnu
+  if (r.inconnu) for (let i = 1; i <= 5; i++) crans += '<i class="inconnu">?</i>';
+  else for (let i = 1; i <= 5; i++) crans += `<i class="${i <= r.cran ? 'on r' + r.cran : ''}"></i>`;
+  const fen = fenetreHoraire(id);
   E.fInfos.innerHTML = '';
-  E.fInfos.append(
+  E.fInfos.append(...[
     el('div', { class: 'f-ligne' }, el('span', { class: 'f-lab' }, 'Distance'), el('b', {}, fmtDistance(iti.metres)), iti.route ? null : el('small', {}, ' (à travers champs)')),
     el('div', { class: 'f-ligne' }, el('span', { class: 'f-lab' }, 'Durée'), el('b', {}, '~' + fmtDuree(duree)), v.raisons.length ? el('small', {}, ' — ' + v.raisons.join(', ')) : null),
-    el('div', { class: 'f-ligne f-risque' }, el('span', { class: 'f-lab' }, 'Risque'), el('span', { class: 'f-jauge', html: crans }), el('b', { class: 'r' + r.cran }, r.libelle)),
-    r.raisons.length ? el('div', { class: 'f-raisons' }, r.raisons.join(' · ')) : null,
-  );
+    el('div', { class: 'f-ligne f-risque' }, el('span', { class: 'f-lab' }, 'Risque'), el('span', { class: 'f-jauge', html: crans }), el('b', { class: r.inconnu ? 'r-inconnu' : 'r' + r.cran }, r.libelle)),
+    r.raisons.length ? el('div', { class: 'f-raisons' + (r.inconnu ? ' f-migration' : '') }, r.raisons.join(' · ')) : null,
+    fen && !fen.ok ? el('div', { class: 'f-raisons f-horaire' }, fen.texte) : null,
+  ].filter(Boolean));
+  if (E.fPartir) {
+    E.fPartir.disabled = !!(fen && !fen.ok);
+    E.fAttendre.hidden = !(fen && !fen.ok);
+    if (fen && !fen.ok) E.fAttendre.textContent = `Attendre ${fen.debut} h (≈ ${fmtDuree(fen.attente)})`;
+  }
   // jumelles : la première rencontre hostile est repérée sur l'itinéraire
   E.fJumelles.innerHTML = '';
   E.repere = null;
@@ -304,8 +319,28 @@ function pointSur(iti, pts, d) {
   const A = iti.points[i - 1], B = iti.points[i]; const t = B.d > A.d ? (d - A.d) / (B.d - A.d) : 0;
   return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t };
 }
+// Une étape de quête qui ne se joue qu'à certaines heures (QUETES[q].etapes[e].heures = [début, fin], fin < début : passe
+// minuit) : on ne part pas vers ce lieu en dehors. → { ok, texte, debut, attente (min) } | null
+function fenetreHoraire(id) {
+  if (!G) return null;
+  for (const [qid, q] of Object.entries(G.world.quetes || {})) {
+    const e = q && !q.faite && QUETES[qid] && QUETES[qid].etapes[q.etape];
+    if (!e || e.lieu !== id || !e.heures) continue;
+    const [h0, h1] = e.heures, h = clock.heure();
+    const ok = h0 < h1 ? h >= h0 && h < h1 : h >= h0 || h < h1;
+    const m = G.world.minutes % 1440, attente = ((h0 * 60 - m) % 1440 + 1440) % 1440;
+    return { ok, texte: e.heuresTexte || `On ne peut y aller qu’à partir de ${h0} h.`, debut: h0, attente };
+  }
+  return null;
+}
+function attendreFenetre() {
+  const fen = E && E.sel && fenetreHoraire(E.sel); if (!fen || fen.ok) return;
+  clock.avancer(fen.attente);
+  majFiche();
+}
 function partir() {
   const vers = E.sel; if (!vers) return;
+  { const fen = fenetreHoraire(vers); if (fen && !fen.ok) return; }
   const params = { de: E.depuis, vers, allure, groupe: null, minutesDepart: G ? G.world.minutes : undefined, contourner: !!(E.contourner && E.repere) };
   flow.voyager(params);
 }

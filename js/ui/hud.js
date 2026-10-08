@@ -86,7 +86,7 @@ function montrerBulle(ancre, titre, detail) {
 let signatureMoodles = '', dernierObjectif = '';
 export function majHUD() {
   if (!racine || !G) return;
-  els.jour.textContent = `Jour ${clock.jour()}`;
+  els.jour.textContent = `Jour ${clock.jour()} · ${clock.dateTexte()}`;
   els.h.textContent = `${String(clock.heure()).padStart(2, '0')}:${String(clock.minute()).padStart(2, '0')}`;
   racine.classList.toggle('nuit', clock.estNuit());
   const l = texteLieu(); els.lieu.textContent = l; els.lieuBox.hidden = !l;

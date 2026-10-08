@@ -188,7 +188,12 @@ function arriver() {
     G.player.stats.distance = (G.player.stats.distance || 0) + Math.round(m);
   }
   emit('voyage:fin', { de, vers, metres: m });
-  flow.explorer(vers);
+  // d'où l'on arrive : le dernier point de la route avant le lieu (ou le lieu de départ) → la sortie de ce côté
+  const pts = (V.iti && V.iti.points) || [], dest = LIEUX[vers];
+  let venantDe = null;
+  for (let k = pts.length - 2; k >= 0 && !venantDe; k--) if (dest && Math.hypot(pts[k].lat - dest.lat, pts[k].lon - dest.lon) > 1e-5) venantDe = { lat: pts[k].lat, lon: pts[k].lon };
+  if (!venantDe && LIEUX[de]) venantDe = { lat: LIEUX[de].lat, lon: LIEUX[de].lon };
+  flow.explorer(vers, { venantDe });
 }
 export function demiTour() {
   if (!V || V.fini || V.iti.demiTour) return;

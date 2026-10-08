@@ -65,13 +65,34 @@ export async function obtenirCanal(lieuId, niveau, L) {
   });
   return creerCanalLocal(sim, JOUEUR_ID);
 }
+// Arriver par la sortie du côté d'où l'on vient : venantDe = { lat, lon } du dernier point de la route avant le lieu.
+// On choisit, à l'étage de l'entrée, la sortie la plus en face de cette direction (le nord en haut de la carte), et l'on
+// apparaît deux unités à l'intérieur, tourné vers le centre. → { etage, x, y, dir } | null (entrée par défaut).
+function arriveeParSortie(niveau, L, venantDe) {
+  if (!L || L.lat == null || venantDe.lat == null || !niveau.sorties.length) return null;
+  const dx = (venantDe.lon - L.lon) * Math.cos(L.lat * Math.PI / 180), dy = -(venantDe.lat - L.lat), n = Math.hypot(dx, dy);
+  if (n < 1e-9) return null;
+  const ux = dx / n, uy = dy / n, e0 = niveau.entrees.defaut.etage;
+  const E = niveau.etages[niveau.etageIdx[e0]]; if (!E) return null;
+  const cx = E.w / FIN / 2, cy = E.h / FIN / 2;
+  let best = null, bs = -Infinity;
+  for (const s of niveau.sorties) {
+    if (s.etage !== e0) continue;
+    const vx = s.cx - cx, vy = s.cy - cy, sc = (vx * ux + vy * uy) / (Math.hypot(vx, vy) || 1);
+    if (sc > bs) { bs = sc; best = s; }
+  }
+  if (!best) return null;
+  const vx = cx - best.cx, vy = cy - best.cy, vn = Math.hypot(vx, vy) || 1;
+  const c = caseLibrePres(niveau, { etage: e0, x: Math.floor(best.cx + vx / vn * 2), y: Math.floor(best.cy + vy / vn * 2) });
+  return c ? { etage: c.etage, x: c.x + 0.5, y: c.y + 0.5, dir: Math.atan2(vy, vx) } : null;
+}
 export function niveauParse(id, def) { return niveauxParses[id] || (niveauxParses[id] = parserNiveau(def)); }
 
 // ---------- État de la vue ----------
 let V = null;
 const vue = () => V;
 
-export async function entrer({ lieuId, entree, arene = null } = {}) {
+export async function entrer({ lieuId, entree, arene = null, venantDe = null } = {}) {
   if (V) sortir();
   await chargerOptionnels();
   lienCss();
@@ -126,12 +147,14 @@ export async function entrer({ lieuId, entree, arene = null } = {}) {
     const dx = ab ? ab.dx - (avant.dx || 0) : 0, dy = ab ? ab.dy - (avant.dy || 0) : 0;
     pos = { etage: P.etage, x: P.x + dx, y: P.y + dy };
   }
+  // on arrive de la route : par la sortie du côté d'où l'on vient, pas au milieu du lieu
+  if (!pos && !entree && venantDe && !arene) pos = arriveeParSortie(niveau, L, venantDe);
   if (!pos) {
     const e = (entree && (niveau.entrees[entree] || caseLibrePres(niveau, niveau.marqueurs[entree]))) || niveau.entrees.defaut;
     if (entree && !niveau.entrees[entree] && !niveau.marqueurs[entree]) console.warn(`[explore] entrée « ${entree} » inconnue dans ${idNiveau}`);
     pos = { etage: e.etage, x: e.x + 0.5, y: e.y + 0.5 };
   }
-  V.j.x = pos.x; V.j.y = pos.y; V.j.dir = Math.PI / 2;
+  V.j.x = pos.x; V.j.y = pos.y; V.j.dir = pos.dir ?? Math.PI / 2;
   ajouterJoueurSim(pos);
   changerEtage(pos.etage);
   if (!arene) {
@@ -457,6 +480,7 @@ function image(t, dt) {
     if (V.nLampes >= 4) break;
   }
   V.nLampes = feuxCommeLampes(V.lampes, V.nLampes);       // feux de camp construits : ils éclairent pour de vrai
+  V.nLampes = feuxAlarmes(t, V.lampes, V.nLampes);        // une alarme de voiture : les phares clignotent
   const opaque = V.canal.grilles ? V.canal.grilles(E.id).opaque : E.opaque;
   calculerLOS(C, opaque, j.x, j.y, 17);
   calculerVision(C, E, jour, j.x, j.y, V.lampes, V.nLampes);
@@ -521,7 +545,7 @@ function image(t, dt) {
   V.hud.sang.style.opacity = (J.cbt.flash * 0.85 + (G.player.pv < 30 ? 0.25 + 0.1 * Math.sin(t / 300) : 0) + (G.player.agonie ? 0.45 : 0)).toFixed(3);
   Sc.pairs = pairs; Sc.zombies = V.zListe; Sc.portes = snap.portes; Sc.sol = snap.sol; Sc.cadavres = snap.cadavres; Sc.pnj = V.pnj;
   Sc.constructions = snap.constructions || []; Sc.placement = fantome(); Sc.minutes = G.world.minutes;
-  Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.objectif = V.objectif || null;
+  Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.alarmes = feuxAlarme; Sc.objectif = V.objectif || null;
   const Fo = Sc.fouille;
   if (V.fouille) { Fo.x = V.fouille.x; Fo.y = V.fouille.y; Fo.frac = V.fouille.p; Fo.n = V.fouille.items.length; Sc.fouilleOn = true; }
   else if (V.action) { Fo.x = V.action.x; Fo.y = V.action.y; Fo.frac = V.action.t / V.action.duree; Fo.n = 0; Sc.fouilleOn = true; }
@@ -577,6 +601,30 @@ function lisserPairs(dt) {
     out.push(q);
   }
   return out;
+}
+// Les feux d'une voiture dont l'alarme hurle : phares et clignotants qui battent ensemble (≈ 1 fois par seconde).
+// Les phares éclairent pour de vrai (deux faisceaux) ; le rendu dessine en plus la lueur des quatre feux (Sc.alarmes).
+const feuxAlarme = [];
+function feuxAlarmes(t, lampes, n) {
+  feuxAlarme.length = 0;
+  const al = V.snap && V.snap.alarmes; if (!al || !al.length) return n;
+  const on = Math.floor(t / 480) % 2 === 0;
+  for (const a of al) {
+    if (a.etage !== V.E.id || Math.hypot(a.x - V.j.x, a.y - V.j.y) > 30) continue;
+    const m = V.niveau.meubleParCle[a.cle]; if (!m) continue;
+    const rot = (m.rendu && m.rendu.rot) || 0, dir = rot * Math.PI / 2;   // les sprites de véhicules regardent vers +x
+    const lx = m.x1 + 1 - m.x0, ly = m.y1 + 1 - m.y0;
+    const hl = (rot % 2 ? ly : lx) / 2, hw = (rot % 2 ? lx : ly) / 2;
+    const f = { x: a.x, y: a.y, dir, hl, hw, on };
+    feuxAlarme.push(f);
+    if (!on) continue;
+    const c = Math.cos(dir), s = Math.sin(dir);
+    for (const k of [-1, 1]) {
+      if (n >= 12) break;
+      lampes[n++] = { x: a.x + c * hl - s * hw * 0.6 * k, y: a.y + s * hl + c * hw * 0.6 * k, dir, forme: 'cone', angle: 55, portee: 7, sec: false };
+    }
+  }
+  return n;
 }
 // Une alarme de voiture hurle tant qu'elle dure : on l'entend d'où l'on est (la plus proche seulement).
 function majAlarmes() {

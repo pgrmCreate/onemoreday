@@ -26,6 +26,7 @@ export const REGLAGES = {
                                 //   (encore 30 % plus lent qu'en v3 : 1 667 ms / 0,7).
                                 //   ↑ = le monde vieillit moins vite (moins de repas, de piles) ; ↓ = plus pressant.
     DEPART_MINUTES: 480,        // la partie commence le jour 1 à 8 h 00.
+    DATE_JOUR1: [2026, 9, 23],  // le jour 1 est le mercredi 23 septembre 2026 (docs/HISTOIRE.md : trois semaines après le Mercredi).
     HEURES: {                   // courbe de lumière (clock.lumiereJour) : 0 la nuit, rampe, 1 le jour
       AUBE: 6,                  //   6 h → la lumière commence à monter
       JOUR: 8,                  //   8 h → plein jour (lumiereJour = 1)
@@ -197,8 +198,9 @@ export const REGLAGES = {
       COUPURE_MAINS_NUES: 0.35, // sans rien en main (le coude dans un vêtement) : 35 % de s'entailler la main sur le verre.
       FORCER: { MS: 7000, BRUIT_S: 2, ALARME_MULT: 0.4, OUTIL: 'forcer' }, // pied-de-biche dans la portière : lent, discret,
                                 // et l'alarme ne se déclenche qu'une fois sur 2,5 par rapport à la vitre.
-      ALARME: { MS: 45000, PERIODE_MS: 1000, RAYON: 30, SON_MS: 2100 }, // l'alarme hurle 45 s : chaque seconde un bruit
-                                // de 30 cases (tout le quartier) ; on l'entend à 40 cases.
+      ALARME: { MS: 45000, PERIODE_MS: 1000, RAYON: 30, SON_MS: 2100, APPEL: 100, APRES_MS: 20000 }, // l'alarme hurle 45 s :
+                                // chaque seconde un bruit de 30 cases, et TOUS les morts à ≤ 100 unités (murs ou pas, même
+                                // endormis) marchent vers la voiture, jusqu'à 20 s après la fin ; on l'entend à 40 cases.
     },
 
     // --- PORTES & VERROUS ---
@@ -864,10 +866,10 @@ export const REGLAGES = {
     INTERVALLE_J: [3, 5],       // après les premières sirènes de l'histoire, d'autres reviennent tous les 3 à 5 jours…
     DUREE_H: [18, 34],          // … et hurlent 18 à 34 h de jeu.
     PREMIERE_J: 3,              // les premiers événements « au hasard » (hordes) à partir du jour 3.
-    ANNONCE_RADIO_H: 12,        // une radio (js/game/radio.js) prévient des sirènes ~12 h avant…
+    ANNONCE_RADIO_H: 60,        // une radio (js/game/radio.js) prévient des sirènes ~2 jours et demi avant…
     SIGNES_H: 0.25,             // … sans radio : à peine un quart d'heure de drones, et seulement si l'on est dans la zone.
     HORDE: {                    // une horde traverse UN lieu (un bourg, un quartier, ta base)
-      ANNONCE_H: 8,             //   la radio la voit venir ~8 h avant ;
+      ANNONCE_H: 48,            //   la radio la voit venir ~2 jours avant (les éclaireurs de l'armée la suivent) ;
       SIGNES_H: 0.4,            //   sans radio : on l'entend ~25 min avant, sur place ;
       DUREE_H: [6, 14],         //   elle met 6 à 14 h à passer ;
       DENSITE: 1.8,             //   + 1,8 × (morts max du lieu) morts en plus, qui marchent (ils ne courent pas).

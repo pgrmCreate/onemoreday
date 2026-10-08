@@ -29,7 +29,9 @@ export async function explorer(lieuId, opts = {}) {
   if (G) {
     const P = G.player.position || {};
     // on garde la position précise (reprise de partie, rejoindre son coéquipier) si rien n'impose une entrée
-    if (!(P.mode === 'lieu' && P.lieu === lieuId && P.x != null && !opts.entree && !P.sorti)) G.player.position = { mode: 'lieu', lieu: lieuId, entree: opts.entree || null };
+    // revenir dans le lieu qu'on vient de quitter (« Rester ici ») : on se retrouve à la sortie qu'on avait prise
+    if (P.sorti && P.lieu === lieuId && P.x != null && !opts.entree) G.player.position = { mode: 'lieu', lieu: lieuId, etage: P.etage, x: P.x, y: P.y, abords: P.abords };
+    else if (!(P.mode === 'lieu' && P.lieu === lieuId && P.x != null && !opts.entree && !P.sorti)) G.player.position = { mode: 'lieu', lieu: lieuId, entree: opts.entree || null };
     const L = G.world.lieux[lieuId] || (G.world.lieux[lieuId] = {});
     L.decouvert = true; L.visite = true;
   }

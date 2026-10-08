@@ -569,6 +569,22 @@ export function creerRendu(cv, niveau) {
       if (z.etat === 'chasse') { if (Math.hypot(z.x - S.joueur.x, z.y - S.joueur.y) > 3) marque(ecranX(z.x), ecranY(z.y) - pxc * 0.8, 1, true); continue; }
       if (z.alerte > 0.02) marque(ecranX(z.x), ecranY(z.y) - pxc * 0.8, z.alerte, false);
     }
+    // alarmes de voiture : la lueur des phares (blanc) et des clignotants (orange), quand ils sont allumés
+    for (const f of S.alarmes || []) {
+      if (!f.on) continue;
+      const c = Math.cos(f.dir), s = Math.sin(f.dir);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      for (const [av, k] of [[1, -1], [1, 1], [-1, -1], [-1, 1]]) {
+        const x = f.x + c * f.hl * av * 0.96 - s * f.hw * 0.75 * k, y = f.y + s * f.hl * av * 0.96 + c * f.hw * 0.75 * k;
+        const ip = icase(E, x, y); if (ip < 0 || C.los[ip] !== C.stamp) continue;
+        const ex = ecranX(x), ey = ecranY(y), r = pxc * (av > 0 ? 0.75 : 0.6);
+        const g = ctx.createRadialGradient(ex, ey, 0, ex, ey, r);
+        if (av > 0) { g.addColorStop(0, 'rgba(255,250,225,0.95)'); g.addColorStop(0.35, 'rgba(255,214,120,0.55)'); g.addColorStop(1, 'rgba(255,170,60,0)'); }
+        else { g.addColorStop(0, 'rgba(255,190,70,0.95)'); g.addColorStop(0.4, 'rgba(255,130,20,0.5)'); g.addColorStop(1, 'rgba(255,90,0,0)'); }
+        ctx.fillStyle = g; ctx.fillRect(ex - r, ey - r, 2 * r, 2 * r);
+      }
+      ctx.restore();
+    }
     // ondes (ce qu'on entend)
     for (const o of S.ondes) {
       if (o.etage !== E.id) continue;
