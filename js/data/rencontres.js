@@ -31,7 +31,7 @@ export const RENCONTRES = [
   {
     id: 'r_errant_isole', poids: 8, type: 'combat', echelle: null, zones: null, nuit: null, dangerMin: 0,
     illu: 'rue', combat: { zombies: ['errant'] },
-    texte: "Il sort d'un porche au moment où tu passes. Trop près pour l'éviter. Ses doigts se tendent déjà.",
+    texte: "Un mort sort d'un porche au moment où tu passes, beaucoup trop près pour que tu puisses l'éviter, et ses doigts se tendent déjà vers toi.",
   },
   {
     id: 'r_errants_paire', poids: 5, type: 'combat', echelle: 'salon', zones: null, nuit: null, dangerMin: 0.3,
@@ -41,42 +41,42 @@ export const RENCONTRES = [
   {
     id: 'r_coureur', poids: 4, type: 'combat', echelle: null, zones: null, nuit: null, dangerMin: 0.35, si: { jourMin: 2 },
     illu: 'rue', combat: { zombies: ['coureur'], surprise: true },
-    texte: "Un bruit de course derrière toi. Pas des pas de vivant : trop réguliers, trop lourds. Tu te retournes juste à temps — presque.",
+    texte: "Tu entends quelqu'un courir derrière toi, mais ce ne sont pas des pas de vivant : ils sont trop réguliers et trop lourds. Tu te retournes juste à temps, ou presque.",
   },
   {
     id: 'r_meute_ville', poids: 2, type: 'combat', echelle: 'salon', zones: null, nuit: true, dangerMin: 0.2, si: { jourMin: 2 },
     illu: 'rue_nuit', combat: { zombies: ['chien_infecte'] },
-    texte: "Des grognements dans le noir. Un chien, puis la silhouette du chien, puis ses dents.",
+    texte: "Tu entends des grognements dans le noir, puis tu devines un chien, sa silhouette, et enfin ses dents.",
   },
   {
     id: 'r_hopital_evades', poids: 4, type: 'combat', echelle: 'salon', zones: ['hopital_zone'], nuit: null, dangerMin: 0,
     illu: 'hopital', combat: { zombies: ['errant', 'putrefie'] },
-    texte: "Des blouses de patients ouvertes dans le dos, des perfusions arrachées qui pendent encore aux bras. Ils sortent du parking de l'hôpital en file indienne. Vers toi.",
+    texte: "Ils sortent en file indienne du parking de l'hôpital et viennent vers toi, dans des blouses de patients ouvertes dans le dos, avec des perfusions arrachées qui pendent encore à leurs bras.",
   },
   {
     id: 'r_errant_champ', poids: 5, type: 'combat', echelle: 'region', zones: null, nuit: null, dangerMin: 0,
     illu: 'champ', combat: { zombies: ['errant'] },
-    texte: "Un errant au milieu d'un champ de blé que personne n'a moissonné. Il t'a vu{|e}. Il fend les épis vers toi, lentement, sans détour.",
+    texte: "Au milieu d'un champ de blé que personne n'a moissonné, un mort t'a vu{|e}, et il fend les épis vers toi, lentement, sans faire le moindre détour.",
   },
   {
     id: 'r_sanglier', poids: 2, type: 'combat', echelle: 'region', zones: null, nuit: null, dangerMin: 0,
     illu: 'garrigue', combat: { zombies: ['sanglier'] },
-    texte: "Un froissement dans les chênes kermès. Un grognement bas. Il sort du fourré tête baissée — et il ne s'arrête pas.",
+    texte: "Tu entends un froissement dans les chênes kermès, puis un grognement bas, et un sanglier sort du fourré tête baissée, sans s'arrêter.",
   },
   {
     id: 'r_meute_campagne', poids: 2, type: 'combat', echelle: 'region', zones: null, nuit: true, dangerMin: 0, si: { jourMin: 2 },
     illu: 'champ_nuit', combat: { zombies: ['chien_infecte', 'chien_infecte'] },
-    texte: "Des yeux dans le noir, à hauteur de genou. Deux paires. Ils ne grognent plus : ils ont faim, et ils t'ont encerclé{|e}.",
+    texte: "Deux paires d'yeux brillent dans le noir, à hauteur de genou. Ils ne grognent plus : ils ont faim, et ils t'ont encerclé{|e}.",
   },
   {
     id: 'r_fauve_route', poids: 3, type: 'combat', echelle: 'region', zones: ['la_barben_zone'], nuit: null, dangerMin: 0, si: { jourMin: 3 },
     illu: 'route_region', combat: { zombies: ['fauve'] },
-    texte: "Sur le bas-côté, un cheval éventré. Quelque chose de fauve relève la tête de la carcasse, le museau rouge jusqu'aux yeux. Elle ne rugit pas. Elle baisse les épaules.",
+    texte: "Sur le bas-côté, un cheval a été éventré. Une bête fauve relève la tête de la carcasse, le museau rouge jusqu'aux yeux. Elle ne rugit pas : elle baisse les épaules, prête à bondir.",
   },
   {
     id: 'r_soldat_perdu', poids: 2, type: 'combat', echelle: 'region', zones: ['ba701_zone', 'a54', 'istres_zone', 'aerodrome_zone'], nuit: null, dangerMin: 0, si: { jourMin: 3 },
     illu: 'route_region', combat: { zombies: ['militaire'] },
-    texte: "Un soldat seul sur la route, le fusil en bandoulière qu'il ne sait plus utiliser. Il marche au pas, droit vers toi, comme si on lui en avait donné l'ordre.",
+    texte: "Un soldat mort marche seul sur la route, avec en bandoulière un fusil qu'il ne sait plus utiliser. Il avance au pas, droit vers toi, comme si on lui en avait donné l'ordre.",
   },
 
   // ═══════════════════════════ CHOIX & RENCONTRES HUMAINES ═══════════════════════════
@@ -112,49 +112,49 @@ export const RENCONTRES = [
   {
     id: 'r_sac_cadavre', poids: 4, type: 'butin', echelle: null, zones: null, nuit: null, dangerMin: 0,
     illu: 'rue', butin: { table: 'voyage.cadavre', n: 1 }, effets: { tempsMin: 3 },
-    texte: "Un corps sur le trottoir, face contre terre, un sac encore sur le dos. Il ne bouge pas. Tu vérifies deux fois, du bout du pied, avant de défaire les sangles.",
+    texte: "Un corps est étendu sur le trottoir, face contre terre, un sac encore sur le dos. Il ne bouge pas, mais tu vérifies deux fois du bout du pied avant de défaire les sangles.",
   },
   {
     id: 'r_boite_gants', poids: 3, type: 'butin', echelle: null, zones: null, nuit: null, dangerMin: 0,
     illu: 'voiture', butin: { table: 'voyage.voiture', n: 1 }, effets: { tempsMin: 3 },
-    texte: "Une voiture encastrée dans un platane, le capot en accordéon. Le conducteur n'est plus là. La boîte à gants, si.",
+    texte: "Une voiture s'est encastrée dans un platane, le capot plié en accordéon. Le conducteur a disparu, mais la boîte à gants est toujours là.",
   },
   {
     id: 'r_verger', poids: 3, type: 'butin', echelle: 'region', zones: null, nuit: false, dangerMin: 0,
     illu: 'verger', butin: { table: 'voyage.verger', n: 1 }, effets: { tempsMin: 15 },
-    texte: "Un verger abandonné au bord du chemin, figuiers et amandiers. Les fruits pourrissent dans l'herbe, mais pas tous. Tu remplis tes poches en surveillant la route.",
+    texte: "Au bord du chemin, il y a un verger abandonné, avec des figuiers et des amandiers. La plupart des fruits pourrissent dans l'herbe, mais pas tous, et tu remplis tes poches en surveillant la route.",
   },
 
   // ═══════════════════════════ AMBIANCE ═══════════════════════════
   {
     id: 'r_cloches', poids: 1, type: 'ambiance', echelle: 'salon', zones: ['centre_ancien', 'cours'], nuit: null, dangerMin: 0,
     illu: 'clocher',
-    texte: "Quelque part vers Saint-Michel, une cloche sonne. Une fois. Deux fois. Personne ne sonne plus les cloches. Au bout de la rue, des têtes se tournent toutes dans la même direction, et tu en profites pour passer.",
+    texte: "Quelque part du côté de Saint-Michel, une cloche sonne une fois, puis deux. Plus personne ne sonne les cloches, pourtant. Au bout de la rue, toutes les têtes se tournent dans la même direction, et tu en profites pour passer.",
   },
   {
     id: 'r_mistral_volets', poids: 2, type: 'ambiance', echelle: 'salon', zones: null, nuit: null, dangerMin: 0,
     illu: 'rue', effets: { sta: -5 },
-    texte: "Une rafale de mistral fait claquer tous les volets de la rue en même temps. Tu t'es plaqué{|e} contre un mur avant même de comprendre. Ton cœur met longtemps à redescendre.",
+    texte: "Une rafale de mistral fait claquer tous les volets de la rue en même temps, et tu t'es plaqué{|e} contre un mur avant même de comprendre. Ton cœur met longtemps à se calmer.",
   },
   {
     id: 'r_graffiti', poids: 1, type: 'ambiance', echelle: 'salon', zones: null, nuit: false, dangerMin: 0,
     illu: 'vitrine',
-    texte: "Sur la vitrine d'une banque, à la bombe rouge : « ILS ENTENDENT TOUT. MARCHEZ PIEDS NUS. » Juste en dessous, une paire de chaussures bien rangée, lacets dénoués.",
+    texte: "Sur la vitrine d'une banque, quelqu'un a écrit à la bombe rouge : « ILS ENTENDENT TOUT. MARCHEZ PIEDS NUS. » Juste en dessous, une paire de chaussures est rangée bien proprement, les lacets dénoués.",
   },
   {
     id: 'r_helicoptere', poids: 1, type: 'ambiance', echelle: 'region', zones: null, nuit: false, dangerMin: 0, unique: true,
     illu: 'ciel',
-    texte: "Un bruit de rotor, loin. Un hélicoptère passe très haut, cap au nord, sans ralentir. Tu agites les bras longtemps après qu'il a disparu derrière les Alpilles.",
+    texte: "Tu entends au loin un bruit de rotor : un hélicoptère passe très haut, cap au nord, sans ralentir. Tu agites les bras longtemps après qu'il a disparu derrière les Alpilles.",
   },
   {
     id: 'r_pendus', poids: 1, type: 'ambiance', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true,
     illu: 'platane',
-    texte: "Trois corps pendus à un platane au bord de la départementale, mains liées dans le dos. Un carton au cou du premier : « PILLARD ». Les trois pieds bougent encore, doucement, à hauteur de ton visage. Personne ne les a achevés. C'était peut-être le but.",
+    texte: "Au bord de la départementale, trois hommes ont été pendus à un platane, les mains liées dans le dos, avec un carton au cou du premier : « PILLARD ». Leurs pieds bougent encore doucement, à hauteur de ton visage. Personne ne les a achevés, et c'était peut-être voulu.",
   },
   {
     id: 'r_brouillard', poids: 1, type: 'ambiance', echelle: null, zones: null, nuit: null, dangerMin: 0,
     illu: 'brouillard', effets: { tempsMin: 5 },
-    texte: "Le brouillard monte du canal et avale la route. Tu n'y vois plus à dix mètres. Tu entends tout, en revanche. Surtout ce qui n'est pas là.",
+    texte: "Le brouillard monte du canal et avale la route, si bien que tu n'y vois plus à dix mètres. En revanche, tu entends tout, et surtout ce qui n'est pas là.",
   },
 ];
 
