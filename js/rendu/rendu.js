@@ -469,7 +469,7 @@ export function creerRendu(cv, niveau) {
       ctx.globalAlpha = a; dessinerObjet(ctx, R);
       // éclairage du ciel : la nuit, le toit est sombre (comme ceux des bâtiments)
       const lum = 0.16 + 0.84 * (S.jour ?? 1);
-      ctx.fillStyle = `rgba(0,0,${S.jour < 0.5 ? 8 : 0},${1 - lum})`; ctx.fillRect(c.x * TS, c.y * TS, w * TS, h * TS);
+      if (lum < 1) { ctx.fillStyle = `rgba(0,0,${S.jour < 0.5 ? 8 : 0},${1 - lum})`; ctx.fillRect(c.x * TS, c.y * TS, w * TS, h * TS); }
       ctx.globalAlpha = 1;
     }
   }
@@ -494,9 +494,11 @@ export function creerRendu(cv, niveau) {
       const X = ecranX(sp.x0 / FIN), Y = ecranY(sp.y0 / FIN), Wd = sp.cv.width / TS * pxc, Hd = sp.cv.height / TS * pxc;
       ctx.globalAlpha = a;
       ctx.drawImage(sp.cv, X, Y, Wd, Hd);
-      // éclairage du ciel (nuit : toit sombre) + liseré lunaire
-      ctx.fillStyle = `rgba(0,0,${S.jour < 0.5 ? 8 : 0},${(1 - lum) * (enVue ? 1 : 1.05)})`;
-      ctx.save(); ctx.beginPath(); for (const [x, y] of sp.masque) ctx.rect(ecranX(x / FIN) - 0.5, ecranY(y / FIN) - 0.5, pxc / FIN + 1, pxc / FIN + 1); ctx.clip(); ctx.fillRect(X, Y, Wd, Hd); ctx.restore();
+      // éclairage du ciel (nuit : toit sombre) + liseré lunaire — en plein jour le voile est nul : rien à découper
+      if (lum < 1) {
+        ctx.fillStyle = `rgba(0,0,${S.jour < 0.5 ? 8 : 0},${(1 - lum) * (enVue ? 1 : 1.05)})`;
+        ctx.save(); ctx.beginPath(); for (const [x, y] of sp.masque) ctx.rect(ecranX(x / FIN) - 0.5, ecranY(y / FIN) - 0.5, pxc / FIN + 1, pxc / FIN + 1); ctx.clip(); ctx.fillRect(X, Y, Wd, Hd); ctx.restore();
+      }
       ctx.globalAlpha = 1;
     }
   }

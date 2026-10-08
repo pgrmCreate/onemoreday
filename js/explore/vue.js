@@ -9,6 +9,7 @@ import { emit, on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 import { el, clamp } from '../core/util.js';
 import { pref, setPref } from '../core/prefs.js';
+import { limiteur } from '../core/cadence.js';
 import * as flow from '../game/flow.js';
 import { lieu as lieuDe, chargerNiveau } from '../game/donnees.js';
 import { REGLAGES, presetDifficulte } from '../data/reglages.js';
@@ -385,9 +386,11 @@ function changerEtage(etage) {
 
 // ---------- Boucle ----------
 const tmpPos = { x: 0, y: 0 };
+const sauterImage = limiteur();   // 60 images/s au plus, 30 en mode économie (core/cadence.js)
 function boucle(t) {
   if (!V || !V.actif || V.enPause) return;
   V.raf = requestAnimationFrame(boucle);
+  if (sauterImage(t)) return;
   let dt = Math.min(50, t - V.tPrec); V.tPrec = t;
   if (V.ralenti) { if (t < V.ralenti.fin) dt *= V.ralenti.f; else V.ralenti = null; }
   try { image(t, dt); } catch (e) { console.error('[explore]', e); }
@@ -542,7 +545,8 @@ function image(t, dt) {
   Sc.fx = V.cbt.fx; Sc.sang = V.cbt.sang; Sc.moi = V.canal.joueurId || JOUEUR_ID;
   Sc.styleJoueur = styleJoueur();
   Sc.soi = Sc.soi || {}; Sc.soi.x = j.x; Sc.soi.y = j.y;
-  V.hud.sang.style.opacity = (J.cbt.flash * 0.85 + (G.player.pv < 30 ? 0.25 + 0.1 * Math.sin(t / 300) : 0) + (G.player.agonie ? 0.45 : 0)).toFixed(3);
+  { const o = (J.cbt.flash * 0.85 + (G.player.pv < 30 ? 0.25 + 0.1 * Math.sin(t / 300) : 0) + (G.player.agonie ? 0.45 : 0)).toFixed(3);
+    if (o !== V._sangVu) { V._sangVu = o; V.hud.sang.style.opacity = o; } }   // le DOM n'est touché que si la valeur change
   Sc.pairs = pairs; Sc.zombies = V.zListe; Sc.portes = snap.portes; Sc.sol = snap.sol; Sc.cadavres = snap.cadavres; Sc.pnj = V.pnj;
   Sc.constructions = snap.constructions || []; Sc.placement = fantome(); Sc.minutes = G.world.minutes;
   Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.alarmes = feuxAlarme; Sc.objectif = V.objectif || null;

@@ -48,7 +48,9 @@ function dessiner(racine) {
       el('h3', { class: 'pn-section' }, 'Confort'),
       ligne('vibration', 'Vibrations', g('Sur mobile, au contact et quand tu es touché{|e}.'), interrupteur(pref('vibrations') !== false, (v) => { setPref('vibrations', v); dessiner(racine); }, 'Vibrations')),
       ligne('texte', 'Taille du texte', 'Interface, journal, documents.', el('div', { class: 'op-seg', role: 'radiogroup' }, ...TAILLES.map(([k, n]) =>
-        el('button', { type: 'button', role: 'radio', 'aria-checked': (pref('texte') || 'normal') === k ? 'true' : 'false', class: (pref('texte') || 'normal') === k ? 'actif' : '', onclick: () => { setPref('texte', k); appliquerTailleTexte(); dessiner(racine); } }, n)))));
+        el('button', { type: 'button', role: 'radio', 'aria-checked': (pref('texte') || 'normal') === k ? 'true' : 'false', class: (pref('texte') || 'normal') === k ? 'actif' : '', onclick: () => { setPref('texte', k); appliquerTailleTexte(); dessiner(racine); } }, n)))),
+      // mémorisé dans les préférences : il reste actif aux parties suivantes (core/cadence.js)
+      ligne('pile', 'Mode économie', '30 images par seconde au lieu de 60 : le téléphone chauffe moins et la batterie tient plus longtemps.', interrupteur(!!pref('economie'), (v) => { setPref('economie', v); dessiner(racine); }, 'Mode économie')));
     z.append(el('h3', { class: 'pn-section' }, 'Partie'));
     if (G && G.mode === 'solo') z.append(ligne('coche', 'Sauvegarder', 'La partie se sauvegarde aussi seule, à chaque lieu.', bouton({ label: 'Sauvegarder', icone: 'coche', cls: 'second', onclick: () => toast(sauver() ? 'Partie sauvegardée.' : 'Sauvegarde impossible.', 'info') })));
     z.append(ligne('quitter', 'Quitter vers le titre', etat.confirmer ? 'Sûr ? Ce qui n\'est pas sauvegardé sera perdu.' : null,

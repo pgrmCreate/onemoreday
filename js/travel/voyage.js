@@ -11,6 +11,7 @@ import * as flow from '../game/flow.js';
 import { G, genrer, setFlag } from '../core/state.js';
 import { on, emit } from '../core/bus.js';
 import * as clock from '../core/clock.js';
+import { limiteur } from '../core/cadence.js';
 import { el, fmtDistance, fmtDuree, texteHtml } from '../core/util.js';
 import { seedRng } from '../core/rng.js';
 import { LIEUX, objet } from '../game/donnees.js';
@@ -160,8 +161,10 @@ function devoiler() {
 }
 
 // ---------------------------------------------------------------- boucle
+const sauterImage = limiteur();   // 60 images/s au plus, 30 en mode économie (core/cadence.js)
 function boucle(t) {
   if (!V) return;
+  if (sauterImage(t)) { V.raf = requestAnimationFrame(boucle); return; }
   const dt = Math.min(250, t - V.t); V.t = t;
   const solo = !G || G.mode === 'solo';
   const bloque = V.pauses.size || V.fini || (solo && clock.enPause());

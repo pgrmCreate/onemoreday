@@ -45,6 +45,7 @@ import { chargerDecor } from './scenes/index.js';
 import { creerEffets } from './effets.js';
 import { H, F, RATIO } from './lib.js';
 import { appliquerPhoto } from './photos.js';
+import { limiteur } from '../core/cadence.js';
 
 let courant = null;
 let genrerFn = t => t;
@@ -162,6 +163,7 @@ export function jouerScript(def, opts = {}) {
     let mots = [], motsVisibles = 0, motPas = 0.12, texteT = 0;
     let titreT = -1, titreDef = null;
     let raf = 0, dernier = 0, fini = false;
+    const sauterImage = limiteur();   // 60 images/s au plus, 30 en mode économie (core/cadence.js)
     let appui = null;
     const pause = !!opts.pause;
 
@@ -342,6 +344,7 @@ export function jouerScript(def, opts = {}) {
     // ---------- Boucle ----------
     function boucle(now) {
       raf = requestAnimationFrame(boucle);
+      if (sauterImage(now)) return;
       let dt = dernier ? Math.min(0.05, (now - dernier) / 1000) : 0;
       dernier = now;
       if (pause) dt = 0;

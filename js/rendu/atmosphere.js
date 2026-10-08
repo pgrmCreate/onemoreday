@@ -109,18 +109,41 @@ export function creerAtmosphere() {
     if (!L.rects.length && !L.cercles.length) return;
     const k = 0.5;                                   // calque à demi-résolution (les ombres sont floues de toute façon)
     const lw = Math.max(1, Math.ceil(W * k)), lh = Math.max(1, Math.ceil(H * k));
-    if (!calque || cw !== lw || ch !== lh) { calque = canvas(lw, lh); cctx = calque.getContext('2d'); cw = lw; ch = lh; }
+    if (!calque || cw !== lw || ch !== lh) { calque = canvas(lw, lh); cctx = calque.getContext('2d'); cw = lw; ch = lh; cle.L = null; }
+    // le calque ne dépend que de la caméra, du soleil et des objets abattus : à l'arrêt, on réutilise celui de l'image précédente
+    let retires = 0;
+    for (const r of L.rects) if (r.objet && r.objet.retire) retires++;
+    for (const a of L.cercles) if (a.objet && a.objet.retire) retires++;
+    const ex0 = ecranX(0), ey0 = ecranY(0);
+    if (cle.L !== L || cle.pxc !== pxc || cle.ex0 !== ex0 || cle.ey0 !== ey0 || cle.dx !== sol.dx || cle.dy !== sol.dy || cle.retires !== retires) {
+      Object.assign(cle, { L, pxc, ex0, ey0, dx: sol.dx, dy: sol.dy, retires });
+      tracerOmbres(sol, L, pxc, ex0, ey0, vue, lw, lh, k);
+    }
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 0.34 * f;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(calque, 0, 0, lw, lh, 0, 0, W, H);
+    ctx.restore();
+  }
+  const cle = { L: null };
+  function tracerOmbres(sol, L, pxc, ex0, ey0, vue, lw, lh, k) {
     const c = cctx;
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, lw, lh);
-    c.setTransform(k * pxc, 0, 0, k * pxc, k * ecranX(0), k * ecranY(0));
-    const [vx0, vy0, vx1, vy1] = vue, marge = 14;
+    c.setTransform(k * pxc, 0, 0, k * pxc, k * ex0, k * ey0);
+    const [vx0, vy0, vx1, vy1] = vue;
     c.fillStyle = '#000';
     c.beginPath();
     for (const r of L.rects) {
       const ox = sol.dx * r.ht, oy = sol.dy * r.ht;
       if (r.objet && r.objet.retire) continue;
       if (Math.max(r.x + r.w, r.x + r.w + ox) < vx0 - 1 || Math.min(r.x, r.x + ox) > vx1 + 1 || Math.max(r.y + r.h, r.y + r.h + oy) < vy0 - 1 || Math.min(r.y, r.y + oy) > vy1 + 1) continue;
-      balayage(c, r.x, r.y, r.w, r.h, ox, oy);
+      // l'enveloppe ne dépend que du décalage (ox, oy) : calculée une fois tant que le soleil ne bouge pas
+      if (r._ox !== ox || r._oy !== oy) { r._ox = ox; r._oy = oy; r._env = enveloppe(r.x, r.y, r.w, r.h, ox, oy); }
+      const env = r._env;
+      c.moveTo(env[0][0], env[0][1]);
+      for (let i = 1; i < env.length; i++) c.lineTo(env[i][0], env[i][1]);
+      c.closePath();
     }
     c.fill('nonzero');
     // arbres : le tronc (un trait) puis le houppier (une ellipse au bout) ; le cyprès, colonne, projette une longue
@@ -153,15 +176,9 @@ export function creerAtmosphere() {
     for (const e of L.empreintes) c.rect(e.x, e.y, e.w, e.h);
     c.fill();
     c.globalCompositeOperation = 'source-over';
-    ctx.save();
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.globalAlpha = 0.34 * f;
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(calque, 0, 0, lw, lh, 0, 0, W, H);
-    ctx.restore();
   }
   // Rectangle (x, y, w, h) balayé par la translation (ox, oy) : le rectangle, son image et les faces qui les relient.
-  function balayage(c, x, y, w, h, ox, oy) {
+  function enveloppe(x, y, w, h, ox, oy) {
     const pts = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
     const sh = pts.map(([a, b]) => [a + ox, b + oy]);
     // enveloppe convexe des 8 points (sens horaire constant → union correcte en « nonzero »)
@@ -170,10 +187,7 @@ export function creerAtmosphere() {
     const bas = [], haut = [];
     for (const p of tous) { while (bas.length >= 2 && cr(bas[bas.length - 2], bas[bas.length - 1], p) <= 0) bas.pop(); bas.push(p); }
     for (let i = tous.length - 1; i >= 0; i--) { const p = tous[i]; while (haut.length >= 2 && cr(haut[haut.length - 2], haut[haut.length - 1], p) <= 0) haut.pop(); haut.push(p); }
-    const env = bas.slice(0, -1).concat(haut.slice(0, -1));
-    c.moveTo(env[0][0], env[0][1]);
-    for (let i = 1; i < env.length; i++) c.lineTo(env[i][0], env[i][1]);
-    c.closePath();
+    return bas.slice(0, -1).concat(haut.slice(0, -1));
   }
 
   // Ombres des nuages qui glissent au sol (dehors, le jour).

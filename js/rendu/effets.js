@@ -7,6 +7,7 @@ import { TS, canvas, cercle, ellipse, rng, hash } from './outils.js';
 
 const MAX = 500;
 const ECH_SANG = 0.5;          // résolution du calque de sang (px par px monde)
+const BLOC_SANG = 256;         // le calque de sang grandit par pas de BLOC_SANG px du calque
 
 export function creerEffets() {
   const P = [];                 // particules vivantes
@@ -15,20 +16,39 @@ export function creerEffets() {
   let rs = 1;
   const rnd = () => { rs = (rs * 1103515245 + 12345) & 0x7fffffff; return rs / 0x7fffffff; };
 
+  // Le calque n'occupe que la zone tachée (alignée sur BLOC_SANG px, agrandie au besoin) : un calque de tout l'étage
+  // pesait des dizaines de Mo et dépassait la taille de texture des téléphones. Mêmes pixels, au même endroit.
   function calque(E) {
     let k = calques.get(E.id);
     if (!k) {
-      const cv = canvas((E.uw || E.w) * TS * ECH_SANG, (E.uh || E.h) * TS * ECH_SANG);
-      k = { cv, c: cv.getContext('2d'), n: 0 };
+      const W = Math.max(1, (E.uw || E.w) * TS * ECH_SANG | 0), H = Math.max(1, (E.uh || E.h) * TS * ECH_SANG | 0);
+      k = { cv: null, c: null, x0: 0, y0: 0, w: 0, h: 0, W, H, n: 0 };
       calques.set(E.id, k);
     }
     return k;
   }
+  // Le calque couvre-t-il [x0, x1] × [y0, y1] (px du calque) ? Sinon on l'agrandit (copie 1:1 de l'ancien). false : hors de l'étage.
+  function couvrir(k, x0, y0, x1, y1) {
+    x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0)); x1 = Math.min(k.W, Math.ceil(x1)); y1 = Math.min(k.H, Math.ceil(y1));
+    if (x1 <= x0 || y1 <= y0) return false;
+    if (k.cv && x0 >= k.x0 && y0 >= k.y0 && x1 <= k.x0 + k.w && y1 <= k.y0 + k.h) return true;
+    if (k.cv) { x0 = Math.min(x0, k.x0); y0 = Math.min(y0, k.y0); x1 = Math.max(x1, k.x0 + k.w); y1 = Math.max(y1, k.y0 + k.h); }
+    const nx0 = Math.floor(x0 / BLOC_SANG) * BLOC_SANG, ny0 = Math.floor(y0 / BLOC_SANG) * BLOC_SANG;
+    const nx1 = Math.min(k.W, Math.ceil(x1 / BLOC_SANG) * BLOC_SANG), ny1 = Math.min(k.H, Math.ceil(y1 / BLOC_SANG) * BLOC_SANG);
+    const cv = canvas(nx1 - nx0, ny1 - ny0), c = cv.getContext('2d');
+    if (k.cv) c.drawImage(k.cv, k.x0 - nx0, k.y0 - ny0);
+    Object.assign(k, { cv, c, x0: nx0, y0: ny0, w: nx1 - nx0, h: ny1 - ny0 });
+    return true;
+  }
   // Tache de sang imprimée au sol (persistante tant qu'on reste dans le lieu).
   function tache(E, x, y, r, a = rnd() * 6.28, fonce = false) {
     if (!E) return;
-    const k = calque(E), c = k.c, s = TS * ECH_SANG;
-    c.save(); c.translate(x * s, y * s); c.rotate(a);
+    const k = calque(E), s = TS * ECH_SANG;
+    // étendue maximale de la tache (gouttelettes comprises) + marge d'anticrénelage
+    const ext = r * s * 2.1 + 3;
+    if (!couvrir(k, x * s - ext, y * s - ext, x * s + ext, y * s + ext)) { if (!fonce) rnd(); rnd(); const n = 3 + (rnd() * 5 | 0); for (let q = 0; q < n * 3; q++) rnd(); return; }
+    const c = k.c;
+    c.save(); c.translate(x * s - k.x0, y * s - k.y0); c.rotate(a);
     c.fillStyle = fonce ? 'rgba(40,3,5,0.85)' : `rgba(${70 + rnd() * 30 | 0},6,9,0.78)`;
     ellipse(c, 0, 0, r * s, r * s * (0.55 + rnd() * 0.3)); c.fill();
     const n = 3 + (rnd() * 5 | 0);
@@ -89,8 +109,8 @@ export function creerEffets() {
 
   function dessinerCalqueSang(c, E) {
     const k = calques.get(E.id);
-    if (!k || !k.n) return;
-    c.drawImage(k.cv, 0, 0, (E.uw || E.w) * TS, (E.uh || E.h) * TS);
+    if (!k || !k.n || !k.cv) return;
+    c.drawImage(k.cv, k.x0 / ECH_SANG, k.y0 / ECH_SANG, k.w / ECH_SANG, k.h / ECH_SANG);
   }
 
   // Particules et traînées de l'étage (en px monde). vu(x, y) → 0..1 : visibilité de la case (on ne voit rien dans le noir).
