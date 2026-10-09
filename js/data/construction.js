@@ -229,6 +229,18 @@ export const RECOLTES = {
   roncier: { geste: 'Couper', outil: 'elaguer', mainsNues: 3, ms: 8000, rendu: { branche: 1, brindilles: 3, fibres: 1 }, bruit: 2,
              cueillette: { id: 'mures', qty: 3, mois: [8, 9] } },
   cannier: { geste: 'Couper', outil: 'elaguer', mainsNues: 2.5, ms: 8000, rendu: { cannes: 4, fibres: 2 }, bruit: 2 },
+  micocoulier: { geste: 'Abattre', outil: 'abattre', ms: 30000, rendu: { buche: 3, branche: 4, brindilles: 3 }, souche: true, bruit: 9 },
+  chene_vert: { geste: 'Abattre', outil: 'abattre', ms: 32000, rendu: { buche: 3, branche: 3, brindilles: 3 }, souche: true, bruit: 9 },
+  palmier: { geste: 'Abattre', outil: 'abattre', ms: 24000, rendu: { buche: 2, fibres: 4 }, souche: true, bruit: 8 },
+  laurier_rose: { geste: 'Couper', outil: 'elaguer', mainsNues: 2.4, ms: 7000, rendu: { branche: 2, brindilles: 2 }, bruit: 2 },
+  lavande: { geste: 'Couper', outil: 'elaguer', mainsNues: 1.5, ms: 4000, rendu: { brindilles: 1, herbes_simples: 1 }, bruit: 1,
+             cueillette: { id: 'herbes_simples', qty: 1, mois: [6, 7, 8, 9] } },
+  romarin: { geste: 'Couper', outil: 'elaguer', mainsNues: 2, ms: 5000, rendu: { brindilles: 2, herbes_simples: 1 }, bruit: 1,
+             cueillette: { id: 'herbes_simples', qty: 1, mois: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] } },
+  buis:    { geste: 'Couper', outil: 'elaguer', mainsNues: 2.5, ms: 7000, rendu: { branche: 1, brindilles: 3 }, bruit: 2 },
+  agave:   { geste: 'Couper', outil: 'couper', mainsNues: 3, ms: 6000, rendu: { fibres: 4 }, bruit: 1 },
+  figuier_barbarie: { geste: 'Couper', outil: 'couper', mainsNues: 3, ms: 6000, rendu: { fibres: 1 }, bruit: 1,
+             cueillette: { id: 'fruits_sauvages', qty: 2, mois: [8, 9, 10] } },
   haie:    { geste: 'Couper', outil: 'elaguer', mainsNues: 2.5, ms: 9000, rendu: { branche: 2, brindilles: 3 }, bruit: 2 },
 };
 

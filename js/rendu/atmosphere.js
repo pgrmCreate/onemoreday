@@ -10,7 +10,7 @@
 //   poussieres    grains de poussière dans le faisceau de la lampe
 // Biome : 'ville' | 'sec' | 'vert', d'après les sols autour du joueur (biomeAutour).
 import { TS, canvas, bruit, clamp } from './outils.js';
-import { K, FIN, SOLS_IDS, MURS, MURS_IDS, OBJETS, disposition } from '../carte/catalogue.js';
+import { K, FIN, SOLS_IDS, MURS, MURS_IDS, OBJETS, disposition, FAMILLES } from '../carte/catalogue.js';
 
 // ---------- Le soleil ----------
 // Début octobre à Salon (43,6° N, heure d'été) : lever ~7 h 45, coucher ~19 h 20, midi solaire ~13 h 30, ~42° à midi.
@@ -285,7 +285,7 @@ export function biomeAutour(E, x, y) {
   for (let dy = -R; dy <= R; dy += 2) for (let dx = -R; dx <= R; dx += 2) {
     const fx = cx + dx, fy = cy + dy; if (fx < 0 || fy < 0 || fx >= E.w || fy >= E.h) continue;
     const i = fy * E.w + fx; if (E.code[i] !== K.SOL) continue;
-    const k = CAT[SOLS_IDS[E.sol[i]]]; if (k) n[k]++;
+    const k = CAT[FAMILLES[E.sol[i]]]; if (k) n[k]++;
   }
   return n.sec > n.ville && n.sec >= n.vert ? 'sec' : n.vert > n.ville ? 'vert' : 'ville';
 }

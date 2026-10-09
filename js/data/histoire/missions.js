@@ -5,9 +5,11 @@
 //
 // Une mission :
 //   titre, resume (une phrase pour le journal), si (CONDITION pour qu'elle soit proposée)
-//   offre : { lieu, piece?, texte, accepter, refuser } — scène proposée en arrivant dans le lieu (ou en entrant dans la
-//           pièce nommée). « Plus tard » : elle sera reproposée à la visite suivante.
-//   pnj   : { id, nom, lieu, piece, style, pv?, repliques? } — un personnage présent tant que la mission est proposée ou en cours
+//   offre : { lieu, piece, pres?, texte, accepter, refuser } — proposée quand on arrive À PORTÉE de la pièce nommée
+//           (pres : distance en unités, 0 = dedans), jamais en arrivant de loin. « Plus tard » : reproposée à la visite
+//           suivante. Mission avec un PNJ : c'est en lui PARLANT qu'on reçoit l'offre (il faut aller le voir).
+//   pnj   : { id, nom, lieu, piece, style, appel, pv?, repliques? } — présent tant que la mission est proposée ou en cours ;
+//           un cercle le montre dans le lieu, et en arrivant on l'entend (appel)
 //   etapes: [ { type, texte, lieu, …paramètres } ] dans l'ordre ; `effets` d'une étape : donnés quand elle est remplie
 //   fin / echec : { texte, effets } — la scène de réussite, le texte d'échec ; nettoye : jours de calme du lieu nettoyé
 //
@@ -35,7 +37,7 @@ export const MISSIONS = {
     resume: 'Odile, la buraliste de la place du Général-de-Gaulle, m’ouvrira sa réserve si je vide la place de ses morts.',
     si: { jourMin: 2 },
     offre: {
-      lieu: 'place_de_gaulle',
+      lieu: 'place_de_gaulle', piece: 'Le tabac-presse', pres: 7,
       texte: 'Sous les platanes de la place du Général-de-Gaulle, le marché du mercredi est resté monté. Les bâches claquent au vent au-dessus des cageots, et les morts se tiennent entre les étals comme s’ils attendaient leur tour.\n\nAu-dessus du tabac-presse, une fenêtre s’entrouvre, et une vieille femme se penche avec un torchon à la main.\n\n« Vous, là ! Je m’appelle Odile. Ça fait des jours que je les regarde tourner sous ma fenêtre. » Elle baisse la voix. « Si vous videz la place, tous, jusqu’au dernier, je vous ouvre ma réserve. Il me reste des conserves et des piles, et je n’ai plus la force de descendre. »',
       accepter: 'Promettre de vider la place',
       refuser: 'Passer son chemin',
@@ -58,6 +60,7 @@ export const MISSIONS = {
     resume: 'Mireille, la pharmacienne du cours Carnot, cherche de l’insuline dans sa réserve : je dois la protéger le temps qu’elle la trouve.',
     si: { jourMin: 1 },
     pnj: { id: 'mireille', nom: 'Mireille', lieu: 'pharmacie_carnot', piece: 'La réserve', pv: 100,
+      appel: 'Quelqu’un t’appelle à voix basse, quelque part dans la pharmacie : « Hé ! Par ici… »',
       style: { manteau: '#c4ccca', cheveux: '#8a8a86', coiffure: 'court' },
       repliques: ['Encore un peu… Je cherche une boîte bleue, dans le frigo ou dans les cartons.', 'Ne les laisse pas entrer dans la réserve !', 'Les antibiotiques, je les mets de côté pour toi.'] },
     offre: {
@@ -87,6 +90,7 @@ export const MISSIONS = {
     resume: 'Aimé, un vieux pêcheur à la jambe cassée, est coincé dans le moulin de la Touloubre : je dois lui apporter à manger chaque jour pendant trois jours.',
     si: { jourMin: 2 },
     pnj: { id: 'aime', nom: 'Aimé', lieu: 'touloubre', piece: 'Le vieux moulin',
+      appel: 'Une voix d’homme, faible, monte du vieux moulin : « Il y a quelqu’un ? »',
       style: { manteau: '#4a5a3a', cheveux: '#c8c4bc', coiffure: 'court' },
       repliques: ['Les truites remontent le soir. Si j’avais encore mes jambes…', 'Tu entends la roue ? Elle tourne toute seule depuis que l’eau est montée.'] },
     offre: {
@@ -138,7 +142,7 @@ export const MISSIONS = {
     resume: 'Chaque soir à 22 h, une draisine de l’armée passe à la gare sans s’arrêter et jette des caisses de rations sur le quai 2.',
     si: { jourMin: 2 },
     offre: {
-      lieu: 'gare',
+      lieu: 'gare', piece: 'Le hall des voyageurs', pres: 2,
       texte: 'Sur la porte du hall de la gare, quelqu’un a scotché une feuille arrachée à un cahier d’écolier : « DRAISINE DE L’ARMÉE — VOIE 2 — CHAQUE SOIR À 22 H. ELLE NE S’ARRÊTE PAS. ILS JETTENT DES CAISSES DE RATIONS POUR LES CIVILS. ATTENDEZ SOUS L’ABRI DU QUAI 2. »\n\nEn dessous, une autre main a ajouté au crayon : « Le klaxon les fait tous venir. Ramassez et courez. »',
       accepter: 'Attendre la draisine de 22 h',
       refuser: 'Laisser tomber',
@@ -164,7 +168,7 @@ export const MISSIONS = {
     resume: 'Au Leclerc des Viougues, les morts dorment debout dans les rayons. Le coffre de la direction n’a jamais été vidé, mais il sonne quand on l’ouvre.',
     si: { jourMin: 2 },
     offre: {
-      lieu: 'leclerc',
+      lieu: 'leclerc', piece: 'L’hypermarché', pres: 3,
       texte: 'Sur les portes vitrées du Leclerc des Viougues, quelqu’un a écrit au feutre rouge, en lettres capitales : « ILS DORMENT DEBOUT DANS LES RAYONS. NE COUREZ PAS. NE PARLEZ PAS. » En dessous, plus petit : « Le coffre de la direction n’a jamais été vidé. La combinaison est sur le bureau. Il sonne quand on l’ouvre. »\n\nÀ travers la vitre, dans la pénombre des allées, tu vois des dizaines de silhouettes immobiles, la tête basse, entre les gondoles.',
       accepter: 'Tenter le coffre',
       refuser: 'Ne pas entrer',

@@ -2,7 +2,7 @@
 // Chaque texture couvre TEX = 6 cases (288 px) et boucle parfaitement : on la peint dans les blocs
 // pré-rendus avec un décalage pris sur la position MONDE de la case → aucune répétition visible de case en case.
 import { TS, canvas, rng, fbm, hash, hex, rgb, melange, rr, enBoucle, cercle, ellipse } from './outils.js';
-import { SOLS_IDS } from '../carte/catalogue.js';
+import { SOLS_IDS, FAMILLES } from '../carte/catalogue.js';
 
 export const TEX = TS * 6;
 const cache = new Map();
@@ -264,7 +264,7 @@ export function textureSol(idx) {
   if (t) return t;
   t = canvas(TEX, TEX);
   const c = t.getContext('2d');
-  (PEINTRES[id] || PEINTRES.beton)(c, TEX, rng(idx * 7919 + 17));
+  (PEINTRES[id] || PEINTRES[FAMILLES[idx]] || PEINTRES.beton)(c, TEX, rng(idx * 7919 + 17));   // une variante sans photo : le dessin de sa famille
   cache.set(cle, t);
   return t;
 }

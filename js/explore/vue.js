@@ -36,7 +36,7 @@ import { lierNature, majRecherche, basculerRecherche, vitesseRecherche, enRecher
 import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, viserPlacement, majConstruction, feuxCommeLampes, fantome, grilleToits } from './construction.js';
 import { rueeSim, etatRuee, lieuDansZone, typeActif } from '../game/ruees.js';
 import { lierPlan, chargerMemoire, sauverMemoire, basculerPlan, planOuvert, fermerPlan } from './plan_lieu.js';
-import { lierMissions, majMissions, guideMission } from './missions_vue.js';
+import { lierMissions, majMissions, guideMission, reperesMissions } from './missions_vue.js';
 import { lieuCalme } from '../game/missions.js';
 
 export { verifierCondition };
@@ -533,7 +533,7 @@ function image(t, dt) {
   majRecherche(dt);
   if (V._placeVu !== enPlacement()) { V._placeVu = enPlacement(); V.entrees.setPlacement && V.entrees.setPlacement(V._placeVu); }
   if (V.butin && Math.hypot(V.butin.x - j.x, V.butin.y - j.y) > 1.9) fermerButin();
-  V.tPnj -= dt; if (V.tPnj <= 0) { V.tPnj = 800; majPnj(); }
+  V.tPnj -= dt; if (V.tPnj <= 0) { V.tPnj = 800; majPnj(); V.reperesMission = reperesMissions(); }
   V.tPos -= dt; if (V.tPos <= 0) { V.tPos = 2000; if (!V.arene) G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2), abords: abordsDe(V) }; tension(); }
   V.tGuide -= dt; if (V.tGuide <= 0) { V.tGuide = 700; majObjectif(); majCoopHud(pairs); }
   // --- HUD ---
@@ -567,6 +567,7 @@ function image(t, dt) {
   { const o = (J.cbt.flash * 0.85 + (G.player.pv < 30 ? 0.25 + 0.1 * Math.sin(t / 300) : 0) + (G.player.agonie ? 0.45 : 0)).toFixed(3);
     if (o !== V._sangVu) { V._sangVu = o; V.hud.sang.style.opacity = o; } }   // le DOM n'est touché que si la valeur change
   Sc.pairs = pairs; Sc.zombies = V.zListe; Sc.portes = snap.portes; Sc.sol = snap.sol; Sc.cadavres = snap.cadavres; Sc.pnj = V.pnj;
+  Sc.reperesMission = V.reperesMission;     // personnes d'une mission (recalculé avec les PNJ)
   Sc.constructions = snap.constructions || []; Sc.placement = fantome(); Sc.minutes = G.world.minutes;
   Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.alarmes = feuxAlarme; Sc.objectif = V.objectif || null;
   const Fo = Sc.fouille;

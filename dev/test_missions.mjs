@@ -30,11 +30,13 @@ p.equip.sac = 'sac_expedition';   // de la place pour les récompenses
 // ---------- Offres ----------
 titre('Offres');
 M._setLieuVue('place_de_gaulle');
-ok(M.aProposer('place_de_gaulle') === 'm_marche', 'en arrivant place du Général-de-Gaulle : le marché est proposé');
+ok(M.aProposer('place_de_gaulle', () => false) === null, 'en arrivant de loin sur la place : rien ne saute aux yeux');
+ok(M.aProposer('place_de_gaulle', (p, d) => p === 'Le tabac-presse' && d > 0) === 'm_marche', 'sous la fenêtre d’Odile (près du tabac) : le marché est proposé');
 const sid = M.sceneOffre('m_marche');
 ok(SCENES[sid] && SCENES[sid].choix.length === 3, 'scène d’offre : accepter, plus tard, refuser');
-ok(M.aProposer('place_de_gaulle') === null, 'une seule fois par visite');
-ok(M.aProposer('cornillon') === null && M.aProposer('cornillon', 'La chambre du guetteur') === 'm_guetteur', 'Cornillon : proposé en entrant dans la chambre du guetteur seulement');
+ok(M.aProposer('place_de_gaulle', () => true) === null, 'une seule fois par visite');
+ok(M.aProposer('pharmacie_carnot', () => true) === null && SCENES[M.parlerPnj('m_mireille').scene], 'Mireille : pas d’offre surprise, on la reçoit en lui parlant');
+ok(M.aProposer('cornillon', () => false) === null && M.aProposer('cornillon', (p) => p === 'La chambre du guetteur') === 'm_guetteur', 'Cornillon : proposé en entrant dans la chambre du guetteur seulement');
 
 // ---------- Nettoyer ----------
 titre('Nettoyer : le marché du mercredi');

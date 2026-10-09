@@ -4,13 +4,13 @@
 //   - ancien format ASCII (plan: ['####', …] + legende) — converti en couches (js/carte/ascii.js).
 // validerNiveau(def, ctx?) → [erreurs] (chaînes lisibles). Aucune dépendance au DOM : utilisable sous Node.
 // Un plan mal formé ne fait jamais planter : parserNiveau collecte des avertissements (niveau.avertissements).
-import { K, SOLS_IDS, SOL_IDX, OBJETS, FIN } from '../carte/catalogue.js';
+import { K, SOLS_IDS, SOL_IDX, OBJETS, FIN, FAMILLES } from '../carte/catalogue.js';
 import { compilerPlan, accessibilite as acces, marchable, cleCase as cle, DECOS as DEC } from '../carte/compiler.js';
 import { asciiVersPlan, CARS_GLOBAUX as CARS } from '../carte/ascii.js';
 import { agrandirDef } from '../carte/abords.js';
 
 export { K };
-export const MATIERES = SOLS_IDS;            // index = valeur stockée dans etage.sol
+export const MATIERES = FAMILLES;            // index = valeur stockée dans etage.sol → matière (famille : bruit des pas)
 export const MAT = SOL_IDX;
 export const PROPS = OBJETS;
 export const CARS_GLOBAUX = CARS;

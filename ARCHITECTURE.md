@@ -19,7 +19,9 @@ js/carte/               ★ LE FORMAT DES CARTES (sans DOM, utilisable sous Node
   plan.js                 l'API de construction par couches : plan(meta, (p) => { const e = p.etage(…); e.piece(…); e.objet(…) })
   ascii.js                ancien format ASCII → couches (les 45 plans historiques en profitent sans réécriture)
   (construction)          js/data/construction.js (catalogue), js/game/construction.js (matériaux, XP), js/explore/construction.js (placement, gestes)
-  abords.js               abords générés (×4) autour de chaque plan ASCII : rues, maisons, parkings, champs (NIVEAUX §7 bis)
+  abords.js               abords générés (×4) autour de chaque plan ASCII : rues, maisons, parkings, champs (NIVEAUX §7 bis) ;
+                          STYLES de quartier (vieille ville, pavillonnaire, cité, résidence neuve, zone commerciale, village
+                          perché, garrigue…) : revêtements, trottoirs, herbes, essences — un repeint qui ne bouge aucune case
   compiler.js             couches → niveau jouable (grilles, pièces, meubles, portes, escaliers, lumières cuites, toits)
 
 js/rendu/               ★ LE MOTEUR DE RENDU (canvas 2D)
@@ -72,6 +74,9 @@ Vérifications : `node tools/valider_niveaux.mjs` · `node dev/test_combat.mjs` 
 
 ## Graphismes photoréalistes (Blender + Poly Haven, CC0)
 
+- Variantes de sol (bitume rapiécé, enrobé neuf, vieux pavés, dalles de calcaire / de granit, pavés autobloquants,
+  stabilisé, cailloux, sous-bois, terre rouge, pelouse, herbe jaunie, béton peint) : `python tools/sols_photo.py` (matières
+  Poly Haven du cache, relief éclairé du haut-gauche) ; chacune a une `famille` (SOLS) dont elle reprend pas, détails, biome.
 - `img/sols/*.jpg`, `img/toits/*.jpg` : tuiles sans couture rendues dans Blender (vue de dessus, lumière du haut-gauche, normales,
   rugosité, occlusion) à partir de matières Poly Haven ; `sols.json` / `toits.json` donnent la taille réelle d'une tuile (m).
   Chargées par `js/rendu/textures.js` (`chargerSolsPhoto`) ; le procédural sert tant qu'elles ne sont pas arrivées.

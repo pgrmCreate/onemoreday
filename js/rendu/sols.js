@@ -4,11 +4,11 @@
 import { TS, TF, hash, bruit, cercle, ellipse, rr, rng, canvas } from './outils.js';
 import { FIN } from '../carte/catalogue.js';
 import { motif } from './textures.js';
-import { K, SOLS, SOLS_IDS, MURS, MURS_IDS } from '../carte/catalogue.js';
+import { K, SOLS, SOLS_IDS, MURS, MURS_IDS, FAMILLES } from '../carte/catalogue.js';
 
 const PRIO = SOLS_IDS.map(id => SOLS[id].prio ?? 5);
 const EXT = SOLS_IDS.map(id => !!SOLS[id].ext);
-const HERBE = new Set(['herbe', 'herbe_seche'].map(id => SOLS_IDS.indexOf(id)));
+const HERBE = new Set(SOLS_IDS.map((id, i) => i).filter(i => FAMILLES[i] === 'herbe' || FAMILLES[i] === 'herbe_seche'));
 
 const estMurHaut = (E, i) => { const k = E.code[i]; if (k !== K.MUR) return false; const M = MURS[MURS_IDS[E.mur ? E.mur[i] : 1]] || {}; return !M.bas && !M.vide; };
 const vide = (E, i) => E.code[i] === K.VIDE;
@@ -75,8 +75,8 @@ export function peindreSol(c, niv, E, x0, y0, x1, y1) {
 //   - terre, sable, gravier, boue : cailloux avec leur ombre ;
 //   - bitume, béton, trottoir : fissures, taches d'huile, mégots et papiers ;
 //   - dedans : moutons de poussière et petits débris, rares.
-const SEC = new Set(['herbe_seche', 'terre', 'sable', 'gravier'].map(id => SOLS_IDS.indexOf(id)));
-const MATS = Object.fromEntries(SOLS_IDS.map((id, i) => [i, id]));
+const SEC = new Set(SOLS_IDS.map((id, i) => i).filter(i => ['herbe_seche', 'terre', 'sable', 'gravier'].includes(FAMILLES[i])));
+const MATS = Object.fromEntries(SOLS_IDS.map((id, i) => [i, FAMILLES[i]]));   // les variantes ont les détails de leur famille
 function brins(c, x, y, n, l, a0, ecart, couls, r) {
   c.lineCap = 'round';
   for (let k = 0; k < n; k++) {

@@ -38,6 +38,58 @@ const MILIEUX = {
   campagne: { S: 0,  RW: 3, trottoir: false, route: ':', fond: 'δ' },
 };
 
+// ---------- Styles de quartier : deux lieux du même milieu ne se ressemblent plus ----------
+// Chaque lieu tire (d'après son id, ou def.style) un style de son milieu : revêtement des rues (et ses rustines), trottoirs,
+// places, herbes, friches, terre, chemins, essences des arbres d'alignement, des jardins, des pins, et des buissons.
+// Le style ne fait que REPEINDRE (mêmes cases marchables / bloquées) : les sauvegardes restent valables.
+// Listes pondérées : [[valeur, poids], …] ; un sol peut être une liste simple (taches de grande échelle).
+// Même emprise que l'essence remplacée : arbres d'alignement (ζ, tronc plein) → platane, micocoulier, palmier ; arbres des
+// jardins et pins (θ, η, tronc fin) → olivier, figuier, amandier, pin, chêne vert ; buissons (κ) → tous les massifs.
+export const STYLES = {
+  centre: [
+    { id: 'vieille_ville', route: ['paves_vieux', 'paves'], trottoir: ['dalles_calcaire'], place: ['dalles_calcaire', 'dalles'], herbe: ['herbe'],
+      arbresRue: [['platane', 3], ['micocoulier', 2]], buissons: [['laurier_rose', 3], ['buisson', 2], ['buis', 1]] },
+    { id: 'centre_renove', route: ['paves'], trottoir: ['dalles_granit'], place: ['dalles_granit'], herbe: ['pelouse'],
+      arbresRue: [['platane', 2], ['micocoulier', 1], ['palmier', 1]], buissons: [['buis', 2], ['laurier_rose', 2], ['lavande', 1]] },
+  ],
+  ville: [
+    { id: 'pavillonnaire', route: ['bitume'], rustine: 'bitume_use', trottoir: ['trottoir_rouge'], herbe: ['pelouse', 'herbe'], seche: ['herbe_jaunie'],
+      arbresRue: [['micocoulier', 2], ['platane', 1], ['palmier', 1]], jardins: [['olivier', 3], ['figuier', 1], ['amandier', 1]],
+      buissons: [['laurier_rose', 3], ['buis', 2], ['buisson', 2], ['lavande', 1]] },
+    { id: 'annees_70', route: ['bitume_use'], rustine: 'bitume', trottoir: ['trottoir'], herbe: ['herbe_jaunie', 'herbe'], seche: ['herbe_seche'],
+      arbresRue: [['platane', 3], ['micocoulier', 1]], buissons: [['buisson', 3], ['laurier_rose', 1], ['roncier', 1]] },
+    { id: 'cite', route: ['bitume_use', 'bitume'], rustine: 'bitume_neuf', trottoir: ['beton'], herbe: ['herbe_jaunie'], seche: ['terre_battue', 'herbe_seche'],
+      arbresRue: [['platane', 1], ['micocoulier', 1]], buissons: [['buisson', 2], ['roncier', 2], ['agave', 1]] },
+    { id: 'residence_neuve', route: ['bitume_neuf'], trottoir: ['dalles_granit'], herbe: ['pelouse'], seche: ['stabilise'],
+      arbresRue: [['palmier', 2], ['micocoulier', 1]], jardins: [['olivier', 2], ['amandier', 1]],
+      buissons: [['lavande', 2], ['buis', 2], ['agave', 1], ['laurier_rose', 1]] },
+  ],
+  zone: [
+    { id: 'zone_commerciale', route: ['bitume_neuf'], rustine: 'bitume', trottoir: ['trottoir'], herbe: ['pelouse'], seche: ['cailloux', 'stabilise'],
+      arbresRue: [['palmier', 2], ['platane', 1]], buissons: [['agave', 2], ['lavande', 1], ['buisson', 1]] },
+    { id: 'zone_industrielle', route: ['bitume_use'], rustine: 'bitume_neuf', trottoir: ['beton'], herbe: ['herbe_jaunie'], seche: ['herbe_seche', 'cailloux'],
+      arbresRue: [['platane', 1]], buissons: [['buisson', 2], ['roncier', 2], ['agave', 1]] },
+  ],
+  village: [
+    { id: 'village_perche', route: ['paves_vieux'], herbe: ['herbe'], seche: ['herbe_seche'], terre: ['terre_battue'],
+      jardins: [['olivier', 3], ['figuier', 1], ['amandier', 1]], pins: [['pin', 2], ['chene_vert', 1]],
+      buissons: [['romarin', 2], ['figuier_barbarie', 1], ['lavande', 1], ['buisson', 1]] },
+    { id: 'village_plaine', route: ['bitume_use'], rustine: 'bitume', herbe: ['herbe', 'pelouse'], seche: ['herbe_jaunie'], terre: ['terre'],
+      arbresRue: [['platane', 3], ['micocoulier', 1]], buissons: [['buisson', 2], ['laurier_rose', 1], ['lavande', 1]] },
+  ],
+  campagne: [
+    { id: 'garrigue', chemin: ['cailloux', 'terre_battue'], seche: ['herbe_seche'], terre: ['terre_battue'], sousPins: 'sous_bois',
+      pins: [['pin', 2], ['chene_vert', 2]], buissons: [['romarin', 3], ['buisson', 1], ['figuier_barbarie', 1]] },
+    { id: 'plaine', chemin: ['terre'], seche: ['herbe_jaunie', 'herbe_seche'], terre: ['terre'],
+      pins: [['pin', 1], ['chene_vert', 1]], buissons: [['buisson', 2], ['roncier', 1], ['romarin', 1]] },
+  ],
+};
+const NOMS_VEG = { laurier_rose: 'le laurier-rose', lavande: 'la lavande', romarin: 'le romarin', buis: 'le buis taillé', agave: 'l\'agave',
+  figuier_barbarie: 'le figuier de Barbarie', micocoulier: 'le micocoulier', palmier: 'le palmier', chene_vert: 'le chêne vert',
+  platane: 'le platane', pin: 'le pin', olivier: 'l\'olivier', figuier: 'le figuier', amandier: 'l\'amandier', buisson: 'le buisson', roncier: 'le roncier' };
+// Les caractères de ces repeints (légende ajoutée au lieu) : cyrilliques, jamais utilisés par les plans écrits à la main.
+const POOL_STYLE = [...'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя'];
+
 // Une voiture déjà pillée : ouverte (pas de serrure), on peut encore la fouiller, il n'y reste presque rien (butin defaut.voiture_pillee).
 const PILLEE = { table: 'defaut.voiture_pillee', items: [] };
 // Caractères générés (légende ajoutée à celle du lieu) — lettres grecques, jamais utilisées par les plans écrits à la main.
@@ -414,6 +466,67 @@ export function agrandirDef(def) {
     }
   }
 
+  // ---------- 4 quater. le style du quartier (repeint seulement : mêmes cases marchables / bloquées) ----------
+  const legStyle = {};
+  const listeStyles = STYLES[milieu] || [];
+  const ST = (def.style && listeStyles.find(s => s.id === def.style)) || listeStyles[Math.floor(hc(TW, TH, def.id.length * 31 + def.id.charCodeAt(0)) * listeStyles.length)] || null;
+  if (ST) {
+    const pool = POOL_STYLE.slice(), memo = new Map();
+    const car = (cle, entree) => { if (!memo.has(cle)) { const c = pool.shift(); if (!c) return null; memo.set(cle, c); legStyle[c] = entree; } return memo.get(cle); };
+    // même nature que la case d'origine : on reprend son « comme » (β, α, ε → ',' ; δ, γ → '"')
+    const solCar = (orig, sol) => { const comme = (LEG[orig] && LEG[orig].comme) || orig; return car(comme + '>' + sol, { comme, sol }); };
+    const propCar = (prop) => car('p>' + prop, { prop, nom: NOMS_VEG[prop] || prop });
+    // un sol tiré par grandes taches aux contours organiques (bruit lissé), plus des rustines plus petites
+    const lisse = (x, y, k, S) => {
+      const gx = x / S, gy = y / S, x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
+      const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      const a = hc(x0, y0, k), b = hc(x0 + 1, y0, k), c = hc(x0, y0 + 1, k), d = hc(x0 + 1, y0 + 1, k);
+      return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+    };
+    const solDe = (liste, x, y, k) => liste.length === 1 ? liste[0] : liste[Math.min(liste.length - 1, Math.floor(Math.max(0, Math.min(0.999, (lisse(x, y, k, 9) - 0.2) / 0.6)) * liste.length))];
+    const pondere = (liste, u) => { const tot = liste.reduce((s, e) => s + e[1], 0); let v = u * tot; for (const [val, p] of liste) { if ((v -= p) < 0) return val; } return liste[liste.length - 1][0]; };
+    const prochePin = (x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (get(x + dx, y + dy) === 'η') return true; return false; };
+    for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
+      if (oc(x, y) === 1) continue;
+      const c = G[y][x], o2 = oc(x, y);
+      let n = null;
+      if ((c === M.route || c === ',') && (o2 === 2 || o2 === 5) && ST.route) {
+        const rust = ST.rustine && hc(Math.floor(x / 3), Math.floor(y / 3), 41) < 0.14;
+        const sol = rust ? ST.rustine : solDe(ST.route, x, y, 43);
+        n = solCar(c === 'β' ? 'β' : ',', sol);
+      } else if (c === 'α' && ST.trottoir) n = solCar('α', solDe(ST.trottoir, x, y, 47));
+      else if (c === 'ε' && ST.place) n = solCar('ε', solDe(ST.place, x, y, 53));
+      else if (c === ':' && ST.chemin) n = solCar(':', solDe(ST.chemin, x, y, 59));
+      else if (c === '"' || c === 'δ' || c === 'γ') {
+        if (ST.sousPins && prochePin(x, y)) n = solCar(c, ST.sousPins);
+        else if (c === '"' && ST.herbe) n = solCar('"', solDe(ST.herbe, x, y, 61));
+        else if (c === 'δ' && ST.seche) n = solCar('δ', solDe(ST.seche, x, y, 67));
+        else if (c === 'γ' && ST.terre) n = solCar('γ', solDe(ST.terre, x, y, 71));
+      }
+      if (n && (n !== c)) G[y][x] = n;
+    }
+    // arbres et buissons : des cases voisines identiques forment UN objet (une haie de buissons, un alignement) — on
+    // remplace tout le groupe d'un coup, pour garder exactement la même emprise
+    const ESSENCES = { 'κ': [ST.buissons, 'buisson', 73], 'ζ': [ST.arbresRue, 'platane', 79], 'θ': [ST.jardins, 'olivier', 83], 'η': [ST.pins, 'pin', 89] };
+    const vuG = new Uint8Array(TW * TH);
+    for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
+      const c = G[y][x], E2 = ESSENCES[c];
+      if (!E2 || !E2[0] || vuG[y * TW + x] || oc(x, y) === 1) continue;
+      const groupe = [], pile = [[x, y]]; vuG[y * TW + x] = 1;
+      while (pile.length) {
+        const [px, py] = pile.pop(); groupe.push([px, py]);
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = px + dx, ny = py + dy;
+          if (!dans(nx, ny) || vuG[ny * TW + nx] || G[ny][nx] !== c || oc(nx, ny) === 1) continue;
+          vuG[ny * TW + nx] = 1; pile.push([nx, ny]);
+        }
+      }
+      const p = pondere(E2[0], hc(x, y, E2[2]));
+      if (p === E2[1]) continue;
+      const nc = propCar(p); if (nc) for (const [gx, gy] of groupe) G[gy][gx] = nc;
+    }
+  }
+
   // ---------- 5. sorties sur les bords (au bout des rues / pistes) ----------
   let nS = 0;
   for (let x = 0; x < TW; x++) for (const y of [0, TH - 1]) if (oc(x, y) === 2 || oc(x, y) === 3) { set(x, y, 'E'); nS++; }
@@ -441,8 +554,8 @@ export function agrandirDef(def) {
     etages: nouveaux,
     pieces: (def.pieces || []).map(decaler),
     declencheurs: (def.declencheurs || []).map(decaler),
-    legende: { ...LEG, ...(def.legende || {}) },
-    abords: { version: ABORDS_VERSION, milieu, dx: ox, dy: oy, w: TW, h: TH, coeur: { x: ox, y: oy, w: Wg, h: Hg },
+    legende: { ...LEG, ...legStyle, ...(def.legende || {}) },
+    abords: { version: ABORDS_VERSION, milieu, style: ST ? ST.id : null, dx: ox, dy: oy, w: TW, h: TH, coeur: { x: ox, y: oy, w: Wg, h: Hg },
       mortsMult: Math.min(3, Math.max(1, Math.sqrt(aire) * 0.75)) },
   };
 }

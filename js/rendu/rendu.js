@@ -512,10 +512,18 @@ export function creerRendu(cv, niveau) {
       ctx.globalAlpha = 1;
     }
   }
+  // Au seuil d'une porte (à moins de SEUIL_PORTE unités), on voit déjà dedans : le toit des pièces qu'elle dessert s'efface.
+  const SEUIL_PORTE = 1.8, auSeuil = new Set();
   function dessinerToits(S, E, C, pxc, vx0, vy0, vx1, vy1, dt) {
     const T = E.rendu ? E.rendu.toits : [];
     if (!T.length) return;
     const ij = icase(E, S.joueur.x, S.joueur.y), ici = ij >= 0 ? E.piece[ij] : -1;
+    auSeuil.clear();
+    for (const p of niveau.portes) {
+      if (p.etage !== E.id) continue;
+      const dx = p.x + 0.5 - S.joueur.x, dy = p.y + 0.5 - S.joueur.y;
+      if (dx * dx + dy * dy < SEUIL_PORTE * SEUIL_PORTE) for (const pp of p.pieces) auSeuil.add(pp);
+    }
     const lum = 0.16 + 0.84 * (S.jour ?? 1);
     for (let k = 0; k < T.length; k++) {
       const tt = T[k];
@@ -524,7 +532,7 @@ export function creerRendu(cv, niveau) {
       // visible si un bout de son pourtour est vu (ou en mémoire)
       let enVue = false, enMemoire = false;
       for (const [x, y] of sp.masque) { const i = y * E.w + x; if (E.piece[i] === sp.pid) continue; if (C.los[i] === C.stamp && C.vis[i] > 0.05) { enVue = true; break; } if (C.vu[i]) enMemoire = true; }
-      const dedans = ici === sp.pid;
+      const dedans = ici === sp.pid || auSeuil.has(sp.pid);
       const cle = E.id + ':' + k;
       const cible = dedans ? 0 : enVue ? 1 : enMemoire ? 0.75 : 0;
       let a = toitsA.get(cle); if (a == null) a = cible;
@@ -641,6 +649,19 @@ export function creerRendu(cv, niveau) {
     if (S.objectif && S.objectif.etage === E.id) {
       const o = S.objectif;
       fleche(ecranX(o.x), ecranY(o.y), '#e8c45a', o.texte || 'Objectif', Math.hypot(o.x - S.joueur.x, o.y - S.joueur.y), true, t);
+    }
+    // personnes d'une mission : un cercle qui respire autour d'elles, leur nom ; hors de l'écran, une flèche au bord
+    if (S.reperesMission) for (const m of S.reperesMission) {
+      if (m.etage !== E.id) continue;
+      const x = ecranX(m.x), y = ecranY(m.y), coul = m.danger ? '#ff8a6a' : '#e8c45a';
+      if (x > 30 && y > 30 && x < W - 30 && y < H - 30) {
+        const p = 0.5 + 0.5 * Math.sin(t / 380), R = pxc * (0.62 + 0.08 * p);
+        ctx.strokeStyle = coul; ctx.globalAlpha = 0.55 + 0.35 * p; ctx.lineWidth = 2.2;
+        cercle(ctx, x, y, R); ctx.stroke();
+        ctx.globalAlpha = 0.25 * (1 - p); ctx.lineWidth = 1.5; cercle(ctx, x, y, R + pxc * 0.35 * p); ctx.stroke();
+        ctx.globalAlpha = 1;
+        etiquette(x, y - pxc * 0.95, m.nom, coul, false);
+      } else fleche(x, y, coul, m.nom, Math.hypot(m.x - S.joueur.x, m.y - S.joueur.y), false, t);
     }
     // coéquipier : nom au-dessus de la tête, ou flèche au bord quand il est hors de vue
     for (const p of S.pairs) {

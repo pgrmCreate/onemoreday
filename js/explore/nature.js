@@ -10,7 +10,7 @@
 // laisse une souche.
 import { G } from '../core/state.js';
 import { REGLAGES } from '../data/reglages.js';
-import { SOLS_IDS, FIN } from '../carte/catalogue.js';
+import { SOLS_IDS, FIN, FAMILLES } from '../carte/catalogue.js';
 import { RECOLTES } from '../data/construction.js';
 import { RECHERCHE, CATEGORIE_SOL, TABLES_RECHERCHE } from '../data/recherche.js';
 import { meteoCourante } from '../travel/rencontres_voyage.js';
@@ -86,7 +86,7 @@ export function majRecherche(dt) {
   // on apprend à regarder, même bredouille
   V.xpRecherche = (V.xpRecherche || 0) + RECHERCHE.XP_EXAMEN;
   if (V.xpRecherche >= 1) { const g = Math.floor(V.xpRecherche); V.xpRecherche -= g; try { mod.player && mod.player.gagnerXp && mod.player.gagnerXp('recherche', g); } catch (e) {} }
-  const cat = CATEGORIE_SOL[SOLS_IDS[E.sol[i]]] || 'ville';
+  const cat = CATEGORIE_SOL[FAMILLES[E.sol[i]]] || 'ville';
   const table = TABLES_RECHERCHE[cat]; if (!table) return;
   const lv = niv('recherche');
   let p = RECHERCHE.CHANCE * (1 + RECHERCHE.PAR_NIVEAU * lv) * (RECHERCHE.SOL[cat] ?? 1);

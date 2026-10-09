@@ -366,6 +366,9 @@ HAUTS = {   # type de houppier (js/rendu/objets.js spriteHaut) → (diamètre en
     'olivier': (2.8, [('tree_small_02', 0.47, 0.42, 1.2), ('island_tree_02', 0.46, 0.38, 1.2)]),
     'figuier': (3.0, [('island_tree_02', 0.53, 1.15, 0.95), ('tree_small_02', 0.53, 1.2, 0.9)]),
     'amandier': (2.7, [('tree_small_02', 0.49, 0.8, 1.12), ('island_tree_01', 0.48, 0.75, 1.15)]),
+    'micocoulier': (3.9, [('island_tree_01', 0.47, 1.1, 0.85), ('tree_small_02', 0.46, 1.15, 0.88)]),
+    'chene_vert': (3.2, [('tree_small_02', 0.5, 0.6, 0.62), ('island_tree_02', 0.5, 0.55, 0.6)]),
+    'palmier': (3.6, [('proc:palmier', 0.5, 1.0, 1.0), ('proc:palmier', 0.5, 1.0, 1.0)]),
 }
 def cypres(v):
     mats = mat_uni((0.03, 0.07, 0.025), 0.8)
@@ -378,12 +381,36 @@ def cypres(v):
         s = bpy.context.active_object; s.data.materials.append(mat_uni((0.03 + random.random() * 0.02, 0.07 + random.random() * 0.03, 0.025), 0.8)); o.append(s)
     return o
 
+def palmier(v):
+    """Palmier vu de dessus : une étoile de palmes arquées (un dattier des Canaries, comme sur les avenues)."""
+    o = []; rnd = random.Random(f'palmier:{v}')
+    vert = [mat_uni((0.025, 0.07, 0.018), 0.65), mat_uni((0.035, 0.09, 0.022), 0.65), mat_uni((0.05, 0.085, 0.02), 0.7)]
+    nerv = mat_uni((0.05, 0.07, 0.025), 0.8)
+    o.append(cylindre(0, 0, 0, 0.3, 5.0, mat_uni((0.06, 0.05, 0.03), 0.9), 10))
+    o.append(sphere(0, 0, 5.05, 0.42, vert[0], sz=0.45))          # le cœur de la couronne
+    n = 20 + v * 4
+    for k in range(n):
+        a = k / n * 6.283 + rnd.random() * 0.2; L = 2.1 + rnd.random() * 0.6; incl = -0.1 - rnd.random() * 0.5
+        ca, sa = math.cos(a), math.sin(a)
+        for s in range(16):                      # la palme : une nervure, et de chaque côté des folioles fines qui raccourcissent
+            t = (s + 0.5) / 16; r = 0.25 + t * L
+            x, y, z = ca * r, sa * r, 5.0 + math.sin(incl) * r - 0.6 * t * t
+            if s % 4 == 0: nv = sphere(x, y, z, 0.035, nerv, sz=0.5); nv.scale = (6, 1, 0.5); nv.rotation_euler = (0, 0, a); o.append(nv)
+            lf = 0.42 * (1 - 0.7 * t) + 0.08
+            for cote in (-1, 1):
+                b = a + cote * 1.05
+                f = sphere(x + math.cos(b) * lf * 0.5, y + math.sin(b) * lf * 0.5, z - 0.02, lf * 0.5, vert[(k + s + cote) % 3], sz=0.1)
+                f.scale = (1.0, 0.16, 0.1); f.rotation_euler = (0, 0, b); o.append(f)
+    return o
+
 def tout_rendre_hauts(types=None, cypres_aussi=True):
     preparer_scene()
     for typ, (diam, liste) in HAUTS.items():
         if types and typ not in types: continue
         for v, (pid, hue, sat, val) in enumerate(liste):
-            vider(); objs = importer_ph(pid); teinter(objs, hue, sat, val)
+            vider()
+            if pid.startswith('proc:'): objs = globals()[pid[5:]](v)
+            else: objs = importer_ph(pid); teinter(objs, hue, sat, val)
             rendre_haut(f'haut_{typ}_{v}', objs, diam)
         meta = _meta_charger(); meta['haut_' + typ] = {'n': len(liste), 'm': 0, 'h': 6, 'd': diam}; _meta_ecrire(meta)
     if not cypres_aussi: return

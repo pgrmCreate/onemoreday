@@ -178,15 +178,31 @@ function proteger(id, m, s, e, pas) {
 
 // ---------- Les offres : en arrivant dans le lieu, ou en entrant dans une pièce ----------
 function offres() {
+  // en arrivant : on entend la personne d'une mission appeler (une fois par visite) — on va la voir, on lui parle
+  if (!V.missions.appelFait) {
+    V.missions.appelFait = true;
+    for (const { id, pnj } of M.pnjsDuLieu(V.lieuId)) {
+      const s = M.etat(id);
+      if (pnj.appel && (!s || s.etat === 'proposee')) { message(genrer(pnj.appel), 5200); break; }
+    }
+  }
   if (V.occupe || V.action || V.butin || overlayOuvert() || (V.cbt && V.cbt.etat && V.cbt.etat.empoigne)) return;   // une scène à l'écran : on attend
   if (V.zListe.some(z => z.etage === V.j.etage && z.etat === 'chasse' && Math.hypot(z.x - V.j.x, z.y - V.j.y) < 12)) return;   // pas en plein combat
-  let id = M.aProposer(V.lieuId, null);
-  if (!id) {
-    const i = icase(V.E, V.j.x, V.j.y), p = i >= 0 ? V.E.piece[i] : -1;
-    const P = p >= 0 ? V.niveau.pieces[p] : null;
-    if (P && P.nom) id = M.aProposer(V.lieuId, P.nom);
-  }
+  const j = V.j;
+  const id = M.aProposer(V.lieuId, (piece, pres) => dansPiece(pieceNommee(V.niveau, piece), j.x, j.y, j.etage, pres));
   if (id) jouerScene(M.sceneOffre(id));
+}
+// Les repères des personnages de mission (un cercle autour d'eux, une flèche au bord de l'écran s'ils sont hors de vue) :
+// on sait qu'ils sont là (on les a entendus, ou on les protège), pas où sont les objets ni les lieux.
+export function reperesMissions() {
+  if (!V || V.arene) return null;
+  const out = [];
+  for (const q of V.pnj) {
+    if (!q.mission) continue;
+    const s = M.etat(q.mission), e = M.etapeDe(q.mission);
+    out.push({ etage: q.etage, x: q.x, y: q.y, nom: q.nom, danger: !!(e && e.type === 'proteger'), actif: !!(s && s.etat === 'active') });
+  }
+  return out;
 }
 
 // ---------- Le guide (ligne discrète en haut) ----------

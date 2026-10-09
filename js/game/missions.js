@@ -54,14 +54,15 @@ export function present(lieuId) { return !!lieuId && lieuVue === lieuId; }
 
 // ---------- Proposer ----------
 const vuesCetteVisite = new Set();      // une offre n'est montrée qu'une fois par visite
-// La mission à proposer en arrivant dans ce lieu (piece = null) ou en entrant dans cette pièce.
-export function aProposer(lieuId, piece = null) {
+// La mission à proposer maintenant dans ce lieu : celle dont on est à portée de la pièce (aPortee(piece, pres) → bool).
+// Les missions à PNJ ne se proposent pas toutes seules : on les reçoit en parlant à la personne.
+export function aProposer(lieuId, aPortee = () => false) {
   if (!tenant()) return null;
   for (const [id, m] of Object.entries(MISSIONS)) {
-    const o = m.offre; if (!o || o.lieu !== lieuId) continue;
-    if (piece ? normNom(o.piece) !== normNom(piece) : !!o.piece) continue;
+    const o = m.offre; if (!o || o.lieu !== lieuId || m.pnj) continue;
     const s = etat(id); if (s && s.etat !== 'proposee') continue;
     if (vuesCetteVisite.has(id) || !verifier(m.si)) continue;
+    if (!o.piece || !aPortee(o.piece, o.pres || 0)) continue;
     return id;
   }
   return null;

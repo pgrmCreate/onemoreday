@@ -708,6 +708,72 @@ haie.n = 2
 def souche(v, rnd): return importer_ph(['tree_stump_01', 'tree_stump_02'][v % 2])
 souche.n = 2
 
+# ---------- végétaux de Provence (les quartiers ne se ressemblent plus : js/carte/abords.js STYLES) ----------
+def _dessus(o, rnd, n, couls, frac=0.42, r=0.035, sz=1.0):
+    """n petites sphères posées sur le haut d'un massif (fleurs, épis, fruits), à sa taille réelle."""
+    mn, mx = A.bornes(o); L = max(mx.x - mn.x, mx.y - mn.y); H = mx.z - mn.z
+    mats = [coul(c, 0.55) for c in couls]
+    for k in range(n):
+        a = rnd.random() * 6.283; d = (rnd.random() ** 0.6) * L * frac
+        z = mn.z + H * (0.55 + 0.45 * (1 - d / (L * frac + 1e-6)) * rnd.random() + 0.25)
+        o.append(sphere((mn.x + mx.x) / 2 + math.cos(a) * d, (mn.y + mx.y) / 2 + math.sin(a) * d, min(z, mx.z * 1.02), L * r * (0.7 + rnd.random() * 0.6), mats[k % len(mats)], sz=sz))
+    return o
+def _feuillage(rnd, n, R, h, couls, long=2.6, ep=0.045):
+    """Un massif de feuilles allongées (ellipsoïdes) en dôme : rayon R, hauteur h."""
+    mats = [coul(c, 0.7) for c in couls]; o = []
+    for k in range(n):
+        a = rnd.random() * 6.283; d = (rnd.random() ** 0.55) * R
+        z = h * (0.25 + 0.75 * (1 - (d / R) ** 2) * (0.6 + 0.4 * rnd.random()))
+        f = sphere(math.cos(a) * d, math.sin(a) * d, z, ep, mats[k % len(mats)], sz=0.5)
+        f.scale = (long, 0.9, 0.5); f.rotation_euler = ((rnd.random() - 0.5) * 0.8, (rnd.random() - 0.5) * 0.8, rnd.random() * 6.283); o.append(f)
+    return o
+def laurier_rose(v, rnd):
+    o = _feuillage(rnd, 260, 0.42, 1.1, ['#2c4a22', '#36552a', '#24401c'])
+    return _dessus(o, rnd, 80, [['#e8669a', '#f08ab0'], ['#f6f0ee', '#ffffff'], ['#d23c5c', '#e85a78']][v % 3], r=0.03)
+laurier_rose.n = 3
+def lavande(v, rnd):
+    o = _feuillage(rnd, 140, 0.34, 0.32, [['#5a6446', '#646e4e'][v % 2], '#4e5a3e'], long=3.2, ep=0.03)
+    epi = [coul('#7a5aa8', 0.6), coul('#8a68b8', 0.6), coul('#6a4a98', 0.6)]
+    for k in range(200):
+        a = rnd.random() * 6.283; d = (rnd.random() ** 0.7) * 0.36
+        o.append(sphere(math.cos(a) * d, math.sin(a) * d, 0.24 + rnd.random() * 0.12, 0.022, epi[k % 3], sz=2.2))
+    return o
+lavande.n = 2
+def romarin(v, rnd):
+    o = _feuillage(rnd, 320, 0.4, 0.75, ['#3e4c3a', '#4a5a44', '#36423a'], long=4.0, ep=0.022)
+    return _dessus(o, rnd, 45, ['#9ab0d8', '#b8c8e8'], r=0.018)
+romarin.n = 2
+def buis(v, rnd):
+    o = []
+    for k in range(70):
+        a = rnd.random() * 6.283; b = math.acos(2 * rnd.random() - 1); R = 0.36
+        x, y, z = R * math.sin(b) * math.cos(a), R * math.sin(b) * math.sin(a), 0.4 + R * math.cos(b) * (0.9 if v else 1.0)
+        o.append(sphere(x, y, z, 0.1 + rnd.random() * 0.03, coul(['#2c4a1e', '#34552a', '#264218'][k % 3], 0.85)))
+    return o
+buis.n = 2
+def agave(v, rnd):
+    import bpy
+    o = []; m = coul(['#6f8f86', '#7f9a8c'][v % 2], 0.5); bord = coul('#b8a85a', 0.6)
+    for k in range(16):
+        a = k / 16 * 6.283 + rnd.random() * 0.2; L = 0.55 + rnd.random() * 0.25; incl = 0.5 + rnd.random() * 0.5
+        bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.07, radius2=0.004, depth=L, location=(0, 0, 0))
+        f = bpy.context.active_object; f.scale = (1, 0.35, 1)
+        f.rotation_euler = (0, incl + (0.3 if k % 2 else 0), a)
+        f.location = (math.cos(a) * L * 0.42 * math.sin(incl), math.sin(a) * L * 0.42 * math.sin(incl), 0.08 + L * 0.45 * math.cos(incl))
+        f.data.materials.append(m if k % 5 else bord); o.append(f)
+    return o
+agave.n = 2
+def figuier_barbarie(v, rnd):
+    o = []; m = coul(['#5a7a3a', '#4e6e34'][v % 2], 0.6)
+    def raquette(x, y, z, s, rz, ry):
+        r = sphere(x, y, z, 0.22 * s, m, sz=1.3); r.scale = (1, 0.3, 1.25); r.rotation_euler = (0.85 + rnd.random() * 0.5, ry, rz); o.append(r); return r
+    for k in range(5):
+        a = k / 5 * 6.283 + rnd.random(); d = 0.12 + rnd.random() * 0.15
+        raquette(math.cos(a) * d, math.sin(a) * d, 0.26, 1.0, a + 1.57, (rnd.random() - 0.5) * 0.6)
+        raquette(math.cos(a) * (d + 0.12), math.sin(a) * (d + 0.12), 0.62, 0.8, a + 1.57 + 0.4, (rnd.random() - 0.5) * 0.9)
+    return _dessus(o, rnd, 14, ['#d2502a', '#e0a030', '#b03a46'], frac=0.4, r=0.03)
+figuier_barbarie.n = 2
+
 def tronc(coul_ecorce, r=0.18):
     def f(v, rnd):
         return [cylindre(0, 0, 0, r * (0.9 + 0.2 * v), 1.2, mat_tex(coul_ecorce, 2.0), 12)]
@@ -1136,6 +1202,12 @@ CATALOGUE = {
     'cannier':      E([1, 1], cannier, remplir=1.05),
     'haie':         E([1, 1], haie, remplir=1.05, etirer=True),
     'souche':       E([1, 1], souche, remplir=0.7),
+    'laurier_rose': E([1, 1], laurier_rose, remplir=1.05),
+    'lavande':      E([1, 1], lavande, remplir=0.95),
+    'romarin':      E([1, 1], romarin, remplir=1.0),
+    'buis':         E([1, 1], buis, remplir=0.9),
+    'agave':        E([1, 1], agave, remplir=1.05),
+    'figuier_barbarie': E([1, 1], figuier_barbarie, remplir=1.05),
     'borne':        E([1, 1], borne, remplir=0.35),
     'poteau':       E([1, 1], poteau, remplir=0.4),
     'benne':        E([2, 1], benne, remplir=0.98, etirer=True),

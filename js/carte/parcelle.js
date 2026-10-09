@@ -30,12 +30,21 @@ export function parcelle(meta, o, details) {
       if (!libre(x - marge, y - marge, w + 2 * marge, h + 2 * marge)) return false;
       e.objet(type, x, y, opts); reserver(x, y, w, h); return true;
     };
-    // Un semis : n essais de poser `type` dans un rectangle, à distance des autres (marge).
+    // Un semis : n essais de poser `type` dans un rectangle, à distance des autres (marge). type peut être une liste
+    // pondérée [[type, poids], …] d'essences de même emprise : le choix dépend de la case (hachage), pas du tirage —
+    // les parcelles déjà visitées gardent leurs arbres aux mêmes places.
+    const essence = (type, x, y) => {
+      if (!Array.isArray(type)) return type;
+      let h = (x * 374761393 + y * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177);
+      let u = (((h ^ (h >>> 16)) >>> 0) / 4294967296) * type.reduce((s, t) => s + t[1], 0);
+      for (const [t, p] of type) if ((u -= p) < 0) return t;
+      return type[type.length - 1][0];
+    };
     const semis = (type, x0, y0, w, h, n, marge = 1, opts) => {
       let k = 0;
       for (let a = 0; a < n * 4 && k < n; a++) {
         const x = Math.floor(x0 + rnd() * w), y = Math.floor(y0 + rnd() * h);
-        if (poser(type, x, y, typeof opts === 'function' ? opts() : (opts || {}), marge)) k++;
+        if (poser(essence(type, x, y), x, y, typeof opts === 'function' ? opts() : (opts || {}), marge)) k++;
       }
       return k;
     };
@@ -96,8 +105,8 @@ export function parcelle(meta, o, details) {
     if (milieu === 'riviere') berges(e, P);
 
     if (milieu === 'pinede') {
-      semis('pin', 2, 2, W - 4, H - 4, Math.round(W * H / 34), 1);
-      semis('buisson', 2, 2, W - 4, H - 4, Math.round(W * H / 90), 0);
+      semis([['pin', 3], ['chene_vert', 2]], 2, 2, W - 4, H - 4, Math.round(W * H / 34), 1);
+      semis([['romarin', 3], ['buisson', 2], ['lavande', 1]], 2, 2, W - 4, H - 4, Math.round(W * H / 90), 0);
       semis('roncier', 2, 2, W - 4, H - 4, Math.round(W * H / 260), 0);
       // affleurements de rocher (calcaire de la chaîne des Côtes)
       for (let k = 0; k < Math.round(W * H / 700); k++) {
@@ -117,7 +126,7 @@ export function parcelle(meta, o, details) {
         }
       }
       semis('amandier', 2, 2, W - 4, H - 4, Math.round(W * H / 900), 2);
-      semis('buisson', 2, 2, W - 4, H - 4, Math.round(W * H / 260), 1);
+      semis([['buisson', 2], ['romarin', 2]], 2, 2, W - 4, H - 4, Math.round(W * H / 260), 1);
       semis('gravats', 2, 2, W - 4, H - 4, Math.round(W * H / 500), 1, () => ({ nom: 'le cairn' }));
       e.semer('gravillons', 2, 2, W - 4, H - 4, Math.round(W * H / 30));
       e.semer('herbes', 2, 2, W - 4, H - 4, Math.round(W * H / 90));

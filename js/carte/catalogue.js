@@ -36,8 +36,26 @@ export const SOLS = {
   planches:   { nom: 'planches', prio: 10, ext: false },    // plancher brut, estrade, ponton
   metal:      { nom: 'tôle', prio: 10, ext: false },        // conteneurs, camions
   carrelage_damier: { nom: 'damier', prio: 10, ext: false },
+  // variantes de terrain (les quartiers ne se ressemblent plus) : chacune appartient à une FAMILLE, dont elle reprend le
+  // bruit des pas, les détails dessinés, le biome et ce qu'on trouve en cherchant par terre (tuiles : tools/sols_photo.py)
+  bitume_use:      { nom: 'bitume rapiécé', prio: 1, ext: true, famille: 'bitume' },
+  bitume_neuf:     { nom: 'enrobé neuf', prio: 1, ext: true, famille: 'bitume' },
+  paves_vieux:     { nom: 'vieux pavés', prio: 2.2, ext: true, famille: 'paves' },
+  dalles_calcaire: { nom: 'dalles de calcaire', prio: 3.2, ext: true, famille: 'dalles' },
+  dalles_granit:   { nom: 'dalles de granit', prio: 3.1, ext: true, famille: 'dalles' },
+  trottoir_rouge:  { nom: 'pavés autobloquants', prio: 2, ext: true, famille: 'trottoir' },
+  stabilise:       { nom: 'sable stabilisé', prio: 4.3, ext: true, famille: 'gravier' },
+  cailloux:        { nom: 'cailloux', prio: 4.4, ext: true, famille: 'gravier' },
+  sous_bois:       { nom: 'sous-bois', prio: 5.3, ext: true, famille: 'terre' },
+  terre_battue:    { nom: 'terre rouge', prio: 5.2, ext: true, famille: 'terre' },
+  pelouse:         { nom: 'pelouse', prio: 6.5, ext: true, famille: 'herbe' },
+  herbe_jaunie:    { nom: 'herbe jaunie', prio: 6.3, ext: true, famille: 'herbe_seche' },
+  beton_peint:     { nom: 'béton peint', prio: 3, ext: true, famille: 'beton' },
 };
 export const SOLS_IDS = Object.keys(SOLS);
+// La famille d'une matière (elle-même pour les matières d'origine) : par index (etage.sol) ou par id.
+export const FAMILLES = SOLS_IDS.map(id => SOLS[id].famille || id);
+export const familleSol = (id) => (SOLS[id] && SOLS[id].famille) || id;
 export const SOL_IDX = Object.fromEntries(SOLS_IDS.map((id, i) => [id, i]));
 export const SOL_AUCUN = 255;
 
@@ -167,6 +185,16 @@ export const OBJETS = {
   amandier:   { cat: null, bloque: 1, opaque: 0, t: [1, 1], tf: [1, 1], nom: 'l\'amandier', haut: 'amandier' },
   roncier:    { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'le roncier' },
   cannier:    { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'les cannes de Provence' },
+  // végétaux de Provence : les quartiers ne se ressemblent plus (js/carte/abords.js STYLES ; sprites : tools/blender)
+  laurier_rose: { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'le laurier-rose' },
+  lavande:    { cat: null, bloque: 1, opaque: 0, t: [1, 1], nom: 'la lavande' },
+  romarin:    { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'le romarin' },
+  buis:       { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'le buis taillé' },
+  agave:      { cat: null, bloque: 1, opaque: 0, t: [1, 1], nom: 'l\'agave' },
+  figuier_barbarie: { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'le figuier de Barbarie' },
+  micocoulier: { cat: null, bloque: 1, opaque: 0, t: [1, 1], nom: 'le micocoulier', haut: 'micocoulier' },
+  palmier:    { cat: null, bloque: 1, opaque: 0, t: [1, 1], nom: 'le palmier', haut: 'palmier' },
+  chene_vert: { cat: null, bloque: 1, opaque: 0, t: [1, 1], tf: [1, 1], nom: 'le chêne vert', haut: 'chene_vert' },
   lampadaire: { cat: null, bloque: 1, t: [1, 1], tf: [1, 1], nom: 'le lampadaire', haut: 'lampadaire' },
   poteau:     { cat: null, bloque: 1, t: [1, 1], tf: [1, 1], nom: 'le poteau' },
   borne:      { cat: null, bloque: 1, t: [1, 1], tf: [1, 1], nom: 'la borne' },
@@ -221,7 +249,7 @@ export const OBJETS = {
 //             le compilateur réduit alors l'empreinte réelle (collision, surlignage) à ce qui est dessiné.
 // DESSIN_SEUL : types sans sprite, dessinés à la main pour remplir leur empreinte (toujours 'etirer').
 export const ETIRER_MAX = 1.4;
-export const DESSIN_SEUL = new Set(['lit_camp', 'matelas', 'arbre', 'platane', 'cypres', 'pin', 'olivier', 'figuier', 'amandier', 'lampadaire', 'plan_mural', 'tableau_cles', 'cadavre', 'grille']);
+export const DESSIN_SEUL = new Set(['lit_camp', 'matelas', 'arbre', 'platane', 'cypres', 'pin', 'olivier', 'figuier', 'amandier', 'micocoulier', 'palmier', 'chene_vert', 'lampadaire', 'plan_mural', 'tableau_cles', 'cadavre', 'grille']);
 const ETIRE_TOUJOURS = new Set(['tapis', 'haie']);
 const UNIQUES = new Set(['baignoire', 'piano', 'cheminee', 'fontaine', 'statue', 'tente', 'generateur', 'caveau', 'autel', 'cloche', 'televiseur', 'voiture_calcinee']);
 export function disposition(type, w, h) {

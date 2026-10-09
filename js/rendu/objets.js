@@ -83,7 +83,7 @@ function dessinerSprite(c, R, S, W, H, r, centrer = false) {
 
 // Dans un rang, ces objets changent d'un exemplaire à l'autre (un tas de gravats, une haie de buissons) ; les autres
 // (bancs d'église, rayonnages, frigos) restent pareils : on les a posés ensemble.
-const VARIE = new Set(['gravats', 'buisson', 'roncier', 'cannier', 'palette', 'caisse', 'fut', 'poubelle', 'sacs_sable', 'tombe', 'housse', 'caisson']);
+const VARIE = new Set(['gravats', 'buisson', 'roncier', 'cannier', 'laurier_rose', 'lavande', 'romarin', 'buis', 'agave', 'figuier_barbarie', 'palette', 'caisse', 'fut', 'poubelle', 'sacs_sable', 'tombe', 'housse', 'caisson']);
 export function dessinerObjet(c, R) {
   const D = DESSINS[R.type] || DESSINS._defaut;
   const r = rng((R.variante || 0) * 7919 + R.x * 131 + R.y * 977 + 1);
@@ -384,6 +384,23 @@ const DESSINS = {
   olivier(c, W, H, r) { tronc(c, W, H, r, 6, '#5a5446'); },
   figuier(c, W, H, r) { tronc(c, W, H, r, 6, '#8a8678'); },
   amandier(c, W, H, r) { tronc(c, W, H, r, 5, '#4a3a30'); },
+  micocoulier(c, W, H, r) { tronc(c, W, H, r, 7, '#6e6a62'); },
+  chene_vert(c, W, H, r) { tronc(c, W, H, r, 6, '#3a3028'); },
+  palmier(c, W, H, r) { tronc(c, W, H, r, 6, '#6a5a44'); c.strokeStyle = 'rgba(40,30,20,0.5)'; c.lineWidth = 1; for (let k = 1; k < 4; k++) { cercle(c, W / 2, H / 2, k * 1.8); c.stroke(); } },
+  // massifs de secours (tant que le sprite photo n'est pas chargé)
+  laurier_rose(c, W, H, r) { massif(c, W, H, r, [34, 58, 30], ['#e8669a', '#f6f0ee', '#d23c5c'][Math.floor(r() * 3)], 18); },
+  lavande(c, W, H, r) { massif(c, W, H, r, [96, 104, 82], '#7a5aa8', 40, 0.8); },
+  romarin(c, W, H, r) { massif(c, W, H, r, [70, 86, 64], '#a8bce0', 10); },
+  buis(c, W, H, r) { massif(c, W, H, r, [36, 66, 28], null, 0, 0.85); },
+  agave(c, W, H, r) {
+    c.save(); c.translate(W / 2, H / 2);
+    for (let k = 0; k < 14; k++) { const a = k / 14 * 6.28 + r() * 0.2, L = W * (0.32 + r() * 0.12); c.rotate(a); avecOmbre(c, 3, 2, 3, 0.4, () => { c.fillStyle = teinte('#6f8f86', 0.85 + r() * 0.3); c.beginPath(); c.moveTo(0, -2.5); c.lineTo(L, 0); c.lineTo(0, 2.5); c.closePath(); c.fill(); }); c.rotate(-a); }
+    c.restore();
+  },
+  figuier_barbarie(c, W, H, r) {
+    for (let k = 0; k < 7; k++) { const a = r() * 6.28, d = r() * W * 0.25; avecOmbre(c, 4, 3, 4, 0.45, () => { c.fillStyle = teinte('#5a7a3a', 0.8 + r() * 0.4); ellipse(c, W / 2 + Math.cos(a) * d, H / 2 + Math.sin(a) * d, W * 0.16, W * 0.1, r() * 3); c.fill(); }); }
+    for (let k = 0; k < 6; k++) { c.fillStyle = r() < 0.5 ? '#d2502a' : '#e0a030'; cercle(c, W * (0.25 + r() * 0.5), H * (0.25 + r() * 0.5), 1.8); c.fill(); }
+  },
   cypres(c, W, H, r) { tronc(c, W, H, r, 4); },
   buisson(c, W, H, r) {
     avecOmbre(c, 8, 4, 6, 0.55, () => { c.fillStyle = '#1e2c16'; cercle(c, W / 2, H / 2, Math.min(W, H) / 2 - 2); c.fill(); });
@@ -829,6 +846,13 @@ function vehicule(c, W, H, r, R, coul, genre) {
   void R; void hex;
 }
 
+// Un massif rond (feuillage en touffes) et, s'il fleurit, ses fleurs par-dessus.
+function massif(c, W, H, r, base, fleur, nFleurs, rayon = 1) {
+  const R = Math.min(W, H) / 2 * rayon;
+  avecOmbre(c, 7, 4, 6, 0.5, () => { c.fillStyle = rgb(base.map(v => v * 0.6)); cercle(c, W / 2, H / 2, R - 3); c.fill(); });
+  for (let k = 0; k < 16; k++) { const a = r() * 6.28, d = r() * R * 0.55, f = 0.7 + r() * 0.6; c.fillStyle = rgb(base.map(v => v * f)); cercle(c, W / 2 + Math.cos(a) * d, H / 2 + Math.sin(a) * d, R * (0.2 + r() * 0.15)); c.fill(); }
+  if (fleur) { c.fillStyle = fleur; for (let k = 0; k < nFleurs; k++) { const a = r() * 6.28, d = Math.sqrt(r()) * R * 0.8; cercle(c, W / 2 + Math.cos(a) * d, H / 2 + Math.sin(a) * d, 1.4 + r()); c.fill(); } }
+}
 function tronc(c, W, H, r, t, coul = '#3a2a1c') {
   avecOmbre(c, 4, 3, 4, 0.6, () => { c.fillStyle = coul; cercle(c, W / 2, H / 2, t); c.fill(); });
   c.strokeStyle = 'rgba(0,0,0,0.4)'; c.lineWidth = 1; cercle(c, W / 2, H / 2, t * 0.6); c.stroke();
@@ -855,7 +879,8 @@ function corpsDecor(c, W, H, r, R) {
 // Pré-rendue en sprite par (type, variante) ; renvoie { cv, ox, oy, r } (centre du sprite au centre de l'objet).
 const sprites = new Map();
 // Houppier photoréaliste (img/objets/haut_<type>_<n>.webp) s'il est arrivé : même format { cv, S, rayon }.
-const HAUT_SPRITE = { arbre: 'houppier', houppier: 'houppier', platane: 'platane', pin: 'pin', olivier: 'olivier', cypres: 'cypres', figuier: 'figuier', amandier: 'amandier' };
+const HAUT_SPRITE = { arbre: 'houppier', houppier: 'houppier', platane: 'platane', pin: 'pin', olivier: 'olivier', cypres: 'cypres', figuier: 'figuier', amandier: 'amandier',
+  micocoulier: 'micocoulier', chene_vert: 'chene_vert', palmier: 'palmier' };
 function spriteHautPhoto(R) {
   const nom = HAUT_SPRITE[R.haut]; if (!nom || !SP.meta) return null;
   const m = SP.meta['haut_' + nom]; if (!m) return null;
@@ -883,6 +908,9 @@ export function spriteHaut(R) {
     case 'olivier': rayon = TS * 1.4; break;
     case 'figuier': rayon = TS * 1.5; break;
     case 'amandier': rayon = TS * 1.35; break;
+    case 'micocoulier': rayon = TS * 1.95; break;
+    case 'chene_vert': rayon = TS * 1.6; break;
+    case 'palmier': rayon = TS * 1.8; break;
     case 'cypres': rayon = TS * 0.75; break;
     case 'lampadaire': rayon = TS * 0.6; break;
     default: rayon = TS * 1.7;
@@ -898,7 +926,7 @@ export function spriteHaut(R) {
     for (let k = 0; k < 26; k++) { const a = r() * 6.28, d = r() * rayon * 0.7, t = 4 + r() * 6, f = 0.6 + r() * 0.7; c.fillStyle = rgb([28 * f, 46 * f, 22 * f]); cercle(c, m + Math.cos(a) * d, m + Math.sin(a) * d, t); c.fill(); }
     c.fillStyle = 'rgba(160,200,120,0.08)'; cercle(c, m - rayon * 0.25, m - rayon * 0.25, rayon * 0.5); c.fill();
   } else {
-    const base = R.haut === 'pin' ? [28, 44, 26] : R.haut === 'olivier' ? [70, 80, 58] : R.haut === 'figuier' ? [44, 74, 30] : R.haut === 'amandier' ? [64, 82, 44] : R.haut === 'platane' ? [52, 70, 34] : [36, 54, 28];
+    const base = R.haut === 'chene_vert' ? [30, 44, 26] : R.haut === 'micocoulier' ? [58, 78, 38] : R.haut === 'palmier' ? [62, 84, 40] : R.haut === 'pin' ? [28, 44, 26] : R.haut === 'olivier' ? [70, 80, 58] : R.haut === 'figuier' ? [44, 74, 30] : R.haut === 'amandier' ? [64, 82, 44] : R.haut === 'platane' ? [52, 70, 34] : [36, 54, 28];
     const touffes = R.haut === 'pin' ? 9 : R.haut === 'olivier' ? 7 : 11;
     avecOmbre(c, 14, 10, 14, 0.5, () => {
       c.fillStyle = rgb(base.map(v => v * 0.7));

@@ -74,5 +74,57 @@
  "metal": {
   "asset": "metal_plate",
   "m": 0.5
+ },
+ "bitume_use": {
+  "asset": "sol:bitume",
+  "m": 4.5
+ },
+ "bitume_neuf": {
+  "asset": "asphalt_floor",
+  "m": 2.6
+ },
+ "paves_vieux": {
+  "asset": "cobblestone_floor_04",
+  "m": 2.2
+ },
+ "dalles_calcaire": {
+  "asset": "white_sandstone_blocks_02",
+  "m": 3.2
+ },
+ "dalles_granit": {
+  "asset": "granite_tile_03",
+  "m": 2.4
+ },
+ "trottoir_rouge": {
+  "asset": "concrete_pavers",
+  "m": 1.92
+ },
+ "stabilise": {
+  "asset": "gravelly_sand",
+  "m": 2.6
+ },
+ "cailloux": {
+  "asset": "gravel_stones",
+  "m": 1.8
+ },
+ "sous_bois": {
+  "asset": "forest_ground_05",
+  "m": 2.4
+ },
+ "terre_battue": {
+  "asset": "dirt",
+  "m": 2.0
+ },
+ "pelouse": {
+  "asset": "aerial_grass_rock",
+  "m": 9.0
+ },
+ "herbe_jaunie": {
+  "asset": "aerial_grass_rock",
+  "m": 12.0
+ },
+ "beton_peint": {
+  "asset": "painted_concrete",
+  "m": 3.0
  }
 }
