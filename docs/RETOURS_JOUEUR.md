@@ -117,6 +117,35 @@ pourquoi il a été repéré.
 Dormir, se chauffer, s'abriter : partout c'est possible, mais un vrai couchage, un feu, un toit changent nettement les
 choses (§5). La préparation est récompensée ; l'improvisation coûte, sans jamais bloquer.
 
+### P12. Une mission impose une façon de jouer, pas un nombre de morts
+Ce qui plaît à Saint-Laurent, ce n'est pas la foule : c'est qu'on est **obligé** de faire quelque chose de précis (se
+taire, avancer en discrétion, faire un geste exact), puis que l'action éclate d'un coup.
+- **Chaque mission a une contrainte qui change la manière de jouer** : discrétion, durée, protection, approvisionnement,
+  nettoyage. Deux missions qui se jouent pareil sont une seule mission.
+- **Varier les types** : éliminer (débarrasser un quartier), tenir (survivre N heures ou N jours dans un endroit),
+  attendre (un signal, une heure, quelqu'un), protéger (un vivant qui peut mourir), nourrir (apporter à manger à
+  quelqu'un, par exemple une personne cachée dans la nature, plusieurs fois), atteindre en discrétion, rapporter.
+- **Un temps calme, puis une rupture** : la tension monte par la contrainte, l'action arrive quand elle cède.
+- **L'avancement se sent sans se compter** : « Il en reste encore. », « Le quartier est presque calme. » plutôt qu'un
+  compteur exact, sauf si le personnage peut savoir le nombre.
+- **Un objectif rempli se notifie** : un bandeau bref « Objectif rempli », une phrase complète (P9), sans bloquer le jeu.
+
+### P13. Le corps se gère petit à petit
+Comme dans Project Zomboid, les besoins du corps se règlent dans la durée, pas d'un geste.
+- **Manger prend du temps** : une action chronométrée, avec sa progression visible, qu'on peut interrompre (un mort
+  approche) en gardant ce qui reste.
+- **On ne se gave pas** : l'estomac se remplit et se vide. Quand on n'a plus faim, on est **repu**, et on ne peut pas
+  enchaîner trois boîtes de soupe.
+- **Le poids du corps** bouge lentement : on maigrit quand on a faim, on grossit quand on mange trop. Trop maigre ou trop
+  enrobé, le corps le paie (force, endurance, froid), avec des seuils dits par un état lisible, sans chiffre imposé.
+
+### P14. Ce que le personnage porte se voit sur lui
+- Tout objet tenu en main est **lisible à l'écran** à la taille normale du jeu, sans être grossi au point de mentir sur
+  sa taille (la pelle).
+- Ce qui est **dans le dos** se dessine sur le personnage ; un sac se porte **dans le dos**, décalé seulement autant que
+  son modèle le justifie.
+- Les **vêtements se superposent** de façon réaliste : t-shirt, pull et veste en même temps sur le torse.
+
 ---
 
 ## 2. Journal des retours
@@ -161,6 +190,19 @@ choses (§5). La préparation est récompensée ; l'improvisation coûte, sans j
 | 26 | Tour de l'Horloge : on arrive à 8 h et d'un coup c'est le soir. Il faudrait n'y aller que le soir, et que l'objectif le dise. | La scène et la cinématique de la tour sont de nuit (le mot de Maud : « je guette tous les soirs »), quelle que soit l'heure. | Étape `q_prologue.horloge` : objectif « Attendre le soir, puis rejoindre la Tour… » ; la carte n'y mène qu'entre 19 h et 5 h (`heures` d'une étape de quête, générique) et propose « Attendre 19 h ». | fait (8 oct.) |
 | 27 | Les voitures de police : impossible de les fouiller ou de casser une vitre. | Les voitures « déjà fouillées » des rues (8 sur 10) n'étaient pas des conteneurs : aucune action proposée. | Elles deviennent « pillées » : ouvertes, fouillables, presque vides (`defaut.voiture_pillee`). | fait (8 oct.) |
 
+### 9 octobre 2026 — missions, repas, poids du corps, ce qu'on porte
+
+| # | Ce qu'il dit | Cause probable | Décision (session de code du 9 oct.) | Statut |
+|---|---|---|---|---|
+| 28 | Il a aimé Saint-Laurent (`saint_laurent.js`, scènes `stl_*` de `scenes_ch1.js`) non pour le nombre de morts, mais parce qu'on est obligé de faire quelque chose de précis : être discret, se déplacer en discrétion, faire un geste exact… et d'un coup, l'action. Il veut des missions de ce genre, de types vraiment différents : débarrasser un quartier (« il en reste encore », sans forcément le nombre), survivre trois jours quelque part, attendre, protéger quelqu'un, nourrir quelqu'un (une personne cachée dans la nature). | Les quêtes ne savent dire que « aller à », « parler à », « trouver » : la contrainte de Saint-Laurent est écrite à la main dans un seul niveau, sans moteur pour la réutiliser. | P12. Moteur de missions à **objectifs typés** : `eliminer`, `tenir` (N minutes ou N jours), `attendre`, `proteger`, `nourrir`, `atteindre` en discrétion, `rapporter`. Avancement en phrases (« Il en reste encore. ») plutôt qu'en compteur. | en cours |
+| 29 | Il faut une notification quand on remplit un objectif. | Une étape de quête passe à la suivante sans rien signaler. | P12. Bandeau « Objectif rempli » bref, sans pause, phrase complète (P9). | en cours |
+| 30 | Manger doit prendre du temps (on voit la progression) ; on ne peut pas se gaver (pas trois boîtes de soupe d'affilée) ; on mange petit à petit comme dans Project Zomboid, et quand on n'a plus faim, on est repu. | Manger est instantané et la faim n'a pas de plafond par repas. | P13. Repas = **action chronométrée interruptible** (la part non mangée reste) ; **estomac** qui se remplit et se vide ; état « Repu » qui empêche de continuer. | en cours |
+| 31 | Ajouter le poids du corps : on en perd quand on a faim, on en prend si on mange trop ; effets quand on est trop maigre ou trop enrobé. | Aucune notion de poids corporel. | P13. Poids du corps à **seuils relatifs** : émacié, maigre, normal, enrobé, obèse, chacun avec ses effets ; évolution lente, dite par un état. | en cours |
+| 32 | La pelle en main est presque invisible : la rendre plus visible sans qu'elle soit trop grande. | Dessin trop fin à l'échelle du jeu. | P14. Pelle redessinée plus lisible (contraste, épaisseur), à sa taille. | en cours |
+| 33 | Afficher sur le personnage les objets portés dans le dos (emplacement « dos »). | L'emplacement « dos » n'est pas dessiné. | P14. Objet du dos dessiné sur le personnage. | en cours |
+| 34 | Les sacs sont encore trop sur le côté : les mettre plus dans le dos (pas forcément au centre, selon le sac). | Décalage latéral trop fort et commun à tous les sacs. | P14. Position du sac rapprochée du dos, réglée par modèle. | en cours |
+| 35 | Vêtements en couches : porter un t-shirt, un pull **et** une veste en même temps. | Un seul emplacement pour le haut du corps. | P14. Torse découpé en **3 couches** : haut, pull, veste. | en cours |
+
 ---
 
 ## 3. Check-list de revue d'un niveau
@@ -203,6 +245,11 @@ dans l'en-tête du fichier du niveau.
 - [ ] Les morts `dort` / `immobile` placés pour une séquence de discrétion : la règle (lumière, bruit) est dite dans la
       scène d'entrée ou par une aide, et la pièce est assez éclairée (bougies, cierges, lune) pour la traverser lampe éteinte.
 - [ ] Le joueur ne peut pas mourir d'une règle qu'on ne lui a pas annoncée (bruit, lumière, piège).
+
+**Mission (P12)**
+- [ ] Si le niveau porte une mission : je sais dire **quelle contrainte** elle impose (discrétion, durée, protection,
+      approvisionnement, nettoyage) et en quoi elle ne se joue pas comme la précédente.
+- [ ] L'avancement se lit en phrases, et chaque objectif rempli déclenche le bandeau « Objectif rempli ».
 
 **Textes (P9)**
 - [ ] Noms de pièces, de portes, de meubles, messages : relus selon P9 et `CHARTE_ECRITURE.md` (articles « le », « la »,

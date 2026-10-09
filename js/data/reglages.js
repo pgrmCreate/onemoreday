@@ -542,8 +542,16 @@ export const REGLAGES = {
       KCAL_PAR_POINT: 16,       // 16 kcal = 1 point de faim (journée de jeu compressée : une conserve de haricots ≈ 20 points).
       RASSASIE: 92,             // au-delà : « Tu n'as plus faim. » (on peut se forcer → nausée).
       MIETTES: 0.08,            // s'il ne reste que 8 % de l'objet, on le finit.
-      FORCER_POINTS: 20,        // se forcer : on mange jusqu'à 20 points de plus que la faim…
+      FORCER_POINTS: 10,        // se forcer : on mange jusqu'à 10 points de plus que la faim (ou que l'estomac)…
       NAUSEE_MIN: 90,           // … nausée 1 h 30 : endurance qui remonte moitié moins vite.
+      // L'estomac (façon Project Zomboid) : on ne se gave pas d'un coup. Un repas le remplit, il se vide en digérant.
+      ESTOMAC_MAX: 40,          // points de faim qu'on peut avaler d'affilée (≈ deux conserves de haricots)…
+      ESTOMAC_VIDANGE_MIN: 0.45,// … qui se vident à 27 points par heure : un estomac plein se libère en 1 h 30.
+      REPU: 0.8,                // estomac rempli à 80 % : « Repu·e » (état positif).
+      BOUCHEE: 3,               // moins de 3 points de place : on ne peut plus rien avaler.
+      // Manger prend du temps (action chronométrée, interrompue en bougeant : on garde le reste).
+      MS_BASE: 1800, MS_PAR_POINT: 230, MS_MIN: 2200, MS_MAX: 12000,   // une conserve de 20 points ≈ 6,4 s réelles
+      MIN_HORS_EXPLORATION: 5,  // manger sur la carte ou en voyage : 5 minutes passent
       NAUSEE_REGEN: 0.5,
       TOURNE_RISQUE: 0.5,       // entamé depuis plus de `perissable` h (items) : 50 % d'intoxication.
       MOTS: [                   // état de la faim, du plus calé au pire (seuil : faim ≥ …)
@@ -552,6 +560,21 @@ export const REGLAGES = {
       PORTIONS: [               // ce que représente un aliment pour quelqu'un d'affamé (points de faim qu'il peut caler)
         [6, 'une bouchée'], [16, 'un en-cas'], [32, 'un repas léger'], [55, 'un vrai repas'], [90, 'un gros repas'], [1e9, 'plusieurs repas'],
       ],
+    },
+    // --- Poids du corps : il suit la faim, jour après jour (accéléré : la partie dure des semaines, pas des mois) ---
+    CORPS: {
+      REF: { m: 74, f: 61 },    // poids de forme (kg) selon le genre
+      BORNES: [0.62, 1.45],     // jamais en dessous / au-dessus de ces rapports
+      SEUILS: [[0.8, 'emacie'], [0.91, 'maigre'], [1.1, 'normal'], [1.22, 'enrobe'], [99, 'obese']],   // rapport poids / forme < seuil
+      KG_JOUR: [[88, 0.35], [55, 0], [40, -0.5], [15, -1], [0, -1.6]],   // faim ≥ seuil → kg par jour (bien calé·e : on prend)
+      SOMMEIL: 0.6,             // en dormant, on perd moins vite
+      GAVE_KG_PAR_POINT: 0.02,  // chaque point avalé de force (au-delà de la faim ou de l'estomac) : +20 g
+      EFFETS: {                 // × vitesse, × coût en souffle, × récupération, × dégâts, + chaleur, + souffle max
+        emacie: { vitesse: 0.94, staCout: 1.25, regenSta: 0.75, degats: 0.8, chaleur: -2, staMax: -15 },
+        maigre: { vitesse: 1, staCout: 1.08, regenSta: 0.92, degats: 0.92, chaleur: -1, staMax: -5 },
+        enrobe: { vitesse: 0.97, staCout: 1.15, regenSta: 0.9, degats: 1, chaleur: 1, staMax: -5 },
+        obese: { vitesse: 0.9, staCout: 1.35, regenSta: 0.8, degats: 1.05, chaleur: 2, staMax: -15 },
+      },
     },
     SOIF_PAR_MIN: 0.05,         // 100 → 0 en 33 h (≈ 1,5 L par jour).
     FATIGUE_PAR_MIN: 0.055,     // 100 → 0 en 30 h éveillé(e).

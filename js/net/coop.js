@@ -358,6 +358,8 @@ function brancherCommun() {
   if (G) G.pairNom = nomPair;
   offs.push(on('flag', ({ k, v, distant }) => { if (!distant) envoyer({ t: 'flag', k, v }); }));
   offs.push(on('quete', ({ id, etape, distant }) => { if (!distant) envoyer({ t: 'quete', id, etape }); }));
+  // missions : l'hôte les fait avancer, l'invité reçoit l'état et les bandeaux
+  offs.push(on('mission:maj', ({ id, notif, distant }) => { if (!distant && G && G.mode === 'hote') envoyer({ t: 'mission', id, st: id ? (G.world.missions || {})[id] : null, notif: notif || null }); }));
   offs.push(on('declencheur', ({ cle }) => envoyer({ t: 'decl', cle })));
   offs.push(on('lieu:decouvert', ({ id, distant }) => { if (!distant) envoyer({ t: 'decouvert', id }); }));
   offs.push(on('cinematique', ({ id }) => envoyer({ t: 'cine', id })));
@@ -382,6 +384,11 @@ function recuCommun(m) {
   switch (m.t) {
     case 'flag': setFlag(m.k, m.v, { distant: true }); return true;
     case 'quete': quetes.avancer(m.id, m.etape, { distant: true }); return true;
+    case 'mission':
+      if (G && m.id) { G.world.missions = G.world.missions || {}; G.world.missions[m.id] = m.st; }
+      if (m.notif) emit('mission:notif', m.notif);
+      emit('mission:maj', { id: m.id, distant: true });
+      return true;
     case 'pos': pairPos = m.pos; if (m.pos && m.pos.nom) majNomPair(m.pos.nom); majBadge(); return true;
     case 'decl': if (G) { G.world.declencheurs = G.world.declencheurs || {}; G.world.declencheurs[m.cle] = true; } return true;
     case 'decouvert': if (G) { const L = G.world.lieux[m.id] || (G.world.lieux[m.id] = {}); if (!L.decouvert) { L.decouvert = true; emit('lieu:decouvert', { id: m.id, distant: true }); } } return true;

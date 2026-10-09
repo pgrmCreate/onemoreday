@@ -1,7 +1,7 @@
 // ============ Inventaire — poids, VOLUME, mains, dos, équipement, accès rapide, lampes, eau, usure (sans DOM) ============
 // Règles : GAMEPLAY §8 (poids + volume, mains, dos), §2.5 (lumière et piles), §6.1 (réparation), REGLAGES.inventaire.
 // Forme : G.player.inventaire = [{ id, qty, dur?, durMax?, eau?: { q: 'propre'|'croupie', L } }]   (sac + poches)
-//         G.player.equip = { arme (= MAIN DROITE), mainG (main gauche), dos, tete, torse, mains, jambes, pieds,
+//         G.player.equip = { arme (= MAIN DROITE), mainG (main gauche), dos, tete, haut, torse (pull), veste, mains, jambes, pieds,
 //                            sac, ceinture, holster, lampe } (ids)
 //         G.player.deuxMains = true quand l'objet de la main droite est tenu à DEUX mains (main gauche libre).
 //         G.player.equipEtat = { arme|mainG|dos: { dur, durMax, balles, eau… } (l'instance), lampe: { charge, allumee } }
@@ -12,13 +12,13 @@ import { G } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { REGLAGES } from '../data/reglages.js';
 import { ITEMS } from '../data/items.js';
-import { CLOTHES, SLOTS } from '../data/clothing.js';
+import { CLOTHES, SLOTS, COUVRE_DEFAUT } from '../data/clothing.js';
 import { OBJETS_QUETE } from '../data/histoire/objets_quete.js';
 import { niveau } from './player.js';
 
 const I = () => REGLAGES.inventaire;
 const joueur = (p) => p || (G && G.player);
-export const SLOTS_VETEMENT = ['tete', 'torse', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
+export const SLOTS_VETEMENT = ['tete', 'haut', 'torse', 'veste', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
 export const SLOTS_TENUS = ['arme', 'mainG', 'dos'];          // ce qu'on tient / porte sanglé (instances)
 export const NOMS_SLOTS = { ...SLOTS, arme: 'Main droite', mainG: 'Main gauche', dos: 'Dans le dos', lampe: 'Lampe' };
 
@@ -581,16 +581,17 @@ export function chaleurVetements(p) {
 export function impermeable(p) { p = joueur(p); return SLOTS_VETEMENT.some(s => CLOTHES[p.equip[s]] && CLOTHES[p.equip[s]].impermeable); }
 // Sous la pluie : à quelle vitesse on se mouille (1 = rien ne protège). C'est le haut du corps qui compte
 // (poncho, veste de feu) ; des bottes ou un chapeau imperméables aident un peu.
+const HAUT_DU_CORPS = ['haut', 'torse', 'veste'];
 export function facteurPluie(p) {
   p = joueur(p); const R = REGLAGES.survie.MOUILLE; let f = 1;
-  for (const s of SLOTS_VETEMENT) { const v = CLOTHES[p.equip[s]]; if (v && v.impermeable) f *= s === 'torse' ? R.IMPERMEABLE : R.IMPERMEABLE_AUTRE; }
+  for (const s of SLOTS_VETEMENT) { const v = CLOTHES[p.equip[s]]; if (v && v.impermeable) f *= HAUT_DU_CORPS.includes(s) ? R.IMPERMEABLE : R.IMPERMEABLE_AUTRE; }
   return f;
 }
 export function protectionZone(zone, p) {
   p = joueur(p); let pr = 0;
   for (const s of SLOTS_VETEMENT) {
     const id = p.equip[s], c = CLOTHES[id]; if (!c || !c.protection) continue;
-    const couvre = c.couvre || { tete: ['à la tête'], torse: ['au torse', 'au flanc', 'au ventre', 'dans le dos', 'à l\'épaule'], mains: ['à la main'], jambes: ['à la cuisse', 'au genou', 'au mollet'], pieds: ['au pied', 'à la cheville'] }[c.slot] || [];
+    const couvre = c.couvre || COUVRE_DEFAUT[c.slot] || { tete: ['à la tête'], torse: ['au torse', 'au flanc', 'au ventre', 'dans le dos', 'à l\'épaule'], mains: ['à la main'], jambes: ['à la cuisse', 'au genou', 'au mollet'], pieds: ['au pied', 'à la cheville'] }[c.slot] || [];
     if (couvre.includes(zone)) pr = Math.max(pr, c.protection);
   }
   return pr;
@@ -599,7 +600,7 @@ export function protectionZone(zone, p) {
 // ---------- Accès rapide ----------
 export function accesRapideMax(p) {
   p = joueur(p); let n = 0;
-  for (const s of ['ceinture', 'holster', 'torse', 'sac']) { const c = CLOTHES[p.equip[s]]; if (c && c.accesRapide) n += c.accesRapide; }
+  for (const s of ['ceinture', 'holster', 'torse', 'veste', 'sac']) { const c = CLOTHES[p.equip[s]]; if (c && c.accesRapide) n += c.accesRapide; }
   return Math.min(n, I().ACCES_RAPIDE_MAX);
 }
 function nettoyerAccesRapide(p) {

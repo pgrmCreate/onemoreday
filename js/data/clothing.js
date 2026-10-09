@@ -2,7 +2,9 @@
 //  VÊTEMENTS & ÉQUIPEMENT PORTÉ
 // ============================================================================
 // Champs :
-//   nom, slot            slot ∈ tete | torse | mains | jambes | pieds | sac | ceinture | holster
+//   nom, slot            slot ∈ tete | haut | torse | veste | mains | jambes | pieds | sac | ceinture | holster
+//                        Le haut du corps se porte en TROIS COUCHES : haut (t-shirt, chemise), torse (pull, sweat,
+//                        polaire), veste (veste, blouson, manteau, gilet, poncho) ; chaleurs et poches s'additionnent.
 //   poids                kg (un vêtement porté pèse mais n'occupe pas d'emplacement).
 //   espace               POCHES offertes par un vêtement (1 = 1 litre de poches : jean 1, cargo 2, gilet tactique 3).
 //                        Les poches ne prennent que les PETITS objets (≤ reglages.inventaire.POCHE_MAX_L).
@@ -36,6 +38,8 @@ export const ZONES_BRAS = ['à l\'épaule', 'au bras', 'à l\'avant-bras', 'à l
 
 export const COUVRE_DEFAUT = {
   tete: ['à la tête'],
+  haut: ['au torse', 'au flanc', 'au ventre', 'dans le dos', 'à l\'épaule'],
+  veste: ['au torse', 'au flanc', 'au ventre', 'dans le dos', 'à l\'épaule'],
   torse: ['au torse', 'au flanc', 'au ventre', 'dans le dos', 'à l\'épaule'],
   mains: ['à la main'],
   jambes: ['à la cuisse', 'au genou', 'au mollet'],
@@ -77,10 +81,32 @@ export const CLOTHES = {
     desc: 'Les dents ne passent pas à travers. La visière est fendue, et tu entends le monde comme au fond d\'une piscine.',
   },
 
-  // ---------- TORSE ----------
+  // ---------- HAUT DU CORPS : trois couches (le haut, puis le pull, puis la veste) ----------
+  // couche 1 : le haut
   tshirt: {
-    nom: 'T-shirt', slot: 'torse', poids: 0.2, espace: 0, protection: 0, chaleur: 0, tissu: 1,
+    nom: 'T-shirt', slot: 'haut', poids: 0.2, espace: 0, protection: 0, chaleur: 0, tissu: 1,
     desc: 'Du coton fin. Autant dire rien.',
+  },
+  chemise: {
+    nom: 'Chemise', slot: 'haut', poids: 0.3, espace: 1, protection: 0, chaleur: 1, tissu: 2, couvre: MANCHES,
+    desc: 'Manches longues, une poche de poitrine, un col qui a connu le fer à repasser. On la porte sous un pull.',
+  },
+  debardeur: {
+    nom: 'Débardeur', slot: 'haut', poids: 0.1, espace: 0, protection: 0, chaleur: 0, tissu: 1,
+    desc: 'Pour les jours où le soleil de Provence tape. Les nuits, il ne sert à rien.',
+  },
+  maillot_thermique: {
+    nom: 'Maillot thermique', slot: 'haut', poids: 0.2, espace: 0, protection: 0, chaleur: 2, tissu: 1, couvre: MANCHES,
+    desc: 'Le maillot moulant des skieurs et des chasseurs. Sous un pull, il fait toute la différence quand le mistral souffle.',
+  },
+  // couche 2 : le pull
+  polaire: {
+    nom: 'Polaire', slot: 'torse', poids: 0.5, espace: 1, protection: 0, chaleur: 3, tissu: 2, couvre: MANCHES,
+    desc: 'Une polaire de randonnée, fermée jusqu\'au menton. Légère, et chaude tant qu\'elle reste sèche.',
+  },
+  gilet_laine: {
+    nom: 'Gilet de laine', slot: 'torse', poids: 0.4, espace: 1, protection: 0, chaleur: 2, tissu: 2, couvre: MANCHES,
+    desc: 'Boutonné devant, deux poches, des coudes élimés. Le gilet d\'une grand-mère, qui tient chaud comme elle.',
   },
   sweat_capuche: {
     nom: 'Sweat à capuche', slot: 'torse', poids: 0.5, espace: 1, protection: 0, chaleur: 2, tissu: 2, couvre: MANCHES,
@@ -90,37 +116,54 @@ export const CLOTHES = {
     nom: 'Pull en laine', slot: 'torse', poids: 0.6, espace: 0, protection: 0, chaleur: 3, tissu: 2, couvre: MANCHES,
     desc: 'Tricoté par quelqu\'un qui aimait quelqu\'un.',
   },
+  // couche 3 : la veste (par-dessus tout le reste)
+  veste_jean: {
+    nom: 'Veste en jean', slot: 'veste', poids: 1.0, espace: 2, protection: 1, chaleur: 1, tissu: 2, couvre: MANCHES,
+    desc: 'La toile épaisse arrête une griffure, pas une morsure. Elle a quatre poches, dont une qui ferme.',
+  },
+  coupe_vent: {
+    nom: 'Coupe-vent', slot: 'veste', poids: 0.3, espace: 1, protection: 0, chaleur: 1, impermeable: true, tissu: 1, couvre: MANCHES,
+    desc: 'Du nylon fin qui crisse à chaque geste. Il coupe le mistral et la pluie.',
+  },
+  parka: {
+    nom: 'Parka', slot: 'veste', poids: 1.8, espace: 2, protection: 1, chaleur: 4, impermeable: true, tissu: 3, couvre: MANCHES,
+    desc: 'Une capuche bordée de fausse fourrure, un tissu huilé. Avec un pull dessous, la nuit dans la Crau devient supportable.',
+  },
+  doudoune: {
+    nom: 'Doudoune', slot: 'veste', poids: 0.8, espace: 2, protection: 0, chaleur: 4, tissu: 2, couvre: MANCHES,
+    desc: 'Gonflée comme un pneu. Une griffure et les plumes s\'envolent, mais elle tient chaud comme rien d\'autre.',
+  },
   blouse_medicale: {
-    nom: 'Blouse d\'hôpital', slot: 'torse', poids: 0.3, espace: 1, protection: 0, chaleur: 0, tissu: 2, couvre: MANCHES,
+    nom: 'Blouse d\'hôpital', slot: 'veste', poids: 0.3, espace: 1, protection: 0, chaleur: 0, tissu: 2, couvre: MANCHES,
     desc: 'Blanche, enfin elle l\'était. Un badge au nom d\'une interne. Deux poches, et c\'est tout ce qu\'elle a pour elle.',
   },
   veste_cuir: {
-    nom: 'Veste en cuir', slot: 'torse', poids: 2.0, espace: 1, protection: 2, chaleur: 1, couvre: MANCHES,
+    nom: 'Veste en cuir', slot: 'veste', poids: 2.0, espace: 1, protection: 2, chaleur: 1, couvre: MANCHES,
     desc: 'Le cuir épais arrête les ongles et amortit les dents.',
   },
   blouson_moto: {
-    nom: 'Blouson de moto', slot: 'torse', poids: 2.4, espace: 1, protection: 3, chaleur: 2, couvre: MANCHES,
+    nom: 'Blouson de moto', slot: 'veste', poids: 2.4, espace: 1, protection: 3, chaleur: 2, couvre: MANCHES,
     desc: 'Cuir épais, coques aux coudes et aux épaules. Il a déjà frotté le bitume de la nationale. Il frottera des dents.',
   },
   manteau_hiver: {
-    nom: 'Manteau d\'hiver', slot: 'torse', poids: 2.6, espace: 2, protection: 1, chaleur: 4, tissu: 3, agilite: -1, couvre: MANCHES,
+    nom: 'Manteau d\'hiver', slot: 'veste', poids: 2.6, espace: 2, protection: 1, chaleur: 4, tissu: 3, agilite: -1, couvre: MANCHES,
     desc: 'Encombrant mais chaud. Le mistral tue autant que les morts.',
   },
   veste_pompier: {
-    nom: 'Veste de feu', slot: 'torse', poids: 2.5, espace: 2, protection: 2, chaleur: 3, impermeable: true, couvre: MANCHES,
+    nom: 'Veste de feu', slot: 'veste', poids: 2.5, espace: 2, protection: 2, chaleur: 3, impermeable: true, couvre: MANCHES,
     desc: 'La veste d\'intervention d\'un sapeur-pompier, bandes réfléchissantes et tissu ignifugé. Ça ne brûle pas, ça ne se déchire pas, ça ne sèche jamais.',
   },
   gilet_tactique: {
-    nom: 'Gilet tactique', slot: 'torse', poids: 3.2, espace: 3, protection: 3, chaleur: 0, accesRapide: 2, portage: 2, agilite: -1,
+    nom: 'Gilet tactique', slot: 'veste', poids: 3.2, espace: 3, protection: 3, chaleur: 0, accesRapide: 2, portage: 2, agilite: -1,
     couvre: ['au torse', 'au flanc', 'au ventre', 'dans le dos'],
     desc: 'Plaques et sangles. Trouvé sur quelqu\'un qui n\'en a plus besoin. Les bras restent nus, mais deux objets restent à portée de main.',
   },
   veste_renforcee: {
-    nom: 'Veste renforcée', slot: 'torse', poids: 2.8, espace: 1, protection: 3, chaleur: 1, agilite: -1, couvre: MANCHES,
+    nom: 'Veste renforcée', slot: 'veste', poids: 2.8, espace: 1, protection: 3, chaleur: 1, agilite: -1, couvre: MANCHES,
     desc: 'Une veste en cuir cousue de fil de fer et de plaques de fortune. Lourde, raide, rassurante.',
   },
   poncho_pluie: {
-    nom: 'Poncho de pluie', slot: 'torse', poids: 0.5, espace: 0, protection: 0, chaleur: 1, impermeable: true,
+    nom: 'Poncho de pluie', slot: 'veste', poids: 0.5, espace: 0, protection: 0, chaleur: 1, impermeable: true,
     desc: 'Une bâche de chantier découpée et scotchée aux épaules. Tu ressembles à un sac poubelle, mais un sac poubelle sec.',
   },
 
@@ -338,7 +381,7 @@ export const CLOTHES = {
 
 
 export const SLOTS = {
-  tete: 'Tête', torse: 'Torse', mains: 'Mains',
+  tete: 'Tête', haut: 'Haut', torse: 'Pull', veste: 'Veste', mains: 'Mains',
   jambes: 'Jambes', pieds: 'Pieds', sac: 'Sac',
   ceinture: 'Ceinture', holster: 'Holster',
 };

@@ -52,12 +52,26 @@ r = surv.manger('biscuits');
 ok(!r.ok && r.peutForcer, `rassasié·e : « ${r.raison} »`);
 const resteAv = ent.reste; r = surv.manger(p.inventaire.indexOf(ent), p, { forcer: true });
 ok(r.ok && p.effets.nausee > 0 && p.inventaire.find(x => x.id === 'biscuits' && x.reste < resteAv), 'se forcer : on en mange encore un peu, nausée');
+// L'estomac : affamé·e, on ne se gave pas d'un coup — il faut digérer avant de finir le paquet
+p.mort = null; p.pv = p.pvMax; p.soif = 100; p.fatigue = 100;   // (le test des 48 h l'a laissé·e mort·e)
 p.faim = 10; r = surv.manger('biscuits');
-ok(r.ok && !p.inventaire.some(x => x.id === 'biscuits'), `affamé·e : on finit le paquet entamé (${surv.motFaim(p)})`);
+ok(!r.ok && r.peutForcer && /repu/.test(r.raison), `affamé·e mais l'estomac est encore plein : « ${r.raison} »`);
+p.estomac = 0; r = surv.manger('biscuits');
+const ent2 = p.inventaire.find(x => x.id === 'biscuits');
+ok(r.ok && p.estomac >= REGLAGES.survie.REPAS.ESTOMAC_MAX - 1 && (!ent2 || ent2.reste > 0), `estomac vide : un repas le remplit (${Math.round(p.estomac)} points), on garde le reste`);
+surv.tickMinutes(120);
+ok(p.estomac === 0, `deux heures plus tard, l'estomac s'est vidé (${p.estomac})`);
+p.faim = 10; p.estomac = 0; while (p.inventaire.some(x => x.id === 'biscuits')) { p.estomac = 0; p.faim = 10; if (!surv.manger('biscuits').ok) break; }
+ok(!p.inventaire.some(x => x.id === 'biscuits'), `affamé·e, repas après repas : on finit le paquet entamé (${surv.motFaim(p)})`);
+// Le poids du corps suit la faim
+{ const kg0 = p.poidsCorps; p.faim = 30; surv.tickMinutes(1440); const kg1 = p.poidsCorps;
+  ok(kg1 < kg0, `une journée affamé·e : on maigrit (${kg0.toFixed(2)} → ${kg1.toFixed(2)} kg)`);
+  p.poidsCorps = p.poidsRef * 0.75; ok(surv.corpulence(p).id === 'emacie' && surv.effetsCorpulence(p).degats < 1, `émacié·e : ${surv.corpulence(p).label}, coups ×${surv.effetsCorpulence(p).degats}`);
+  p.poidsCorps = p.poidsRef; ok(surv.corpulence(p).id === 'normal', 'poids de forme : normal'); }
 ok(surv.motPortion('compote') === 'une bouchée' && surv.motPortion('barre_cereales') === 'un en-cas' && surv.motPortion('conserve_raviolis') === 'un repas léger' && surv.motPortion('biscuits') === 'un gros repas',
   `portions en mots : barre = ${surv.motPortion('barre_cereales')}, raviolis = ${surv.motPortion('conserve_raviolis')}, biscuits = ${surv.motPortion('biscuits')}`);
 // Consommer sur place (meuble / sol), sans ramasser
-p.faim = 30;
+p.faim = 30; p.estomac = 0;
 r = surv.consommer({ id: 'conserve_raviolis', qty: 1 }, p);
 ok(r.ok && r.fini && r.rend === 'boite_vide', 'raviolis mangés sur place (ouvre-boîte dans le sac)');
 r = surv.consommer({ id: 'bandage', qty: 1 }, p);

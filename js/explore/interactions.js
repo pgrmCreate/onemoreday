@@ -25,6 +25,7 @@ import { commencerFouille, interrompreFouille, fermerButin, ramasser, lireDocume
 import { ciblesConstruction, libelleConstruction, agirConstruction, constructionActive, secondaireConstruction, secondaireMeuble, secondairePorte, demonterMeuble } from './construction.js';
 import { DEMONTABLES } from '../data/construction.js';
 import { recoltable, propositionNature, libelleNature, secondaireNature, agirNature } from './nature.js';
+import { pnjsMissions, ciblesMissions } from './missions_vue.js';
 
 const RX = REGLAGES.exploration;
 let V = null, api = null;
@@ -128,6 +129,7 @@ export function chercherCible() {
     proposer({ type: 'cadavre', cd, etage: E.id, x0: cd.x - 0.6, y0: cd.y - 0.6, x1: cd.x + 0.6, y1: cd.y + 0.6, cx: cd.x, cy: cd.y }, d);
   }
   ciblesConstruction(proposer);
+  ciblesMissions(proposer);       // le geste d'une mission (« Ouvrir le coffre »)
   // rien de principal ici, mais des gestes secondaires possibles : pas d'action sur E, juste le petit rond
   if (!best && cands.length) best = { type: 'rien', etage: null };
   if (best) {
@@ -230,7 +232,7 @@ export function choisir(i) {
   fermerChoix();
   if (V.fouille) interrompreFouille();
   if (V.butin) fermerButin();
-  if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); }
+  if (V.action) couperAction();
   a.f();
   return true;
 }
@@ -276,6 +278,7 @@ function libelle(c) {
     case 'marqueur': return (c.decl && c.decl.libelle) || (c.m && c.m.def && c.m.def.nom ? `Examiner ${c.m.def.nom}` : 'Examiner');
     case 'doc': return `${(G.documents || []).includes(c.doc) ? 'Relire' : 'Lire'} : ${(DOCUMENTS[c.doc] || {}).titre || 'document'}`;
     case 'pnj': return `Parler à ${c.q.nom}`;
+    case 'mission': return c.lib;
     case 'relever': return `Relever ${c.p.nom || 'ton coéquipier'}`;
     case 'sol': return c.o.doc ? `Lire : ${(DOCUMENTS[c.o.doc] || {}).titre || 'document'}` : `Ramasser : ${nomObjet(c.o.id)}${c.o.qty > 1 ? ' ×' + c.o.qty : ''}`;
     case 'cadavre': return 'Fouiller le corps';
@@ -304,7 +307,7 @@ export async function interagir(o) {
   if (!V || V.occupe || V.enPause) return;
   if (V.butin && !o) { prendreTout(); return; }
   if (V.fouille) { interrompreFouille(); return; }
-  if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); return; }
+  if (V.action) { couperAction(); return; }
   fermerChoix();
   const c = V.cible = chercherCible();
   if (!c) return;
@@ -326,6 +329,7 @@ export function agirSur(c) {
     case 'marqueur': return jouerDeclencheur(c.decl);
     case 'doc': return lireDocument(c.doc);
     case 'pnj': return parler(c.q);
+    case 'mission': return c.f();
     case 'relever': return lancerAction(`Relever ${c.p.nom || 'ton coéquipier'}…`, REGLAGES.coop.RELEVER_MS || 3000, c.p.x, c.p.y, () => { api.coop && api.coop.relever(c.p.id); sfx('soin'); });
     case 'sol': return ramasser(c.o);
     case 'cadavre': return commencerFouille('cad:' + c.cd.uid, 'le corps', c.cd.x, c.cd.y);
@@ -369,21 +373,54 @@ async function actionPorte(c) {
   else if (r.raison === 'flag') message('Fermée. Ça ne s\'ouvre pas de ce côté.');
   else if (r.raison === 'verrouillee') { sfx('porte_verrouillee'); message('Verrouillée.'); }
 }
-// Action chronométrée générique (forcer, crocheter, relever…) : interrompue par le mouvement.
+// Action chronométrée générique (forcer, crocheter, relever, manger…) : interrompue par le mouvement.
 // son : bruit de travail rejoué pendant l'action (ex. 'clouer'), toutes les sonMs.
-export function lancerAction(label, ms, x, y, fin, bruitParS = 0, son = null, sonMs = 2300) {
-  V.action = { label, duree: ms, t: 0, x, y, fin, bruit: bruitParS, tb: 0, son, sonMs, tSon: 0 };
+// annuler(frac) : appelée si l'action est coupée en route (frac = part déjà faite, 0..1) — un repas garde ce qu'on a avalé.
+export function lancerAction(label, ms, x, y, fin, bruitParS = 0, son = null, sonMs = 2300, annuler = null) {
+  V.action = { label, duree: ms, t: 0, x, y, fin, bruit: bruitParS, tb: 0, son, sonMs, tSon: 0, annuler };
   V.hud.barre.firstChild.textContent = label;
   V.hud.barre.classList.remove('cache');
 }
+// Coupe l'action en cours (mouvement, coup, mort qui approche, autre geste).
+export function couperAction(msg = null) {
+  const a = V && V.action; if (!a) return false;
+  V.action = null; V.hud.barre.classList.add('cache');
+  if (msg) message(msg);
+  if (a.annuler) { try { a.annuler(Math.min(1, a.t / a.duree)); } catch (e) { console.warn('[action]', e); } }
+  return true;
+}
 export function avancerAction(dt) {
   const a = V.action, I = V.entrees.etat;
-  if (Math.hypot(I.mx, I.my) > 0.3) { V.action = null; V.hud.barre.classList.add('cache'); message('Interrompu.'); return; }
+  if (Math.hypot(I.mx, I.my) > 0.3) { couperAction(a.annuler ? null : 'Interrompu.'); return; }
   a.t += dt; a.tb += dt;
   if (a.son && (a.tSon -= dt) <= 0) { a.tSon = a.sonMs; sfx(a.son); }
   if (a.bruit && a.tb >= 1000) { a.tb = 0; V.canal.bruit({ etage: V.j.etage, x: a.x, y: a.y, rayon: a.bruit }); }
   V.hud.barre.lastChild.firstChild.style.width = (100 * Math.min(1, a.t / a.duree)).toFixed(1) + '%';
   if (a.t >= a.duree) { V.action = null; V.hud.barre.classList.add('cache'); a.fin(); }
+}
+
+// ---------- Manger prend du temps ----------
+// Bouchée après bouchée : une barre « Tu manges… », la mastication, et à la fin on a calé ce qu'on a eu le temps d'avaler.
+// Bouger, frapper, voir un mort approcher : on s'arrête et on GARDE le reste (boîte entamée).
+// entree : UN exemplaire déjà sorti de là où il était ; rendre(e) : y remettre (ou mettre au sac) ce qui n'a pas été mangé.
+export function mangerEnAction(entree, { forcer = false, rendre }) {
+  const S = mod.survie, p = G.player;
+  if (!S || !V) { rendre(entree); return false; }
+  const v = S.peutConsommer(entree, p);
+  if (!v.ok && !(v.peutForcer && forcer)) { rendre(entree); message(v.raison || 'Impossible.', 2600); return false; }
+  const pts = S.pointsPrevus(entree, p, { forcer });
+  const nom = nomObjet(entree.id).toLowerCase();
+  const finir = (frac) => {
+    const r = S.mangerObjet(entree, p, { forcer, maxPoints: frac >= 1 ? undefined : pts * frac });
+    if (!r.ok) { rendre(entree); if (r.raison) message(r.raison, 2400); return; }
+    if (r.rien) { rendre(entree); message('Tu n\'as rien avalé.', 1800); return; }
+    if (!r.fini) rendre({ ...entree, qty: 1, reste: r.reste, ouvert: r.ouvert });
+    if (r.rend && mod.inv) mod.inv.addItem(r.rend, 1);
+    message(frac >= 1 ? r.texte : `Tu t'arrêtes de manger. ${r.texte}`, 3800);
+  };
+  lancerAction(`Tu manges : ${nom}…`, S.dureeRepas(pts), V.j.x, V.j.y, () => finir(1), 0, 'manger', 1600, finir);
+  sfx('manger');
+  return true;
 }
 
 // ---------- Documents, PNJ, déclencheurs ----------
@@ -408,9 +445,11 @@ export function majPnj() {
     if (m.meuble || m.porte) { const c = caseLibrePres(n, m); if (!c) continue; out.push({ id, nom: P.nom, scene: P.scene, marqueur: P.marqueur, etage: c.etage, x: c.x + 0.5, y: c.y + 0.5, dir: Math.PI / 2 }); }
     else out.push({ id, nom: P.nom, scene: P.scene, marqueur: P.marqueur, etage: m.etage, x: m.x + 0.5, y: m.y + 0.5, dir: Math.PI / 2 });
   }
+  out.push(...pnjsMissions());    // les personnages des missions (Mireille, Aimé…)
   V.pnj = out;
 }
 async function parler(q) {
+  if (q.parler) return q.parler();          // un personnage de mission
   const d = declencheurMarqueur(q.marqueur);
   if (d) return jouerDeclencheur(d);
   if (q.scene) return jouerScene(q.scene);

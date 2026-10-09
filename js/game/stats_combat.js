@@ -11,7 +11,7 @@ import { CLOTHES, zonesCouvertes, ZONES_JAMBE, ZONES_BRAS } from '../data/clothi
 import { profilMainsNues } from '../explore/combat.js';
 
 const SKILLS = ['force', 'dexterite', 'agilite', 'mainsNues', 'visee', 'entretien'];
-const SLOTS_VETEMENTS = ['tete', 'torse', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
+const SLOTS_VETEMENTS = ['tete', 'haut', 'torse', 'veste', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
 
 // Munitions disponibles (sac) pour un id de munition.
 export function compterMunitions(player, munId) {

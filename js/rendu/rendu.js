@@ -220,7 +220,7 @@ export function creerRendu(cv, niveau) {
       const e = entree(p.y, 'pair', p);
       e.v = visCase(p.x, p.y);
       e.ph = phase('pair:' + p.id, p.x, p.y);
-      e.st = { ...(p.lampe ? STYLE_PAIR_L : STYLE_PAIR), contour: 'rgba(110,200,255,0.9)', sac: p.sac === undefined ? true : p.sac };
+      e.st = { ...(p.lampe ? STYLE_PAIR_L : STYLE_PAIR), contour: 'rgba(110,200,255,0.9)', sac: p.sac === undefined ? true : p.sac, dos: p.dos || null };
     }
     const J = S.joueur;
     entree(J.y, 'moi', J).ph = phase('moi', J.x, J.y);

@@ -12,6 +12,7 @@ import * as survival from './survival.js';
 import { objet } from './donnees.js';
 import { tirerButinTable } from '../data/butin.js';
 import { DOCUMENTS } from '../data/histoire/documents.js';
+import * as missions from './missions.js';
 
 const nom = (id) => (objet(id) || {}).nom || id;
 
@@ -58,6 +59,7 @@ export function appliquerEffets(effets, ctx = {}) {
           break;
         }
         case 'bruit': emit('bruit', { rayon: v * 4, source: 'scene' }); break;
+        case 'mission': missions.effet(v); break;    // ['accepter' | 'plusTard' | 'refuser', id] | ['donner', id, objet]
         case 'combat': res.combat = v; break;
         case 'teleporter': res.teleporter = v; break;
         case 'cinematique': res.cinematique = v; break;

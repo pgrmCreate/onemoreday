@@ -8,6 +8,7 @@
 //   construire(o), agirConstruction(uid, action, patch), ranger(cle, item), demonterMeuble(cle), puiserEau(cle, L),
 //   ouvrirVoiture(cle, 'vitre' | 'forcer') → Promise
 // Combat : action(a) → Promise ({ type: 'frapper'|'pousser'|'tirer'|'marteler', … }), faireApparaitre(liste, o) → Promise<uids>.
+// Missions : appelerMorts(n, cible, { types }) → Promise<uids> (une vague qui marche vers cible = { etage, x, y }).
 // Extensions : ajouterJoueur(pos, info), arreterFouille(progres), blesserZombie(uid, n), retirerZombies(uids, o),
 //   repousserZombies(uids, depuis), pause(), reprise(), fermer(), niveau, joueurId, grilles(etage).
 // Événements : 'porte', 'bruit', 'zombie', 'hurlement', 'charge', 'sol', 'conteneur', 'tick' + combat : 'telegraphe', 'attaque',
@@ -71,6 +72,9 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } 
       return ok(r);
     },
     faireApparaitre(l, o) { return ok(sim.faireApparaitre(l, { joueurId, ...(o || {}) })); },
+    appelerMorts(n, cible, o) { return this._act(() => sim.appelerMorts(n, cible, o)); },   // vague de mission
+    preparerMission(o) { return this._act(() => sim.preparerMission(o)); },                  // mise en scène d'une mission
+    reveillerZone(o) { return this._act(() => sim.reveillerZone(o)); },                      // tout bascule (coffre, repéré·e)
     blesserZombie(uid, n) { return ok(sim.blesserZombie(uid, n)); },
     retirerZombies(uids, o) { sim.retirerZombies(uids, o); return ok(true); },
     repousserZombies(uids, depuis) { sim.repousserZombies(uids, depuis); return ok(true); },

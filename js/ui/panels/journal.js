@@ -1,6 +1,8 @@
 // ============ Panneau Journal — Objectifs / Récit / Documents / Les morts ============
 import { G, genrer } from '../../core/state.js';
 import { QUETES } from '../../data/histoire/quetes.js';
+import { MISSIONS } from '../../data/histoire/missions.js';
+import { avancee as avanceeMission } from '../../game/missions.js';
 import { DOCUMENTS } from '../../data/histoire/documents.js';
 import { ZOMBIES } from '../../data/zombies.js';
 import { lieu as lieuDe } from '../../game/donnees.js';
@@ -34,7 +36,9 @@ function dessiner(racine) {
 function objectifs(zone) {
   const qs = Object.entries(QUETES).filter(([id]) => G.world.quetes && G.world.quetes[id])
     .sort(([, a], [, b]) => (b.principale - a.principale) || ((b.chapitre || 0) - (a.chapitre || 0)));
-  if (!qs.length) { zone.append(vide('Aucun objectif pour l\'instant. Survis.', 'objectif')); return; }
+  const ms = missionsVues();
+  if (!qs.length && !ms.length) { zone.append(vide('Aucun objectif pour l\'instant. Survis.', 'objectif')); return; }
+  if (ms.length) { missions(zone, ms); if (qs.length) zone.append(el('h3', { class: 'pn-section' }, 'Histoire')); }
   for (const [id, q] of qs) {
     const e = G.world.quetes[id]; const cles = Object.keys(q.etapes); const k = cles.indexOf(e.etape);
     const art = el('article', { class: `jo-quete${q.principale ? ' principale' : ''}${e.faite ? ' faite' : ''}` },
@@ -46,6 +50,36 @@ function objectifs(zone) {
       ul.append(el('li', { class: i < k || e.faite ? 'fait' : 'courant' }, icoEl(i < k || e.faite ? 'coche' : 'objectif'),
         el('span', {}, genrer(et.objectif)), l && i === k && !e.faite ? el('small', {}, icoEl('lieu'), l.court || l.nom) : null));
     });
+    art.append(ul); zone.append(art);
+  }
+}
+
+// ---------- Missions (js/data/histoire/missions.js) : en cours d'abord, puis réussies et échouées ----------
+const ORDRE_MISSION = { active: 0, proposee: 1, reussie: 2, echouee: 3 };
+function missionsVues() {
+  const W = G.world.missions || {};
+  return Object.entries(MISSIONS).filter(([id]) => W[id] && W[id].etat in ORDRE_MISSION)
+    .sort(([a], [b]) => ORDRE_MISSION[W[a].etat] - ORDRE_MISSION[W[b].etat] || (W[b].depuis || 0) - (W[a].depuis || 0));
+}
+function missions(zone, ms) {
+  const W = G.world.missions;
+  zone.append(el('h3', { class: 'pn-section' }, 'Missions'));
+  for (const [id, m] of ms) {
+    const s = W[id], fini = s.etat === 'reussie' || s.etat === 'echouee';
+    const sous = { active: 'En cours', proposee: 'Proposée — tu peux y retourner', reussie: 'Accomplie', echouee: 'Échouée' }[s.etat];
+    const art = el('article', { class: `jo-quete jo-mission m-${s.etat}${fini ? ' faite' : ''}` },
+      el('header', {}, el('small', {}, sous), el('h3', {}, m.titre)), el('p', { class: 'jo-mission-resume' }, genrer(m.resume || '')));
+    const ul = el('ol', { class: 'jo-etapes' });
+    m.etapes.forEach((e, i) => {
+      if (s.etat === 'proposee' || (!fini && i > s.i) || (s.etat === 'echouee' && i > s.i)) return;
+      const fait = s.etat === 'reussie' || i < s.i, rate = s.etat === 'echouee' && i === s.i;
+      const l = e.lieu && lieuDe(e.lieu);
+      const av = !fini && i === s.i ? avanceeMission(id) : '';
+      ul.append(el('li', { class: fait ? 'fait' : rate ? 'rate' : 'courant' }, icoEl(fait ? 'coche' : rate ? 'alerte' : 'objectif'),
+        el('span', {}, genrer(e.texte), av ? el('em', { class: 'jo-avancee' }, ' — ' + genrer(av)) : null),
+        l && !fait && !rate ? el('small', {}, icoEl('lieu'), l.court || l.nom) : null));
+    });
+    if (s.etat === 'proposee' && m.offre) { const l = lieuDe(m.offre.lieu); ul.append(el('li', { class: 'courant' }, icoEl('lieu'), el('span', {}, `Retourner voir : ${l ? l.court || l.nom : m.offre.lieu}`))); }
     art.append(ul); zone.append(art);
   }
 }

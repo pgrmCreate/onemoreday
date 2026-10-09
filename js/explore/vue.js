@@ -14,6 +14,7 @@ import * as flow from '../game/flow.js';
 import { lieu as lieuDe, chargerNiveau } from '../game/donnees.js';
 import { REGLAGES, presetDifficulte } from '../data/reglages.js';
 import { ZOMBIES } from '../data/zombies.js';
+import { zonesCouvertes } from '../data/clothing.js';
 import { QUETES } from '../data/histoire/quetes.js';
 import { parserNiveau } from './niveau.js';
 import { icase, FIN } from '../carte/catalogue.js';
@@ -29,12 +30,14 @@ import { genererEmbuscade } from './embuscade.js';
 import { creerHud } from './hud_explore.js';
 import { mod, chargerOptionnels, lierCommun, vib, sfx, sfxA, posPorte, verifierCondition, compter, niv, message, afficherLieu, caseLibrePres } from './commun.js';
 import { lierButin, avancerFouille, interrompreFouille, fermerButin, fournisseurSol, fournisseurProximite, majProximite, ouvrirSol, nombreAuSol } from './butin.js';
-import { lierInteractions, chercherCible, majInvite, interagir, basculerChoix, fermerChoix, choisir, avancerAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
+import { lierInteractions, chercherCible, majInvite, interagir, basculerChoix, fermerChoix, choisir, avancerAction, couperAction, mangerEnAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
 import { lierCombatLieu, combatIci as combatIci_, embuscade as embuscade_, suivreCombat, finArene } from './combat_lieu.js';
 import { lierNature, majRecherche, basculerRecherche, vitesseRecherche, enRecherche } from './nature.js';
 import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, viserPlacement, majConstruction, feuxCommeLampes, fantome, grilleToits } from './construction.js';
 import { rueeSim, etatRuee, lieuDansZone, typeActif } from '../game/ruees.js';
 import { lierPlan, chargerMemoire, sauverMemoire, basculerPlan, planOuvert, fermerPlan } from './plan_lieu.js';
+import { lierMissions, majMissions, guideMission } from './missions_vue.js';
+import { lieuCalme } from '../game/missions.js';
 
 export { verifierCondition };
 const RX = REGLAGES.exploration, RL = REGLAGES.lumiere;
@@ -63,6 +66,7 @@ export async function obtenirCanal(lieuId, niveau, L) {
     getFlag: (k) => getFlag(k),
     getRuee: () => rueeSim(lieuId),
     arrivees: true, getMinutes: () => G.world.minutes,
+    getCalme: () => lieuCalme(lieuId),       // missions : quartier bouclé pendant qu'on le nettoie, calme après
   });
   return creerCanalLocal(sim, JOUEUR_ID);
 }
@@ -163,7 +167,19 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null } =
     emit('lieu:entre', { lieu: lieuId });
   }
   V.snap = V.canal.instantane(); V.tSnap = performance.now(); majInterp(true);
+  lierMissions(V);
   V.off.push(on('construction:placer', ({ type }) => { if (V) demarrerPlacement(type); }));
+  // Manger depuis le sac, le sol ou un meuble : le repas se joue ici, dans le monde (barre, mastication, interruption).
+  // d = { prendre: () → exemplaire | null, rendre(e), forcer, fermer?() } ; d.pris = true si l'exploration s'en charge.
+  V.off.push(on('repas:demande', (d) => {
+    if (!V || V.arene || V.occupe || G.player.agonie || !d) return;
+    d.pris = true;
+    if (d.fermer) try { d.fermer(); } catch (e) {}
+    else import('../ui/panels/index.js').then(m => { if (m.panneauOuvert()) m.fermerPanneau(); }).catch(() => {});
+    if (V.action) couperAction();
+    const entree = d.prendre(); if (!entree) return;
+    mangerEnAction(entree, { forcer: !!d.forcer, rendre: d.rendre });
+  }));
 
   // rendu + entrées
   V.rendu = creerRendu(canvas, niveau);
@@ -300,7 +316,7 @@ function regleZoom(z) {
   V.zoom = clamp(z, 0.55, 2); V.rendu.setZoom(V.zoom * (V.zoomCbt || 1)); setPref('zoomExplore', V.zoom);
   V.hud.majZoom(cranZoom(V.zoom));
 }
-function stopperActions() { fermerChoix(); if (V.fouille || V.butin || V.action) { interrompreFouille(); fermerButin(); V.action = null; V.hud.barre.classList.add('cache'); } }
+function stopperActions() { fermerChoix(); if (V.fouille || V.butin || V.action) { interrompreFouille(); fermerButin(); couperAction(); } }
 function ajouterJoueurSim(pos) {
   const C = V.canal;
   if (C.ajouterJoueur) C.ajouterJoueur(pos, { nom: G.player.nom, discretion: niv('discretion') });
@@ -312,6 +328,7 @@ export function sortir() {
   const v = V;
   v.actif = false;
   cancelAnimationFrame(v.raf);
+  try { couperAction(); } catch (e) {}       // un repas en cours rend ce qui n'a pas été mangé
   try { interrompreFouille(); } catch (e) {}
   try { v.cbt && v.cbt.fermer(); } catch (e) {}
   try { fermerPlan(); } catch (e) {}
@@ -492,7 +509,8 @@ function image(t, dt) {
   for (let q = 0; q < V.nLampes; q++) lumJ = Math.max(lumJ, lumiereLampe(V.lampes[q], j.x, j.y) * 0.5);
   j.lumiere = Math.min(1, lumJ);
   V.canal.majJoueur({ x: j.x, y: j.y, etage: j.etage, dir: j.dir, allure: j.allure, lumiere: j.lumiere, lampe: !!la, lampeSource: la ? la.id : null });
-  { const sac = (G.player.equip && G.player.equip.sac) || null; if (sac !== V._sacEnvoye) { V._sacEnvoye = sac; V.canal.majJoueur({ sac }); } } // le coéquipier voit ton sac
+  { const sac = (G.player.equip && G.player.equip.sac) || null, dos = (G.player.equip && G.player.equip.dos) || null;   // le coéquipier voit ton sac et ce que tu portes dans le dos
+    if (sac !== V._sacEnvoye || dos !== V._dosEnvoye) { V._sacEnvoye = sac; V._dosEnvoye = dos; V.canal.majJoueur({ sac, dos }); } }
 
   // --- morts interpolés (figés pendant le micro-arrêt) ---
   const f = clamp((V.tVis - V.tSnapVis) / V.periode, 0, 1);
@@ -510,6 +528,7 @@ function image(t, dt) {
   majProximite(dt);
   if (V.fouille) avancerFouille(dt);
   if (V.action) avancerAction(dt);
+  majMissions(dt);
   majConstruction(dt);
   majRecherche(dt);
   if (V._placeVu !== enPlacement()) { V._placeVu = enPlacement(); V.entrees.setPlacement && V.entrees.setPlacement(V._placeVu); }
@@ -558,16 +577,31 @@ function image(t, dt) {
   if (mod.panneaux && mod.panneaux.couvreEcran && mod.panneaux.couvreEcran()) V.rendu.sansImage(Sc);
   else V.rendu.dessiner(Sc);
 }
-// Apparence du joueur : couleur du haut porté, cheveux selon le genre, sac à dos visible.
+// Apparence du joueur : la couche la plus extérieure du haut (veste, sinon pull, sinon t-shirt) donne la couleur du corps,
+// celle de dessous se voit au col ; manches courtes : bras nus. Pantalon, cheveux selon le genre, sac, objet dans le dos.
+const COUL_VET = {
+  tshirt: '#5a5e4a', chemise: '#7a8496', debardeur: '#a89e86', maillot_thermique: '#2a2a2e',
+  sweat_capuche: '#4a5260', pull_laine: '#6a3e3a', polaire: '#3e5a6a', gilet_laine: '#7a6a52',
+  veste_jean: '#3e5274', coupe_vent: '#2f6f8a', parka: '#4a5a3a', doudoune: '#a0402c', blouse_medicale: '#c4ccca',
+  veste_cuir: '#3a2a22', blouson_moto: '#232126', manteau_hiver: '#2e3a3e', veste_pompier: '#2c2e36', gilet_tactique: '#3e4630',
+  veste_renforcee: '#4a3a2c', poncho_pluie: '#3a6a3a',
+};
+const COUL_JAMBES = { jean: '#2e3e5a', jogging: '#3a3a40', pantalon_cargo: '#4a4a36', treillis: '#3e4630', jean_genouilleres: '#2e3a4e' };
 let styleCache = null, styleCle = '';
 function styleJoueur() {
   const p = G.player, e = p.equip || {};
-  const cle = `${e.torse || ''}|${e.sac || ''}|${p.genre || ''}`;
+  const cle = `${e.haut || ''}|${e.torse || ''}|${e.veste || ''}|${e.jambes || ''}|${e.sac || ''}|${e.dos || ''}|${p.genre || ''}`;
   if (cle === styleCle && styleCache) return styleCache;
   styleCle = cle;
-  const torse = e.torse || '';
-  const manteau = /cuir|blouson/.test(torse) ? '#3a2a22' : /militaire|treillis|parka/.test(torse) ? '#3e4630' : /pull|laine/.test(torse) ? '#5a3a3a' : /veste|manteau/.test(torse) ? '#2e3a3e' : /blouse|hopital/.test(torse) ? '#8a9a9c' : '#4a4a3a';
-  styleCache = { manteau, pantalon: '#2a2c30', cheveux: p.genre === 'f' ? '#3a2416' : '#241a12', peau: '#b89378', coiffure: p.genre === 'f' ? 'long' : 'court', sac: e.sac || false };
+  const couches = [e.veste, e.torse, e.haut].filter(Boolean);
+  const dessus = couches[0] || null, dessous = couches[1] || null;
+  const manteau = (dessus && COUL_VET[dessus]) || '#4a4a3a';
+  const longues = couches.some(id => (zonesCouvertes(id) || []).includes('au bras'));
+  styleCache = {
+    manteau, col: dessous ? COUL_VET[dessous] || null : null, bras: longues ? null : '#b89378',
+    pantalon: COUL_JAMBES[e.jambes] || '#2a2c30', cheveux: p.genre === 'f' ? '#3a2416' : '#241a12', peau: '#b89378',
+    coiffure: p.genre === 'f' ? 'long' : 'court', sac: e.sac || false, dos: e.dos || null,
+  };
   return styleCache;
 }
 function grilleBloque() {
@@ -738,7 +772,7 @@ function tension() {
 // encore un repère discret sur place (aucune quête n'en a besoin aujourd'hui).
 function majObjectif() {
   V.objectif = null;
-  V.hud.majGuide('');
+  V.hud.majGuide(guideMission());     // une mission en cours ici : où on en est, en mots
   if (V.arene) return;
   let best = null;
   for (const [id, q] of Object.entries(QUETES)) {
@@ -831,7 +865,7 @@ function couperTout() {
   if (planOuvert()) { fermerPlan(); coupe = true; }
   if (V.choix) { fermerChoix(); coupe = true; }
   if (annulerPlacement()) coupe = true;
-  if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); coupe = true; }
+  if (V.action) { couperAction(); coupe = true; }
   if (V.fouille || V.butin) { interrompreFouille(); fermerButin(); coupe = true; }
   if (coupe) { message('Un mort approche !', 1800); sfx('alerte'); vib(80); }
 }
@@ -847,7 +881,7 @@ function echap() {
   if (annulerPlacement()) { message('Construction : arrêtée.', 1200); return; }
   if (V.cbt && V.cbt.etat.charge) { V.cbt.frapper(false, true); return; }
   if (V.butin || V.fouille) { interrompreFouille(); fermerButin(); return; }
-  if (V.action) { V.action = null; V.hud.barre.classList.add('cache'); return; }
+  if (V.action) { couperAction(); return; }
   emit('echap', { temps: 'exploration' });
 }
 // Décalage des abords du niveau courant (gardé avec la position du joueur).

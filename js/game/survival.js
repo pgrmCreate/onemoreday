@@ -81,6 +81,7 @@ function majMouille(p) {
 export function deficitFroid(p) {
   p = joueur(p); if (!p) return 0;
   let besoin = besoinChaleur(p), chaleur = inv.chaleurVetements(p);
+  const ec = effetsCorpulence(p); if (ec) chaleur += ec.chaleur || 0;   // la graisse isole, la maigreur glace
   // en dormant : le sol pompe la chaleur ; un sac de couchage, une couverture tiennent chaud (sur soi ou à portée de main)
   if (activiteCourante === 'sommeil') {
     const SO = S().SOMMEIL;
@@ -185,6 +186,15 @@ function uneMinute(p, act) {
   if (dort) { if (p.fatigue < CO.plafond) p.fatigue = Math.min(CO.plafond, p.fatigue + SV.SOMMEIL.FATIGUE_PAR_MIN * CO.fatigue); }
   else p.fatigue -= SV.FATIGUE_PAR_MIN * besoins * mAct * (fievre ? SV.MALADIES.fievre.fatigue : 1) * (1 + REGLAGES.inventaire.SURPOIDS.fatigue * f) + SV.FROID.FATIGUE_PAR_POINT * d + SV.MOUILLE.FATIGUE_PAR_MIN[sm];
   p.faim = clamp(p.faim); p.soif = clamp(p.soif); p.fatigue = clamp(p.fatigue);
+  // L'estomac se vide en digérant ; le poids suit la faim (bien nourri·e : on en prend, affamé·e : on en perd)
+  const RP0 = SV.REPAS, CO0 = SV.CORPS;
+  if (p.estomac > 0) p.estomac = Math.max(0, p.estomac - RP0.ESTOMAC_VIDANGE_MIN);
+  if (CO0) {
+    let kgJ = 0; for (const [s, v] of CO0.KG_JOUR) if (p.faim >= s) { kgJ = v; break; }
+    if (dort && kgJ < 0) kgJ *= CO0.SOMMEIL;    // on brûle moins en dormant
+    const ref = p.poidsRef || CO0.REF.m;
+    p.poidsCorps = Math.max(ref * CO0.BORNES[0], Math.min(ref * CO0.BORNES[1], (p.poidsCorps ?? ref) + kgJ / 1440));
+  }
   // Pertes de PV
   let perte = 0, cause = null;
   const perdre = (n, c) => { if (n > 0) { perte += n; if (!cause || n > 0.03) cause = c; } };
@@ -275,6 +285,7 @@ export function recalculerStaMax(p) {
   if (p.fatigue < SE.fatigue.grave) m -= E.STAMAX_EPUISE; else if (p.fatigue < SE.fatigue.gene) m -= E.STAMAX_FATIGUE;
   if (p.mal >= M.fievre_noire) m -= 20; else if (p.mal >= M.noirceur) m -= 10;
   if (p.maladies && p.maladies.rhume) m += SV.MALADIES.rhume.staMax;
+  const ec = effetsCorpulence(p); if (ec) m += ec.staMax || 0;
   p.staMax = Math.max(20, m); p.sta = Math.min(p.sta, p.staMax);
   return p.staMax;
 }
@@ -311,6 +322,9 @@ export function etatsCorps(p) {
   const M = S().CONTAMINATION.SEUILS, mal = p.mal || 0;
   if (mal > 0) r.push({ id: 'mal', niveau: mal >= M.delire ? 4 : mal >= M.fievre_noire ? 3 : mal >= M.noirceur ? 2 : 1, label: mal >= M.delire ? 'Délire' : mal >= M.fievre_noire ? 'Fièvre noire' : mal >= M.noirceur ? 'Veines noires' : 'Le mal', detail: `Le mal : ${Math.round(mal)}/100. À 100, tu redeviens l'un d'eux.`, mauvais: true });
   if ((p.effets.nausee || 0) > 0) r.push({ id: 'nausee', niveau: 1, label: 'Nauséeux{|se}', detail: 'Trop mangé. Ton souffle revient moins vite.', mauvais: true });
+  else if ((p.estomac || 0) >= RP().ESTOMAC_MAX * RP().REPU) r.push({ id: 'repu', niveau: 1, label: 'Repu{|e}', detail: 'Ton estomac est plein : attends un peu avant de remanger.', mauvais: false });
+  const co = corpulence(p);
+  if (co.id !== 'normal') r.push({ id: 'corpulence', niveau: co.niveau, label: co.label, detail: `${fmtKg(co.kg)}. ${co.detail}`, mauvais: true });
   if ((p.effets.courbatures || 0) > 0) r.push({ id: 'courbatures', niveau: 1, label: 'Courbatures', detail: 'Une nuit à même le sol. Ça passera dans quelques heures.', mauvais: true });
   if ((p.effets.antidouleur || 0) > 0) r.push({ id: 'calme', niveau: 1, label: 'Sous calmants', detail: 'La douleur est tenue à distance.', mauvais: false });
   return r;
@@ -473,8 +487,22 @@ export function motPortion(id, reste = 1) {
 }
 export const aTourne = (entree) => { const d = ITEMS[entree.id]; return !!(d && d.perissable && entree.ouvert != null && maintenant() - entree.ouvert > d.perissable * 60); };
 
-// mangerObjet(entree, p, { forcer }) : mange UN exemplaire (du sac, d'un meuble ou du sol) — l'appelant le retire / le remplace.
-//   entree = { id, reste?, ouvert? }. → { ok, raison?, peutForcer?, fini, reste (0..1 de cet exemplaire), ouvert, texte }
+// L'estomac (façon Project Zomboid) : on ne se gave pas d'un coup. Chaque bouchée le remplit (points de faim), il se vide
+// en digérant (REPAS.ESTOMAC_VIDANGE_MIN) ; plein, on est repu·e et on attend avant de remanger.
+export const placeEstomac = (p) => { p = joueur(p); return Math.max(0, RP().ESTOMAC_MAX - ((p && p.estomac) || 0)); };
+// Points de faim qu'on va réellement caler avec cet aliment, maintenant (faim, estomac, se forcer).
+export function pointsPrevus(entree, p, opts = {}) {
+  p = joueur(p); const R = RP(), dispo = pointsAliment(entree.id, entree.reste ?? 1);
+  if (dispo <= 0) return 0;
+  const bonus = opts.forcer ? R.FORCER_POINTS : 0;
+  return Math.max(0, Math.min(dispo, Math.max(0, 100 - p.faim) + bonus, placeEstomac(p) + bonus));
+}
+// Durée d'un repas (ms réelles) : on mange bouchée après bouchée.
+export function dureeRepas(pts) { const R = RP(); return Math.round(Math.max(R.MS_MIN, Math.min(R.MS_MAX, R.MS_BASE + R.MS_PAR_POINT * Math.max(0, pts)))); }
+
+// mangerObjet(entree, p, { forcer, maxPoints }) : mange UN exemplaire (du sac, d'un meuble ou du sol) — l'appelant le retire /
+//   le remplace. maxPoints : on s'est arrêté·e en route (repas interrompu). entree = { id, reste?, ouvert? }.
+//   → { ok, raison?, peutForcer?, fini, reste (0..1 de cet exemplaire), ouvert, texte }
 export function mangerObjet(entree, p, opts = {}) {
   p = normaliserJoueur(joueur(p)); const d = ITEMS[entree.id];
   if (!d || d.type !== 'nourriture') return { ok: false, raison: 'Ça ne se mange pas.' };
@@ -482,12 +510,18 @@ export function mangerObjet(entree, p, opts = {}) {
   if (d.besoinOuvre && !dejaOuvert && !inv.hasTag('ouvrir', p) && !inv.hasTag('couper', p)) return { ok: false, raison: 'Il faut un ouvre-boîte ou une lame.' };
   const dispo = pointsAliment(entree.id, reste0);
   if (dispo > 0 && p.faim >= R.RASSASIE && !opts.forcer) return { ok: false, peutForcer: true, raison: genrer('Tu n\'as plus faim : tu es calé{|e}.') };
-  let pris = dispo <= 0 ? 0 : Math.min(dispo, Math.max(0, 100 - p.faim) + (opts.forcer ? R.FORCER_POINTS : 0));
+  if (dispo > 0 && placeEstomac(p) < R.BOUCHEE && !opts.forcer) return { ok: false, peutForcer: true, raison: genrer('Tu es repu{|e} : ton estomac est plein. Attends un peu avant de remanger.') };
+  let pris = pointsPrevus(entree, p, opts);
+  if (opts.maxPoints != null) pris = Math.min(pris, Math.max(0, opts.maxPoints));
+  if (dispo > 0 && pris <= 0 && opts.maxPoints != null) return { ok: true, fini: false, rien: true, reste: reste0, ouvert: entree.ouvert ?? null, texte: '' };
   let frac = dispo > 0 ? pris / dispo : 1;                 // part de CE QUI RESTAIT qu'on mange
   if (reste0 * (1 - frac) < R.MIETTES) { frac = 1; pris = dispo; }
   const part = reste0 * frac;                              // part de l'objet entier
   const tourne = aTourne(entree);
+  const trop = Math.max(0, p.faim + pris - 100) + Math.max(0, (p.estomac || 0) + pris - R.ESTOMAC_MAX);   // ce qu'on s'est forcé·e à avaler
   p.faim = clamp(p.faim + pris);
+  p.estomac = Math.min(R.ESTOMAC_MAX + R.FORCER_POINTS, (p.estomac || 0) + pris);
+  if (trop > 0 && S().CORPS) p.poidsCorps = (p.poidsCorps ?? p.poidsRef ?? 72) + trop * S().CORPS.GAVE_KG_PAR_POINT;   // se gaver fait grossir
   if (d.soif) p.soif = clamp(p.soif + d.soif * part);
   if (d.fatigue) p.fatigue = clamp(p.fatigue + d.fatigue * part);
   if (d.risque) risqueMaladie(p, d.risque);
@@ -496,7 +530,9 @@ export function mangerObjet(entree, p, opts = {}) {
   const fini = frac >= 1, reste = fini ? 0 : Math.round(reste0 * (1 - frac) * 100) / 100;
   const quoi = `${d.nom} : ` + (fini ? (reste0 < 1 ? 'tu finis ce qui restait' : 'tu manges tout')
     : part < 0.3 ? 'tu en manges quelques bouchées' : part < 0.6 ? 'tu en manges la moitié' : 'tu en manges presque tout');
-  const etat = opts.forcer ? 'Tu t\'es forcé{|e}. L\'estomac proteste.' : p.faim >= R.RASSASIE ? 'Tu es calé{|e}.' : `${motFaim(p)}.`;
+  const repu = placeEstomac(p) < R.BOUCHEE;
+  const etat = opts.forcer ? 'Tu t\'es forcé{|e}. L\'estomac proteste.' : p.faim >= R.RASSASIE ? 'Tu es calé{|e}.'
+    : repu ? `Tu es repu{|e} pour l'instant (${motFaim(p).toLowerCase()}).` : `${motFaim(p)}.`;
   const texte = genrer(`${quoi}${tourne ? ' (ça avait tourné)' : ''}. ${fini ? '' : 'Tu gardes le reste. '}${etat}`);
   emit('survie', { mange: entree.id }); son('manger');
   return { ok: true, fini, reste, ouvert: fini ? null : (entree.ouvert ?? maintenant()), texte, rend: fini ? d.rend || null : null };
@@ -564,6 +600,7 @@ export function peutConsommer(entree, p) {
   if (d.type === 'nourriture') {
     if (d.besoinOuvre && entree.reste == null && entree.ouvert == null && !inv.hasTag('ouvrir', p) && !inv.hasTag('couper', p)) return { ok: false, raison: 'Il faut un ouvre-boîte ou une lame.' };
     if (pointsAliment(entree.id, entree.reste ?? 1) > 0 && p.faim >= RP().RASSASIE) return { ok: false, peutForcer: true, raison: genrer('Tu n\'as plus faim : tu es calé{|e}.') };
+    if (pointsAliment(entree.id, entree.reste ?? 1) > 0 && placeEstomac(p) < RP().BOUCHEE) return { ok: false, peutForcer: true, raison: genrer('Tu es repu{|e} : ton estomac est plein. Attends un peu avant de remanger.') };
     return { ok: true };
   }
   if (d.type === 'boisson') return entree.eau && !(entree.eau.L > 0) ? { ok: false, raison: 'Il est vide.' } : { ok: true };
@@ -600,8 +637,33 @@ export function consommer(entree, p, opts = {}) {
   return r.ok ? { ...r, fini: true } : r;
 }
 
+// ---------- Poids du corps (REGLAGES.survie.CORPS) ----------
+// Rapport au poids de forme → 'emacie' | 'maigre' | 'normal' | 'enrobe' | 'obese', avec ses effets (vitesse, souffle, coups, froid).
+const MOTS_CORPS = {
+  emacie: { niveau: 3, label: 'Émacié{|e}', detail: 'La peau sur les os : tu frappes mal, ton souffle s\'épuise et le froid te transperce. Mange à ta faim, plusieurs jours de suite.' },
+  maigre: { niveau: 1, label: 'Amaigri{|e}', detail: 'Tu as fondu : un peu moins de force et de souffle, plus frileux{|se}. Mange à ta faim.' },
+  normal: { niveau: 0, label: 'En forme', detail: '' },
+  enrobe: { niveau: 1, label: 'Enrobé{|e}', detail: 'Tu t\'es trop rempli{|e} : tu t\'essouffles plus vite en courant. Mange moins, bouge plus.' },
+  obese: { niveau: 3, label: 'Alourdi{|e}', detail: 'Ton propre poids te ralentit et te coupe le souffle. Mange moins, bouge plus.' },
+};
+export function corpulence(p) {
+  p = joueur(p); const CO = S().CORPS;
+  if (!p || !CO) return { id: 'normal', niveau: 0, label: 'En forme', detail: '', kg: 0, ratio: 1 };
+  const ref = p.poidsRef || CO.REF.m, kg = p.poidsCorps ?? ref, ratio = kg / ref;
+  let id = 'normal'; for (const [s, k] of CO.SEUILS) if (ratio < s) { id = k; break; }
+  const m = MOTS_CORPS[id];
+  return { id, niveau: m.niveau, label: genrer(m.label), detail: genrer(m.detail), kg, ratio, ref };
+}
+export function effetsCorpulence(p) { const c = corpulence(p); return c.id === 'normal' ? null : S().CORPS.EFFETS[c.id]; }
+// Tendance du poids en ce moment (−1 perd, 0 stable, +1 prend), d'après la faim — comme les flèches de Project Zomboid.
+export function tendancePoids(p) {
+  p = joueur(p); const CO = S().CORPS; if (!p || !CO) return 0;
+  for (const [s, v] of CO.KG_JOUR) if (p.faim >= s) return v > 0 ? 1 : v < 0 ? -1 : 0;
+  return -1;
+}
+
 function appliquerConso(p, d) {
-  if (d.kcal) p.faim = clamp(p.faim + (d.kcal * (d.cru || 1)) / RP().KCAL_PAR_POINT);
+  if (d.kcal) { const pts = (d.kcal * (d.cru || 1)) / RP().KCAL_PAR_POINT; p.faim = clamp(p.faim + pts); p.estomac = Math.min(RP().ESTOMAC_MAX, (p.estomac || 0) + pts * 0.5); }
   if (d.soif) p.soif = clamp(p.soif + d.soif);
   if (d.fatigue) p.fatigue = clamp(p.fatigue + d.fatigue);
   if (d.risque) risqueMaladie(p, d.risque);

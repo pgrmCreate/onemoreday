@@ -31,6 +31,8 @@ const plus = (...tables) => tables.flat();
 const D = {
   vetements: [
     L('tshirt', 1, 1, 0.16), L('sweat_capuche', 1, 1, 0.1), L('pull_laine', 1, 1, 0.1), L('jean', 1, 1, 0.1),
+    L('chemise', 1, 1, 0.08), L('debardeur', 1, 1, 0.05), L('gilet_laine', 1, 1, 0.05), L('polaire', 1, 1, 0.04),
+    L('veste_jean', 1, 1, 0.03), L('coupe_vent', 1, 1, 0.03), L('doudoune', 1, 1, 0.025), L('parka', 1, 1, 0.015),
     L('jogging', 1, 1, 0.08), L('gants_laine', 1, 1, 0.06), L('bonnet', 1, 1, 0.06), L('casquette', 1, 1, 0.05),
     L('manteau_hiver', 1, 1, 0.04), L('veste_cuir', 1, 1, 0.025), L('baskets', 1, 1, 0.05), L('bottes_cuir', 1, 1, 0.02),
     L('ceinture_cuir', 1, 1, 0.06), L('sacoche', 1, 1, 0.03), L('sac_a_dos', 1, 1, 0.03),
@@ -213,6 +215,7 @@ export const BUTIN = {
       L('manteau_hiver', 1, 1, 0.07), L('gants_laine', 1, 1, 0.1), L('bonnet', 1, 1, 0.1), L('baskets', 1, 1, 0.1),
       L('sac_a_dos', 1, 1, 0.08), L('sac_randonnee', 1, 1, 0.02), L('ceinture_cuir', 1, 1, 0.08), L('bottes_caoutchouc', 1, 1, 0.04),
       L('pantalon_cargo', 1, 1, 0.06), L('poncho_pluie', 1, 1, 0.03),
+      L('polaire', 1, 1, 0.08), L('maillot_thermique', 1, 1, 0.07), L('coupe_vent', 1, 1, 0.06), L('parka', 1, 1, 0.04), L('doudoune', 1, 1, 0.05),
     ],
     frigo: plus(RAYON_BOISSONS, [L('viande_crue', 1, 2, 0.15), L('compote', 1, 2, 0.12)]),
     comptoir: [L('briquet', 1, 2, 0.25), L('allumettes', 1, 1, 0.15), L('chocolat', 1, 2, 0.2), L('piles', 1, 2, 0.18), L('journal_papier', 1, 2, 0.15), L('petards', 1, 1, 0.04)],

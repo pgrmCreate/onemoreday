@@ -12,6 +12,7 @@ import { creerCanalLocal } from '../explore/canal_local.js';
 import { presetDifficulte } from '../data/reglages.js';
 import { lieu as lieuDe } from './donnees.js';
 import { rueeSim } from './ruees.js';
+import { lieuCalme } from './missions.js';
 
 // ---------- Lieux ----------
 const sims = new Map(); // lieuId → { sim, runner, canaux: Map<joueurId, canal>, dernier }
@@ -28,6 +29,7 @@ function creerSim(lieuId, niveau, L) {
     getFlag: (k) => getFlag(k),
     getRuee: () => rueeSim(lieuId),
     arrivees: true, getMinutes: () => G.world.minutes,
+    getCalme: () => lieuCalme(lieuId),
   });
 }
 

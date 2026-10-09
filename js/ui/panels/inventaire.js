@@ -167,9 +167,9 @@ function listeTri(col, p, racine, api) {
 }
 
 // ---------- Onglet Équipement (paper-doll) ----------
-const GAUCHE = ['tete', 'torse', 'mains', 'jambes', 'pieds'];
+const GAUCHE = ['tete', 'haut', 'torse', 'veste', 'mains', 'jambes', 'pieds'];
 const DROITE = ['arme', 'mainG', 'dos', 'lampe', 'sac', 'ceinture', 'holster'];
-const ICONE_SLOT = { tete: 'tete', torse: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', arme: 'main_arme', mainG: 'main_arme', dos: 'sac', lampe: 'lampe', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
+const ICONE_SLOT = { tete: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', arme: 'main_arme', mainG: 'main_arme', dos: 'sac', lampe: 'lampe', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
 function caseSlot(slot, p, racine, api) {
   const m = inv.mains(p);
   let id = p.equip[slot];
@@ -193,7 +193,7 @@ function caseSlot(slot, p, racine, api) {
   return b;
 }
 function silhouette(p) {
-  const couleur = (slot) => p.equip[slot] ? 'porte' : '';
+  const couleur = (slot) => (slot === 'torse' ? ['haut', 'torse', 'veste'].some(s => p.equip[s]) : p.equip[slot]) ? 'porte' : '';
   return el('div', { class: 'eq-silhouette', html: `<svg viewBox="0 0 120 220" aria-hidden="true">
     <g class="eq-corps">
       <ellipse class="${couleur('tete')}" cx="60" cy="24" rx="15" ry="17"/>
@@ -294,8 +294,14 @@ function actionsSac(index, it, p, racine, api) {
   const apres = () => { if (!p.inventaire[index] || p.inventaire[index].id !== it.id) etat.sel = null; dessiner(racine, api); };
   const res = (r) => { if (r && r.ok === false && r.raison) api && import('../toast.js').then(m => m.toast(r.raison, 'alerte')); apres(); };
   if (d.type === 'nourriture') {
-    if (!surv.estRassasie(p)) a.push({ label: 'Manger', icone: 'manger', principal: true, f: () => res(surv.manger(index)) });
-    else a.push({ label: 'Manger quand même (tu n\'as plus faim)', icone: 'manger', f: () => res(surv.manger(index, p, { forcer: true })) });
+    // manger prend du temps : le panneau se ferme et le repas se joue dans le monde (voir demanderRepas)
+    const v = surv.peutConsommer(it, p), forcer = !v.ok && !!v.peutForcer;
+    const manger = () => demanderRepas({ prendre: () => inv.removeIndex(index, 1, p), rendre: (e) => inv.addItem(e.id, 1, etatDe(e), p), forcer, fermer: api && api.fermer },
+      () => res(surv.manger(index, p, { forcer })));
+    const repu = surv.placeEstomac(p) < REGLAGES.survie.REPAS.BOUCHEE;
+    if (v.ok) a.push({ label: 'Manger', icone: 'manger', principal: true, f: manger });
+    else if (forcer) a.push({ label: repu ? g('Manger quand même (tu es repu{|e})') : 'Manger quand même (tu n\'as plus faim)', icone: 'manger', f: manger });
+    else a.push({ label: 'Manger', icone: 'manger', disabled: true, raison: v.raison, f: () => {} });
   }
   if (d.type === 'boisson') a.push({ label: 'Boire', icone: 'boire', principal: true, f: () => res(surv.boire(it.id)) });
   if (it.eau && it.eau.L > 0) a.push({ label: 'Boire une gorgée', icone: 'boire', principal: true, f: () => res(surv.boire(index)) });
@@ -414,8 +420,25 @@ function remplirFiche(f, p, racine, api) {
   for (const [k, v] of statsObjet(id, it, p)) tb.append(el('dt', {}, k), el('dd', {}, v));
   f.append(tb);
 }
+// Un repas demandé depuis le panneau : l'exploration le joue dans le monde (barre, mastication, interruption) ;
+// ailleurs (carte, voyage), on mange d'un coup et quelques minutes passent.
+function demanderRepas(d, repli) {
+  emit('repas:demande', d);
+  if (d.pris) return;
+  repli();
+  if (G && G.mode === 'solo') import('../../core/clock.js').then(c => c.avancer(REGLAGES.survie.REPAS.MIN_HORS_EXPLORATION)).catch(() => {});
+}
 // Consommer un objet du sol sans le ramasser ; ce qui reste (boîte entamée, gourde) est gardé dans le sac.
 function consommerAuSol(i, p, opts) {
+  const s0 = inv.objetsAuSol()[i];
+  if (s0 && (inv.def(s0.id) || {}).type === 'nourriture') {
+    demanderRepas({ prendre: () => inv.prendreUnAuSol(i), rendre: (e) => inv.addItem(e.id, 1, etatDe(e), p), forcer: !!(opts && opts.forcer), fermer: null },
+      () => consommerAuSolDirect(i, p, opts));
+    return;
+  }
+  consommerAuSolDirect(i, p, opts);
+}
+function consommerAuSolDirect(i, p, opts) {
   const it = inv.prendreUnAuSol(i); if (!it) return;
   const r = surv.consommer(it, p, opts);
   if (!r.ok) { inv.addItem(it.id, 1, etatDe(it), p); if (r.raison) emit('toast', { texte: r.raison }); return; }

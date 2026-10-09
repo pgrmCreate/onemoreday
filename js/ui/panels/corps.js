@@ -149,6 +149,7 @@ function jauges(p) {
   const dl = surv.douleur(p), def = surv.deficitFroid(p), besoin = surv.besoinChaleur(p), ch = inv.chaleurVetements(p);
   const r = [el('h3', { class: 'pn-section' }, 'Besoins'),
     jauge({ label: 'Faim', icone: 'faim', v: p.faim / 100, texte: surv.motFaim(p), cls: cl(p.faim, SE.faim.gene, SE.faim.grave) }),
+    jaugeEstomac(p), jaugePoids(p),
     jauge({ label: 'Soif', icone: 'soif', v: p.soif / 100, texte: `${Math.round(p.soif)}`, cls: cl(p.soif, SE.soif.gene, SE.soif.grave) }),
     jauge({ label: 'Repos', icone: 'fatigue', v: p.fatigue / 100, texte: `${Math.round(p.fatigue)}`, cls: cl(p.fatigue, SE.fatigue.gene, SE.fatigue.grave) }),
     jauge({ label: 'Douleur', icone: 'douleur', v: dl / 100, texte: `${dl}`, cls: dl > 60 ? 'rouge' : dl > 30 ? 'ambre' : 'gris' }),
@@ -162,6 +163,21 @@ function jauges(p) {
   if (p.maladies.intoxication) mx.push('Intoxication'); if (p.maladies.fievre) mx.push('Fièvre'); if (p.maladies.rhume) mx.push('Rhume');
   if (mx.length) r.push(el('p', { class: 'co-maladies' }, icoEl('malade'), mx.join(' · ')));
   return r;
+}
+
+// L'estomac : on ne se gave pas d'un coup, il se vide en digérant.
+function jaugeEstomac(p) {
+  const R = REGLAGES.survie.REPAS, f = Math.min(1, (p.estomac || 0) / R.ESTOMAC_MAX);
+  const mot = f >= R.REPU ? g('plein : repu{|e}') : f >= 0.45 ? 'bien rempli' : f > 0.1 ? 'un peu' : 'vide';
+  return jauge({ label: 'Estomac', icone: 'faim', v: f, texte: mot, cls: 'gris' });
+}
+// Le poids du corps et sa tendance (↑ on en prend, ↓ on en perd), comme dans Project Zomboid.
+function jaugePoids(p) {
+  const co = surv.corpulence(p), C = REGLAGES.survie.CORPS, t = surv.tendancePoids(p);
+  const v = Math.max(0, Math.min(1, (co.ratio - C.BORNES[0]) / (C.BORNES[1] - C.BORNES[0])));
+  const kg = (Math.round(co.kg * 10) / 10).toString().replace('.', ',');
+  return jauge({ label: co.niveau ? co.label : 'Poids', icone: 'corps', v, repere: (1 - C.BORNES[0]) / (C.BORNES[1] - C.BORNES[0]),
+    texte: `${kg} kg${t > 0 ? ' ↑' : t < 0 ? ' ↓' : ''}`, cls: co.niveau >= 3 ? 'rouge' : co.niveau ? 'ambre' : '' });
 }
 
 // ---------- Compétences ----------

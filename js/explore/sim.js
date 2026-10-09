@@ -35,6 +35,7 @@ export function creerSimLieu(opts) {
     getRuee = () => null,     // sirènes / horde (js/game/ruees.js rueeSim) : () → { i: 0..1, id, course, densite } | null
     arrivees = false,         // des morts entrent par les sorties (exploration.ARRIVEES) — pas dans une arène
     getMinutes = () => minutes, // l'heure du monde (la nuit, il en vient plus)
+    getCalme = () => false,     // missions (js/game/missions.js) : lieu bouclé ou nettoyé — plus d'arrivées tranquilles ni de repeuplement
   } = opts;
   const niveau = opts.niveau && opts.niveau.etages && opts.niveau.etages[0] && opts.niveau.etages[0].code ? opts.niveau : parserNiveau(opts.niveau || {});
   const pool = (opts.pool && opts.pool.length ? opts.pool : niveau.pool) || ['errant'];
@@ -198,7 +199,7 @@ export function creerSimLieu(opts) {
     return k;
   }
   function repeupler(avant) {
-    if (avant == null) return;
+    if (avant == null || getCalme()) return;
     const R = RX.REPEUPLEMENT;
     const absMin = minutes - avant;
     if (absMin < R.DELAI_MIN_H * 60) return;
@@ -304,6 +305,7 @@ export function creerSimLieu(opts) {
   function tickArrivees() {
     if (!arrivees || !niveau.sorties.length || !joueurs.size) return;
     const A = RX.ARRIVEES, ctx = contexteArrivees();
+    if (ctx === 'CALME' && getCalme()) return;                   // le quartier est bouclé / nettoyé
     if (zombiesDepart == null) zombiesDepart = zombies.length;   // la population du lieu à l'arrivée du joueur
     if (ctx !== 'ALARME' && zombies.length >= Math.max(A.PLANCHER, mortsN[1] || 0, zombiesDepart) * A.PLAFOND) return;
     const h = (getMinutes() % 1440) / 60, H = REGLAGES.temps.HEURES;
@@ -1071,6 +1073,75 @@ export function creerSimLieu(opts) {
   }
   const descMort = (z) => ({ uid: z.uid, type: z.type, hp: z.hp });
 
+  // appelerMorts(n, cible, { types }) : une VAGUE (missions « tenir », « protéger ») — n morts entrent par les sorties
+  // cachées du joueur (sinon par des recoins sombres loin de lui) et marchent, alertés, vers cible = { etage, x, y }.
+  function appelerMorts(n, cible, o = {}) {
+    const uids = [], types = (o.types && o.types.length) ? o.types : pool;
+    const r = rngArr;
+    let sorties = sortiesCachees();
+    if (cible) { const memes = sorties.filter(s => s.etage === cible.etage); if (memes.length) sorties = memes; }
+    let libres = null;
+    for (let k = 0; k < n; k++) {
+      let x = null, y = null, etage = null;
+      if (sorties.length) {
+        const s = sorties[Math.floor(r() * sorties.length)];
+        const E = niveau.etages[EI(s.etage)], D = dyn[EI(s.etage)];
+        const c = s.cases.find(i => !D.bloque[i] && !zombies.some(z => z.etage === s.etage && Math.hypot(z.x - cxCase(E, i), z.y - cyCase(E, i)) < 0.8));
+        if (c != null) { x = cxCase(E, c); y = cyCase(E, c); etage = s.etage; }
+      }
+      if (x == null) {
+        libres = libres || casesLibres(r).filter(c => ![...joueurs.values()].some(j => j.etage === c.etage && Math.hypot(j.x - c.x, j.y - c.y) < 9));
+        const c = libres.splice(Math.floor(r() * Math.min(libres.length, 40)), 1)[0];
+        if (!c) break;
+        x = c.x; y = c.y; etage = c.etage;
+      }
+      const type = types[Math.floor(r() * types.length)];
+      const z = nouveauMort(type, etage, x, y, cible ? 'alerte' : 'erre', { proc: true, dir: cible ? Math.atan2(cible.y - y, cible.x - x) : r() * Math.PI * 2 });
+      if (!z) continue;
+      if (cible && cible.etage === etage) { z.cible = { x: cible.x, y: cible.y }; z.tEtat = RX.ARRIVEES.ALERTE_MS * 3; }
+      z.venu = true;
+      zombies.push(z); uids.push(z.uid);
+      evts.push({ type: 'arrivee', uid: z.uid, etage, x, y, contexte: 'VAGUE' });
+    }
+    if (uids.length) { vm++; cache = null; }
+    return uids;
+  }
+  // preparerMission({ zone, n, etat, types }) : met un lieu en scène pour une mission (« ils dorment debout entre les
+  // rayons »). Tous les morts de la zone = { etage, x0, y0, x1, y1 } (unités) passent dans l'état voulu ('dort',
+  // 'immobile'…), et n morts de plus y sont posés sur des cases libres, loin des joueurs. → nombre de morts posés.
+  function preparerMission({ zone = null, n = 0, etat = 'dort', types = null } = {}) {
+    const dans = (o) => !zone || (o.etage === zone.etage && o.x >= zone.x0 && o.x <= zone.x1 && o.y >= zone.y0 && o.y <= zone.y1);
+    for (const z of zombies) if (dans(z) && z.etat !== 'chasse') { changerEtat(z, etat); z.base = etat; z.alerte = 0; z.cible = null; z.chemin = []; }
+    let k = 0;
+    if (n > 0) {
+      const r = rngArr, tp = (types && types.length) ? types : pool;
+      const libres = casesLibres(r).filter(c => dans(c) && ![...joueurs.values()].some(j => j.etage === c.etage && Math.hypot(j.x - c.x, j.y - c.y) < 6));
+      for (let a = 0; a < libres.length * 2 && k < n && libres.length; a++) {
+        const c = libres[Math.floor(r() * libres.length)];
+        if (zombies.some(z => z.etage === c.etage && Math.hypot(z.x - c.x, z.y - c.y) < 1.6)) continue;
+        const z = nouveauMort(tp[Math.floor(r() * tp.length)], c.etage, c.x, c.y, etat, { proc: false, dir: r() * Math.PI * 2, base: etat });
+        if (z) { zombies.push(z); k++; }
+      }
+    }
+    vm++; cache = null;
+    return k;
+  }
+  // reveillerZone({ zone, cible }) : tout bascule (« le coffre sonne ») — les morts de la zone (ou du lieu) se réveillent et
+  // marchent vers cible = { etage, x, y } ; ceux qui voient un joueur en route le prennent en chasse. → nombre réveillés.
+  function reveillerZone({ zone = null, cible = null } = {}) {
+    let k = 0;
+    for (const z of zombies) {
+      if (zone && !(z.etage === zone.etage && z.x >= zone.x0 && z.x <= zone.x1 && z.y >= zone.y0 && z.y <= zone.y1)) continue;
+      if (z.etat === 'chasse' || z.etat === 'fait_le_mort' || z.aTerre > 0) continue;
+      z.base = 'erre'; changerEtat(z, 'alerte'); z.alerte = Math.max(z.alerte, 0.6);
+      if (cible && cible.etage === z.etage) { z.cible = { x: cible.x, y: cible.y }; z.chemin = []; z.tChemin = 0; }
+      z.tEtat = RX.ARRIVEES.ALERTE_MS * 2;
+      k++;
+    }
+    cache = null;
+    return k;
+  }
+
   // ---------- Joueurs ----------
   function tickJoueurs(dt) {
     for (const j of joueurs.values()) {
@@ -1133,6 +1204,7 @@ export function creerSimLieu(opts) {
     if (p.discretion != null) j.discretion = p.discretion;
     if (p.bruitPas != null) j.bruitPas = p.bruitPas;
     if (p.sac !== undefined) j.sac = p.sac;
+    if (p.dos !== undefined) j.dos = p.dos;
     if (p.nom) j.nom = p.nom;
     if (p.aTerre != null) j.aTerre = !!p.aTerre;
     if (p.agonie != null) { j.agonie = !!p.agonie; j.aTerre = j.agonie || !!p.aTerre; if (j.agonie) { j.empoigne = null; for (const z of zombies) if (z.saisit === j.id) z.saisit = null; } }
@@ -1409,7 +1481,7 @@ export function creerSimLieu(opts) {
         aTerre: !!j.aTerre, agonie: !!j.agonie, pv: j.pv ?? null,
         geste: j.geste && T - j.geste.t < j.geste.duree ? { type: j.geste.type, p: (T - j.geste.t) / j.geste.duree, combo: j.geste.combo || 0 } : null,
         empoigne: j.empoigne ? { uid: j.empoigne.uid, p: (T - j.empoigne.debut) / j.empoigne.duree, taps: j.empoigne.taps, requis: j.empoigne.requis, reste: Math.max(0, j.empoigne.fin - T) } : null,
-        arme: j.stats && j.stats.arme ? j.stats.arme.id : null, sac: j.sac === undefined ? undefined : j.sac })),
+        arme: j.stats && j.stats.arme ? j.stats.arme.id : null, sac: j.sac === undefined ? undefined : j.sac, dos: j.dos || null })),
       t: T, vm,
       joues: joues.slice(),
     };
@@ -1577,7 +1649,7 @@ export function creerSimLieu(opts) {
     ajouterJoueur, majJoueur, retirerJoueur, bruit, porte, fouiller, arreterFouille, prendre, contenu, deposer,
     construire, agirConstruction, ranger, demonterMeuble, puiserEau, ouvrirVoiture, constructions: () => constructions,
     retirerZombies, repousserZombies, finCombat, blesserZombie, tick, instantane, sauver,
-    action, faireApparaitre, viderEvenements, temps: () => T,
+    action, faireApparaitre, appelerMorts, preparerMission, reveillerZone, viderEvenements, temps: () => T,
     // accès pratiques (hôte / vue locale)
     grilles: (etage) => dyn[EI(etage)],
     joueur: (id) => joueurs.get(id) || null,

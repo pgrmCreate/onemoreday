@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v43';
+const CACHE = 'onemoreday-v45';
 const FICHIERS = [
   './',
   './index.html',
@@ -77,6 +77,7 @@ const FICHIERS = [
   './js/data/histoire/documents.js',
   './js/data/histoire/fins.js',
   './js/data/histoire/lieux_recit.js',
+  './js/data/histoire/missions.js',
   './js/data/histoire/morts.js',
   './js/data/histoire/objets_quete.js',
   './js/data/histoire/pnj.js',
@@ -165,6 +166,7 @@ const FICHIERS = [
   './js/explore/entrees.js',
   './js/explore/hud_explore.js',
   './js/explore/interactions.js',
+  './js/explore/missions_vue.js',
   './js/explore/nature.js',
   './js/explore/niveau.js',
   './js/explore/physique.js',
@@ -182,6 +184,7 @@ const FICHIERS = [
   './js/game/flow.js',
   './js/game/inventory.js',
   './js/game/meteo.js',
+  './js/game/missions.js',
   './js/game/player.js',
   './js/game/quetes.js',
   './js/game/radio.js',
@@ -210,6 +213,7 @@ const FICHIERS = [
   './js/ui/dialogue.js',
   './js/ui/hud.js',
   './js/ui/icons.js',
+  './js/ui/notif.js',
   './js/ui/panels/commun.js',
   './js/ui/panels/construction.js',
   './js/ui/panels/construire.js',

@@ -12,6 +12,8 @@ import { demarrerDeclencheurs, arreterDeclencheurs } from './game/declencheurs.j
 import { demarrerMeteo, arreterMeteo } from './game/meteo.js';
 import { demarrerRuees, arreterRuees } from './game/ruees.js';
 import { demarrerRadio, arreterRadio } from './game/radio.js';
+import { demarrerMissions, arreterMissions } from './game/missions.js';
+import { demarrerNotifs } from './ui/notif.js';
 import { montrerHUD, majHUD } from './ui/hud.js';
 import { demarrerToasts } from './ui/toast.js';
 import { installerTapFiable } from './ui/tap.js';
@@ -131,13 +133,14 @@ function demarrerSystemes({ invite = false } = {}) {
   demarrerSurvie();
   demarrerMeteo();
   if (!invite) { demarrerDeclencheurs(); demarrerRuees(); demarrerRadio(); }
+  demarrerMissions(); demarrerNotifs();
   montrerHUD(true); majHUD();
 }
 function arreterPartie() {
   if (!partieEnCours) return;
   partieEnCours = false;
   try { fermerPanneau(); } catch (e) {}
-  clock.arreter(); arreterSurvie(); arreterDeclencheurs(); arreterRuees(); arreterRadio(); arreterMeteo();
+  clock.arreter(); arreterSurvie(); arreterDeclencheurs(); arreterRuees(); arreterRadio(); arreterMeteo(); arreterMissions();
   montrerHUD(false);
   flow.quitter && flow.quitter();
   try { coop.arreter(); } catch (e) {}

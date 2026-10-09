@@ -168,9 +168,17 @@ async function consommerItem(i) {
   const it = await prendreDe(B, i, 1);
   if (!it) return;
   if ((prevu.qty || 1) > 1) prevu.qty -= 1; else retirerDuButin(B, i);
-  const r = S.consommer({ ...it, qty: 1 }, G.player, { forcer: !v.ok && B.forcer === prevu.id });
+  const forcer = !v.ok && B.forcer === prevu.id;
   B.forcer = null;
   const etat = (() => { const { id: _i, qty: _q, ...e } = it; return e; })();
+  // manger prend du temps : le repas se joue dans le monde (la fenêtre se ferme) ; le reste d'une boîte entamée va au sac
+  if (inv && (inv.def(it.id) || {}).type === 'nourriture') {
+    fermerButin();
+    const d = { prendre: () => ({ ...it, qty: 1 }), rendre: (e) => { const { id: _i, qty: _q, ...et } = e; inv.addItem(e.id, 1, et); }, forcer, fermer: () => {} };
+    emit('repas:demande', d);
+    if (d.pris) return;
+  }
+  const r = S.consommer({ ...it, qty: 1 }, G.player, { forcer });
   if (!r.ok) { donner({ ...it, qty: 1 }, true); if (r.raison) message(r.raison, 2200); }
   else {
     if (!r.fini && inv) inv.addItem(it.id, 1, { ...etat, ...(r.reste != null ? { reste: r.reste, ouvert: r.ouvert } : {}), ...(r.eau ? { eau: r.eau } : {}) });

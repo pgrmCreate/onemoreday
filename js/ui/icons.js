@@ -180,7 +180,7 @@ const PAR_ID = {
   canette_vide: 'recipient', bandage: 'bander', bandage_fortune: 'bander', pansement_miel: 'bander', desinfectant: 'desinfecter',
   lingette: 'desinfecter', kit_suture: 'suturer', attelle: 'attelle', trousse_outils: 'outil', pierre_aiguiser: 'reparer',
 };
-const SLOT_ICONE = { tete: 'tete', torse: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
+const SLOT_ICONE = { tete: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
 export function iconeObjet(id) {
   if (ARME[id]) return ARME[id];
   if (PAR_ID[id]) return PAR_ID[id];
@@ -191,5 +191,5 @@ export function iconeObjet(id) {
     materiau: 'materiau', recipient: 'recipient', livre: 'livre', lore: 'document', quete: 'quete' }[d.type] || 'divers';
 }
 export const ICONE_CATEGORIE_RECETTE = { soins: 'soins', armes: 'armes', reparation: 'reparation', nourriture: 'cuisine', lumiere: 'lumiere', survie: 'survie', recyclage: 'recyclage', equipement: 'equipement' };
-export const ICONE_MOODLE = { faim: 'faim', soif: 'soif', fatigue: 'fatigue', douleur: 'douleur', saignement: 'saignement', infection: 'infection', fievre: 'fievre', malade: 'malade', rhume: 'rhume', mouille: 'mouille', froid: 'froid', surcharge: 'surcharge', mal: 'mal', calme: 'calme' };
+export const ICONE_MOODLE = { faim: 'faim', soif: 'soif', fatigue: 'fatigue', douleur: 'douleur', saignement: 'saignement', infection: 'infection', fievre: 'fievre', malade: 'malade', rhume: 'rhume', mouille: 'mouille', froid: 'froid', surcharge: 'surcharge', mal: 'mal', calme: 'calme', repu: 'faim', corpulence: 'corps' };
 export const nombreIcones = () => Object.keys(ICONS).length;

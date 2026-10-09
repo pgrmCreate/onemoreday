@@ -27,7 +27,7 @@ verif(p.mouille === 0 && surv.stadeMouille(p) === 0, `près du feu : sec (${Math
 // imperméable : on se mouille bien moins vite
 nouvellePartie({ nom: 'Sam', mode: 'solo', seed: 8 });
 surv.setContexteSurvie({ exterieur: true, abrite: false, pluie: 1, feuProche: false });
-G.player.equip.torse = 'poncho_pluie'; const impermeable = (await import('../js/game/inventory.js')).impermeable(G.player);
+G.player.equip.veste = 'poncho_pluie'; const impermeable = (await import('../js/game/inventory.js')).impermeable(G.player);
 surv.tickMinutes(20, 'normal');
 verif(impermeable && G.player.mouille < 8, `poncho de pluie : ${Math.round(G.player.mouille)} après 20 min`);
 console.log(`\n${ok}/${ok + ko} vérifications réussies.`);

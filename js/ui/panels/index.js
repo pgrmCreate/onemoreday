@@ -67,7 +67,7 @@ export function ouvrirPanneau(nom, opts = {}) {
   catch (e) { console.error('[panneaux]', nom, e); corpsEl.textContent = 'Ce panneau n\'a pas pu s\'ouvrir.'; instance = {}; }
   if (instance.maj) {
     const maj = (evt) => { if (courant === nom) try { instance.maj(evt || {}); } catch (e) { console.error(e); } };
-    for (const ev of ['inventaire', 'blessure', 'survie', 'xp', 'journal', 'quete', 'document']) offs.push(on(ev, (d) => maj({ type: ev, ...(d || {}) })));
+    for (const ev of ['inventaire', 'blessure', 'survie', 'xp', 'journal', 'quete', 'document', 'mission:maj']) offs.push(on(ev, (d) => maj({ type: ev, ...(d || {}) })));
     if (G && G.mode !== 'solo') offs.push(on('minute', () => maj({ type: 'minute' })));
   }
   if (!deja) { racine.classList.add('ouvert'); requestAnimationFrame(() => racine.classList.add('visible')); }

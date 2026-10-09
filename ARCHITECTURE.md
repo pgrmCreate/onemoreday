@@ -6,7 +6,9 @@ La référence détaillée des contrats reste **`docs/REFONTE.md`** ; ce fichier
 js/main.js              écran titre, création, mort, fins, démarrage
 js/core/                état + sauvegarde (state), horloge (clock), bus d'événements, hasard, utilitaires, préférences
 js/game/                flow (enchaîne les temps), données fusionnées, conditions, effets, quêtes, déclencheurs,
-                        autorité co-op, personnage (player, survival, inventory, crafting, stats_combat), météo
+                        autorité co-op, personnage (player, survival, inventory, crafting, stats_combat), météo,
+                        missions.js (missions à objectifs typés : nettoyer, tenir, attendre, protéger, nourrir, atteindre
+                        en discrétion, agir, fuir — contenu js/data/histoire/missions.js ; bandeaux js/ui/notif.js)
 
 js/carte/               ★ LE FORMAT DES CARTES (sans DOM, utilisable sous Node)
   catalogue.js            tout ce qu'on peut poser : SOLS, MURS, OBJETS, DECALS, LUMIERES, TOITS ; GRILLE FINE (FIN = 2) :
@@ -43,6 +45,8 @@ js/explore/             Temps 1 : l'exploration — et le combat sur place
   commun.js               outils partagés (sons situés, messages, conditions, comptes d'objets)
   sim.js                  la simulation du lieu (headless) : IA des morts, jetons d'attaque, fente, équilibre, portes, butin
   combat.js               règles pures du combat · niveau.js : point d'entrée des plans · vision, physique, entrées, canal_local
+  missions_vue.js         les missions sur place : morts restants (en mots), pièce atteinte, repéré·e, vagues, PNJ à protéger,
+                          geste « agir », offres à l'arrivée (sim : appelerMorts, preparerMission, reveillerZone, getCalme)
 
 js/travel/              Temps 2 : géographie réelle, carte illustrée SVG, voyage et rencontres ; brouillard de la carte
                         (geo.js : zonesVues, reveler — le plan de Salon dévoile le centre, la carte routière le pays salonais,
@@ -64,7 +68,7 @@ Règles d'or :
 - rien n'est alloué à 60 Hz dans le rendu (blocs pré-rendus, buffers réutilisés) ; aucun `innerHTML` dans la boucle.
 
 Vérifications : `node tools/valider_niveaux.mjs` · `node dev/test_combat.mjs` · `node dev/test_ui_regles.mjs` ·
-`node tools/verifier_gameplay.mjs` · `node tools/verifier_histoire.mjs` · après ajout de fichiers : `node tools/generer_sw.mjs`.
+`node tools/verifier_gameplay.mjs` · `node tools/verifier_histoire.mjs` · `node dev/test_missions.mjs` · après ajout de fichiers : `node tools/generer_sw.mjs`.
 
 ## Graphismes photoréalistes (Blender + Poly Haven, CC0)
 

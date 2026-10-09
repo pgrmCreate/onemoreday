@@ -7,7 +7,7 @@ import { REGLAGES, niveauDepuisXp, presetDifficulte } from '../data/reglages.js'
 import { CLOTHES, ZONES_JAMBE, ZONES_BRAS } from '../data/clothing.js';
 import { ITEMS } from '../data/items.js';
 import { poidsPorte, chargeMax as chargeMaxInv, surpoids } from './inventory.js';
-import { douleur, deficitFroid, stadeMouille } from './survival.js';
+import { douleur, deficitFroid, stadeMouille, effetsCorpulence } from './survival.js';
 
 const C = () => REGLAGES.competences;
 const S = () => REGLAGES.survie;
@@ -22,7 +22,14 @@ export function normaliserJoueur(p) {
   p.skillXp = p.skillXp || {};
   for (const [s, xp] of Object.entries(C().DEPART || {})) if (p.skillXp[s] == null) p.skillXp[s] = xp;
   p.inventaire = p.inventaire || [];
-  p.equip = Object.assign({ arme: null, mainG: null, dos: null, tete: null, torse: null, mains: null, jambes: null, pieds: null, sac: null, ceinture: null, holster: null, lampe: null }, p.equip || {});
+  p.equip = Object.assign({ arme: null, mainG: null, dos: null, tete: null, haut: null, torse: null, veste: null, mains: null, jambes: null, pieds: null, sac: null, ceinture: null, holster: null, lampe: null }, p.equip || {});
+  // vieilles sauvegardes : un seul emplacement « torse » → chaque vêtement rejoint sa couche (haut, pull, veste)
+  const t = p.equip.torse, ct = t && CLOTHES[t];
+  if (ct && ct.slot !== 'torse') { p.equip.torse = null; if (!p.equip[ct.slot]) p.equip[ct.slot] = t; else p.inventaire.push({ id: t, qty: 1 }); }
+  // poids du corps (kg) : la référence dépend du genre ; on part de son poids de forme
+  if (p.poidsRef == null) p.poidsRef = (S().CORPS || {}).REF ? S().CORPS.REF[p.genre === 'f' ? 'f' : 'm'] : 72;
+  if (p.poidsCorps == null) p.poidsCorps = p.poidsRef;
+  if (p.estomac == null) p.estomac = 0;     // points de faim encore « dans l'estomac » (se vident en digérant)
   p.equipEtat = p.equipEtat || {};          // { arme|mainG|dos: instance (dur, durMax, balles…), lampe: { charge, allumee } }
   if (p.deuxMains == null) p.deuxMains = !!(p.equip.arme && ((ITEMS[p.equip.arme] || {}).deux_mains));
   p.accesRapide = p.accesRapide || [];      // ids d'objets du sac accrochés (ceinture, holster, gilet)
@@ -68,7 +75,7 @@ export function gagnerXps(obj, mult = 1, p) { for (const [s, n] of Object.entrie
 // Agilité effective = niveau + bonus/malus des vêtements (baskets +1, sac de randonnée −1…).
 export function agiliteEffective(p) {
   p = joueur(p); let a = niveau('agilite', p);
-  for (const slot of ['tete', 'torse', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster']) {
+  for (const slot of ['tete', 'haut', 'torse', 'veste', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster']) {
     const c = CLOTHES[p.equip[slot]]; if (c && c.agilite) a += c.agilite;
   }
   return Math.max(0, a);
@@ -124,6 +131,9 @@ export function modificateurs(p) {
   if (fractureBrasSansAttelle(p)) r.degats *= S().FRACTURE_SANS_ATTELLE.degats;
   r.vitesseVoyage *= 1 - REGLAGES.inventaire.SURPOIDS.vitesse * f;
   if (p.fatigue < 25) r.vitesseVoyage *= 0.85;
+  // poids du corps : trop maigre, on frappe moins fort et le souffle s'épuise ; trop lourd, on court moins longtemps
+  const ec = effetsCorpulence(p);
+  if (ec) { r.vitesse *= ec.vitesse; r.vitesseVoyage *= ec.vitesse; r.staCout *= ec.staCout; r.regenSta *= ec.regenSta; r.degats *= ec.degats; }
   r.toucher = Math.round(r.toucher * 1000) / 1000;
   return r;
 }
