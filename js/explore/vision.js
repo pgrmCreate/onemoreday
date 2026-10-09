@@ -61,6 +61,16 @@ export function calculerLOS(C, opaque, ox, oy, R, secondaire = false) {
   for (let o = 0; o < 8; o++) castLight(C, opaque, cx, cy, 1, 1.0, 0.0, Math.ceil(R), OCT[0][o], OCT[1][o], OCT[2][o], OCT[3][o], secondaire);
 }
 
+// Boîte de portée de chaque lampe (au-delà de portee + 0,5, lumiereLampe renvoie 0) : les boucles par case sautent
+// d'emblée les lampes trop loin, sans racine carrée. boites(lampes, n) → Float64Array [x0, y0, x1, y1] × n (réutilisé).
+let boitesBuf = new Float64Array(32);
+export function boitesLampes(lampes, n) {
+  if (boitesBuf.length < n * 4) boitesBuf = new Float64Array(n * 8);
+  for (let q = 0; q < n; q++) { const L = lampes[q], R = L.portee + 0.5; boitesBuf[q * 4] = L.x - R; boitesBuf[q * 4 + 1] = L.y - R; boitesBuf[q * 4 + 2] = L.x + R; boitesBuf[q * 4 + 3] = L.y + R; }
+  return boitesBuf;
+}
+export const horsBoite = (B, q, x, y) => x < B[q * 4] || y < B[q * 4 + 1] || x > B[q * 4 + 2] || y > B[q * 4 + 3];
+
 // Contribution d'une lampe au point (x, y) : 0..~1,1, bord doux. L = { x, y, dir, forme, angle (deg), portee }.
 export function lumiereLampe(L, x, y) {
   const dx = x - L.x, dy = y - L.y;
@@ -91,13 +101,14 @@ export function porteeVision(l) {
 // lampes : [{ x, y, dir, forme, angle, portee, sec: bool }] (sec = éclairée seulement si LOS secondaire).
 export function calculerVision(C, E, jour, px, py, lampes, nLampes) {
   const w = C.w;
+  const B = boitesLampes(lampes, nLampes);
   for (let k = 0; k < C.n; k++) {
     const i = C.liste[k];
     const x = (i % w + 0.5) / FIN, y = (((i / w) | 0) + 0.5) / FIN;
     let l = E.lumBase[i] * jour + (E.lumStat ? E.lumStat[i] * (1 - E.lumBase[i] * jour * 0.6) : 0);
     for (let q = 0; q < nLampes; q++) {
       const L = lampes[q];
-      if (L.sec && C.los2[i] !== C.stamp2) continue;
+      if (horsBoite(B, q, x, y) || (L.sec && C.los2[i] !== C.stamp2)) continue;
       const c = lumiereLampe(L, x, y);
       if (c > 0) l = l + c * (1 - l * 0.5);
     }

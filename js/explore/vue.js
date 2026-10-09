@@ -554,7 +554,9 @@ function image(t, dt) {
   if (V.fouille) { Fo.x = V.fouille.x; Fo.y = V.fouille.y; Fo.frac = V.fouille.p; Fo.n = V.fouille.items.length; Sc.fouilleOn = true; }
   else if (V.action) { Fo.x = V.action.x; Fo.y = V.action.y; Fo.frac = V.action.t / V.action.duree; Fo.n = 0; Sc.fouilleOn = true; }
   else Sc.fouilleOn = false;
-  V.rendu.dessiner(Sc);
+  // un panneau plein écran (téléphone) cache tout : on fait avancer l'état de l'image sans la dessiner
+  if (mod.panneaux && mod.panneaux.couvreEcran && mod.panneaux.couvreEcran()) V.rendu.sansImage(Sc);
+  else V.rendu.dessiner(Sc);
 }
 // Apparence du joueur : couleur du haut porté, cheveux selon le genre, sac à dos visible.
 let styleCache = null, styleCle = '';

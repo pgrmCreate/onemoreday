@@ -4,7 +4,7 @@
 //   - non vu : noir ; déjà vu : gris « souvenir » ;
 //   - vu : lumière ambiante (jour, fenêtres) + sources fixes (feux, néons, gyrophares, bougies) + lampes (torches).
 import { TS, clamp, hash } from './outils.js';
-import { lumiereLampe } from '../explore/vision.js';
+import { lumiereLampe, boitesLampes, horsBoite } from '../explore/vision.js';
 import { FIN, icase } from '../carte/catalogue.js';
 
 // Échantillons par PETITE case (grille fine) : 1 suffit (2 par unité, comme avant la grille fine).
@@ -83,6 +83,7 @@ export function creerLumiere() {
     accumuler(E, rx0, ry0, cols, rows, S.t, visibles);
     const d = mdata.data, stride = mw * 4;
     const souvenir = S.souvenir ?? 0.14;
+    const B = boitesLampes(lampes, nL);
     // visibilité brute par petite case, puis adoucie vers l'intérieur (3 × 3 pondéré, jamais au-delà de la valeur brute :
     // aucune fuite derrière un mur) → les ombres portées perdent leurs marches d'escalier
     const vb = buf.v;
@@ -116,7 +117,7 @@ export function creerLumiere() {
             let lp = 0;
             for (let q = 0; q < nL; q++) {
               const L = lampes[q];
-              if (L.sec && C.los2[i] !== C.stamp2) continue;
+              if (horsBoite(B, q, px, py) || (L.sec && C.los2[i] !== C.stamp2)) continue;
               const c = lumiereLampe(L, px, py);
               if (c > 0) lp = lp + c * (1 - lp * 0.5);
             }

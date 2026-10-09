@@ -117,7 +117,10 @@ export function creerRendu(cv, niveau) {
   }
 
   // ---------- Image ----------
-  const tmpListe = [];
+  // Personnages à dessiner, triés par y : entrées réutilisées d'une image à l'autre (aucune fonction créée à 60 Hz).
+  const tmpListe = [], poolListe = [];
+  const entree = (y, k, o) => { const e = poolListe[tmpListe.length] || (poolListe[tmpListe.length] = {}); e.y = y; e.k = k; e.o = o; tmpListe.push(e); return e; };
+  const parY = (a, b) => a.y - b.y;
   function dessiner(S) {
     if (!W) resize();
     const t0 = performance.now();
@@ -207,32 +210,34 @@ export function creerRendu(cv, niveau) {
     }
     // personnages, triés par y
     tmpListe.length = 0;
-    for (const n of S.pnj) if (n.etage === E.id && visCase(n.x, n.y) >= 0.2) tmpListe.push({ y: n.y, f: () => dessinerHumain(ctx, n.x * TS, n.y * TS, n.dir ?? Math.PI / 2, n.style ? (n._st || (n._st = { ...STYLE_PNJ, ...n.style })) : STYLE_PNJ, { t, marche: 0, phase: 0 }) });
+    for (const n of S.pnj) if (n.etage === E.id && visCase(n.x, n.y) >= 0.2) entree(n.y, 'pnj', n);
     for (const z of S.zombies) {
-      if (z.etage !== E.id) continue;
-      const v = visCase(z.x, z.y);
-      z._vu = v > 0.3 && (z.type !== 'rampant' || Math.hypot(z.x - S.joueur.x, z.y - S.joueur.y) <= 3 || z._eclaire);
-      if (!z._vu) continue;
-      z._phase = phase(z.uid, z.x, z.y, z.type === 'coureur' ? 1.8 : 1.4);
-      tmpListe.push({ y: z.y, f: () => dessinerMort(ctx, z.x * TS, z.y * TS, z, t, ZOMBIES[z.type]) });
+      if (z.etage !== E.id || !voirMort(z, S, visCase)) continue;
+      entree(z.y, 'mort', z);
     }
     for (const p of S.pairs) {
       if (p.etage !== E.id) continue;
-      const v = visCase(p.x, p.y);
-      const ph = phase('pair:' + p.id, p.x, p.y);
-      const st = { ...(p.lampe ? STYLE_PAIR_L : STYLE_PAIR), contour: 'rgba(110,200,255,0.9)', sac: p.sac === undefined ? true : p.sac };
-      tmpListe.push({ y: p.y, f: () => dessinerHumain(ctx, p.x * TS, p.y * TS, p.dir, st, { t, marche: p.marche ?? (p.allure && p.allure !== 'immobile' ? 1 : 0), phase: ph, allure: p.allure, arme: p.arme, lampe: p.lampe, geste: p.geste, empoigne: p.empoigne, fantome: v < 0.15, aTerre: p.aTerre, agonie: p.agonie }) });
+      const e = entree(p.y, 'pair', p);
+      e.v = visCase(p.x, p.y);
+      e.ph = phase('pair:' + p.id, p.x, p.y);
+      e.st = { ...(p.lampe ? STYLE_PAIR_L : STYLE_PAIR), contour: 'rgba(110,200,255,0.9)', sac: p.sac === undefined ? true : p.sac };
     }
     const J = S.joueur;
-    const phJ = phase('moi', J.x, J.y);
+    entree(J.y, 'moi', J).ph = phase('moi', J.x, J.y);
     const styleJ = S.styleJoueur || (J.lampe ? STYLE_JOUEUR_L : STYLE_JOUEUR);
-    tmpListe.push({ y: J.y, f: () => dessinerHumain(ctx, J.x * TS, J.y * TS, J.dir, styleJ, {
-      t, marche: J.marche, phase: phJ, allure: J.allure, arme: J.equip && (J.equip.deux || J.equip.droite), lampe: J.lampe && J.lampeMain,
-      frontale: J.lampe && !J.lampeMain, geste: J.cbt && J.cbt.geste, charge: J.cbt ? Math.max(0, J.cbt.charge) : 0, vise: J.cbt && J.cbt.vise,
-      empoigne: J.cbt && J.cbt.empoigne, flash: J.cbt ? J.cbt.flash : 0, agonie: J.agonie,
-    }) });
-    tmpListe.sort((a, b) => a.y - b.y);
-    for (const e of tmpListe) e.f();
+    tmpListe.sort(parY);
+    for (const e of tmpListe) {
+      const o = e.o;
+      if (e.k === 'mort') dessinerMort(ctx, o.x * TS, o.y * TS, o, t, ZOMBIES[o.type]);
+      else if (e.k === 'pnj') dessinerHumain(ctx, o.x * TS, o.y * TS, o.dir ?? Math.PI / 2, o.style ? (o._st || (o._st = { ...STYLE_PNJ, ...o.style })) : STYLE_PNJ, { t, marche: 0, phase: 0 });
+      else if (e.k === 'pair') dessinerHumain(ctx, o.x * TS, o.y * TS, o.dir, e.st, { t, marche: o.marche ?? (o.allure && o.allure !== 'immobile' ? 1 : 0), phase: e.ph, allure: o.allure, arme: o.arme, lampe: o.lampe, geste: o.geste, empoigne: o.empoigne, fantome: e.v < 0.15, aTerre: o.aTerre, agonie: o.agonie });
+      else dessinerHumain(ctx, o.x * TS, o.y * TS, o.dir, styleJ, {
+        t, marche: o.marche, phase: e.ph, allure: o.allure, arme: o.equip && (o.equip.deux || o.equip.droite), lampe: o.lampe && o.lampeMain,
+        frontale: o.lampe && !o.lampeMain, geste: o.cbt && o.cbt.geste, charge: o.cbt ? Math.max(0, o.cbt.charge) : 0, vise: o.cbt && o.cbt.vise,
+        empoigne: o.cbt && o.cbt.empoigne, flash: o.cbt ? o.cbt.flash : 0, agonie: o.agonie,
+      });
+    }
+    for (const e of tmpListe) { e.o = null; e.st = null; }   // pas de référence gardée vers les morts et coéquipiers d'hier
     // feux, particules, traînées, éclats de l'ancien combat
     const srcVis = lumiere.visibles();
     effets.flammes(ctx, srcVis, t, E.id, visCase, dt);
@@ -313,12 +318,46 @@ export function creerRendu(cv, niveau) {
     }
   }
 
+  // Un mort est-il vu (z._vu, lu aussi par le jeu : alerte « un mort approche », ciblage) ? Avance sa foulée s'il l'est.
+  function voirMort(z, S, visCase) {
+    const v = visCase(z.x, z.y);
+    z._vu = v > 0.3 && (z.type !== 'rampant' || Math.hypot(z.x - S.joueur.x, z.y - S.joueur.y) <= 3 || z._eclaire);
+    if (z._vu) z._phase = phase(z.uid, z.x, z.y, z.type === 'coureur' ? 1.8 : 1.4);
+    return z._vu;
+  }
+
+  // Image cachée (un panneau plein écran la recouvre) : rien n'est dessiné, mais tout ce que dessiner() fait avancer
+  // avance quand même — morts vus, particules, portes qui pivotent, cadavres, foulées — pour que le jeu ne voie aucune
+  // différence et qu'à la fermeture du panneau l'image reprenne exactement où elle en serait.
+  function sansImage(S) {
+    if (!W) resize();
+    const E = S.E, C = S.C, pxc = cam.pxc, t = S.t;
+    const dt = Math.min(50, S.dt || 16);
+    effets.maj(S.hitstop > 0 ? dt * 0.1 : dt);
+    const vx0 = cam.x - W / 2 / pxc, vy0 = cam.y - H / 2 / pxc, vx1 = cam.x + W / 2 / pxc, vy1 = cam.y + H / 2 / pxc;
+    const visCase = (x, y) => { const i = icase(E, x, y); if (i < 0) return 0; return C.los[i] === C.stamp ? C.vis[i] : 0; };
+    const vuCase = (x, y) => { const i = icase(E, x, y); if (i < 0) return 0; return C.vu[i]; };
+    if (!cadavresInit) { for (const cd of S.cadavres) cadavresVus.set(cd.uid, null); cadavresInit = true; }
+    for (const cd of S.cadavres) if (cd.etage === E.id && vuCase(cd.x, cd.y) && !cadavresVus.has(cd.uid)) cadavresVus.set(cd.uid, t);
+    for (const p of niveau.portes) {
+      if (p.etage !== E.id || p.x < vx0 - 1 || p.x > vx1 + 1 || p.y < vy0 - 1 || p.y > vy1 + 1) continue;
+      const s = S.portes[p.cle]; if (s) pivoterPorte(p, s, dt);
+    }
+    for (const z of S.zombies) if (z.etage === E.id) voirMort(z, S, visCase);
+    for (const p of S.pairs) if (p.etage === E.id) phase('pair:' + p.id, p.x, p.y);
+    phase('moi', S.joueur.x, S.joueur.y);
+  }
+
   // ---------- Portes ----------
-  function dessinerPorte(c, E, p, s, t, dt) {
+  function pivoterPorte(p, s, dt) {
     let a = portesA.get(p.cle);
     const cible = s.etat === 'ouverte' ? 1 : 0;
     if (!a) { a = { o: cible }; portesA.set(p.cle, a); }
     a.o += (cible - a.o) * (1 - Math.exp(-dt / 70));
+    return a;
+  }
+  function dessinerPorte(c, E, p, s, t, dt) {
+    const a = pivoterPorte(p, s, dt);
     // une unité de large, une petite case d'épaisseur : (x, y) = coin d'une boîte TS × TS centrée sur la porte
     const x = (p.x + 0.5) * TS - TS / 2, y = (p.y + 0.5) * TS - TS / 2, h = p.orient === 'h';
     const metal = p.style === 'metal' || (p.exterieure && p.style !== 'bois' && /grille/.test(p.nom || ''));
@@ -735,7 +774,7 @@ export function creerRendu(cv, niveau) {
 
   resize();
   return {
-    cam, resize, dessiner, ecranVersMonde, mondeVersEcran, suivre, recaler, setZoom, effets,
+    cam, resize, dessiner, sansImage, ecranVersMonde, mondeVersEcran, suivre, recaler, setZoom, effets,
     zoom: () => cam.zoom, taille: () => ({ W, H }),
     viderCache() { blocs.clear(); toitsCache.clear(); },
     fermer() { offSols(); offObjets(); blocs.clear(); toitsCache.clear(); grain = null; vignette = null; lumiere.fermer(); effets.fermer(); anim.clear(); },

@@ -2,7 +2,7 @@
 // ouvrirPanneau(nom, opts), fermerPanneau(), panneauOuvert() → nom|null.
 // nom ∈ 'inventaire' | 'corps' | 'fabrication' | 'construction' | 'journal' | 'options'. En solo, l'horloge est en pause tant qu'un panneau est ouvert.
 // Chaque panneau exporte monter(corps, opts, api) → { maj?(evt), demonter?() } ; api = { ouvrir, fermer, rafraichir }.
-// Émet bus 'panneau' { nom|null }.
+// Émet bus 'panneau' { nom|null }. couvreEcran() : le panneau cache-t-il tout le jeu (téléphone) ?
 import { G } from '../../core/state.js';
 import { on, emit } from '../../core/bus.js';
 import * as clock from '../../core/clock.js';
@@ -41,6 +41,7 @@ function construire() {
   document.body.appendChild(racine);
   racine.addEventListener('pointerdown', (e) => { if (e.target === racine) fermerPanneau(); });
   racine.querySelector('.pn-fermer').addEventListener('click', fermerPanneau);
+  racine.querySelector('.ui-panneau').addEventListener('transitionend', () => { if (courant) majCouvrant(); });
   racine.querySelectorAll('.pn-rail-btn').forEach(b => b.addEventListener('click', () => ouvrirPanneau(b.dataset.p)));
   document.addEventListener('keydown', (e) => {
     if (!courant) return;
@@ -70,6 +71,7 @@ export function ouvrirPanneau(nom, opts = {}) {
     if (G && G.mode !== 'solo') offs.push(on('minute', () => maj({ type: 'minute' })));
   }
   if (!deja) { racine.classList.add('ouvert'); requestAnimationFrame(() => racine.classList.add('visible')); }
+  clearTimeout(tCouvre); tCouvre = setTimeout(majCouvrant, 260);   // une fois le fondu d'ouverture (0,18 s) terminé
   if (!deja) sec.focus({ preventScroll: true }); // le focus entre dans le panneau (Échap, Tab) sans surligner un bouton
   emit('panneau', { nom });
 }
@@ -77,6 +79,7 @@ export function fermerPanneau() {
   if (!courant) return;
   if (instance && instance.demonter) try { instance.demonter(); } catch (e) { console.error(e); }
   offs.forEach(f => f()); offs = []; instance = null; courant = null;
+  clearTimeout(tCouvre); couvrant = false;   // le jeu se redessine dès le début du fondu de fermeture
   racine.classList.remove('visible');
   setTimeout(() => { if (!courant) { racine.classList.remove('ouvert'); racine.querySelector('.pn-corps').textContent = ''; } }, 200);
   clock.reprendre('panneau');
@@ -84,6 +87,20 @@ export function fermerPanneau() {
   emit('panneau', { nom: null });
 }
 export function panneauOuvert() { return courant; }
+
+// Sur téléphone, le panneau occupe tout l'écran sur un fond opaque : le jeu, dessous, n'a pas besoin de se dessiner
+// (js/explore/vue.js). Vrai seulement une fois le panneau entièrement ouvert, opaque et recouvrant toute la fenêtre ;
+// sur PC (panneau latéral), toujours faux.
+let couvrant = false, tCouvre = 0;
+function majCouvrant() {
+  couvrant = false;
+  if (!courant || !racine || !racine.classList.contains('visible')) return;
+  const sec = racine.querySelector('.ui-panneau'), r = sec.getBoundingClientRect(), st = getComputedStyle(sec);
+  couvrant = st.opacity === '1' && st.backgroundColor.startsWith('rgb(') &&
+    r.left <= 0 && r.top <= 0 && r.right >= window.innerWidth && r.bottom >= window.innerHeight;
+}
+if (typeof window !== 'undefined') window.addEventListener('resize', () => { if (courant) majCouvrant(); });
+export function couvreEcran() { return couvrant; }
 
 // Une scène t'a donné plus que tu ne peux porter : dès qu'elle est finie (plus de scène, de combat ni de cinématique
 // par-dessus) et qu'aucun panneau n'est ouvert, le sac s'ouvre sur l'onglet « À trier ».
