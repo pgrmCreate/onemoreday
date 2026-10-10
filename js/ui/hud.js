@@ -1,4 +1,6 @@
 // ============ HUD — discret : heure, lieu, objectif, états du corps, le mal, boutons ronds ============
+// En haut à gauche : l'heure (seulement avec une montre au poignet, sinon le moment de la journée) et le lieu.
+// La date n'y est pas : elle est dans le Menu (game/temps_connu.js).
 // montrerHUD(bool), majHUD(). Mis à jour par le bus ('minute', 'inventaire', 'blessure', 'quete', 'temps', 'survie', 'lieu:entre').
 // Les moodles n'apparaissent que quand ça compte ; un toucher affiche leur détail.
 import { G, genrer } from '../core/state.js';
@@ -8,6 +10,7 @@ import { lieu as lieuDe } from '../game/donnees.js';
 import { QUETES } from '../data/histoire/quetes.js';
 import { etatsCorps } from '../game/survival.js';
 import { etatRuee, quandTexte } from '../game/ruees.js';
+import { heureConnue, heureExacte, momentVague } from '../game/temps_connu.js';
 import { ico, ICONE_MOODLE } from './icons.js';
 import { ouvrirPanneau, panneauOuvert } from './panels/index.js';
 
@@ -41,7 +44,7 @@ function construire() {
   racine.innerHTML = `
     <div class="hud-haut-g">
       <div class="hud-carte">
-        <div class="hud-heure"><span class="hud-jour"></span><span class="hud-h"></span></div>
+        <div class="hud-heure"><span class="hud-h"></span></div>
         <div class="hud-lieu">${ico('lieu')}<span class="t"></span></div>
         <div class="hud-ruee" hidden>${ico('alerte')}<span class="t"></span></div>
       </div>
@@ -57,7 +60,7 @@ function construire() {
     </div>
     <div class="hud-bulle" hidden></div>`;
   document.body.appendChild(racine);
-  els.jour = racine.querySelector('.hud-jour'); els.h = racine.querySelector('.hud-h');
+  els.h = racine.querySelector('.hud-h');
   els.lieu = racine.querySelector('.hud-lieu .t'); els.lieuBox = racine.querySelector('.hud-lieu');
   els.ruee = racine.querySelector('.hud-ruee'); els.rueeTxt = els.ruee.querySelector('.t');
   els.obj = racine.querySelector('.hud-objectif'); els.objTxt = els.obj.querySelector('.t');
@@ -86,8 +89,10 @@ function montrerBulle(ancre, titre, detail) {
 let signatureMoodles = '', dernierObjectif = '';
 export function majHUD() {
   if (!racine || !G) return;
-  els.jour.textContent = `Jour ${clock.jour()} · ${clock.dateTexte()}`;
-  els.h.textContent = `${String(clock.heure()).padStart(2, '0')}:${String(clock.minute()).padStart(2, '0')}`;
+  // l'heure exacte avec une montre ; sans, ce qu'on devine au ciel
+  const montre = heureConnue();
+  els.h.textContent = montre ? heureExacte() : momentVague();
+  els.h.classList.toggle('vague', !montre);
   racine.classList.toggle('nuit', clock.estNuit());
   const l = texteLieu(); els.lieu.textContent = l; els.lieuBox.hidden = !l;
   // Les sirènes : quand elles hurlent (et quand la radio les a annoncées)

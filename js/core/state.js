@@ -20,7 +20,7 @@ export function joueurNeuf(nom = 'Sam', genre = 'm') {
     mal: 0,                           // contamination 0..100 (GAMEPLAY §5.4)
     skillXp: {},
     inventaire: [],
-    equip: { arme: null, mainG: null, dos: null, tete: null, haut: 'tshirt', torse: null, veste: null, mains: null, jambes: 'jean', pieds: 'baskets', sac: null, ceinture: null, holster: null },
+    equip: { arme: null, mainG: null, dos: null, tete: null, haut: 'tshirt', torse: null, veste: null, mains: null, poignet: null, jambes: 'jean', pieds: 'baskets', sac: null, ceinture: null, holster: null },
     accesRapide: [],
     blessures: [],
     maladie: null,

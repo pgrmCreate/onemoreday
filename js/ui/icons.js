@@ -23,6 +23,8 @@ export const ICONS = {
   lieu: P('M12 21s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z', C(12, 9.8, 2.3)),
   objectif: P('M5 21V4m0 0h11l-2 3.5 2 3.5H5'),
   horloge: P('M12 7v5l3 2', C(12, 12, 8.5)),
+  montre: P('M9 6.5 9.6 3h4.8l.6 3.5M9 17.5l.6 3.5h4.8l.6-3.5M12 9.6V12l1.6 1', C(12, 12, 5.6)),
+  calendrier: P('M4.5 6.5h15v13h-15zM4.5 10.5h15M8.5 4v4M15.5 4v4M8 14h2M11 14h2M14 14h2M8 17h2M11 17h2'),
   sablier: P('M6.5 3h11m-11 18h11M8 3v2.5c0 2 1.6 3.6 4 5.5 2.4-1.9 4-3.5 4-5.5V3M8 21v-2.5c0-2 1.6-3.6 4-5.5 2.4 1.9 4 3.5 4 5.5V21'),
   info: P('M12 11v5.5M12 7.6v.1', C(12, 12, 9)),
   alerte: P('M12 4 2.8 19.5h18.4L12 4zm0 6v4.5m0 2.6v.1'),
@@ -179,8 +181,9 @@ const PAR_ID = {
   rechaud_camping: 'feu', casserole: 'cuisine', bouteille_vide: 'recipient', gourde: 'recipient', thermos: 'recipient', bidon_vide: 'recipient',
   canette_vide: 'recipient', bandage: 'bander', bandage_fortune: 'bander', pansement_miel: 'bander', desinfectant: 'desinfecter',
   lingette: 'desinfecter', kit_suture: 'suturer', attelle: 'attelle', trousse_outils: 'outil', pierre_aiguiser: 'reparer',
+  montre: 'montre', montre_digitale: 'montre', reveil: 'horloge', calendrier: 'calendrier', agenda: 'calendrier',
 };
-const SLOT_ICONE = { tete: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
+const SLOT_ICONE = { tete: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', sac: 'sac', ceinture: 'ceinture', holster: 'holster', poignet: 'montre' };
 export function iconeObjet(id) {
   if (ARME[id]) return ARME[id];
   if (PAR_ID[id]) return PAR_ID[id];

@@ -113,13 +113,13 @@ export function creerHud(racine, { arene = false } = {}) {
       const d = m.droite ? objet(m.droite) : null;
       const balles = d && d.tir ? el('em', {}, `${(p.equipEtat.arme && p.equipEtat.arme.balles) || 0}/${d.tir.capacite}`) : null;
       const orig = (p.equipOrigine || {}).arme;
-      const versOu = !m.droite ? '' : orig === 'dos' && !p.equip.dos ? ' ↩ dos' : (p.accesRapide || []).includes(m.droite) ? ' ↩ ceinture' : ' ↩ sac';
-      mm.append(ligneM('droite', 'droite', (m.deux ? 'Deux mains' : 'Main droite') + versOu, nom(m.droite) + (m.uneMainPenalite ? ' (1 main)' : ''), usure('arme'), balles));
-      if (!m.deux && m.gauche) mm.append(ligneM('gauche', 'echanger', 'Main gauche ⇄', nom(m.gauche), p.equip.mainG ? usure('mainG') : null));
+      const versOu = !m.droite ? '' : orig === 'dos' && !p.equip.dos ? ' ↩ dos' : (p.accesRapide || []).includes(m.droite) ? ' ↩ ceint.' : ' ↩ sac';
+      mm.append(ligneM('droite', 'droite', (m.deux ? '2 mains' : 'Droite') + versOu, nom(m.droite) + (m.uneMainPenalite ? ' (1 main)' : ''), usure('arme'), balles));
+      if (!m.deux && m.gauche) mm.append(ligneM('gauche', 'echanger', 'Gauche ⇄', nom(m.gauche), p.equip.mainG ? usure('mainG') : null));
       // le dos reste visible tant qu'on peut y remettre ce qu'on tient
       const peutDos = m.droite && inv.peutDos && inv.peutDos(m.droite);
-      if (p.equip.dos) mm.append(ligneM('dos', 'dos', 'Dans le dos', nom(p.equip.dos), null));
-      else if (peutDos) mm.append(ligneM('dos vide', 'dos', 'Dos libre', 'Mettre au dos', null));
+      if (p.equip.dos) mm.append(ligneM('dos', 'dos', 'Dos', nom(p.equip.dos), null));
+      else if (peutDos) mm.append(ligneM('dos vide', 'dos', 'Dos', 'libre', null));
       // ceinture : chaque case sort l'objet en main, ou l'y remet
       const ar = p.accesRapide || [];
       if (ar.length) {

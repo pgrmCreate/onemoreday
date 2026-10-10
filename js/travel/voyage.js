@@ -11,6 +11,7 @@ import * as flow from '../game/flow.js';
 import { G, genrer, setFlag } from '../core/state.js';
 import { on, emit } from '../core/bus.js';
 import * as clock from '../core/clock.js';
+import { texteHorloge } from '../game/temps_connu.js';
 import { limiteur } from '../core/cadence.js';
 import { el, fmtDistance, fmtDuree, texteHtml } from '../core/util.js';
 import { seedRng } from '../core/rng.js';
@@ -56,7 +57,7 @@ export async function entrer({ de, vers, allure = 'normale', groupe = null, minu
   V.offs.push(on('voyage:detour', (x) => detour(x && x.m)));
   V.offs.push(on('voyage:demiTour', () => demiTour()));
   V.offs.push(on('voyage:butin', (x) => { if (x) V.butinsEnAttente = (V.butinsEnAttente || []).concat([x]); }));
-  V.offs.push(on('minute', () => { if (V) V.horloge.textContent = clock.texteHeure(); }));
+  V.offs.push(on('minute', () => { if (V) V.horloge.textContent = texteHorloge(); }));
   const onKey = (e) => { if (e.key === ' ' && !V.pauses.size) basculerAccel(); };
   window.addEventListener('keydown', onKey); V.offs.push(() => window.removeEventListener('keydown', onKey));
   V.t = performance.now();
@@ -88,7 +89,7 @@ function construireUI() {
   const L = LIEUX[V.vers];
   V.titre = el('div', { class: 'v-vers' });
   V.reste = el('div', { class: 'v-reste' });
-  V.horloge = el('span', { class: 'carte-horloge' }, clock.texteHeure());
+  V.horloge = el('span', { class: 'carte-horloge' }, texteHorloge());
   V.jauge = el('div', { class: 'v-risque' });
   V.barre = el('i');
   const bandeau = el('div', { class: 'v-bandeau' },

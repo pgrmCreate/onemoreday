@@ -22,7 +22,7 @@ export function normaliserJoueur(p) {
   p.skillXp = p.skillXp || {};
   for (const [s, xp] of Object.entries(C().DEPART || {})) if (p.skillXp[s] == null) p.skillXp[s] = xp;
   p.inventaire = p.inventaire || [];
-  p.equip = Object.assign({ arme: null, mainG: null, dos: null, tete: null, haut: null, torse: null, veste: null, mains: null, jambes: null, pieds: null, sac: null, ceinture: null, holster: null, lampe: null }, p.equip || {});
+  p.equip = Object.assign({ arme: null, mainG: null, dos: null, tete: null, haut: null, torse: null, veste: null, mains: null, poignet: null, jambes: null, pieds: null, sac: null, ceinture: null, holster: null, lampe: null }, p.equip || {});
   // vieilles sauvegardes : un seul emplacement « torse » → chaque vêtement rejoint sa couche (haut, pull, veste)
   const t = p.equip.torse, ct = t && CLOTHES[t];
   if (ct && ct.slot !== 'torse') { p.equip.torse = null; if (!p.equip[ct.slot]) p.equip[ct.slot] = t; else p.inventaire.push({ id: t, qty: 1 }); }

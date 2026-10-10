@@ -6,6 +6,7 @@ import * as flow from '../game/flow.js';
 import { G } from '../core/state.js';
 import { on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
+import { texteHorloge } from '../game/temps_connu.js';
 import { el, fmtDistance, fmtDuree } from '../core/util.js';
 import { LIEUX, SALON_SUR_REGION } from '../game/donnees.js';
 import { QUETES } from '../data/histoire/quetes.js';
@@ -107,7 +108,7 @@ function construireBarre() {
   E.racine.append(barre, zoom);
   majHorloge();
 }
-function majHorloge() { if (E && E.horloge) E.horloge.textContent = clock.texteHeure(); }
+function majHorloge() { if (E && E.horloge) E.horloge.textContent = texteHorloge(); }
 
 // ---------------------------------------------------------------- une feuille
 function montrer(echelle, { premier = false, centrerSur = null } = {}) {

@@ -1,7 +1,7 @@
 // ============ Inventaire — poids, VOLUME, mains, dos, équipement, accès rapide, lampes, eau, usure (sans DOM) ============
 // Règles : GAMEPLAY §8 (poids + volume, mains, dos), §2.5 (lumière et piles), §6.1 (réparation), REGLAGES.inventaire.
 // Forme : G.player.inventaire = [{ id, qty, dur?, durMax?, eau?: { q: 'propre'|'croupie', L } }]   (sac + poches)
-//         G.player.equip = { arme (= MAIN DROITE), mainG (main gauche), dos, tete, haut, torse (pull), veste, mains, jambes, pieds,
+//         G.player.equip = { arme (= MAIN DROITE), mainG (main gauche), dos, tete, haut, torse (pull), veste, mains, poignet (montre), jambes, pieds,
 //                            sac, ceinture, holster, lampe } (ids)
 //         G.player.deuxMains = true quand l'objet de la main droite est tenu à DEUX mains (main gauche libre).
 //         G.player.equipEtat = { arme|mainG|dos: { dur, durMax, balles, eau… } (l'instance), lampe: { charge, allumee } }
@@ -18,7 +18,7 @@ import { niveau } from './player.js';
 
 const I = () => REGLAGES.inventaire;
 const joueur = (p) => p || (G && G.player);
-export const SLOTS_VETEMENT = ['tete', 'haut', 'torse', 'veste', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
+export const SLOTS_VETEMENT = ['tete', 'haut', 'torse', 'veste', 'mains', 'poignet', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
 export const SLOTS_TENUS = ['arme', 'mainG', 'dos'];          // ce qu'on tient / porte sanglé (instances)
 export const NOMS_SLOTS = { ...SLOTS, arme: 'Main droite', mainG: 'Main gauche', dos: 'Dans le dos', lampe: 'Lampe' };
 

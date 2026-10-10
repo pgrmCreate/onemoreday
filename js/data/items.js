@@ -871,6 +871,15 @@ export const ITEMS = {
     nom: 'Photo de famille', type: 'lore', poids: 0, espace: 0, volume: 0.001,
     desc: 'Des inconnus qui sourient sur une plage. Tu la gardes quand même.',
   },
+  // `date: true` : tant qu'il est dans le sac, tu connais la date du jour (Menu) — js/game/temps_connu.js
+  calendrier: {
+    nom: 'Calendrier des Postes', type: 'outil', poids: 0.25, espace: 0, volume: 0.4, date: true,
+    desc: 'L’almanach du facteur, avec des chatons sur la couverture, et les jours barrés au feutre jusqu’au Mercredi. Tu comptes les nuits depuis, et tu sais quel jour on est.',
+  },
+  agenda: {
+    nom: 'Agenda de poche', type: 'outil', poids: 0.1, espace: 0, volume: 0.15, date: true,
+    desc: 'Un agenda à couverture de similicuir, rempli de rendez-vous qui n’auront pas lieu. Ses pages te disent quel jour on est.',
+  },
 };
 
 // Les familles de réparation et les catégories d'objets (pour les validateurs et l'interface).

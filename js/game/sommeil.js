@@ -8,6 +8,7 @@
 import { G, genrer } from '../core/state.js';
 import { emit, on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
+import { texteHorloge } from './temps_connu.js';
 import { el } from '../core/util.js';
 import { REGLAGES } from '../data/reglages.js';
 import { dormir, categorieCouchage } from './survival.js';
@@ -129,7 +130,7 @@ async function executer(heures, sit, couchage = 'sol') {
   const voile = el('div', { class: 'som-voile' }, el('div', { class: 'som-t' }, 'Tu dors…'), el('div', { class: 'som-h' }));
   document.body.append(voile);
   requestAnimationFrame(() => voile.classList.add('on'));
-  const majH = () => { voile.lastChild.textContent = clock.texteHeure(); };
+  const majH = () => { voile.lastChild.textContent = texteHorloge(); };
   await new Promise(r => setTimeout(r, 700));
   let interrompu = false, dormi = 0, plafond = false;
   for (let k = 0; k < heures && G && !G.player.mort; k++) {

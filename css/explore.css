@@ -59,7 +59,7 @@
 
 /* ---------- Invite d'interaction (clavier) ---------- */
 .ex-invite {
-  position: absolute; left: 50%; bottom: 42px; transform: translateX(-50%); pointer-events: none;
+  position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); pointer-events: none;
   padding: 7px 16px; background: var(--ex-panneau); border: 1px solid rgba(201,162,39,.55); border-radius: 6px;
   font-size: 16px; letter-spacing: .04em; white-space: nowrap; opacity: 0; transition: opacity .15s;
 }
@@ -104,8 +104,10 @@
 .ex-zoom i.on { background: var(--ex-creme); }
 .ex-zoom::after { content: ''; position: absolute; inset: -8px; }   /* cible tactile ≥ 44 px sans grossir le bouton */
 
-/* ---------- Vitaux (bas-gauche) : vie + souffle, toujours lisibles ---------- */
-.ex-etat { position: absolute; left: 56px; bottom: 16px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; transition: opacity .6s; }
+/* ---------- Vitaux : vie et souffle ne s'affichent plus (choix du propriétaire) ; reste la jauge de lampe,
+   au-dessus des mains ---------- */
+.ex-etat .ex-vital { display: none; }
+.ex-etat { position: absolute; left: 56px; bottom: 40px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; transition: opacity .6s; }
 .ex-etat.discret { opacity: .45; }
 .ex-vital { display: grid; grid-template-columns: 52px 150px 30px; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
 .ex-vital > b { font-weight: 500; color: rgba(230,223,204,.7); text-align: right; }
@@ -158,30 +160,29 @@
 .ex-b:disabled { opacity: .35; cursor: default; }
 .ex-b-p { flex: 1; background: rgba(201,162,39,.16); border-color: var(--ex-ambre); color: var(--ex-ambre-c); }
 
-/* ---------- Ce que l'on tient (haut-droite) ---------- */
-.ex-mains { position: absolute; top: 12px; right: 222px; display: flex; gap: 4px; z-index: 4; }
-.ex-main { position: relative; min-height: 40px; min-width: 120px; max-width: 34vw; padding: 3px 10px 6px; text-align: left; border-radius: 6px;
-  background: var(--ex-panneau); border: 1px solid rgba(230,223,204,.2); color: var(--ex-creme); font: inherit; cursor: pointer; }
-.ex-main small { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: rgba(230,223,204,.5); }
-.ex-main span { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ex-main em { position: absolute; right: 8px; top: 4px; font-style: normal; font-size: 11px; color: var(--ex-ambre); }
+/* ---------- Ce que l'on tient (bas-gauche, juste à droite du zoom et du plan, collé en bas) ---------- */
+.ex-mains { position: absolute; left: 54px; bottom: max(6px, env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 3px; z-index: 4; opacity: .82; }
+.ex-mains:hover { opacity: 1; }
+.ex-main { position: relative; min-height: 28px; min-width: 64px; max-width: 120px; padding: 2px 7px 4px; text-align: left; border-radius: 5px;
+  background: var(--ex-panneau); border: 1px solid rgba(230,223,204,.16); color: var(--ex-creme); font: inherit; cursor: pointer; }
+.ex-main small { display: block; font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: rgba(230,223,204,.45); line-height: 1.2; }
+.ex-main span { display: block; font-size: 11px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-main em { position: absolute; right: 6px; top: 2px; font-style: normal; font-size: 9.5px; color: var(--ex-ambre); }
 .ex-main.droite { border-color: rgba(201,162,39,.5); }
 .ex-main.dos { border-style: dashed; }
-.ex-main.dos.vide { opacity: .6; min-width: 92px; }
-.ex-ceinture { display: flex; flex-direction: column; gap: 3px; }
-.ex-ceint { display: flex; align-items: center; gap: 6px; min-height: 19px; max-width: 150px; padding: 1px 8px 1px 3px; border-radius: 5px;
-  background: var(--ex-panneau); border: 1px solid rgba(230,223,204,.16); color: rgba(230,223,204,.82); font: inherit; font-size: 11px; cursor: pointer; text-align: left; }
-.ex-ceint kbd { min-width: 15px; height: 15px; line-height: 15px; border-radius: 3px; background: rgba(230,223,204,.14); font: inherit; font-size: 10px; text-align: center; }
+.ex-main.dos.vide { opacity: .6; min-width: 0; }
+.ex-ceinture { display: grid; grid-template-rows: repeat(2, auto); grid-auto-flow: column; gap: 2px; }   /* 2 rangs : pas plus haut que les mains */
+.ex-ceint { display: flex; align-items: center; gap: 4px; min-height: 13px; max-width: 110px; padding: 0 6px 0 2px; border-radius: 4px;
+  background: var(--ex-panneau); border: 1px solid rgba(230,223,204,.14); color: rgba(230,223,204,.8); font: inherit; font-size: 9.5px; cursor: pointer; text-align: left; }
+.ex-ceint kbd { min-width: 12px; height: 12px; line-height: 12px; border-radius: 2px; background: rgba(230,223,204,.14); font: inherit; font-size: 8.5px; text-align: center; }
 .ex-ceint span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ex-ceint.tenu { border-color: var(--ex-ambre); color: var(--ex-ambre-c); }
-.explore.ex-tactile .ex-ceint { min-height: 30px; font-size: 12px; }
-.ex-usure { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 2px; background: rgba(230,223,204,.12); }
+.explore.ex-tactile .ex-ceint { min-height: 22px; font-size: 10.5px; }
+.explore.ex-tactile .ex-main { min-height: 36px; }   /* cible tactile */
+.ex-usure { position: absolute; left: 7px; right: 7px; bottom: 2px; height: 2px; background: rgba(230,223,204,.12); }
 .ex-usure b { display: block; height: 100%; background: rgba(230,223,204,.6); }
 .ex-usure.bas b { background: var(--ex-rouge); }
-@media (max-width: 760px) { .ex-mains { right: 214px; } .ex-main { min-width: 0; max-width: 140px; } }
-/* le bouton Construire (marteau) s'ajoute aux menus du haut en exploration */
-body[data-temps=exploration] .ex-mains { right: 276px; }
-@media (max-width: 760px) { body[data-temps=exploration] .ex-mains { right: 268px; } }
+@media (max-width: 760px) { .ex-main { min-width: 0; max-width: 110px; } .ex-ceint { max-width: 96px; } }
 
 /* ---------- Combat : voile rouge, « Dégage-toi ! », route ---------- */
 .ex-sang { position: absolute; inset: 0; pointer-events: none; opacity: 0;
@@ -312,7 +313,7 @@ body[data-temps=exploration] .ex-mains { right: 276px; }
   .ex-btn-courir { width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
   .ex-pad { gap: 6px; }
   .ex-btn-inter { min-height: 48px; }
-  .ex-main { min-width: 80px; padding: 3px 8px 5px; }
+  .ex-main { min-width: 0; }
   .ex-guide { font-size: 12.5px; top: 54px; padding: 4px 12px 4px 9px; }
   .ex-coop { top: 84px; }
   .ex-lieu { top: 108px; }

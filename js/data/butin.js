@@ -37,6 +37,7 @@ const D = {
     L('manteau_hiver', 1, 1, 0.04), L('veste_cuir', 1, 1, 0.025), L('baskets', 1, 1, 0.05), L('bottes_cuir', 1, 1, 0.02),
     L('ceinture_cuir', 1, 1, 0.06), L('sacoche', 1, 1, 0.03), L('sac_a_dos', 1, 1, 0.03),
     L('drap', 1, 1, 0.12), L('couverture', 1, 1, 0.08), L('chiffon', 1, 2, 0.15), L('trousse_couture', 1, 1, 0.04), L('photo_famille', 1, 1, 0.03),
+    L('montre', 1, 1, 0.03),
   ],
   frigo: [
     L('bouteille_eau', 1, 2, 0.25), L('soda', 1, 2, 0.22), L('jus_fruits', 1, 1, 0.12), L('compote', 1, 2, 0.08),
@@ -48,6 +49,7 @@ const D = {
     L('miel', 1, 1, 0.05), L('casserole', 1, 1, 0.08), L('couteau_cuisine', 1, 1, 0.1), L('ouvre_boite', 1, 1, 0.1),
     L('allumettes', 1, 1, 0.1), L('briquet', 1, 1, 0.04), L('bouteille_vide', 1, 1, 0.12), L('sac_plastique', 1, 2, 0.15),
     L('alcool_fort', 1, 1, 0.05), L('boite_vide', 1, 2, 0.08), L('cabas_courses', 1, 1, 0.04),
+    L('calendrier', 1, 1, 0.06),
   ],
   etagere: [
     L('journal_papier', 1, 2, 0.18), L('scotch', 1, 1, 0.1), L('piles', 1, 1, 0.08), L('clous', 2, 6, 0.06),
@@ -60,6 +62,7 @@ const D = {
     L('visserie', 1, 1, 0.06), L('cable_electrique', 1, 1, 0.08), L('tournevis', 1, 1, 0.05), L('cafe_soluble', 1, 1, 0.06),
     L('barre_cereales', 1, 2, 0.1), L('chocolat', 1, 1, 0.07), L('lampe_torche', 1, 1, 0.03), L('reveil', 1, 1, 0.05),
     L('portefeuille', 1, 1, 0.06), L('antidouleur', 1, 1, 0.04), L('manuel_bricolage', 1, 1, 0.012), L('revue_mecanique', 1, 1, 0.012),
+    L('agenda', 1, 1, 0.07), L('calendrier', 1, 1, 0.03), L('montre_digitale', 1, 1, 0.02),
   ],
   comptoir: [
     L('barre_cereales', 1, 2, 0.18), L('chips', 1, 1, 0.14), L('soda', 1, 1, 0.14), L('briquet', 1, 1, 0.1),
@@ -68,17 +71,18 @@ const D = {
   ],
   caisse: [
     L('portefeuille', 1, 1, 0.25), L('piles', 1, 1, 0.07), L('briquet', 1, 1, 0.08), L('scotch', 1, 1, 0.05),
-    L('trousse_couture', 1, 1, 0.02),
+    L('trousse_couture', 1, 1, 0.02), L('montre', 1, 1, 0.02),
   ],
   lit: [
     L('drap', 1, 1, 0.35), L('couverture', 1, 1, 0.1), L('chiffon', 1, 1, 0.08), L('photo_famille', 1, 1, 0.05), L('lampe_torche', 1, 1, 0.03),
     L('reveil', 1, 1, 0.1), L('antidouleur', 1, 1, 0.05), L('cafe_soluble', 1, 1, 0.02), L('pistolet_9mm', 1, 1, 0.004),
     L('munitions_9mm', 2, 6, 0.01), L('couteau_cuisine', 1, 1, 0.02),
+    L('montre', 1, 1, 0.06), L('montre_digitale', 1, 1, 0.03), L('agenda', 1, 1, 0.02),
   ],
   salle_de_bain: [
     L('savon', 1, 1, 0.28), L('lingette', 1, 1, 0.14), L('bandage', 1, 1, 0.1), L('desinfectant', 1, 1, 0.09),
     L('antidouleur', 1, 1, 0.1), L('antibiotiques', 1, 1, 0.025), L('vitamines', 1, 1, 0.07), L('kit_suture', 1, 1, 0.015),
-    L('chiffon', 1, 2, 0.12), L('charbon_actif', 1, 1, 0.03), L('eclat_verre', 1, 1, 0.05),
+    L('chiffon', 1, 2, 0.12), L('charbon_actif', 1, 1, 0.03), L('eclat_verre', 1, 1, 0.05), L('montre', 1, 1, 0.03),
   ],
   voiture: [
     L('bouteille_eau', 1, 1, 0.14), L('soda', 1, 1, 0.08), L('barre_cereales', 1, 2, 0.12), L('chips', 1, 1, 0.07),
@@ -86,6 +90,7 @@ const D = {
     L('trousse_outils', 1, 1, 0.025), L('cle_molette', 1, 1, 0.04), L('ressort', 1, 1, 0.07), L('chiffon', 1, 1, 0.08),
     L('briquet', 1, 1, 0.06), L('sac_a_dos', 1, 1, 0.03), L('photo_famille', 1, 1, 0.04), L('telephone_mort', 1, 1, 0.1),
     L('bidon_vide', 1, 1, 0.02), L('fusee_detresse', 1, 1, 0.02), L('carte_routiere', 1, 1, 0.07),
+    L('montre_digitale', 1, 1, 0.02), L('agenda', 1, 1, 0.03),
   ],
   // une voiture déjà pillée : ce que les pillards ont laissé (abords : voitures « pillées »)
   voiture_pillee: [
@@ -419,7 +424,7 @@ export const BUTIN = {
 
   // ─────────── Butin de VOYAGE (rencontres : butin { table: 'voyage.<cat>', n }) ───────────
   voyage: {
-    cadavre: [L('bouteille_eau', 1, 1, 0.18), L('barre_cereales', 1, 2, 0.18), L('conserve_haricots', 1, 1, 0.12), L('bandage', 1, 1, 0.1), L('piles', 1, 1, 0.1), L('couteau_cuisine', 1, 1, 0.08), L('munitions_9mm', 2, 5, 0.04), L('photo_famille', 1, 1, 0.15), L('telephone_mort', 1, 1, 0.18), L('sac_a_dos', 1, 1, 0.04), L('antidouleur', 1, 1, 0.06)],
+    cadavre: [L('bouteille_eau', 1, 1, 0.18), L('barre_cereales', 1, 2, 0.18), L('conserve_haricots', 1, 1, 0.12), L('bandage', 1, 1, 0.1), L('piles', 1, 1, 0.1), L('couteau_cuisine', 1, 1, 0.08), L('munitions_9mm', 2, 5, 0.04), L('photo_famille', 1, 1, 0.15), L('telephone_mort', 1, 1, 0.18), L('sac_a_dos', 1, 1, 0.04), L('antidouleur', 1, 1, 0.06), L('montre', 1, 1, 0.1), L('montre_digitale', 1, 1, 0.05)],
     voiture: plus(D.voiture, [L('bouteille_eau', 1, 1, 0.1)]),
     ferme: [L('olives', 1, 2, 0.2), L('miel', 1, 1, 0.12), L('huile_olive', 1, 1, 0.15), L('conserve_haricots', 1, 2, 0.15), L('fruits_sauvages', 1, 2, 0.15), L('corde', 1, 1, 0.1), L('planche', 1, 1, 0.1), L('cartouches', 2, 5, 0.05), L('alcool_fort', 1, 1, 0.1), L('herbes_simples', 1, 2, 0.1), L('pierre_aiguiser', 1, 1, 0.05)],
     convoi: [L('ration_militaire', 1, 2, 0.3), L('munitions_556', 3, 10, 0.15), L('munitions_9mm', 2, 8, 0.15), L('bandage', 1, 2, 0.25), L('kit_suture', 1, 1, 0.08), L('antibiotiques', 1, 1, 0.06), L('fusee_detresse', 1, 1, 0.12), L('couteau_combat', 1, 1, 0.08), L('casque_militaire', 1, 1, 0.05), L('essence', 1, 1, 0.1)],

@@ -10,6 +10,7 @@ import * as inv from '../../game/inventory.js';
 import * as surv from '../../game/survival.js';
 import * as craft from '../../game/crafting.js';
 import { iconeObjet } from '../icons.js';
+import { lireMontre, lireCalendrier } from '../../game/temps_connu.js';
 import { el, icoEl, onglets, jauge, bouton, avecScroll, vide, fmtKg, fmtL, pct, g } from './commun.js';
 
 const ONGLET_KEY = 'inv';
@@ -24,6 +25,8 @@ export function monter(racine, opts = {}, api) {
   // Fermer le sac avec des affaires encore « à trier » : elles restent sur place.
   return { maj: rendre, demonter: () => annoncerLaisses(inv.finirTri()) };
 }
+// « Porter » un vêtement ; une montre, on l'enfile.
+const porterLabel = (id) => (CLOTHES[id] && CLOTHES[id].slot === 'poignet' ? 'Enfiler la montre' : 'Porter');
 function annoncerLaisses(laisses) {
   if (laisses.length) emit('toast', { texte: `Laissé ici : ${laisses.map(x => inv.nomObjet(x.id) + (x.qty > 1 ? ' ×' + x.qty : '')).join(', ')}.`, type: 'info' });
 }
@@ -150,7 +153,7 @@ function listeTri(col, p, racine, api) {
   inv.listeATrier().forEach((it, i) => {
     const tient = inv.combienTient(it.id, 1) >= 1, ou = inv.ouPorter(it.id);
     col.append(ligne(it, [
-      ou ? bouton({ label: { vetement: 'Porter', lampe: 'Équiper', main: 'En main', dos: 'Dans le dos', deux: 'À deux mains' }[ou] || 'Porter', cls: 'second mini', onclick: () => apres(inv.porterATrier(i)) }) : null,
+      ou ? bouton({ label: { vetement: porterLabel(it.id), lampe: 'Équiper', main: 'En main', dos: 'Dans le dos', deux: 'À deux mains' }[ou] || 'Porter', cls: 'second mini', onclick: () => apres(inv.porterATrier(i)) }) : null,
       bouton({ label: tient ? 'Prendre' : 'Pas de place', cls: tient ? 'principal mini' : 'second mini', disabled: !tient, titre: tient ? null : inv.raisonPlace(it.id), onclick: () => apres(inv.prendreATrier(i)) }),
     ]));
   });
@@ -167,9 +170,9 @@ function listeTri(col, p, racine, api) {
 }
 
 // ---------- Onglet Équipement (paper-doll) ----------
-const GAUCHE = ['tete', 'haut', 'torse', 'veste', 'mains', 'jambes', 'pieds'];
+const GAUCHE = ['tete', 'haut', 'torse', 'veste', 'mains', 'poignet', 'jambes', 'pieds'];
 const DROITE = ['arme', 'mainG', 'dos', 'lampe', 'sac', 'ceinture', 'holster'];
-const ICONE_SLOT = { tete: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', arme: 'main_arme', mainG: 'main_arme', dos: 'sac', lampe: 'lampe', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
+const ICONE_SLOT = { tete: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', poignet: 'montre', jambes: 'jambes', pieds: 'pieds', arme: 'main_arme', mainG: 'main_arme', dos: 'sac', lampe: 'lampe', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
 function caseSlot(slot, p, racine, api) {
   const m = inv.mains(p);
   let id = p.equip[slot];
@@ -203,6 +206,7 @@ function silhouette(p) {
       <path class="${couleur('jambes')}" d="M37 112 Q60 118 83 112 L80 176 L64 176 L60 130 L56 176 L40 176 Z"/>
       <path class="${couleur('pieds')}" d="M40 178 L56 178 L57 204 L36 206 Z M64 178 L80 178 L84 206 L63 204 Z"/>
       ${p.equip.sac ? '<path class="porte sac" d="M84 60 L100 66 L100 108 L86 110 Z"/>' : ''}
+      ${p.equip.poignet ? '<path class="porte" d="M15 124 L24 126.5 L23.2 130 L14.2 127.5 Z"/>' : ''}
       ${p.equip.ceinture ? '<path class="porte ceint" d="M36 106 Q60 112 84 106 L84 112 Q60 118 36 112 Z"/>' : ''}
     </g></svg>` });
 }
@@ -318,7 +322,8 @@ function actionsSac(index, it, p, racine, api) {
   if (d.type === 'livre') a.push({ label: p.livresLus.includes(it.id) ? 'Relire' : 'Lire', icone: 'lire', principal: true, f: () => res(craft.lire(index)) });
   const slot = inv.slotDe(it.id);
   if (slot === 'lampe') a.push({ label: 'Équiper la lampe', icone: 'lampe', principal: true, f: () => res(inv.equiper(index)) });
-  else if (slot && slot !== 'arme') a.push({ label: 'Porter', icone: 'equiper', principal: true, f: () => res(inv.equiper(index)) });
+  else if (slot && slot !== 'arme') a.push({ label: porterLabel(it.id), icone: slot === 'poignet' ? 'montre' : 'equiper', principal: true, f: () => res(inv.equiper(index)) });
+  if (d.date) a.push({ label: 'Regarder la date', icone: 'calendrier', principal: true, f: () => emit('toast', { texte: lireCalendrier(), duree: 4200 }) });
   if (!CLOTHES[it.id] && (d.type === 'arme' || d.melee || inv.peutDos(it.id) || inv.volumeDe(it.id) >= 1.5)) {
     const arme = d.type === 'arme' || d.melee;
     a.push({ label: d.deux_mains ? 'À deux mains' : 'Main droite', icone: 'main_arme', principal: !!arme && !slot || slot === 'arme', f: () => res(inv.tenir(index, d.deux_mains ? 'deux' : 'droite')) });
@@ -354,8 +359,9 @@ function actionsSlot(slot, p, racine, api) {
     if (inv.peutDos(id)) a.push({ label: 'Mettre dans le dos', icone: 'sac', f: () => res(inv.mainVersDos(slot)) });
   }
   if (slot === 'dos') a.push({ label: 'Prendre en main', icone: 'main_arme', principal: true, f: () => res(inv.dosVersMain()) });
+  if (slot === 'poignet') a.push({ label: CLOTHES[id] && CLOTHES[id].date ? 'Regarder l\'heure et la date' : 'Regarder l\'heure', icone: 'montre', principal: true, f: () => emit('toast', { texte: lireMontre(p), duree: 4200 }) });
   const tient = !inv.SLOTS_TENUS.includes(slot) || inv.combienTient(id, 1) >= 1;
-  a.push({ label: inv.SLOTS_TENUS.includes(slot) ? (tient ? 'Ranger dans le sac' : 'Poser au sol (trop gros)') : 'Retirer', icone: 'retirer', principal: slot !== 'lampe' && slot !== 'dos',
+  a.push({ label: inv.SLOTS_TENUS.includes(slot) ? (tient ? 'Ranger dans le sac' : 'Poser au sol (trop gros)') : slot === 'poignet' ? 'Enlever la montre' : 'Retirer', icone: 'retirer', principal: slot !== 'lampe' && slot !== 'dos' && slot !== 'poignet',
     f: () => { inv.desequiper(slot); apres(); } });
   return a;
 }
@@ -387,7 +393,7 @@ function remplirFiche(f, p, racine, api) {
     it = inv.objetsAuSol()[s.ref]; if (!it) { etat.sel = null; f.append(vide('—')); return; } id = it.id;
     acts = [];
     const ou = inv.ouPorter(it.id);
-    if (ou) acts.push({ label: { vetement: 'Porter', lampe: 'Prendre la lampe', main: 'Prendre en main', dos: 'Dans le dos', deux: 'Porter à deux mains' }[ou], icone: 'equiper', principal: true,
+    if (ou) acts.push({ label: { vetement: porterLabel(it.id), lampe: 'Prendre la lampe', main: 'Prendre en main', dos: 'Dans le dos', deux: 'Porter à deux mains' }[ou], icone: 'equiper', principal: true,
       f: () => { const r = inv.equiperDepuisSol(s.ref, p, ou); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
     if (ou === 'dos' || (ou === 'main' && inv.peutDos(it.id) && !p.equip.dos)) {
       if (ou === 'dos') acts.push({ label: 'Prendre en main', icone: 'main_arme', f: () => { const r = inv.equiperDepuisSol(s.ref, p, 'main'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });

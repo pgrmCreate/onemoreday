@@ -2,7 +2,7 @@
 //  VÊTEMENTS & ÉQUIPEMENT PORTÉ
 // ============================================================================
 // Champs :
-//   nom, slot            slot ∈ tete | haut | torse | veste | mains | jambes | pieds | sac | ceinture | holster
+//   nom, slot            slot ∈ tete | haut | torse | veste | mains | poignet | jambes | pieds | sac | ceinture | holster
 //                        Le haut du corps se porte en TROIS COUCHES : haut (t-shirt, chemise), torse (pull, sweat,
 //                        polaire), veste (veste, blouson, manteau, gilet, poncho) ; chaleurs et poches s'additionnent.
 //   poids                kg (un vêtement porté pèse mais n'occupe pas d'emplacement).
@@ -21,6 +21,8 @@
 //   bruitPas             NOUVEAU — × bruit de tes pas (rangers 1,2 ; baskets 0,9).
 //   impermeable          NOUVEAU — protège de la pluie (pas de +1 froid « mouillé »).
 //   ouie                 NOUVEAU — × portée à laquelle TU entends les morts (casque intégral : 0,7).
+//   heure / date         (poignet) une montre portée donne l'heure ; une montre digitale donne aussi la date
+//                        (js/game/temps_connu.js). Sans montre, le HUD ne montre qu'un moment vague de la journée.
 //   accesRapide          emplacements d'accès rapide (seuls ces objets sont utilisables en combat, avec l'arme en main).
 //   tissu                chiffons rendus si on DÉCHIRE le vêtement (cuir, synthétique, métal : rien).
 //   desc
@@ -44,7 +46,7 @@ export const COUVRE_DEFAUT = {
   mains: ['à la main'],
   jambes: ['à la cuisse', 'au genou', 'au mollet'],
   pieds: ['au pied', 'à la cheville'],
-  sac: [], ceinture: [], holster: [],
+  sac: [], ceinture: [], holster: [], poignet: [],
 };
 const MANCHES = ['au torse', 'au flanc', 'au ventre', 'dans le dos', 'à l\'épaule', 'au bras', 'à l\'avant-bras'];
 
@@ -377,11 +379,21 @@ export const CLOTHES = {
     nom: 'Sac d\'expédition', slot: 'sac', poids: 2.9, espace: 14, contenance: 70, protection: 0, chaleur: 0, portage: 12, agilite: -2,
     desc: '70 litres. Le sac de quelqu\'un qui partait pour un mois dans les Alpes. Une maison sur le dos — et lourde.',
   },
+
+  // ---------- POIGNET (montres : l'heure, et la date pour la digitale) ----------
+  montre: {
+    nom: 'Montre à aiguilles', slot: 'poignet', poids: 0.05, volume: 0.05, espace: 0, protection: 0, chaleur: 0, heure: true,
+    desc: 'Un bracelet de cuir craquelé et une trotteuse qui tourne encore. Au poignet, elle te donne l\'heure, mais pas la date.',
+  },
+  montre_digitale: {
+    nom: 'Montre digitale', slot: 'poignet', poids: 0.04, volume: 0.05, espace: 0, protection: 0, chaleur: 0, heure: true, date: true,
+    desc: 'Une montre de sport en plastique noir, dont l\'écran gris affiche l\'heure et, en petit, le jour et le mois. Sa pile tiendra des années.',
+  },
 };
 
 
 export const SLOTS = {
-  tete: 'Tête', haut: 'Haut', torse: 'Pull', veste: 'Veste', mains: 'Mains',
+  tete: 'Tête', haut: 'Haut', torse: 'Pull', veste: 'Veste', mains: 'Mains', poignet: 'Poignet',
   jambes: 'Jambes', pieds: 'Pieds', sac: 'Sac',
   ceinture: 'Ceinture', holster: 'Holster',
 };
