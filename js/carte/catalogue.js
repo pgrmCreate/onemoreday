@@ -231,6 +231,7 @@ export const OBJETS = {
   banc_pierre:{ cat: null, bloque: 1, t: [2, 1], nom: 'le banc de pierre' },
   // — décor au sol (on marche dessus) —
   cadavre:    { c: '%', cat: null, bloque: 0, t: [1, 1], nom: 'le corps', decor: 1 },
+  gardien_mort: { cat: null, bloque: 0, t: [1, 1], tf: [1, 1], nom: 'le gardien', decor: 1 },   // assis, mort, dans son fauteuil (drapeau : il s'est levé)
   debris:     { c: ';', cat: null, bloque: 0, t: [1, 1], nom: 'les débris', decor: 1, bruit: 2.5 },
   // — anciens noms (props de légende) gardés tels quels —
   haie:       { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'la haie' },
@@ -249,7 +250,7 @@ export const OBJETS = {
 //             le compilateur réduit alors l'empreinte réelle (collision, surlignage) à ce qui est dessiné.
 // DESSIN_SEUL : types sans sprite, dessinés à la main pour remplir leur empreinte (toujours 'etirer').
 export const ETIRER_MAX = 1.4;
-export const DESSIN_SEUL = new Set(['lit_camp', 'matelas', 'arbre', 'platane', 'cypres', 'pin', 'olivier', 'figuier', 'amandier', 'micocoulier', 'palmier', 'chene_vert', 'lampadaire', 'plan_mural', 'tableau_cles', 'cadavre', 'grille']);
+export const DESSIN_SEUL = new Set(['lit_camp', 'matelas', 'arbre', 'platane', 'cypres', 'pin', 'olivier', 'figuier', 'amandier', 'micocoulier', 'palmier', 'chene_vert', 'lampadaire', 'plan_mural', 'tableau_cles', 'cadavre', 'gardien_mort', 'grille']);
 const ETIRE_TOUJOURS = new Set(['tapis', 'haie']);
 const UNIQUES = new Set(['baignoire', 'piano', 'cheminee', 'fontaine', 'statue', 'tente', 'generateur', 'caveau', 'autel', 'cloche', 'televiseur', 'voiture_calcinee']);
 export function disposition(type, w, h) {

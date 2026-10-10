@@ -187,7 +187,7 @@ Démarrage : cinématique `intro` → `explorer('cimetiere', { entree: 'caveau' 
 on sort du caveau vers 19 h, lumière de fin de jour).
 1. **Exploration** (cimetière) — apprendre : se lever, fouiller (`pro_scelle` : téléphone, portefeuille, mot de Maud),
    trouver de la lumière (`pro_soldat` : lampe frontale), boire (`pro_robinet`), lire (registre, cahier du gardien),
-   passer près d’un mort qui **dort** (loge), décrocher le plan de Salon punaisé au mur de la loge, derrière lequel le gardien a caché le double de la clé (`pro_loge_plan` → `pro_loge_cle`), sortir (`pro_grille` : la clé seulement — barbelé de l’armée, pas d’escalade).
+   décrocher le plan de Salon punaisé au mur de la loge, derrière lequel le gardien, mort dans son fauteuil, a caché le double de la clé, noué à son poignet par une ficelle : la prendre le réveille, toujours (`pro_loge_plan` → `pro_loge_cle` → `pro_loge_reveil`), sortir (`pro_grille` : la clé seulement — barbelé de l’armée, pas d’escalade).
    Moment fort facultatif : Patrick (P3) dans sa housse (`pro_patrick`).
 2. **Carte + voyage** — une seule destination marquée : la Tour. Rencontre `rh_pro_marche` (choix : traverser le marché
    mort, contourner = détour, regarder) puis `rh_pro_premier` (**premier combat**, un serveur, `tutoriel: true`).

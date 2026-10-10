@@ -38,9 +38,11 @@ en « ville des morts », allées étroites en terrasses, grille d’entrée ouv
 | `housse_patrick` | contre une chapelle voisine, dans l’allée | `pro_patrick` (P3, facultatif) |
 | `conteneur_frigo` | porte du conteneur A | `pro_conteneur` : registre du lot 14 |
 | `loge_gardien` | bureau de la loge | `pro_loge` : cahier, **clé de la grille** |
-| `grille_sortie` | devant la grille | `pro_grille` (la clé seulement : pas d’escalade) |
+| `grille_sortie` | sur la porte de la grille (collé à elle : Examiner, et Ouvrir dans les actions) | `pro_grille` (la clé seulement : pas d’escalade) |
 
-**Morts** : dans la loge, le gardien **`dort`** dans le fauteuil (tutoriel discrétion : on prend la clé derrière lui) ;
+**Morts** : dans la loge, le gardien est un **corps du décor** (`gardien_mort`, intuable) assis dans le fauteuil ; la clé
+est nouée à son poignet, et quand on l'emporte, un mort se lève à sa place, réveillé et sur toi (`si: pro_cle_prise`,
+`reveil`) : pas de discrétion possible ;
 dans le conteneur A, 3 à 5 morts **`cogne`** (ne sortent pas) ; 2 errants **`erre`** lents dans les allées éloignées
 (`errant`) ; le plus proche du caveau hors de la route principale. Pas de mort sur le trajet caveau → soldat (on apprend
 à marcher et à s’éclairer).

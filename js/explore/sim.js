@@ -255,10 +255,16 @@ export function creerSimLieu(opts) {
       if (!s.si) return;
       const ok = condOk(s.si);
       if (ok && !condFaits.has(idx)) {
-        if ([...joueurs.values()].some(j => j.etage === s.etage && Math.hypot(j.x - s.x - 0.5, j.y - s.y - 0.5) < 4)) return;
+        const proches = [...joueurs.values()].filter(j => j.etage === s.etage && Math.hypot(j.x - s.x - 0.5, j.y - s.y - 0.5) < 4);
+        if (proches.length && !s.reveil) return;
         const type = s.type || pool[0];
         const z = nouveauMort(type, s.etage, s.x + 0.5, s.y + 0.5, s.etat || 'erre', { hp: s.hp, dir: s.dir != null ? s.dir : 0, plan: true });
-        if (z) { z.planIdx = idx; zombies.push(z); }
+        if (z) {
+          z.planIdx = idx; zombies.push(z);
+          // reveil : il se lève là où il était (le temps de se mettre debout), puis il va droit sur le plus proche
+          const j = s.reveil && proches.sort((a, b) => Math.hypot(a.x - z.x, a.y - z.y) - Math.hypot(b.x - z.x, b.y - z.y))[0];
+          if (j) { z.dir = Math.atan2(j.y - z.y, j.x - z.x); reveiller(z, j); z.etourdi = 2500; }
+        }
         condFaits.add(idx); vm++;
       } else if (!ok && condFaits.has(idx)) {
         const z = zombies.find(q => q.planIdx === idx);

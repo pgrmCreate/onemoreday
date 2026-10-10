@@ -203,6 +203,13 @@ Comme dans Project Zomboid, les besoins du corps se règlent dans la durée, pas
 | 34 | Les sacs sont encore trop sur le côté : les mettre plus dans le dos (pas forcément au centre, selon le sac). | Décalage latéral trop fort et commun à tous les sacs. | P14. Position du sac rapprochée du dos, réglée par modèle. | en cours |
 | 35 | Vêtements en couches : porter un t-shirt, un pull **et** une veste en même temps. | Un seul emplacement pour le haut du corps. | P14. Torse découpé en **3 couches** : haut, pull, veste. | en cours |
 
+### 10 octobre 2026 — la loge et la grille du cimetière
+
+| # | Ce qu'il dit | Cause probable | Décision (session de code du 10 oct.) | Statut |
+|---|---|---|---|---|
+| 36 | Le gardien de la loge doit être un cadavre, un simple élément du décor qu'on ne peut pas tuer ; il se réveille obligatoirement quand on prend la clé, sans action de discrétion possible. Revoir la scène en conséquence. | Le gardien était un mort du plan qui « dort » : on pouvait le tuer avant, et le test d'agilité des punaises laissait la clé sans le réveiller. | P2, P10. Corps de décor `gardien_mort` (masqué au drapeau `pro_cle_prise`) + mort conditionnel `reveil` qui se lève à sa place, même sous ton nez. Scène réécrite : la clé est nouée à son poignet par une ficelle, la décrocher le relève (`pro_loge_reveil`). Plus de test d'agilité. | fait |
+| 37 | Pour la grille, il faut se placer une case avant la porte pour l'examiner, puis s'y coller pour l'ouvrir : c'est bizarre. Collé à la grille, on doit pouvoir l'examiner **et** l'ouvrir, comme une porte. | Le marqueur de la scène était posé une case devant la grille, pas sur elle. | P4. Marqueur sur la porte même : E = « Examiner la grille », le menu des actions propose « Ouvrir la grille principale » (à la clé, ou « fermée à clé : il faudrait la clé du gardien »). Ouvrir à la clé applique les mêmes effets que la scène (`verrou.effets`). | fait |
+
 ---
 
 ## 3. Check-list de revue d'un niveau

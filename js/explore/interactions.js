@@ -12,6 +12,7 @@ import { G, getFlag, sauver as sauverPartie } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { el } from '../core/util.js';
 import * as flow from '../game/flow.js';
+import { appliquerEffets } from '../game/effects.js';
 import { REGLAGES } from '../data/reglages.js';
 import { ZOMBIES } from '../data/zombies.js';
 import { DECLENCHEURS } from '../data/histoire/declencheurs.js';
@@ -98,7 +99,8 @@ export function chercherCible() {
     if (pnj && !decl) continue;
     proposer({ type: decl ? 'marqueur' : 'doc', decl, doc, m, etage: E.id, x0: m.x, y0: m.y, x1: m.x + 1, y1: m.y + 1, cx: m.x + 0.5, cy: m.y + 0.5 }, d, 0.3);
   }
-  if (best && best.type === 'porte' && best.p.marqueur) { const decl = declencheurMarqueur(best.p.marqueur); if (decl) best = { ...best, type: 'marqueur', decl }; }
+  // une porte qui porte une scène (la grille du cimetière) : E l'examine, le menu des actions garde le geste de la porte
+  if (best && best.type === 'porte' && best.p.marqueur) { const decl = declencheurMarqueur(best.p.marqueur); if (decl) best = { ...best, type: 'marqueur', decl, porte: best }; }
   for (const q of V.pnj) {
     if (q.etage !== E.id) continue;
     const d = Math.hypot(q.x - j.x, q.y - j.y) - 0.3;
@@ -140,6 +142,7 @@ export function chercherCible() {
     if (best.secondaire) autres.push({ cle: cleCible(best) + ':2', libelle: best.secondaire.libelle, f: best.secondaire.f });
     cands.sort((a, b) => a._s - b._s);
     const vus = new Set([cleCible(best)]);
+    if (best.porte) { autres.push(gestePorteMarquee(best.porte, best.decl)); vus.add(cleCible(best.porte)); }
     for (const c of cands) {
       if (autres.length >= 6) break;
       const k = cleCible(c); if (vus.has(k)) continue; vus.add(k);
@@ -153,6 +156,15 @@ export function chercherCible() {
     if (best.type === 'rien' && !autres.length) return null;
   }
   return best;
+}
+// Le geste d'une porte à scène, nommé d'après elle (« Ouvrir la grille principale ») ; une scène « à deux » l'est aussi.
+function gestePorteMarquee(c, decl) {
+  const lp = libelle(c), nom = c.p.nom;
+  const lib = !nom ? lp : lp === 'Porte verrouillée' ? `Ouvrir ${nom}` : lp.startsWith('Déverrouiller') ? `Ouvrir ${nom} à la clé` : lp.replace(/la porte$/, nom);
+  return { cle: cleCible(c), libelle: lib, f: () => {
+    if (decl && decl.deux && G.mode !== 'solo' && api.coop && !api.coop.pairPres(4) && c.s.etat === 'verrouillee') { message('Attends ton coéquipier : vous devez être deux ici.', 2600); return; }
+    return actionPorte(c);
+  } };
 }
 // Geste secondaire d'une cible : démonter, barricader.
 function secondaire(c) {
@@ -372,6 +384,8 @@ async function actionPorte(c) {
   else if (r.raison === 'occupee') message('Quelque chose bloque le passage.');
   else if (r.raison === 'flag') message('Fermée. Ça ne s\'ouvre pas de ce côté.');
   else if (r.raison === 'verrouillee') { sfx('porte_verrouillee'); message('Verrouillée.'); }
+  // une serrure qui ouvre une étape de l'histoire (la grille du cimetière : verrou.effets, comme le choix de la scène)
+  if (r.ok && action === 'deverrouiller' && p.verrou && p.verrou.effets && !(p.verrou.flag && getFlag(p.verrou.flag))) appliquerEffets(p.verrou.effets);
 }
 // Action chronométrée générique (forcer, crocheter, relever, manger…) : interrompue par le mouvement.
 // son : bruit de travail rejoué pendant l'action (ex. 'clouer'), toutes les sonMs.

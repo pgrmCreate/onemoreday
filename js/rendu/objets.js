@@ -762,6 +762,26 @@ const DESSINS = {
   cloche(c, W, H) { avecOmbre(c, 8, 4, 6, 0.6, () => { const g = c.createRadialGradient(W / 2 - 6, H / 2 - 6, 2, W / 2, H / 2, W / 2 - 4); g.addColorStop(0, '#c8a052'); g.addColorStop(1, '#4a3a1a'); c.fillStyle = g; cercle(c, W / 2, H / 2, W / 2 - 5); c.fill(); }); c.fillStyle = '#2a1a0a'; cercle(c, W / 2, H / 2, 5); c.fill(); },
   pilier(c, W, H) { boite(c, 4, 4, W - 8, H - 8, '#7a7466', { r: 3, ombre: 0.7, flou: 10 }); },
   cadavre(c, W, H, r, R) { corpsDecor(c, W, H, r, R); },
+  // Le gardien du cimetière, mort assis dans son fauteuil, vu d'en haut : les genoux vers le bureau (le nord), les avant-bras
+  // sur les accoudoirs, la tête tombée sur l'épaule. R.pris (la clé est prise) : il s'est levé, le fauteuil est vide.
+  gardien_mort(c, W, H, r, R) {
+    if (R && R.pris) return;
+    const s = Math.min(W, H) / 34;
+    c.save(); c.translate(W / 2, H / 2 + 3 * s);
+    avecOmbre(c, 4, 2, 3, 0.5, () => { c.fillStyle = '#4a4638'; ellipse(c, 0, 2 * s, 9 * s, 6.5 * s); c.fill(); });  // le gilet
+    c.strokeStyle = '#34312c'; c.lineCap = 'round'; c.lineWidth = 5 * s;                                            // les cuisses, vers l'avant
+    c.beginPath(); c.moveTo(-3.5 * s, -1 * s); c.lineTo(-4.5 * s, -13 * s); c.moveTo(3.5 * s, -1 * s); c.lineTo(4 * s, -13 * s); c.stroke();
+    c.fillStyle = '#3e3832'; ellipse(c, -4.6 * s, -15 * s, 2.4 * s, 3 * s); c.fill(); ellipse(c, 4.2 * s, -15 * s, 2.4 * s, 3 * s); c.fill(); // pantoufles
+    c.strokeStyle = '#4a4638'; c.lineWidth = 3.4 * s;                                                              // les bras sur les accoudoirs
+    c.beginPath(); c.moveTo(-8 * s, 1 * s); c.lineTo(-9.5 * s, -7 * s); c.moveTo(8 * s, 1 * s); c.lineTo(9.5 * s, -6 * s); c.stroke();
+    c.fillStyle = '#857a6c'; cercle(c, -9.6 * s, -8 * s, 1.9 * s); c.fill(); cercle(c, 9.6 * s, -7 * s, 1.9 * s); c.fill();   // les mains
+    c.fillStyle = '#2a2622'; ellipse(c, 3 * s, 0, 4 * s, 2.2 * s, 0.5); c.fill();                                // le col
+    c.fillStyle = '#7e7466'; cercle(c, 5 * s, 0.8 * s, 4.2 * s); c.fill();                                          // la tête, sur l'épaule
+    c.strokeStyle = '#a8a298'; c.lineWidth = 1.6 * s; c.beginPath(); c.arc(5 * s, 0.8 * s, 3.4 * s, 0.6, 2.9); c.stroke(); // la couronne de cheveux gris
+    c.fillStyle = 'rgba(0,0,0,0.28)'; cercle(c, 4 * s, -2.2 * s, 1.3 * s); c.fill();                                // le nez, vers le bas
+    c.restore();
+    void r;
+  },
   debris(c, W, H, r) {
     for (let k = 0; k < 9; k++) { const x = r() * W, y = r() * H, t = 1.5 + r() * 4, f = 0.6 + r() * 0.5; c.fillStyle = rgb([122 * f, 116 * f, 104 * f]); c.save(); c.translate(x, y); c.rotate(r() * 3); c.fillRect(-t / 2, -t / 2, t, t * 0.7); c.restore(); }
     for (let k = 0; k < 6; k++) { c.fillStyle = `rgba(170,200,210,${0.3 + r() * 0.3})`; const x = r() * W, y = r() * H; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 3, y + 1); c.lineTo(x + 1, y + 3); c.closePath(); c.fill(); }

@@ -228,81 +228,62 @@ export const SCENES_PROLOGUE = {
 
   // Marqueur 'loge_gardien' (bureau de la loge, près de la grille) : le plan de Salon, et derrière lui, la clé.
   // Mise en scène : le crochet GRILLE PRINCIPALE du tableau est vide (le sergent a emporté la clé). Le gardien a
-  // caché le DOUBLE sur un clou, derrière le plan de Salon punaisé au mur, au-dessus du bureau. Un mort DORT dans
-  // le fauteuil, tourné vers ce plan. Tous les chemins passent par le plan : on ne peut pas avoir la clé sans lui.
+  // caché le DOUBLE sur un clou, derrière le plan de Salon punaisé au mur, au-dessus du bureau, et il l'a noué à son
+  // poignet par une ficelle. Il est mort dans son fauteuil : un corps du décor, qu'on ne peut ni frapper ni contourner.
+  // Tous les chemins passent par le plan, puis par la ficelle : emporter la clé le RÉVEILLE, toujours (pas de discrétion
+  // possible). Le mort qui se lève est posé par le plan (js/data/niveaux/cimetiere.js, si pro_cle_prise, reveil).
   pro_loge: {
     illu: 'saint_roch_nuit', musique: 'tension',
-    texte: 'La loge du gardien sent le café froid, le tabac et la pisse de chat. Il n’y a qu’une pièce, avec un lit étroit, un coin cuisine et un bureau poussé sous la fenêtre.\n\nPrès de la porte, sur un tableau, les clés des chapelles pendent à leurs crochets, chacune avec son étiquette. Un seul crochet est vide, le plus gros, et son étiquette dit : GRILLE PRINCIPALE.\n\nDevant le bureau, un homme est assis dans un fauteuil, de dos, la tête penchée sur l’épaule. Il ne respire pas. C’est un mort, mais il dort : tant que rien ne le réveille, il ne bougera pas.\n\nIl est tourné vers le mur au-dessus du bureau, comme s’il regardait encore ce qui y est punaisé : un grand plan de Salon-de-Provence couvert de notes au stylo. Sur le bureau, juste à portée de sa main, un cahier est resté ouvert.',
+    texte: 'La loge du gardien sent le café froid, le tabac et la pisse de chat. Il n’y a qu’une pièce, avec un lit étroit, un coin cuisine et un bureau poussé sous la fenêtre.\n\nPrès de la porte, sur un tableau, les clés des chapelles pendent à leurs crochets, chacune avec son étiquette. Un seul crochet est vide, le plus gros, et son étiquette dit : GRILLE PRINCIPALE.\n\nDevant le bureau, le gardien est assis dans son fauteuil, en gilet de laine et en pantoufles, la tête tombée sur l’épaule. Il est mort, et depuis plusieurs jours : sa peau a pris la couleur de la cire, et des mouches marchent sur ses mains sans qu’il bouge un doigt. Lui ne s’est pas relevé. Peut-être que certains ne se relèvent pas.\n\nIl est tourné vers le mur au-dessus du bureau, comme s’il regardait encore ce qui y est punaisé : un grand plan de Salon-de-Provence couvert de notes au stylo. Sur le bureau, juste à portée de sa main, un cahier est resté ouvert.',
     choix: [
       { label: 'Lire le cahier ouvert', effets: { document: 'doc_cahier_gardien' }, suivant: 'pro_loge_2' },
       { label: 'Décrocher le plan de Salon', si: { pasFlag: 'pro_plan_pris' }, suivant: 'pro_loge_plan' },
       // (scène interrompue puis rejouée : le plan est déjà pris, la clé attend sur son clou)
-      { label: 'Prendre la clé, sur le clou derrière le plan', si: { flag: 'pro_plan_pris' }, suivant: 'pro_loge_cle' },
+      { label: 'Regarder la clé, sur le clou derrière le plan', si: { flag: 'pro_plan_pris' }, suivant: 'pro_loge_cle' },
     ],
   },
 
   pro_loge_2: {
     illu: 'saint_roch_nuit', musique: 'tension',
-    texte: 'La dernière ligne du cahier date d’avant-hier : « Ça bouge dans la chapelle des Roux-Bérenger. Je n’ouvre pas. »\n\nLa chapelle des Roux-Bérenger, c’est le caveau où tu t’es {réveillé|réveillée}. Le gardien t’a {entendu|entendue} bouger, et il a eu peur.\n\nQuelques lignes plus haut, il raconte que les soldats sont partis avec la clé de la grille, mais qu’il leur a caché le double. Il n’écrit pas où.\n\nDans le fauteuil, la tête du mort glisse encore un peu sur son épaule.',
+    texte: 'La dernière ligne du cahier date d’avant-hier : « Ça bouge dans la chapelle des Roux-Bérenger. Je n’ouvre pas. »\n\nLa chapelle des Roux-Bérenger, c’est le caveau où tu t’es {réveillé|réveillée}. Le gardien t’a {entendu|entendue} bouger, et il a eu peur.\n\nQuelques lignes plus haut, il raconte que les soldats sont partis avec la clé de la grille, mais qu’il leur a caché le double. Il n’écrit pas où.\n\nÀ côté du cahier, sa main repose sur l’accoudoir, la paume ouverte, comme s’il attendait qu’on lui rende quelque chose.',
     choix: [
-      { label: 'Chercher le double sans réveiller le mort', suivant: 'pro_loge_fouille' },
+      { label: 'Chercher le double dans la loge', suivant: 'pro_loge_fouille' },
       { label: 'Décrocher le plan de Salon', suivant: 'pro_loge_plan' },
     ],
   },
 
   pro_loge_fouille: {
     illu: 'saint_roch_nuit', musique: 'tension',
-    texte: 'Tu cherches sans faire de bruit. Le tiroir du bureau frotte contre les genoux du mort et tu l’ouvres centimètre par centimètre : tu n’y trouves que des factures, des pastilles Valda et un briquet vide, mais pas de clé. Il n’y a rien non plus sous l’oreiller, ni dans la veste pendue derrière la porte.\n\nLes soldats voulaient toutes les clés. S’ils ont fouillé la loge, ils ont regardé dans les tiroirs et dans les poches, mais pas sur le mur, sous les yeux de tout le monde.\n\nTu relèves les yeux vers le plan de Salon.',
+    texte: 'Tu fouilles la loge. Le tiroir du bureau bute contre les genoux du mort, et tu dois pousser le fauteuil pour l’ouvrir : il pèse plus lourd que tu ne le pensais, et la tête du gardien roule un peu sur son épaule. Dans le tiroir, tu ne trouves que des factures, des pastilles Valda et un briquet vide, mais pas de clé. Il n’y a rien non plus sous l’oreiller, ni dans la veste pendue derrière la porte.\n\nLes soldats voulaient toutes les clés. S’ils ont fouillé la loge, ils ont regardé dans les tiroirs et dans les poches, mais pas sur le mur, sous les yeux de tout le monde.\n\nTu relèves les yeux vers le plan de Salon.',
     choix: [{ label: 'Décrocher le plan de Salon', suivant: 'pro_loge_plan' }],
   },
 
   pro_loge_plan: {
     illu: 'saint_roch_nuit', musique: 'tension',
-    texte: 'Le plan est punaisé au mur, juste au-dessus de la tête du mort. Pour l’atteindre, tu dois te pencher par-dessus le fauteuil, le ventre contre le dossier et le visage à quelques centimètres de sa nuque grise, qui sent le tabac froid et la viande tournée.\n\nC’est le plan du centre-ville que donne l’office de tourisme, en papier glacé, tenu par quatre punaises, avec les monuments numérotés. Tout en bas, sur le cimetière Saint-Roch, le gardien a dessiné une croix au stylo.\n\nDans le coin en bas à droite, le papier fait une petite bosse allongée, comme si quelque chose était accroché au mur derrière le plan.',
-    choix: [
-      {
-        label: 'Retirer les punaises sans faire de bruit',
-        test: { skill: 'agilite', difficulte: 1 },
-        reussite: {
-          texte: 'Tu retires les punaises une à une, du bout des ongles, en les gardant dans ta paume. Le papier se décolle du mur avec un petit froissement, et tu le roules contre ta poitrine.\n\nDerrière, le mur est plus clair : il reste un rectangle propre au milieu du plâtre jauni par la fumée. Dans le coin, il y a un clou, et sur ce clou est accrochée une grosse clé de laiton.',
-          effets: { objet: ['plan_salon', 1], flag: 'pro_plan_pris', document: 'doc_plan_salon', xp: { agilite: 8 } },
-          suivant: 'pro_loge_cle',
-        },
-        echec: {
-          texte: 'La dernière punaise résiste, et tu tires un peu trop fort. Le plan se décolle d’un coup en arrachant du mur quelque chose qui était caché derrière : une grosse clé de laiton. Elle tombe sur le bureau avec un bruit de cloche, rebondit et roule par terre.\n\nDans le fauteuil, la tête du mort se redresse.',
-          effets: { objet: ['plan_salon', 1], flag: 'pro_plan_pris', document: 'doc_plan_salon', bruit: 2 },
-          suivant: 'pro_loge_cle_vite',
-        },
-      },
-    ],
+    texte: 'Le plan est punaisé au mur, juste au-dessus de la tête du mort. Pour l’atteindre, tu dois te pencher par-dessus le fauteuil, le ventre contre le dossier et le visage à quelques centimètres de sa nuque grise, qui sent le tabac froid et la viande tournée.\n\nTu retires les punaises une à une et tu roules le papier contre ta poitrine. C’est le plan du centre-ville que donne l’office de tourisme, en papier glacé, avec les monuments numérotés. Tout en bas, sur le cimetière Saint-Roch, le gardien a dessiné une croix au stylo.\n\nDerrière, le mur est plus clair : il reste un rectangle propre au milieu du plâtre jauni par la fumée. Dans le coin, il y a un clou, et sur ce clou est accrochée une grosse clé de laiton.',
+    choix: [{
+      label: 'Regarder la clé de plus près',
+      effets: { objet: ['plan_salon', 1], flag: 'pro_plan_pris', document: 'doc_plan_salon' },
+      suivant: 'pro_loge_cle',
+    }],
   },
 
   pro_loge_cle: {
     illu: 'saint_roch_nuit', musique: 'sombre',
-    texte: 'La clé est lourde, plus longue que ta main. Une étiquette en carton pend à l’anneau, avec ces mots écrits au stylo bille : DOUBLE GRILLE — NE PAS DONNER.\n\nLe gardien avait de quoi sortir, mais il ne l’a jamais fait. Il est resté assis là, devant son plan, jusqu’à la fin.\n\nDans le fauteuil, rien ne bouge.',
-    choix: [
-      {
-        label: 'Prendre la clé',
-        effets: {
-          objet: ['cle_grille_saint_roch', 1],
-          flag: 'pro_cle_prise',
-          journal: 'Dans la loge, le gardien est mort assis dans son fauteuil, face à un plan de Salon punaisé au mur. Derrière le plan, il avait caché le double de la clé de la grille. J’ai pris le plan et la clé.',
-        },
-        suivant: '#fin',
-      },
-    ],
+    texte: 'La clé est lourde, plus longue que ta main. Une étiquette en carton pend à l’anneau, avec ces mots écrits au stylo bille : DOUBLE GRILLE — NE PAS DONNER.\n\nÀ l’anneau est aussi nouée une ficelle de cuisine. Elle descend le long du mur, passe derrière le dossier du fauteuil et finit serrée de trois tours autour du poignet du gardien.\n\nIl avait de quoi sortir, mais il ne l’a jamais fait. Il a préféré s’attacher à sa clé et rester assis là, devant son plan, jusqu’à la fin. Pour l’emporter, il faudra la lui reprendre.',
+    choix: [{ label: 'Décrocher la clé', suivant: 'pro_loge_reveil' }],
   },
 
-  pro_loge_cle_vite: {
+  pro_loge_reveil: {
     illu: 'saint_roch_nuit', musique: 'tension',
-    texte: 'La clé est tombée par terre, entre les pieds du fauteuil, juste entre ses pantoufles.\n\nAu-dessus, les mains du mort se referment sur les accoudoirs : il essaie de se lever.',
+    texte: 'Tu décroches la clé du clou, et la ficelle se tend. Le bras du gardien se soulève avec elle, mou comme celui d’une poupée, puis il retombe sur l’accoudoir. Tu tires d’un coup sec, et la ficelle casse.\n\nDans le fauteuil, la tête se redresse.\n\nLes doigts du gardien se referment sur les accoudoirs, ses pantoufles raclent le lino, et il se lève. Il n’était pas mort pour de bon : il attendait, comme toi au fond de ton caveau, que quelque chose le réveille.\n\nIl se tourne vers toi, et il ouvre la bouche.',
     choix: [
       {
-        label: 'Ramasser la clé et reculer',
+        label: 'Serrer la clé et reculer',
         effets: {
           objet: ['cle_grille_saint_roch', 1],
           flag: 'pro_cle_prise',
-          journal: 'Dans la loge, le gardien était mort dans son fauteuil, face à un plan de Salon punaisé au mur. Derrière le plan, il avait caché le double de la clé de la grille. J’ai pris le plan et la clé. Je l’ai réveillé.',
+          journal: 'Dans la loge, le gardien était mort dans son fauteuil, face à un plan de Salon punaisé au mur. Derrière le plan, il avait caché le double de la clé de la grille, et il l’avait attaché à son poignet par une ficelle. Quand j’ai pris la clé, il s’est relevé.',
         },
         suivant: '#fin',
       },

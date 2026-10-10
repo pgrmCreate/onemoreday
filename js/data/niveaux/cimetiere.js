@@ -5,9 +5,17 @@
 //   près d'un soldat mort (sa lampe frontale ; un rampant fait le mort à côté : premier combat) → l'esplanade NRBC
 //   (housses en rang, fût enflammé, camion au gyrophare, conteneur A où « ça cogne », tente, robinet) → la remise
 //   (une pelle : de quoi se défendre) → la loge du gardien (le plan de Salon punaisé au mur, et derrière lui le double de la
-//   clé ; le gardien mort dort dans son fauteuil) → la grille (pas d'escalade : barbelé de l'armée ; à deux en co-op).
+//   clé, noué par une ficelle au poignet du gardien, mort dans son fauteuil : un corps du décor, qu'on ne peut pas tuer,
+//   et qui se relève forcément quand on emporte la clé) → la grille (pas d'escalade : barbelé de l'armée ; à deux en co-op).
 // Chemin discret : le carré ancien, à l'ouest (herbe haute, ossuaire noir où se logent les morts procéduraux).
 import { plan } from '../../carte/plan.js';
+
+// Ouvrir la grille à la clé, depuis la porte (les mêmes effets que le choix « Ouvrir la grille avec la clé » de pro_grille).
+const OUVRIR_GRILLE = {
+  flag: 'pro_grille_ouverte',
+  quete: ['q_prologue', 'horloge'],
+  journal: 'Je suis {sorti|sortie} du cimetière Saint-Roch. La Tour de l’Horloge est à cinq cents mètres. C’est là que m’attend « M. ».',
+};
 
 export default plan({
   id: 'cimetiere', nom: 'Cimetière Saint-Roch', exterieur: true, typeButin: 'cimetiere',
@@ -33,9 +41,10 @@ export default plan({
 
   // ---------- L'enceinte (pierre sèche), la grille ----------
   e.contour('pierre', 0, 0, W, 30);
-  e.porte(22, 29, { verrou: { flag: 'pro_grille_ouverte' }, exterieure: true, nom: 'la grille principale', style: 'grille' });
+  // collé à la grille : « Examiner la grille » (E) et, dans les autres actions, « Ouvrir la grille » (la clé en poche)
+  e.porte(22, 29, { verrou: { flag: 'pro_grille_ouverte', cle: 'cle_grille_saint_roch', effets: OUVRIR_GRILLE }, marqueur: 'grille_sortie',
+    message: 'Fermée à clé. Les deux battants de fer forgé ne bougent pas d’un millimètre : il faudrait la clé du gardien.', exterieure: true, nom: 'la grille principale', style: 'grille' });
   e.murRect('grille', 18, 29, 4, 1); e.murRect('grille', 23, 29, 4, 1); // la grille ouvragée laisse voir le boulevard
-  e.marqueur('grille_sortie', 22, 28);
 
   // ---------- La chapelle Roux-Bérenger (le réveil) ----------
   const ch = e.piece(34, 2, 8, 7, { nom: 'Chapelle Roux-Bérenger', sol: 'marbre', mur: 'pierre', sombre: 1, toit: 'ardoise',
@@ -115,7 +124,10 @@ export default plan({
   // le plan de Salon punaisé au mur, à côté de la fenêtre (derrière lui, le double de la clé) ; le tableau de clés près de la porte
   e.objet('plan_mural', lo.x0 + 4, lo.y0 - 1, { drapeau: 'pro_plan_pris' });
   e.objet('tableau_cles', lo.x1, lo.y0 - 1);
-  e.objet('chaise', lo.x0 + 2, lo.y0 + 1); e.zombie('errant', lo.x0 + 2, lo.y0 + 1, { etat: 'dort', dir: -1.57 });
+  // le gardien, mort dans son fauteuil : un simple corps du décor (pas un mort qu'on peut frapper) ; quand on emporte la
+  // clé, il disparaît du fauteuil et un mort se lève à sa place, réveillé et sur toi (reveil : même sous ton nez)
+  e.objet('chaise', lo.x0 + 2, lo.y0 + 1); e.objet('gardien_mort', lo.x0 + 2, lo.y0 + 1, { drapeau: 'pro_cle_prise' });
+  e.zombie('errant', lo.x0 + 2, lo.y0 + 1, { si: { flag: 'pro_cle_prise' }, reveil: true, dir: -1.57 });
   e.objet('lit_simple', lo.x0, lo.y0 + 3, { w: 1, h: 2 });
   e.objet('armoire', lo.x0, lo.y0, { w: 1, h: 2, rot: 1 });
   e.objet('cuisine', lo.x0 + 3, lo.y1, { w: 3, h: 1 });

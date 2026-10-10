@@ -360,7 +360,7 @@ export function compilerPlan(plan, def = {}) {
       if (niv.entrees[nom]) { avert(`entrée « ${nom} » définie deux fois`); continue; }
       niv.entrees[nom] = { etage: E.id, x: e.x | 0, y: e.y | 0 };
     }
-    for (const z of P.zombies) niv.spawns.push({ etage: E.id, x: z.x | 0, y: z.y | 0, type: z.type, etat: z.etat, hp: z.hp, dir: z.dir, si: z.si || null });
+    for (const z of P.zombies) niv.spawns.push({ etage: E.id, x: z.x | 0, y: z.y | 0, type: z.type, etat: z.etat, hp: z.hp, dir: z.dir, si: z.si || null, reveil: !!z.reveil });
     for (const q of P.pnjs) niv.pnj.push({ id: q.id, etage: E.id, x: q.x | 0, y: q.y | 0, si: q.si, marqueur: q.marqueur, nom: q.nom, dir: q.dir ?? null, style: q.style || null, repliques: q.repliques || null });
     for (const o of P.solItems) niv.sol.push(o.doc ? { etage: E.id, x: o.x | 0, y: o.y | 0, doc: o.doc, marqueur: o.marqueur || null } : { etage: E.id, x: o.x | 0, y: o.y | 0, id: o.id, qty: o.qty || 1 });
     for (const mk of P.marqueurs) {
