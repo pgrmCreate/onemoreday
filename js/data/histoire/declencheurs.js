@@ -1,11 +1,12 @@
 // ============ DÉCLENCHEURS (REFONTE §4.7) ============
 // Ordre = priorité : pour un même événement, le premier déclencheur dont la condition est vraie est joué.
 // `unique: true` : joué une seule fois par partie (mémorisé par le moteur).
+// `invite: false` : jamais chez l'invité co-op (il a sa propre version : le réveil à deux, coop_reveil).
 // NB : la cinématique 'intro' est jouée par l'intégrateur à la création de la partie, AVANT explorer('cimetiere', { entree: 'caveau' }).
 
 export const DECLENCHEURS = [
   // ─────────── PROLOGUE : cimetière Saint-Roch ───────────
-  { quand: 'entree_lieu', lieu: 'cimetiere', si: { pasFlag: 'pro_reveil_fait' }, scene: 'pro_reveil', unique: true },
+  { quand: 'entree_lieu', lieu: 'cimetiere', si: { pasFlag: 'pro_reveil_fait' }, scene: 'pro_reveil', unique: true, invite: false },
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'scelle_effets', scene: 'pro_scelle', unique: true },
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'soldat_nrbc', scene: 'pro_soldat', unique: true },
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'robinet_fleurs', scene: 'pro_robinet', unique: true },

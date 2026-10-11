@@ -46,7 +46,7 @@ export function appliquerEffets(effets, ctx = {}) {
         case 'faim': case 'soif': case 'fatigue': p[k] = Math.max(0, Math.min(100, (p[k] ?? 100) + v)); break;
         case 'mal': survival.ajouterMal(p, v); break;
         case 'infection': if (v) survival.ajouterMal(p, 15); break;
-        case 'tempsMin': clock.avancer(v); break;
+        case 'tempsMin': clock.sauter(v); break;   // co-op : l'invité demande le saut à l'hôte
         case 'xp': player.gagnerXps(v); break;
         case 'decouvrir': for (const id of (Array.isArray(v) ? v : [v])) { const L = G.world.lieux[id] || (G.world.lieux[id] = {}); if (!L.decouvert) { L.decouvert = true; emit('lieu:decouvert', { id }); } } break;
         case 'quete': quetes.avancer(v[0], v[1]); break;

@@ -32,6 +32,9 @@ const RX = REGLAGES.exploration;
 let V = null, api = null;
 // api = { changerEtage(etage), sortir(), finArene(raison), scene(id) → Promise, coop: { pairPres(d) → pair|null, relever(id), signaler(evt) } }
 export function lierInteractions(v, a) { V = v; api = a; }
+// À deux pour de vrai : co-op ET coéquipier connecté. S'il est parti (déconnecté), les passages « à deux » suivent la
+// règle solo (forcer seul, pied-de-biche) : une grille ne doit jamais bloquer l'histoire de celui qui reste.
+const aDeux = () => G.mode !== 'solo' && !!(api && api.coop) && !(api.coop.seul && api.coop.seul());
 
 // ---------- La cible ----------
 export function chercherCible() {
@@ -162,9 +165,14 @@ function gestePorteMarquee(c, decl) {
   const lp = libelle(c), nom = c.p.nom;
   const lib = !nom ? lp : lp === 'Porte verrouillée' ? `Ouvrir ${nom}` : lp.startsWith('Déverrouiller') ? `Ouvrir ${nom} à la clé` : lp.replace(/la porte$/, nom);
   return { cle: cleCible(c), libelle: lib, f: () => {
-    if (decl && decl.deux && G.mode !== 'solo' && api.coop && !api.coop.pairPres(4) && c.s.etat === 'verrouillee') { message('Attends ton coéquipier : vous devez être deux ici.', 2600); return; }
+    if (decl && decl.deux && aDeux() && !api.coop.pairPres(4) && c.s.etat === 'verrouillee') { message(attendreCoequipier(), 2600); return; }
     return actionPorte(c);
   } };
+}
+// « Attends ton coéquipier » — et, s'il est loin, comment le faire venir.
+function attendreCoequipier() {
+  const loin = api.coop && api.coop.ailleurs && api.coop.ailleurs();
+  return loin ? 'Il faut être deux ici. Ton coéquipier est ailleurs : il peut te rejoindre (son bouton « Rejoindre »).' : 'Attends ton coéquipier : vous devez être deux ici.';
 }
 // Geste secondaire d'une cible : démonter, barricader.
 function secondaire(c) {
@@ -266,7 +274,7 @@ function libelle(c) {
       if (s.etat === 'fermee') return s.barricadee ? 'Ouvrir (barricadée)' : 'Ouvrir la porte';
       const v = p.verrou || {};
       if (v.flag && getFlag(v.flag)) return 'Ouvrir la porte';
-      if (p.deux || v.deux) return G.mode !== 'solo' ? 'Soulever à deux' : 'Forcer (lourd)';
+      if (p.deux || v.deux) return aDeux() ? 'Soulever à deux' : 'Forcer (lourd)';
       if (v.cle && compter(v.cle) > 0) return `Déverrouiller (${nomObjet(v.cle)})`;
       if (v.forcer && outil(v.forcer)) return 'Forcer la porte';
       if (v.crocheter && compter('crochets_serrure') > 0) return 'Crocheter la serrure';
@@ -356,8 +364,8 @@ async function actionPorte(c) {
     if (v.flag && getFlag(v.flag)) action = 'ouvrir';
     else if (p.deux || v.deux) {
       // une porte (grille, rideau de fer) trop lourde pour une personne
-      if (G.mode !== 'solo') {
-        const pair = api.coop && api.coop.pairPres(2.6);
+      if (aDeux()) {
+        const pair = api.coop.pairPres(2.6);
         if (!pair) { message('Trop lourd. Il faut être deux : appelle ton coéquipier.', 2600); sfx('porte_coup'); return; }
         return lancerAction('Soulever ensemble…', 2200, p.x + 0.5, p.y + 0.5, async () => { const r = await C.porte(p.cle, 'forcer'); if (r.ok) { sfx('porte_casse'); message('Ça cède. Vous passez.'); } }, RX.BRUIT.porte_forcee * 0.25);
       }
@@ -478,6 +486,7 @@ async function parler(q) {
 }
 export const cleDecl = (d) => `${d.quand}:${d.lieu || ''}:${d.marqueur || ''}:${d.scene || d.cinematique || ''}`;
 export function declencheurActif(d) {
+  if (d.invite === false && G.mode === 'invite') return false;
   if (d.unique && G.world.declencheurs && G.world.declencheurs[cleDecl(d)]) return false;
   return verifierCondition(d.si);
 }
@@ -508,7 +517,13 @@ export function zones() {
 export async function jouerDeclencheur(d) {
   if (!V || V.occupe) return;
   // moment « à deux » : on attend que le coéquipier soit là
-  if (d.deux && G.mode !== 'solo' && api.coop && !api.coop.pairPres(4)) { message('Attends ton coéquipier : vous devez être deux ici.', 2600); return; }
+  if (d.deux && aDeux() && !api.coop.pairPres(4)) { message(attendreCoequipier(), 2600); return; }
+  // co-op : l'autre vit déjà ce moment (il est entré le premier, il a touché le même objet) — on ne le joue pas deux
+  // fois en même temps (effets en double) ; on le suit dans son panneau
+  if (d.scene && G.mode !== 'solo' && api.coop && api.coop.sceneAutre && api.coop.sceneAutre() === d.scene) {
+    if (d.quand === 'marqueur') message(`${G.pairNom || 'Ton coéquipier'} vit déjà ce moment.`, 2400);
+    return;
+  }
   if (d.unique) { G.world.declencheurs = G.world.declencheurs || {}; G.world.declencheurs[cleDecl(d)] = true; emit('declencheur', { cle: cleDecl(d) }); }
   if (d.cinematique) { V.occupe = true; V.entrees.actif(false); try { await flow.cinematique(d.cinematique); } finally { if (V) { V.occupe = false; if (!V.enPause) V.entrees.actif(true); } } }
   if (d.scene) await jouerScene(d.scene);

@@ -31,7 +31,11 @@ js/rendu/               ★ LE MOTEUR DE RENDU (canvas 2D)
   sols.js                 sol : matières, transitions irrégulières, variations, occlusion au pied des murs, décals
   murs.js                 murs : dessus texturé, arêtes, face avant (hauteur), murets, grilles, haies, fenêtres, escaliers
   objets.js               ~70 meubles et objets dessinés (véhicules, tombes, tentes…) + houppiers en sprites
-  personnages.js          squelettes animés : vivants (armes, gestes, enchaînements), morts (5 types), cadavres
+  personnages.js          squelettes animés des vivants (armes, gestes, enchaînements, sacs, objet du dos)
+  morts.js                les morts : apparence tirée de l'uid (vêtement, peau, coiffure, sang, plaies), torse / tête / mains /
+                          pieds / corps couché peints UNE fois en sprites (cache mesuré en pixels, peu par image), membres
+                          animés à chaque image (bras à coude, mains à doigts) ; couchés : à terre, fait le mort, cadavre
+                          (banc d'essai dev/morts.html)
   lumiere.js              masque d'obscurité COLORÉ : jour, sources fixes qui vacillent (feu, néon, gyrophare), lampes
   effets.js               particules (sang, braises, fumée, feuilles, éclaboussures), calque de sang persistant, traînées
   atmosphere.js           le soleil (ombres portées selon l'heure), ombres des nuages, brume, sol mouillé, vent selon le
@@ -58,7 +62,14 @@ js/cine/                cinématiques en parallaxe (36 décors) ; lib.js : perso
                         de l'hôpital ; banc d'essai dev/humains.html
 js/ui/                  HUD général, panneaux (inventaire, corps, fabrication, journal, options), scènes à choix, toasts
 js/net/                 transport WebSocket (net.js) + co-op (coop.js) : hôte-autoritaire, instantanés différentiels,
-                        coéquipier visible, relève, histoire partagée, scène suivie en direct, « Rejoindre »
+                        coéquipier visible, relève, histoire partagée, scène suivie en direct, « Rejoindre ».
+                        Règles du jeu à deux : une cinématique n'est JAMAIS imposée (ensemble si côte à côte et au calme,
+                        sinon invitation « Regarder ») ; pendant une scène / cinématique on est « hors jeu » (sim : horsJeu,
+                        les morts lâchent) ; une scène ne se joue pas deux fois en même temps ; portes et déclencheurs « deux »
+                        en règle solo si l'autre est parti ; missions jouées des deux côtés (gestes relayés à l'hôte,
+                        récompense à qui a fait : missions.brancherCoopMissions) ; sauts de temps de l'invité demandés à
+                        l'hôte (clock.sauter) ; une scène qui emmène ailleurs se suit (histoire:teleporter) ; mourir ne coupe
+                        pas la partie (affaires au sol, autre survivant) ; l'hôte reprend sa partie (omd_v3_hote).
 js/data/                tout le contenu (réglages, objets, morts, butin, lieux, niveaux, histoire…)
 server.js               serveur statique + relais WebSocket des salons co-op
 ```

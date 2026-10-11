@@ -37,7 +37,10 @@ export async function explorer(lieuId, opts = {}) {
   }
   clock.setVitesse(vitesseSolo('exploration'));
   ambiance(lieuId);
-  await basculer('exploration', '../explore/vue.js', { lieuId, ...opts });
+  // la position visée voyage avec l'appel : en quittant l'écran courant, l'exploration range SA position dans
+  // G.player.position (rejoindre son coéquipier, revenir avec un autre survivant : on arriverait à l'entrée du lieu)
+  const position = G && G.player.position ? { ...G.player.position } : null;
+  await basculer('exploration', '../explore/vue.js', { lieuId, ...opts, position });
   emit('lieu:entre', { lieu: lieuId });
   sauver();
 }
@@ -92,19 +95,41 @@ export async function combattre(spec) {
   emit('combat:fin', { resultat: r });
   return r;
 }
-export async function scene(id, opts = {}) {
+// Une scène (ou une cinématique) à la fois : deux demandes simultanées (une offre de mission et un déclencheur, le réveil
+// à deux et celui du lieu, la cinématique du coéquipier et la sienne…) se suivent au lieu de se superposer dans le même
+// panneau. Une cinématique ouverte DEPUIS une scène (effet `cinematique`) a sa propre file : pas d'attente croisée.
+let fileScene = Promise.resolve(), fileCine = Promise.resolve();
+function enFile(file, fn) {
+  const r = file.then(fn, fn);
+  return [r, r.catch(() => {})];
+}
+export function scene(id, opts = {}) {
+  const [r, suite] = enFile(fileScene, () => sceneMaintenant(id, opts));
+  fileScene = suite;
+  return r;
+}
+async function sceneMaintenant(id, opts) {
   pileOverlays.push('scene'); pauserCourant(); clock.pause('scene');
   try {
     const m = await import('../ui/dialogue.js');
     const r = await m.jouerScene(id, opts);
-    if (r && r.teleporter) { const t = r.teleporter; setTimeout(() => explorer(t.lieu, { entree: t.entree }), 0); }
+    if (r && r.teleporter) {
+      const t = r.teleporter;
+      emit('histoire:teleporter', { lieu: t.lieu, entree: t.entree || null });   // co-op : l'autre peut suivre
+      setTimeout(() => explorer(t.lieu, { entree: t.entree }), 0);
+    }
     return r;
   } finally {
     clock.reprendre('scene'); pileOverlays.pop(); reprendreCourant();
   }
 }
-export async function cinematique(id, opts = {}) {
-  if (!opts.distant) emit('cinematique', { id });   // co-op : l'autre joueur la voit aussi
+export function cinematique(id, opts = {}) {
+  const [r, suite] = enFile(fileCine, () => cineMaintenant(id, opts));
+  fileCine = suite;
+  return r;
+}
+async function cineMaintenant(id, opts) {
+  if (!opts.distant) emit('cinematique', { id });   // co-op : l'autre joueur est invité à la voir (js/net/coop.js)
   pileOverlays.push('cine'); pauserCourant(); clock.pause('cine');
   try {
     const m = await import('../cine/lecteur.js');
@@ -112,6 +137,8 @@ export async function cinematique(id, opts = {}) {
   } catch (e) { console.warn('[cine]', id, e); }
   finally { clock.reprendre('cine'); pileOverlays.pop(); reprendreCourant(); }
 }
+// Une scène ou une cinématique est-elle à l'écran (ou en attente) ? (co-op : on ne propose pas d'en voir une autre)
+export function enRecit() { return pileOverlays.includes('scene') || pileOverlays.includes('cine'); }
 export async function appliquerEffets(effets, ctx = {}) {
   const m = await import('./effects.js');
   return m.appliquerEffets(effets, ctx);
@@ -139,5 +166,6 @@ export { lieuDe };
 export function quitter() {
   if (courant && courant.module.sortir) { try { courant.module.sortir(); } catch (e) {} }
   courant = null; pileOverlays.length = 0;
+  fileScene = Promise.resolve(); fileCine = Promise.resolve();
   const s = document.getElementById('stage'); if (s) s.innerHTML = '';
 }

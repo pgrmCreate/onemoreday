@@ -6,12 +6,18 @@
 //     une flèche au bord de l'écran pointe vers lui, l'encart dit où il est (étage, lieu, distance) ;
 //   - SE RETROUVER : « Rejoindre » le téléporte auprès de l'autre (il est loin dans un autre lieu) ;
 //   - SE RELEVER : à 0 PV on tombe « à terre » 30 s, l'autre peut te relever (E) ; sinon, c'est la mort ;
-//   - L'HISTOIRE À DEUX : drapeaux, quêtes, déclencheurs déjà joués, lieux découverts, cinématiques partagés ;
+//   - L'HISTOIRE À DEUX : drapeaux, quêtes, déclencheurs déjà joués, lieux découverts, missions ;
 //     quand l'un vit une scène, l'autre la suit en direct dans un panneau (sans être bloqué) ; certains moments
-//     exigent d'être deux au même endroit (déclencheurs et portes « deux »).
+//     exigent d'être deux au même endroit (déclencheurs et portes « deux » — règle solo si l'autre est parti) ;
+//   - LES CINÉMATIQUES ne sont JAMAIS imposées : côte à côte et au calme, on la regarde ensemble ; sinon l'autre reçoit
+//     une invitation (« Regarder ») qu'il prend quand il veut. Pendant une scène ou une cinématique, on est « hors jeu »
+//     (les morts ne te voient plus : à deux, le monde ne s'arrête pas) ;
+//   - MOURIR À DEUX ne coupe pas la partie : tes affaires tombent là où tu es tombé, et tu peux revenir avec un autre
+//     survivant auprès de ton coéquipier (la mort de l'hôte ne renvoie plus l'invité à l'écran titre) ;
+//   - REPRENDRE : l'hôte peut rouvrir sa partie sauvegardée ; l'invité y retrouve son personnage.
 // Réseau : instantanés du lieu de l'invité à 15 Hz, en DIFFÉRENTIEL (portes, sol, cadavres, conteneurs seulement
 // quand ils changent), position de l'invité à 20 Hz, positions croisées (lieu, étage, x, y) à 4 Hz.
-import { G, setG, joueurNeuf, setFlag, genrer, utiliserCleSauvegarde } from '../core/state.js';
+import { G, setG, joueurNeuf, setFlag, genrer, utiliserCleSauvegarde, avantSauvegarde, aSauvegarde, effacerSauvegarde, noteJournal } from '../core/state.js';
 import { on, emit } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 import { el, $, escapeHtml } from '../core/util.js';
@@ -27,6 +33,11 @@ import { REGLAGES } from '../data/reglages.js';
 import { SERVEUR_EN_LIGNE } from '../data/serveur.js';
 import { majDisponible, appliquerMaj } from '../version.js';
 import { appliquerConstructions } from '../data/construction.js';
+import { brancherCoopMissions, recevoirOp, recevoirLivraison, MISSIONS } from '../game/missions.js';
+import { aUneRadio, setRadioAutre, recevoirRadio } from '../game/radio.js';
+import { SLOTS_TENUS } from '../game/inventory.js';
+import { normaliserJoueur } from '../game/player.js';
+import { panneauOuvert } from '../ui/panels/index.js';
 
 const ID_HOTE = 'hote', ID_INVITE = 'invite';
 const RC = REGLAGES.coop;
@@ -75,10 +86,17 @@ function ecranMaj() {
   c.querySelector('[data-a="maj"]').onclick = () => appliquerMaj();
   c.querySelector('[data-a="retour"]').onclick = () => ecranCoop(ctx);
 }
+// La partie hébergée sauvegardée (omd_v3_hote), si elle existe : { nom, jour, heure, minute }.
+function partieHebergee() {
+  if (!aSauvegarde('hote')) return null;
+  try { const g = JSON.parse(localStorage.getItem('omd_v3_hote')); const m = g.world.minutes || 0; return { nom: g.player.nom, jour: Math.floor(m / 1440) + 1, heure: Math.floor((m % 1440) / 60), minute: m % 60 }; }
+  catch (e) { return null; }
+}
 function ecranSalons(url) {
+  const reprise = partieHebergee();
   const c = ctx.afficher(`
     <h2 class="gros-titre">Parties ${url ? 'en ligne' : 'sur ce Wi-Fi'}</h2>
-    <div class="menu">${btn('data-s="hote"', 'Héberger une partie', 'tu crées le monde, l\'autre te rejoint', 'primaire')}</div>
+    <div class="menu">${reprise ? btn('data-s="reprendre"', 'Reprendre ma partie', `${escapeHtml(reprise.nom)} — jour ${reprise.jour}, l'autre te rejoint`, 'primaire') : ''}${btn('data-s="hote"', reprise ? 'Héberger une nouvelle partie' : 'Héberger une partie', reprise ? 'efface la partie hébergée' : 'tu crées le monde, l\'autre te rejoint', reprise ? '' : 'primaire')}</div>
     <div class="champ">Parties ouvertes</div>
     <div class="menu" id="co-liste"><p class="aide">Recherche…</p></div>
     <p class="aide" id="co-statut"></p>
@@ -96,6 +114,7 @@ function ecranSalons(url) {
   c.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
     if (b.dataset.s === 'retour') return ecranCoop(ctx);
     if (b.dataset.s === 'maj') return charger();
+    if (b.dataset.s === 'reprendre') return heberger(url, null, reprise);
     if (b.dataset.s === 'hote') return ctx.ecranCreation({ mode: 'hote', apres: (opts) => heberger(url, opts) });
   });
 }
@@ -111,6 +130,12 @@ const crochetCoop = {
     return null;
   },
   relever(id) { envoyer({ t: 'relever', id }); },
+  // personne à attendre : pas de co-op, ou le coéquipier est parti → les passages « à deux » suivent la règle solo
+  seul() { return !actif || !net.pairPresent(); },
+  // la scène que vit l'autre en ce moment (id racine) : on ne la lance pas une seconde fois en même temps
+  sceneAutre() { return sceneAutre; },
+  // le coéquipier est-il dans un autre lieu (ou en route) ?
+  ailleurs() { const moi = vueExplore.joueurLocal(); return !!(pairPos && (!moi || pairPos.lieu !== moi.lieu || pairPos.mode !== 'lieu')); },
   // encart du HUD : où est l'autre ?
   info(V, pairs) {
     if (!actif || !net.pairPresent()) return actif ? { texte: 'En attente de ton coéquipier…' } : null;
@@ -118,6 +143,7 @@ const crochetCoop = {
     const p = pairs.find(q => q.etage === V.j.etage) || pairs[0];
     if (p) {
       if (p.agonie) return { texte: `${nom} est à terre ! Va le relever (E)`, alerte: true };
+      if (p.horsJeu) return { texte: `${nom} · dans une scène` };
       if (p.etage !== V.j.etage) { const E2 = V.niveau.etages[V.niveau.etageIdx[p.etage]]; return { texte: `${nom} · ${E2 ? E2.nom : 'autre étage'}` }; }
       const d = Math.hypot(p.x - V.j.x, p.y - V.j.y) * 0.8;
       return { texte: `${nom} · ${d < 3 ? 'à côté de toi' : Math.round(d) + ' m'}` };
@@ -131,16 +157,24 @@ const crochetCoop = {
 // =====================================================================
 //  HÔTE
 // =====================================================================
-async function heberger(url, { nom, genre, difficulte }) {
+// opts = { nom, genre, difficulte } pour une nouvelle partie ; reprise = fiche de la partie sauvegardée à rouvrir.
+async function heberger(url, opts, reprise = null) {
   const code = code4();
-  const r = await net.connecter({ url, code, role: 'host', nom, meta: { jour: 1, heure: 8, minute: 0 } });
+  const nom = reprise ? reprise.nom : opts.nom;
+  const meta = reprise ? { jour: reprise.jour, heure: reprise.heure, minute: reprise.minute } : { jour: 1, heure: 8, minute: 0 };
+  const r = await net.connecter({ url, code, role: 'host', nom, meta });
   if (!r.ok) { emit('toast', { texte: 'Hébergement impossible : ' + (r.raison || 'serveur injoignable.') }); return; }
   role = 'hote'; actif = true;
   brancherHote();
   brancherCommun();
-  await ctx.nouvelleAventure({ nom, genre, difficulte, mode: 'hote' });
-  G.player.id = ID_HOTE;
-  emit('toast', { texte: `Partie ouverte (${code}). L'autre joueur n'a qu'à la rejoindre.` });
+  if (reprise) {
+    // le personnage de l'hôte se reprend avant le premier dessin (l'invité, lui, retrouvera le sien par la graine)
+    await ctx.continuer('hote', () => { if (G) { G.player.id = ID_HOTE; G.pairNom = nomPair; } });
+  } else {
+    await ctx.nouvelleAventure({ ...opts, mode: 'hote', avant: () => { if (G) G.player.id = ID_HOTE; } });
+  }
+  if (G) G.player.id = ID_HOTE;
+  emit('toast', { texte: `Partie ${reprise ? 'rouverte' : 'ouverte'} (${code}). L'autre joueur n'a qu'à la rejoindre.` });
 }
 
 function brancherHote() {
@@ -150,6 +184,8 @@ function brancherHote() {
     else { emit('toast', { texte: `${nomPair || 'Ton coéquipier'} est parti.` }); quitterLieuInvite(); pairPos = null; majBadge(); }
   });
   net.on('message', (m) => { try { recuHote(m); } catch (e) { console.error('[coop] hôte', m && m.t, e); } });
+  // la sauvegarde de l'hôte range AUSSI l'état des lieux où il n'est pas (celui où joue l'invité)
+  offs.push(avantSauvegarde(() => autorite.sauverTout()));
   const t = setInterval(() => {
     if (!G || !actif) return;
     envoyer({ t: 'horloge', m: G.world.minutes });
@@ -177,7 +213,7 @@ function envoyerMonde() {
 }
 
 const invite = { lieu: null, canal: null, offs: [] };
-const EVTS_RELAIS = ['porte', 'construction', 'meuble', 'bruit', 'hurlement', 'sol', 'conteneur', 'charge', 'zombie',
+const EVTS_RELAIS = ['porte', 'construction', 'meuble', 'bruit', 'hurlement', 'sol', 'conteneur', 'charge', 'zombie', 'voiture', 'ruee',
   'telegraphe', 'fente', 'attaque', 'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule'];
 function quitterLieuInvite() {
   invite.offs.forEach(f => f()); invite.offs = [];
@@ -202,6 +238,8 @@ async function recuHote(m) {
       break;
     }
     case 'x:sortir': if (invite.lieu === m.lieu) quitterLieuInvite(); break;
+    case 'sauter': if (m.n > 0 && m.n <= 1440) clock.avancer(m.n); break;          // un saut de temps raconté chez l'invité
+    case 'mission_op': recevoirOp(m.op); break;
     case 'x:maj': if (invite.canal && invite.lieu === m.lieu) invite.canal.majJoueur(m.p); break;
     case 'x:bruit': if (invite.canal && invite.lieu === m.lieu) invite.canal.bruit(m.b); break;
     case 'x:act': if (invite.canal && invite.lieu === m.lieu) invite.canal.action(m.a); break;
@@ -229,7 +267,13 @@ async function rejoindre(url, code) {
     if (m.t === 'monde') { if (!entre) { entre = true; adopterMonde(m); } return; }
     try { recuInvite(m); } catch (e) { console.error('[coop] invité', m && m.t, e); }
   });
-  net.on('pair', (present) => { if (!present && actif) { emit('toast', { texte: 'L\'hôte a quitté la partie.' }); setTimeout(() => ctx.ecranTitre(), 1500); } });
+  net.on('pair', (present) => {
+    if (present || !actif) return;
+    // une fin ou un écran de mort à l'écran : on ne l'arrache pas pour l'écran titre
+    if (G && (G._fin || G._mortTraitee)) { emit('toast', { texte: 'L\'hôte a quitté la partie.' }); return; }
+    emit('toast', { texte: 'L\'hôte a quitté la partie. Ton personnage est gardé : tu le retrouveras dans sa partie.' });
+    setTimeout(() => { if (actif) ctx.ecranTitre(); }, 2500);
+  });
   role = 'invite'; actif = true;
   if (statut) statut.textContent = 'Connecté — en attente du monde de l\'hôte…';
   envoyer({ t: 'bonjour', nom: 'Invité' });
@@ -237,7 +281,9 @@ async function rejoindre(url, code) {
 function adopterMonde({ monde, hote }) {
   majNomPair((hote && hote.nom) || 'l\'hôte');
   let perso = null;
-  try { const s = JSON.parse(localStorage.getItem('omd_v3_invite') || 'null'); if (s && s.seed === monde.seed && s.player) perso = s.player; } catch (e) {}
+  // le personnage de l'invité dans CE monde (même graine) : { seed, player } (gardé toutes les 10 s) ou la partie entière
+  // { world, player } (sauvée en quittant la page) — un personnage mort ne revient pas
+  try { const s = JSON.parse(localStorage.getItem('omd_v3_invite') || 'null'); const seed = s && (s.seed ?? (s.world && s.world.seed)); if (s && seed === monde.seed && s.player && !s.player.mort) perso = s.player; } catch (e) {}
   const entrer = (player, neuf) => {
     setG({ v: 3, mode: 'invite', cree: Date.now(), world: monde, player, journal: [], documents: [], carteNotes: {} });
     G.pairNom = nomPair;
@@ -253,15 +299,33 @@ function adopterMonde({ monde, hote }) {
     else if (!neuf && player.position && player.position.lieu) pos = player.position;
     else pos = { mode: 'lieu', lieu: (hp && hp.lieu) || 'cimetiere' };
     G.player.position = pos;
-    ctx.demarrerInvite({ position: pos, auprès: true, neuf });
+    // Un nouveau venu voit d'abord l'introduction (passable) ; puis il arrive AUPRÈS de l'hôte — on attend que celui-ci
+    // soit dans un lieu (il regarde peut-être encore la sienne) : sinon on jouerait son réveil à sa place.
+    const avant = async () => {
+      if (neuf && !G.world.flags.prologue_fini) await flow.cinematique('intro', { distant: true });
+      const p = await positionHote(neuf ? 20000 : 4000);
+      if (p) G.player.position = p;
+      return G.player.position;
+    };
+    ctx.demarrerInvite({ position: pos, auprès: true, neuf, avant });
     emit('toast', { texte: `Tu rejoins la partie de ${nomPair}.` });
   };
   if (perso) return entrer(perso, false);
   ctx.ecranCreation({ mode: 'invite', apres: ({ nom, genre }) => entrer(joueurNeuf(nom, genre), true) });
 }
+// Attend (au plus ms) que l'hôte soit dans un lieu, et renvoie une place à côté de lui (ou null).
+async function positionHote(ms) {
+  const fin = performance.now() + ms;
+  while (performance.now() < fin) {
+    if (pairPos && pairPos.mode === 'lieu' && pairPos.lieu && pairPos.x != null) break;
+    await new Promise(r => setTimeout(r, 250));
+  }
+  const p = pairPos;
+  return p && p.mode === 'lieu' && p.lieu && p.x != null ? { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3 } : null;
+}
 function brancherInvite() {
   vueExplore.definirCrochets({ obtenirCanal: (lieuId, niveau) => canalDistant(lieuId, niveau), coop: crochetCoop });
-  const s = setInterval(() => { if (G) try { localStorage.setItem('omd_v3_invite', JSON.stringify({ seed: G.world.seed, player: G.player })); } catch (e) {} }, 10000);
+  const s = setInterval(() => { if (G && !G.player.mort && !G._mortTraitee) try { localStorage.setItem('omd_v3_invite', JSON.stringify({ seed: G.world.seed, player: G.player })); } catch (e) {} }, 10000);
   offs.push(() => clearInterval(s));
 }
 let lieuDistant = null;
@@ -272,6 +336,8 @@ function recuInvite(m) {
     case 'x:snap': if (lieuDistant && lieuDistant.lieu === m.lieu) lieuDistant._snap(m.s); break;
     case 'x:evt': if (lieuDistant && lieuDistant.lieu === m.lieu) lieuDistant._evt(m.e); break;
     case 'x:rep': { const f = rpcAttente.get(m.id); if (f) { rpcAttente.delete(m.id); f(m.r); } break; }
+    case 'mission_livre': recevoirLivraison(m.l); break;     // la récompense d'une mission que j'ai faite
+    case 'radio': recevoirRadio(m.texte, m.journal); break;   // la radio a parlé : je l'entends si j'en ai une
     default: break;
   }
 }
@@ -335,6 +401,10 @@ function canalDistant(lieuId, niveau) {
     deposer: (pos, item) => appel('deposer', [pos, item]),
     action(a) { if (majTimer) { clearTimeout(majTimer); majTimer = null; if (majEnAttente) envoyer({ t: 'x:maj', lieu: lieuId, p: majEnAttente }); majEnAttente = null; } envoyer({ t: 'x:act', lieu: lieuId, a }); return Promise.resolve({ ok: true }); },
     faireApparaitre: (l, o) => appel('faireApparaitre', [l, o]).then(r => r || []),
+    // missions jouées par l'invité là où l'hôte n'est pas : vagues, mise en scène, réveil d'une pièce
+    appelerMorts: (n, cible, o) => appel('appelerMorts', [n, cible, o]).then(r => r || []),
+    preparerMission: (o) => appel('preparerMission', [o]),
+    reveillerZone: (o) => appel('reveillerZone', [o]),
     blesserZombie: (uid, n) => appel('blesserZombie', [uid, n]),
     retirerZombies: (uids, o) => appel('retirerZombies', [uids, o]),
     repousserZombies: (uids, d) => appel('repousserZombies', [uids, d]),
@@ -369,6 +439,21 @@ function brancherCommun() {
   offs.push(on('scene:fin', ({ id }) => envoyer({ t: 'scene', etat: 'fin', id })));
   offs.push(on('temps', () => envoyerPos()));
   offs.push(on('lieu:entre', () => envoyerPos()));
+  // un saut de temps raconté chez l'invité : l'hôte, qui tient l'heure, saute aussi
+  offs.push(on('horloge:sauter', ({ n }) => { if (role === 'invite') envoyer({ t: 'sauter', n }); }));
+  // une scène emmène ailleurs (« Monter l'escalier », « Dormir chez Nostradamus ») : l'autre peut suivre
+  offs.push(on('histoire:teleporter', (t) => envoyer({ t: 'suivre', lieu: t.lieu, entree: t.entree, nom: G && G.player.nom })));
+  // la radio (sirènes, hordes, météo) : l'hôte la fait parler, l'invité l'entend s'il en a une
+  offs.push(on('radio:capte', ({ texte, journal, distant }) => { if (!distant && role === 'hote') envoyer({ t: 'radio', texte, journal }); }));
+  setRadioAutre(() => !!(pairPos && pairPos.radio));
+  offs.push(() => setRadioAutre(null));
+  // missions : l'invité les joue aussi (gestes relayés), les récompenses vont à qui les a faites
+  brancherCoopMissions({
+    relais: role === 'invite' ? (op) => envoyer({ t: 'mission_op', op }) : null,
+    livrer: role === 'hote' ? (l) => envoyer({ t: 'mission_livre', l }) : null,
+    lieuAutre: () => (pairPos && pairPos.mode === 'lieu' && net.pairPresent() ? pairPos.lieu : null),
+  });
+  offs.push(() => brancherCoopMissions(null));
   const p = setInterval(envoyerPos, 250);
   offs.push(() => clearInterval(p));
   // à 0 PV : « à terre » au lieu de mourir, tant que le coéquipier est là
@@ -386,29 +471,40 @@ function recuCommun(m) {
     case 'quete': quetes.avancer(m.id, m.etape, { distant: true }); return true;
     case 'mission':
       if (G && m.id) { G.world.missions = G.world.missions || {}; G.world.missions[m.id] = m.st; }
+      // une mission qui commence : elle s'écrit aussi dans le journal de l'invité
+      if (G && G.mode === 'invite' && m.notif && m.notif.type === 'nouveau' && m.st && m.st.i === 0 && MISSIONS[m.id]) noteJournal(`Mission — ${MISSIONS[m.id].titre}. ${genrer(MISSIONS[m.id].resume || '')}`, 'objectif');
       if (m.notif) emit('mission:notif', m.notif);
       emit('mission:maj', { id: m.id, distant: true });
       return true;
     case 'pos': pairPos = m.pos; if (m.pos && m.pos.nom) majNomPair(m.pos.nom); majBadge(); return true;
     case 'decl': if (G) { G.world.declencheurs = G.world.declencheurs || {}; G.world.declencheurs[m.cle] = true; } return true;
     case 'decouvert': if (G) { const L = G.world.lieux[m.id] || (G.world.lieux[m.id] = {}); if (!L.decouvert) { L.decouvert = true; emit('lieu:decouvert', { id: m.id, distant: true }); } } return true;
-    case 'cine': if (flow.tempsCourant() === 'exploration' && !flow.overlayOuvert()) flow.cinematique(m.id, { distant: true }); return true;
+    case 'cine': proposerCine(m.id); return true;
+    case 'suivre': proposerSuivre(m); return true;
     case 'scene': spectateur(m); return true;
     case 'relever': releve(m.id); return true;
+    case 'releve_nouveau': emit('toast', { texte: `${m.ancien || nomPair || 'Ton coéquipier'} est mort. ${m.nom} prend sa place à tes côtés.`, duree: 6000 }); majNomPair(m.nom); return true;
+    case 'mort_pair': emit('toast', { texte: `${m.nom || nomPair || 'Ton coéquipier'} est mort. Ses affaires sont restées là où il est tombé.`, type: 'alerte', duree: 7000 }); return true;
     case 'sommeil': inviterSommeil(m.nom || nomPair || 'Ton coéquipier', m.h); return true;
     case 'sommeil_go': lancerApresAccord(m.h); return true;
     default: return false;
   }
 }
+// Où je suis : dans un lieu (position précise), sur la carte, en route. (Sur la carte, on n'est PAS dans le lieu : les
+// missions de l'autre ne doivent pas croire qu'on y monte la garde.)
 function positionPrecise() {
   const j = vueExplore.joueurLocal();
   const p = G.player.position || {};
   if (j && j.lieu && !String(j.lieu).startsWith('__')) return { mode: 'lieu', lieu: j.lieu, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2) };
-  return { mode: p.mode, lieu: p.lieu || (p.voyage && p.voyage.vers) || null };
+  const tc = flow.tempsCourant();
+  return { mode: tc === 'voyage' ? 'voyage' : tc === 'carte' ? 'carte' : (p.mode === 'lieu' ? 'ailleurs' : p.mode), lieu: p.lieu || (p.voyage && p.voyage.vers) || null };
 }
+let radioVue = { t: 0, v: false };
 function envoyerPos() {
   if (!G || !actif) return;
-  envoyer({ t: 'pos', pos: { ...positionPrecise(), nom: G.player.nom, agonie: !!G.player.agonie } });
+  const t = performance.now();
+  if (t - radioVue.t > 2000) { radioVue = { t, v: (() => { try { return aUneRadio({ seulMoi: true }); } catch (e) { return false; } })() }; }
+  envoyer({ t: 'pos', pos: { ...positionPrecise(), nom: G.player.nom, agonie: !!G.player.agonie, horsJeu: flow.enRecit(), radio: radioVue.v } });
 }
 
 // ---------- À terre / relevé ----------
@@ -428,6 +524,8 @@ function aTerre(p, cause) {
   clearInterval(agonieTimer);
   agonieTimer = setInterval(() => {
     if (!G || !G.player.agonie) { clearInterval(agonieTimer); return; }
+    // ton coéquipier lit une scène ou regarde une cinématique : il ne peut pas venir, le temps ne compte pas
+    if (pairPos && pairPos.horsJeu) G.player.agonie.fin += 300;
     if (performance.now() >= G.player.agonie.fin || !net.pairPresent()) {
       clearInterval(agonieTimer);
       const c = G.player.agonie.cause;
@@ -449,9 +547,103 @@ function releve(id) {
   envoyerPos();
 }
 
+// ---------- La cinématique de l'autre : ensemble si l'on est côte à côte, sinon une invitation ----------
+// Jamais imposée : on peut être en plein combat, dans un menu, à l'autre bout de la ville. Côte à côte (même lieu, même
+// étage, ≤ 12 m), au calme et libre, on la voit ensemble ; sinon un bandeau « Regarder » reste quelques dizaines de
+// secondes (et la cinématique peut se voir plus tard, quand on veut, depuis ce bandeau).
+let bandeauCine = null;
+function libre() { return !flow.overlayOuvert() && !(G && G.player.agonie) && !vueExplore.enArene(); }
+function proposerCine(id) {
+  if (!G || !id) return;
+  const moi = vueExplore.joueurLocal();
+  const V = vueExplore.etatDebug();
+  const pres = moi && pairPos && pairPos.mode === 'lieu' && pairPos.lieu === moi.lieu && pairPos.etage === moi.etage && pairPos.x != null && Math.hypot(pairPos.x - moi.x, pairPos.y - moi.y) <= 12;
+  const occupe = V && (V.occupe || V.action || V.fouille || V.butin || V.choix);
+  const panneau = !!panneauOuvert() || !!document.querySelector('.som-fond');   // sac, journal… ou la fenêtre « Dormir »
+  if (pres && libre() && !occupe && !panneau && !vueExplore.menaceProche(10)) {
+    emit('toast', { texte: `Vous regardez ensemble, ${nomPair || 'ton coéquipier'} et toi.` });
+    flow.cinematique(id, { distant: true });
+    return;
+  }
+  if (bandeauCine) bandeauCine.remove();
+  const b = el('div', { class: 'som-invite coop-cine' },
+    el('span', {}, `${nomPair || 'Ton coéquipier'} vit un moment de l'histoire.`),
+    el('button', { class: 'btn', type: 'button', onclick: () => {
+      if (!libre()) { emit('toast', { texte: 'Pas maintenant : termine d\'abord ce que tu fais.' }); return; }
+      if (vueExplore.menaceProche(9)) { emit('toast', { texte: 'Un mort est trop près.', type: 'alerte' }); return; }
+      b.remove(); bandeauCine = null; flow.cinematique(id, { distant: true });
+    } }, 'Regarder'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { b.remove(); bandeauCine = null; } }, 'Plus tard'));
+  bandeauCine = b;
+  document.body.append(b);
+  setTimeout(() => { if (bandeauCine === b) { b.remove(); bandeauCine = null; } }, 45000);
+}
+// Une scène emmène l'autre ailleurs : côte à côte et au calme, on part avec lui ; sinon on le sait, et « Rejoindre » suffit.
+function proposerSuivre(m) {
+  const L = lieuDe(m.lieu);
+  const moi = vueExplore.joueurLocal();
+  const V = vueExplore.etatDebug();
+  const pres = moi && pairPos && pairPos.lieu === moi.lieu && pairPos.etage === moi.etage && pairPos.x != null && Math.hypot(pairPos.x - moi.x, pairPos.y - moi.y) <= 12;
+  const nom = m.nom || nomPair || 'Ton coéquipier';
+  if (moi && moi.lieu === m.lieu) return;            // déjà là
+  if (pres && libre() && !(V && (V.occupe || V.action)) && !vueExplore.menaceProche(9)) {
+    emit('toast', { texte: `Tu suis ${nom}${L ? ' : ' + (L.court || L.nom) : ''}.` });
+    G.player.position = { mode: 'lieu', lieu: m.lieu, entree: m.entree || null };
+    setTimeout(() => flow.explorer(m.lieu, { entree: m.entree || undefined }), 400);
+    return;
+  }
+  emit('toast', { texte: `${nom} est parti${L ? ' : ' + (L.court || L.nom) : ' ailleurs'}. Le bouton de ton coéquipier (en haut) te permet de le rejoindre.`, duree: 6000 });
+}
+
+// ---------- Mourir à deux ----------
+// Ce que le mort portait tombe là où il est tombé (le coéquipier peut tout reprendre : une clé, la radio…).
+export function deposerAffaires() {
+  const V = vueExplore.etatDebug();
+  if (!G || !V || !V.canal || !V.canal.deposer || V.arene) return 0;
+  const p = G.player, pos = { etage: V.j.etage, x: V.j.x, y: V.j.y };
+  const tas = [];
+  for (const it of p.inventaire || []) tas.push({ ...it });
+  for (const sl of SLOTS_TENUS) if (p.equip[sl]) tas.push({ id: p.equip[sl], qty: 1, ...((p.equipEtat || {})[sl] || {}) });
+  if (p.equip.lampe && p.equip.lampe !== p.equip.mainG) tas.push({ id: p.equip.lampe, qty: 1, ...((p.equipEtat || {}).lampe || {}) });
+  if (p.equip.sac) tas.push({ id: p.equip.sac, qty: 1 });
+  let n = 0;
+  tas.forEach((it, k) => {
+    const a = k * 2.4, r = 0.25 + 0.12 * Math.sqrt(k);
+    try { V.canal.deposer({ etage: pos.etage, x: pos.x + Math.cos(a) * r, y: pos.y + Math.sin(a) * r }, it); n++; } catch (e) {}
+  });
+  return n;
+}
+// Revenir avec un nouveau survivant, auprès du coéquipier s'il est dans un lieu, sinon là où l'on est tombé.
+export async function nouveauSurvivant({ nom, genre }, lieuMort = null) {
+  if (!G) return;
+  const ancien = G.player;
+  G.player = joueurNeuf(nom, genre);
+  normaliserJoueur(G.player);
+  G.player.id = moiId();
+  G.player.stats = { ...(G.player.stats || {}), morts: 0 };
+  G._mortTraitee = false;
+  clearInterval(agonieTimer);
+  if (role === 'invite') { try { localStorage.setItem('omd_v3_invite', JSON.stringify({ seed: G.world.seed, player: G.player })); } catch (e) {} }
+  const p = pairPos;
+  let pos;
+  if (p && p.mode === 'lieu' && p.lieu && p.x != null) pos = { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3 };
+  else pos = { mode: 'lieu', lieu: lieuMort || (ancien.position && ancien.position.lieu) || 'cimetiere', entree: null };
+  G.player.position = pos;
+  noteJournal(`${ancien.nom} est {mort|morte}. ${nom} a pris la suite.`.replace('{mort|morte}', ancien.genre === 'f' ? 'morte' : 'mort'), 'recit');
+  envoyer({ t: 'releve_nouveau', nom, ancien: ancien.nom });
+  await flow.explorer(pos.lieu, pos.x != null ? {} : { entree: pos.entree || undefined });
+  emit('toast', { texte: `${nom} ouvre les yeux. ${nomPair || 'Ton coéquipier'} est là.`, duree: 5000 });
+}
+// Quitter pour de bon après une mort (l'invité : son personnage mort ne doit pas revenir).
+export function abandonnerApresMort() {
+  if (role === 'invite') effacerSauvegarde('invite');
+}
+
 // ---------- Suivre la scène de l'autre (panneau non bloquant) ----------
-let spect = null;
+let spect = null, sceneAutre = null;
 function spectateur(m) {
+  if (m.etat === 'debut') sceneAutre = m.id || null;
+  if (m.etat === 'fin') sceneAutre = null;
   if (m.etat === 'fin') { if (spect) { spect.classList.add('fin'); setTimeout(() => { if (spect) { spect.remove(); spect = null; } }, 2500); } return; }
   if (!spect) {
     spect = el('aside', { class: 'coop-spect' }, el('header'), el('div', { class: 'coop-spect-t' }), el('footer'));
@@ -508,7 +700,10 @@ async function rejoindrePair() {
   await flow.explorer(p.lieu);
 }
 
+// Prévenir l'autre qu'on vient de mourir (avant l'écran de mort).
+export function annoncerMort() { if (actif) envoyer({ t: 'mort_pair', nom: G && G.player.nom }); }
 export function arreter() {
+  if (bandeauCine) { bandeauCine.remove(); bandeauCine = null; }
   offs.forEach(f => { try { f(); } catch (e) {} }); offs = [];
   quitterLieuInvite();
   autorite.toutFermer();

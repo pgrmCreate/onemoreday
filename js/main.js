@@ -79,7 +79,7 @@ export function ecranTitre() {
     const a = b.dataset.a;
     if (a === 'continuer') continuer('solo');
     else if (a === 'nouvelle') ecranCreation({ mode: 'solo' });
-    else if (a === 'coop') coop.ecranCoop({ afficher, ecranTitre, ecranCreation, demarrerInvite, nouvelleAventure });
+    else if (a === 'coop') coop.ecranCoop({ afficher, ecranTitre, ecranCreation, demarrerInvite, nouvelleAventure, continuer });
   });
 }
 
@@ -91,7 +91,7 @@ export function ecranCreation({ mode = 'solo', apres } = {}) {
   // Tout tient sur un écran de téléphone (paysage comme portrait) : une carte, deux colonnes, les boutons en bas.
   const c = afficher(`
     <div class="creation">
-      <header class="cr-tete"><small>${mode === 'hote' ? 'Héberger une partie' : mode === 'invite' ? 'Rejoindre la partie' : 'Nouvelle partie'}</small><h2>Qui se réveille ?</h2></header>
+      <header class="cr-tete"><small>${mode === 'hote' ? 'Héberger une partie' : mode === 'invite' ? 'Rejoindre la partie' : mode === 'releve' ? 'Un autre survivant' : 'Nouvelle partie'}</small><h2>Qui se réveille ?</h2></header>
       <div class="cr-grille">
         <section>
           <label class="champ" for="c-nom">Ton prénom</label>
@@ -99,20 +99,20 @@ export function ecranCreation({ mode = 'solo', apres } = {}) {
           <div class="champ">Tu es</div>
           <div class="cr-seg" id="c-genre"><button type="button" data-g="m" class="on">Un homme</button><button type="button" data-g="f">Une femme</button></div>
         </section>
-        <section>
+        <section${mode === 'invite' || mode === 'releve' ? ' hidden' : ''}>
           <div class="champ">Difficulté</div>
           <div class="cr-diff" id="c-diff">${Object.entries(presets).map(([id, p]) => `<button type="button" data-d="${id}" class="${id === diff ? 'on' : ''}"><b>${escapeHtml(p.nom)}</b><small>${escapeHtml(aide[id] || '')}</small></button>`).join('')}</div>
         </section>
       </div>
       <div class="cr-actions">
-        <button type="button" class="btn cr-retour" data-a="retour">Retour</button>
-        <button type="button" class="btn primaire cr-go" data-a="go">${mode === 'hote' ? 'Ouvrir le salon' : 'Commencer'}</button>
+        <button type="button" class="btn cr-retour" data-a="retour">${mode === 'releve' ? 'Quitter la partie' : 'Retour'}</button>
+        <button type="button" class="btn primaire cr-go" data-a="go">${mode === 'hote' ? 'Ouvrir le salon' : mode === 'releve' ? 'Ouvrir les yeux' : 'Commencer'}</button>
       </div>
     </div>`, 'cimetiere_caveau');
   c.classList.add('ec-creation');
   c.querySelectorAll('#c-genre button').forEach(b => b.onclick = () => { genre = b.dataset.g; c.querySelectorAll('#c-genre button').forEach(x => x.classList.toggle('on', x === b)); });
   c.querySelectorAll('#c-diff button').forEach(b => b.onclick = () => { diff = b.dataset.d; setPref('difficulte', diff); c.querySelectorAll('#c-diff button').forEach(x => x.classList.toggle('on', x === b)); });
-  c.querySelector('[data-a="retour"]').onclick = () => ecranTitre();
+  c.querySelector('[data-a="retour"]').onclick = () => { if (mode === 'releve') coop.abandonnerApresMort(); ecranTitre(); };
   const go = () => {
     const nom = ($('#c-nom').value || 'Sam').trim().slice(0, 16) || 'Sam';
     if (apres) return apres({ nom, genre, difficulte: diff });
@@ -146,10 +146,11 @@ function arreterPartie() {
   try { coop.arreter(); } catch (e) {}
 }
 
-export async function nouvelleAventure({ nom, genre, difficulte, mode = 'solo', seed }) {
+export async function nouvelleAventure({ nom, genre, difficulte, mode = 'solo', seed, avant }) {
   effacerSauvegarde(mode);
   nouvellePartie({ nom, genre, mode, seed });
   G.world.difficulte = difficulte;
+  if (avant) avant();
   cacherEcran();
   demarrerSystemes();
   quetes.avancer('q_prologue', 'debut');
@@ -158,8 +159,9 @@ export async function nouvelleAventure({ nom, genre, difficulte, mode = 'solo', 
   await flow.explorer('cimetiere', { entree: 'caveau' });
 }
 
-export async function continuer(mode = 'solo') {
+export async function continuer(mode = 'solo', avant = null) {
   if (!charger(mode)) { ecranTitre(); return; }
+  if (avant) avant();
   cacherEcran();
   demarrerSystemes();
   await reprendrePosition();
@@ -179,9 +181,10 @@ async function reprendrePosition() {
 function lieuEchelle(id) { try { return (flow.lieuDe && flow.lieuDe(id) || {}).echelle || 'salon'; } catch (e) { return 'salon'; } }
 
 // Invité co-op : le monde arrive de l'hôte, le personnage est le sien.
-export async function demarrerInvite({ position, neuf } = {}) {
+export async function demarrerInvite({ position, neuf, avant } = {}) {
   cacherEcran();
   demarrerSystemes({ invite: true });
+  if (avant) { try { position = (await avant()) || position; } catch (e) { console.warn('[coop] arrivée', e); } }
   if (position && position.lieu) await flow.explorer(position.lieu, { entree: position.entree || undefined });
   else await flow.explorer('cimetiere', { entree: 'caveau' });
   // premier soir à deux : on se réveille l'un près de l'autre
@@ -197,6 +200,7 @@ on('mort', ({ cause } = {}) => {
   setTimeout(attendre, 600);
 });
 function ecranMort(cause = 'combat') {
+  if (coop.estCoop()) return ecranMortCoop(cause);
   const diff = presetDifficulte(G.world.difficulte);
   const permanent = !!(diff && diff.permanent) && G.mode === 'solo';
   const texte = genrer((MORTS[cause] && (MORTS[cause].texte || MORTS[cause])) || MORTS.combat || 'Tu es mort.');
@@ -216,12 +220,46 @@ function ecranMort(cause = 'combat') {
   c.querySelectorAll('[data-a]').forEach(b => b.onclick = () => (b.dataset.a === 'recharger' ? continuer('solo') : ecranTitre()));
 }
 
+// À deux, la mort ne coupe pas la partie : l'hôte continue de tenir le monde, l'invité reste connecté. Les affaires du mort
+// tombent là où il est tombé ; on peut revenir avec un autre survivant, auprès de son coéquipier, ou quitter.
+function ecranMortCoop(cause) {
+  const diff = presetDifficulte(G.world.difficulte);
+  const definitive = !!(diff && diff.permanent);
+  const texte = genrer((MORTS[cause] && (MORTS[cause].texte || MORTS[cause])) || MORTS.combat || 'Tu es mort.');
+  const st = G.player.stats || {};
+  const ancien = { nom: G.player.nom, genre: G.player.genre, lieu: (G.player.position && G.player.position.lieu) || null };
+  let tombe = 0;
+  try { tombe = coop.deposerAffaires(); } catch (e) {}
+  coop.annoncerMort();
+  try { fermerPanneau(); } catch (e) {}
+  try { audio.playAmbiance('mort'); audio.sfx('mort'); } catch (e) {}
+  const c = afficher(`
+    <h2 class="gros-titre sang">${escapeHtml(genrer(G.player.genre === 'f' ? 'Morte' : 'Mort'))}</h2>
+    <div class="recit">${texteHtml(typeof texte === 'string' ? texte : String(texte))}</div>
+    <div class="bilan"><span><b>${clock.jour()}</b> jour${clock.jour() > 1 ? 's' : ''}</span><span><b>${st.morts || 0}</b> morts abattus</span></div>
+    <p class="aide">${tombe ? 'Tes affaires sont restées là où tu es tombé{|e} : ton coéquipier peut les reprendre.' : ''} ${definitive ? 'Mort définitive : ce personnage ne reviendra pas.' : 'Le monde continue. Quelqu’un d’autre peut reprendre la route à ses côtés.'}</p>
+    <div class="menu">
+      ${btn({ cls: 'primaire', data: 'data-a="releve"' }, 'Revenir avec un autre survivant', 'près de ton coéquipier')}
+      ${btn({ data: 'data-a="titre"' }, 'Quitter la partie')}
+    </div>`.replace('{|e}', ancien.genre === 'f' ? 'e' : ''), 'saint_roch_nuit');
+  c.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+    if (b.dataset.a === 'titre') { coop.abandonnerApresMort(); ecranTitre(); return; }
+    ecranCreation({ mode: 'releve', apres: async ({ nom, genre }) => {
+      cacherEcran();
+      try { audio.playAmbiance('calme'); } catch (e) {}
+      await coop.nouveauSurvivant({ nom, genre }, ancien.lieu);
+      montrerHUD(true); majHUD();
+    } });
+  });
+}
+
 // ---------- Fins ----------
 on('flag', ({ k, v }) => {
   if (!v || finMontree || !partieEnCours) return;
   const fin = Object.values(FINS).find(f => f.flag === k);
   if (!fin) return;
   finMontree = true;
+  G._fin = true;           // co-op : le départ de l'autre n'arrache pas l'écran de fin
   const attendre = () => (flow.overlayOuvert() ? setTimeout(attendre, 300) : ecranFin(fin));
   setTimeout(attendre, 400);
 });
@@ -242,7 +280,7 @@ function ecranFin(fin) {
 }
 
 // ---------- Menu → titre ----------
-on('menu:titre', () => { if (G && G.mode === 'solo') sauver(); ecranTitre(); });
+on('menu:titre', () => { if (G && G.mode !== 'invite') sauver(); ecranTitre(); });   // l'hôte garde sa partie (« Reprendre ma partie »)
 
 // ---------- Sauvegarde auto ----------
 setInterval(() => { if (partieEnCours && G && G.mode !== 'invite' && !flow.overlayOuvert()) sauver(); }, 60000);

@@ -160,3 +160,5 @@ body.en-jeu:has(.cine-racine) .tourner { display: none !important; }
 
 /* Cinématiques sur mobile : pas de couches GPU géantes (au-delà de la taille de texture, Android les affiche noires). */
 @media (pointer: coarse) { .cine-couche { will-change: auto !important; } }
+/* l'invitation à voir la cinématique du coéquipier : au-dessus de l'éventuelle invitation à dormir, liseré bleu co-op */
+.som-invite.coop-cine { bottom: 112px; border-color: rgba(124,200,255,.55); }

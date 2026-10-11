@@ -137,6 +137,35 @@ ok(sim.zombies().length === avant, `lieu bouclé : une minute sans arrivée tran
 const reveilles = sim.reveillerZone({ zone, cible: { etage: zone.etage, x: (zone.x0 + zone.x1) / 2, y: zone.y1 } });
 ok(reveilles >= 20 && sim.zombies().filter(z => z.x >= zone.x0 && z.x <= zone.x1 && z.y >= zone.y0 && z.y <= zone.y1).every(z => z.etat !== 'dort'), `le coffre sonne : ${reveilles} morts se réveillent dans les rayons`);
 
+// ---------- Co-op : l'invité joue les missions, l'hôte tranche ----------
+// (une seule partie en mémoire : on bascule G.mode pour jouer tour à tour l'invité et l'hôte ; le relais est capturé)
+titre('Co-op : l’invité joue, l’hôte tranche, la récompense va à qui a fait');
+const ops = [], livraisons = [];
+let autre = null;
+M.brancherCoopMissions({ relais: (op) => ops.push(op), livrer: (l) => livraisons.push(l), lieuAutre: () => autre });
+delete G.world.missions.m_coffre;
+G.mode = 'invite';
+appliquerEffets({ mission: ['accepter', 'm_coffre'] });
+ok(ops.length === 1 && ops[0].op === 'accepter' && !M.etat('m_coffre'), 'chez l’invité : « Accepter » part chez l’hôte, rien n’est écrit sur place');
+G.mode = 'hote';
+M.recevoirOp(ops.shift());
+ok(M.etat('m_coffre') && M.etat('m_coffre').etat === 'active', 'chez l’hôte : la mission démarre');
+M._setLieuVue(null); autre = 'leclerc';
+ok(M.present('leclerc'), 'présent·e = l’un OU l’autre joueur sur place');
+G.mode = 'invite';
+M.reussirEtape('m_coffre'); M.reussirEtape('m_coffre');
+ok(ops.length === 1 && ops[0].op === 'reussir' && ops[0].i === 0, 'l’invité atteint la direction : une seule demande pour l’étape');
+G.mode = 'hote'; M.recevoirOp(ops.shift());
+G.mode = 'invite'; M.reussirEtape('m_coffre');
+G.mode = 'hote'; M.recevoirOp({ ...ops[0] }); M.recevoirOp(ops.shift());
+ok(M.etat('m_coffre').i === 2, 'une demande en double (réseau) ne fait pas sauter deux étapes');
+const recompense = livraisons.find(l => l.effets && l.effets.objets);
+ok(recompense && recompense.effets.objets.some(([id]) => id === 'pistolet_9mm') && inv.countItem('pistolet_9mm') === 0, 'le coffre ouvert par l’invité : le pistolet lui est livré (pas à l’hôte)');
+autre = null;
+clock.avancer(1);
+ok(M.etat('m_coffre').etat === 'reussie' && livraisons.some(l => l.quoi === 'fin' && l.texte), 'plus personne au Leclerc : « Sortir vivant » réussi, le récit de fin part chez l’invité');
+M.brancherCoopMissions(null); G.mode = 'solo';
+
 M.arreterMissions();
 console.log(`\n${n - echecs}/${n} vérifications réussies.`);
 process.exit(echecs ? 1 : 0);

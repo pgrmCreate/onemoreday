@@ -22,9 +22,19 @@ export function radioDispo(p = G && G.player) {
   }
   return null;
 }
-export const aUneRadio = () => !!radioDispo();
-// Un message capté : un bruit de friture, le texte, une ligne au journal.
+// Co-op : la radio de l'autre compte aussi (l'hôte fait parler la radio, l'invité l'entend chez lui s'il en a une).
+let radioAutre = null;
+export function setRadioAutre(fn) { radioAutre = fn || null; }
+export const aUneRadio = (o = {}) => !!radioDispo() || (!o.seulMoi && !!(radioAutre && radioAutre()));
+// Un message capté : un bruit de friture, le texte, une ligne au journal (chez qui a une radio).
 export function capter(texte, journal) {
+  emit('radio:capte', { texte, journal });
+  if (!radioDispo()) return;          // c'est la radio du coéquipier : il l'entend chez lui
+  entendre(texte, journal);
+}
+// Chez l'invité : ce que la radio a dit chez l'hôte.
+export function recevoirRadio(texte, journal) { if (radioDispo()) entendre(texte, journal); }
+function entendre(texte, journal) {
   emit('toast', { texte: `Ta radio grésille. ${texte}`, type: 'alerte' });
   if (journal) noteJournal(journal, 'objectif');
   import('../audio.js').then(a => a.sfx && a.sfx('radio')).catch(() => {});

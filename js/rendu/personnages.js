@@ -2,8 +2,7 @@
 // Squelette procédural : ombre, jambes (cycle de marche), torse, sac, bras (pose selon l'arme et le geste), tête.
 // Tout est dessiné dans le repère du personnage (il regarde vers +x), à l'échelle du monde (1 case = TS px).
 //   dessinerHumain(c, x, y, dir, P, A)   P = apparence, A = animation (voir plus bas)
-//   dessinerMort(c, x, y, z, t)          z = mort interpolé (type, sexe, dir, vitesse, etat, atk, vac, terre, touche, _phase, uid)
-//   dessinerCadavre(c, cd, t, frais)     cd = { uid, type, sexe, x, y, dir }
+//   dessinerMort, dessinerCadavre        les morts : voir ./morts.js (réexportés ici)
 import { TS, rr, cercle, ellipse, teinte, hash, graine, rng, clamp } from './outils.js';
 
 const PI = Math.PI;
@@ -364,137 +363,8 @@ function couche(c, P, A) {
 }
 
 // ---------- Morts ----------
-// Apparence tirée de l'uid (même tirage chez les deux joueurs).
-const apparences = new Map();
-export function apparenceMort(uid, type, sexe, allure) {
-  const cle = uid + ':' + type;
-  let a = apparences.get(cle);
-  if (a) return a;
-  const r = rng(graine(cle));
-  const A = allure || {};
-  const peaux = A.peau || ['#7d8070', '#86836f', '#737a6c'];
-  const vets = A.vetements || ['#3b3128', '#2e3136', '#463a36', '#3a4048'];
-  a = {
-    peau: peaux[Math.floor(r() * peaux.length)], manteau: vets[Math.floor(r() * vets.length)],
-    pantalon: ['#2a2a2e', '#232a36', '#3a3226', '#1e1e20'][Math.floor(r() * 4)],
-    cheveux: ['#1e1612', '#3a2a1a', '#5a5048', '#2a2420', '#7a6a5a'][Math.floor(r() * 5)],
-    coiffure: sexe === 'f' ? (r() < 0.75 ? 'long' : 'court') : (r() < 0.25 ? 'chauve' : 'court'),
-    taches: Array.from({ length: 2 + Math.floor(r() * 3) }, () => ({ x: -6 + r() * 10, y: -12 + r() * 24, r: 2.5 + r() * 4 })),
-    brasMort: r() < 0.18 ? (r() < 0.5 ? -1 : 1) : 0,     // un bras ballant
-    tete: (r() - 0.5) * 3,                                // tête penchée
-    boite: r() < 0.5 ? 1 : -1,                            // jambe qui traîne
-    taille: (A.taille || 1) * (0.95 + r() * 0.1), carrure: A.carrure || 1,
-  };
-  apparences.set(cle, a);
-  return a;
-}
-
-export function dessinerMort(c, x, y, z, t, def) {
-  const ap = apparenceMort(z.uid, z.type, z.sexe, def && def.allure);
-  const s = ap.taille, car = ap.carrure;
-  c.save();
-  c.translate(x, y); c.rotate(z.dir || 0); c.scale(s, s);
-  if (z.terre) { corpsAuSol(c, ap, t, true, z.uid); c.restore(); return; }
-  const v = Math.min(1, (z.vitesse || 0) / 1.2), ph = z._phase || 0;
-  const coureur = z.type === 'coureur', rampant = z.type === 'rampant', hurleur = z.type === 'hurleur', colosse = z.type === 'colosse';
-  // télégraphie : il arme son coup (bras en arrière), puis se fend vers l'avant
-  let fente = 0, armer = 0;
-  if (z.atk) { const p = z.atk.p || 0; if (p < 0.85) armer = easeOut(p / 0.85); else fente = (p - 0.85) / 0.15; }
-  if (z.fente != null) { fente = 1 - Math.abs(z.fente - 0.5) * 0.6; armer = 0; }
-  const avance = fente * 7 - armer * 2.5;
-  const jit = z.vac ? Math.sin(t / 25 + x) * 2.2 : 0;
-  c.translate(avance + jit, jit * 0.5);
-  // ombre
-  c.fillStyle = 'rgba(0,0,0,0.42)'; ellipse(c, 2.5, 3.5, rampant ? 20 : 14 * car, 12 * car); c.fill();
-  if (rampant) { rampe(c, ap, z, t, armer, fente); c.restore(); return; }
-  // jambes : pas traînant (errant), course (coureur)
-  const pas = Math.sin(ph) * (coureur ? 8 : 5) * v;
-  c.strokeStyle = ap.pantalon; c.lineWidth = 5.5 * car; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(-1, -4.5 * car); c.lineTo(pas * (ap.boite > 0 ? 0.5 : 1), -5.5 * car); c.moveTo(-1, 4.5 * car); c.lineTo(-pas * (ap.boite < 0 ? 0.5 : 1), 5.5 * car); c.stroke();
-  c.fillStyle = '#16120e'; ellipse(c, pas + 1.5, -5.5 * car, 4.4, 2.8); c.fill(); ellipse(c, -pas + 1.5, 5.5 * car, 4.4, 2.8); c.fill();
-  // torse déchiré (contour irrégulier), taches de sang
-  const bal = Math.sin(ph * 0.5) * 2.2 * (coureur ? 0.4 : 1);
-  const lean = coureur ? 3 : colosse ? 0 : 1;
-  c.save(); c.translate(lean, bal);
-  c.fillStyle = ap.manteau; c.beginPath();
-  for (let k = 0; k <= 14; k++) { const a = k / 14 * PI * 2; const rr2 = 1 - (hash(k, z.uid.length, 3) - 0.5) * 0.14; c.lineTo(Math.cos(a) * 9.5 * car * rr2 - 1, Math.sin(a) * 14.5 * car * rr2); }
-  c.closePath(); c.fill();
-  c.fillStyle = 'rgba(0,0,0,0.25)'; ellipse(c, -3, 0, 6 * car, 12 * car); c.fill();
-  for (const tc of ap.taches) { c.fillStyle = 'rgba(70,6,8,0.8)'; cercle(c, tc.x * car, tc.y * car, tc.r); c.fill(); }
-  if (colosse) { c.fillStyle = teinte(ap.peau, 0.85); ellipse(c, 2, 0, 5, 9); c.fill(); }
-  c.restore();
-  // bras tendus vers la proie
-  const peau = ap.peau, manche = teinte(ap.manteau, 0.9);
-  const tw = Math.sin(t / 140 + z.uid.length) * 1.5;
-  const tend = 13 + v * 2;
-  let gx = tend + tw - armer * 18 + fente * 9, gy = -9 * car - armer * 3, dx = tend - tw - armer * 18 + fente * 9, dy = 9 * car + armer * 3;
-  if (coureur && v > 0.5 && !z.atk) { gx = -6 + Math.sin(ph + PI) * 6; gy = -15; dx = -6 + Math.sin(ph) * 6; dy = 15; }
-  if (ap.brasMort < 0 && !z.atk) { gx = 2; gy = -16; }
-  if (ap.brasMort > 0 && !z.atk) { dx = 2; dy = 16; }
-  if (z.vac) { gx = 4 + Math.sin(t / 35) * 6; gy = -16; dx = 2 - Math.sin(t / 30) * 6; dy = 17; }
-  bras(c, 1 + lean, -12 * car + bal, gx + lean, gy + bal, manche, peau, 5 * car);
-  bras(c, 1 + lean, 12 * car + bal, dx + lean, dy + bal, manche, peau, 5 * car);
-  // tête
-  const hx = 3 + lean + (coureur ? 2 : 0), hy = bal * 0.6 + ap.tete;
-  c.fillStyle = peau; cercle(c, hx, hy, 7 * (colosse ? 1.1 : 1)); c.fill();
-  c.fillStyle = 'rgba(30,40,30,0.35)'; cercle(c, hx + 1.5, hy + 2, 4.5); c.fill();
-  if (ap.coiffure !== 'chauve') {
-    c.fillStyle = ap.cheveux; c.beginPath(); c.arc(hx - 0.5, hy, 7.2, PI * 0.5, PI * 1.5); c.closePath(); c.fill();
-    if (ap.coiffure === 'long') { ellipse(c, hx - 6, hy + 1, 4.5, 7); c.fill(); }
-  } else { c.fillStyle = 'rgba(60,40,40,0.4)'; cercle(c, hx - 2, hy - 2, 2.5); c.fill(); }
-  // yeux laiteux, bouche
-  c.fillStyle = 'rgba(220,214,180,0.85)'; cercle(c, hx + 5, hy - 2.4, 1.1); c.fill(); cercle(c, hx + 5, hy + 2.4, 1.1); c.fill();
-  const hurle = hurleur && (z.etat === 'chasse') && Math.sin(t / 400 + z.uid.length) > 0.3;
-  if (hurle || z.atk) { c.fillStyle = '#1a0606'; ellipse(c, hx + 6, hy, hurle ? 2.6 : 1.8, hurle ? 3 : 2); c.fill(); }
-  // éclair blanc quand il encaisse
-  if (z.tTouche && t - z.tTouche < 140) { c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(255,240,230,${0.55 * (1 - (t - z.tTouche) / 140)})`; ellipse(c, 0, 0, 12 * car, 16 * car); c.fill(); }
-  c.restore();
-}
-function rampe(c, ap, z, t, armer, fente) {
-  const ph = z._phase || 0;
-  // le bas du corps manque : traînée sombre
-  c.fillStyle = 'rgba(50,6,8,0.6)'; ellipse(c, -16, 0, 9, 5); c.fill();
-  c.fillStyle = ap.manteau; ellipse(c, -6, 0, 11, 9); c.fill();
-  for (const tc of ap.taches.slice(0, 2)) { c.fillStyle = 'rgba(70,6,8,0.8)'; cercle(c, tc.x - 6, tc.y * 0.6, tc.r); c.fill(); }
-  c.fillStyle = 'rgba(70,40,40,0.8)'; ellipse(c, -16, 0, 3, 6); c.fill(); // la plaie
-  const tire = Math.sin(ph) * 6;
-  bras(c, 0, -7, 13 + tire - armer * 10 + fente * 8, -11, teinte(ap.manteau, 0.9), ap.peau, 4.6);
-  bras(c, 0, 7, 13 - tire - armer * 10 + fente * 8, 11, teinte(ap.manteau, 0.9), ap.peau, 4.6);
-  c.fillStyle = ap.peau; cercle(c, 5, 0, 6.5); c.fill();
-  c.fillStyle = ap.cheveux; c.beginPath(); c.arc(4.5, 0, 6.7, PI * 0.5, PI * 1.5); c.closePath(); c.fill();
-  c.fillStyle = 'rgba(220,214,180,0.85)'; cercle(c, 9.5, -2.2, 1); c.fill(); cercle(c, 9.5, 2.2, 1); c.fill();
-  if (z.tTouche && t - z.tTouche < 140) { c.globalCompositeOperation = 'lighter'; c.fillStyle = 'rgba(255,240,230,0.5)'; ellipse(c, -2, 0, 14, 10); c.fill(); }
-}
-// Corps étendu (mort à terre qui se relève, ou cadavre).
-function corpsAuSol(c, ap, t, bouge, uid) {
-  const r = rng(graine(String(uid)));
-  const tw = bouge ? Math.sin(t / 160) * 3 : 0;
-  c.strokeStyle = ap.pantalon; c.lineWidth = 5.5; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(-6, -4); c.lineTo(-21, -7 + r() * 6); c.moveTo(-6, 4); c.lineTo(-21, 7 - r() * 6); c.stroke();
-  c.fillStyle = ap.manteau; ellipse(c, 0, 0, 11.5, 10); c.fill();
-  for (const tc of ap.taches) { c.fillStyle = 'rgba(70,6,8,0.8)'; cercle(c, tc.x * 0.8, tc.y * 0.6, tc.r); c.fill(); }
-  bras(c, 3, -9, 10 + r() * 6 + tw, -17 + r() * 4, teinte(ap.manteau, 0.9), ap.peau);
-  bras(c, 3, 9, 8 + r() * 8 - tw, 17 - r() * 4, teinte(ap.manteau, 0.9), ap.peau);
-  c.fillStyle = ap.peau; cercle(c, 13, 0, 6.8); c.fill();
-  if (ap.coiffure !== 'chauve') { c.fillStyle = ap.cheveux; c.beginPath(); c.arc(12.5, 0, 7, PI * 0.5, PI * 1.5); c.closePath(); c.fill(); }
-}
-
-// Cadavre : flaque qui s'étend les premières secondes (frais = ms depuis la mort, ou null).
-export function dessinerCadavre(c, cd, t, frais, def) {
-  const ap = apparenceMort(cd.uid, cd.type, cd.sexe, def && def.allure);
-  const r = rng(graine('cad' + cd.uid));
-  const k = frais == null ? 1 : clamp(frais / 2500, 0, 1);
-  c.save();
-  c.translate(cd.x * TS, cd.y * TS); c.rotate((cd.dir || 0) + PI + (r() - 0.5) * 0.8);
-  // flaque de sang
-  c.fillStyle = 'rgba(48,4,6,0.78)';
-  ellipse(c, 4, 0, (10 + 14 * k) * (0.8 + r() * 0.4), (8 + 9 * k) * (0.8 + r() * 0.4), r()); c.fill();
-  c.fillStyle = 'rgba(100,14,16,0.22)'; ellipse(c, 2, -2, 6 + 6 * k, 4 + 3 * k, r()); c.fill();
-  const chute = frais == null ? 1 : easeOut(clamp(frais / 380, 0, 1));
-  c.scale(0.75 + 0.25 * chute, 1);
-  corpsAuSol(c, ap, t, false, cd.uid);
-  c.restore();
-}
+// Leur rendu (vêtements, plaies, mains à doigts, têtes, corps couchés, sprites en cache) vit dans ./morts.js.
+export { dessinerMort, dessinerCadavre, apparenceMort } from './morts.js';
 
 // Fondu de contour d'une silhouette pour le marquage d'une cible (PC : survol / tactile : visée auto).
 export function apparenceJoueur(p, couleurs) {

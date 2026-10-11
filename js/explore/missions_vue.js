@@ -1,7 +1,10 @@
 // ============ Exploration — les missions sur place (moteur : js/game/missions.js, contenu : js/data/histoire/missions.js) ============
 // Ce qui ne se voit qu'ici : les morts qui restent (nettoyer, dit en mots, jamais en nombre), la pièce atteinte, être
 // repéré·e (discrétion), le geste à faire (agir), les vagues (tenir, protéger, après un vacarme), le PNJ qui prend des coups,
-// les offres faites en arrivant dans un lieu ou en entrant dans une pièce. Tourne chez qui tient le monde (solo, hôte).
+// les offres faites en arrivant dans un lieu ou en entrant dans une pièce.
+// Co-op : chacun joue les missions là où il est. Ce qui touche SON corps (pièce atteinte, repéré·e, geste) se joue chez
+// chacun ; ce qui touche le LIEU (mise en scène, vagues, morts restants, PNJ qui prend des coups) se joue chez l'hôte s'il
+// est là, sinon chez l'invité — jamais deux fois. Les décisions remontent à l'hôte (js/game/missions.js, relais).
 import { G, genrer } from '../core/state.js';
 import { FIN, icase } from '../carte/catalogue.js';
 import * as M from '../game/missions.js';
@@ -11,6 +14,8 @@ import { overlayOuvert } from '../game/flow.js';
 
 let V = null, tMaj = 0, tOffre = 0;
 const tenant = () => !!G && G.mode !== 'invite';
+// Qui mène le LIEU ici : l'hôte (ou le solo) ; l'invité seulement quand l'hôte n'y est pas.
+const meneLieu = () => tenant() || (!!G && G.mode === 'invite' && !!V && M.lieuAutre() !== V.lieuId);
 
 export function lierMissions(v) {
   V = v; tMaj = 0; tOffre = 1600;   // les offres attendent que l'arrivée (et ses scènes d'histoire) soit passée
@@ -63,7 +68,7 @@ function parlerPnj(id) {
 
 // ---------- Les cibles d'interaction (étape « agir ») ----------
 export function ciblesMissions(proposer) {
-  if (!V || V.arene || !tenant()) return;
+  if (!V || V.arene || !G) return;
   const j = V.j;
   for (const { id, e, s } of M.ici(V.lieuId)) {
     if (e.type !== 'agir') continue;
@@ -86,16 +91,17 @@ function agir(id, e) {
 
 // ---------- Le pas (appelé par la boucle de la vue) ----------
 export function majMissions(dt) {
-  if (!V || V.arene || !V.missions || !tenant() || V.enPause) return;
+  if (!V || V.arene || !V.missions || !G || V.enPause) return;
+  const lieu = meneLieu();
   tOffre -= dt;
-  if (tOffre <= 0) { tOffre = 900; offres(); }
+  if (tOffre <= 0) { tOffre = 900; if (lieu) offres(); }
   tMaj -= dt; if (tMaj > 0) return;
   const pas = 250 + tMaj; tMaj = 250;
   const VM = V.missions, j = V.j, snap = V.snap;
   for (const { id, m, s, e } of M.ici(V.lieuId)) {
     // une étape qui commence ici : sa mise en scène (morts endormis…), son vacarme, sa vague
-    if (!s.d.prepare) {
-      s.d.prepare = true;
+    if (!s.d.prepare && lieu) {
+      M.marquerPrepare(id);
       if (e.preparer) { const r = pieceNommee(V.niveau, e.preparer.piece); V.canal.preparerMission && V.canal.preparerMission({ zone: r ? { etage: r.etage, x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 } : null, n: e.preparer.n || 0, etat: e.preparer.etat || 'dort', types: e.preparer.types }); }
       if (e.annonce && !e.libelle) { message(genrer(e.annonce), 4600); sfx('alerte'); vib(120); }
       if (e.debut) {
@@ -106,6 +112,7 @@ export function majMissions(dt) {
     }
     switch (e.type) {
       case 'eliminer': {
+        if (!lieu) break;
         const r = e.piece ? pieceNommee(V.niveau, e.piece) : null;
         let n = 0; for (const z of snap.zombies) if (!r || dansPiece(r, z.x, z.y, z.etage)) n++;
         const mots = n === 0 ? 'plus un seul mort' : n === 1 ? 'il en reste un, quelque part' : n <= 3 ? 'il en reste encore quelques-uns' : n <= 8 ? 'il en reste encore pas mal' : 'le lieu grouille encore de morts';
@@ -131,9 +138,9 @@ export function majMissions(dt) {
         if (dansPiece(r, j.x, j.y, j.etage, 1.2)) M.reussirEtape(id);
         break;
       }
-      case 'proteger': proteger(id, m, s, e, pas); break;
+      case 'proteger': if (lieu) proteger(id, m, s, e, pas); break;
       case 'tenir': {
-        const v = e.vagues; if (!v) break;
+        const v = e.vagues; if (!v || !lieu) break;
         if (v.nuit && !estNuit()) break;
         if (prochaineVague(id, v)) { vague(v, { etage: j.etage, x: j.x, y: j.y }); message('Des morts montent vers toi.', 2400); }
         break;

@@ -403,7 +403,7 @@ export function creerSimLieu(opts) {
   }
   // La lampe réveille : un faisceau braqué de près sur un mort (même de dos, même endormi) finit par le tirer de sa torpeur.
   function eclairePar(z, j, d) {
-    if (!j.lampe || j.etage !== z.etage || j.mort) return false;
+    if (!j.lampe || j.horsJeu || j.etage !== z.etage || j.mort) return false;
     const S = REGLAGES.lumiere.SOURCES[j.lampeSource] || REGLAGES.lumiere.SOURCES.lampe_torche;
     if (d > Math.min(S.portee, RP.FAISCEAU_REVEIL.portee)) return false;
     return S.forme === 'halo' || Math.abs(angDiff(Math.atan2(z.y - j.y, z.x - j.x), j.dir)) <= (S.angle || 60) * DEG / 2;
@@ -425,7 +425,7 @@ export function creerSimLieu(opts) {
     const E = niveau.etages[z.ei], D = dyn[z.ei];
     let vu = null, dVu = Infinity, Rvu = 0;
     for (const j of joueurs.values()) {
-      if (j.etage !== z.etage || j.mort || j.aTerre) continue;
+      if (j.etage !== z.etage || j.mort || j.aTerre || j.horsJeu) continue;
       const d = Math.hypot(j.x - z.x, j.y - z.y);
       if (z.etat === 'fait_le_mort') { if (d <= 1.5) { vu = j; dVu = d; Rvu = 2; } continue; }
       if (d > 30) continue;
@@ -681,7 +681,7 @@ export function creerSimLieu(opts) {
             z.x = posTmp.x; z.y = posTmp.y; z.vitesse = P.vitesse;
             // la charge percute un joueur : coup + il est projeté
             for (const o of joueurs.values()) {
-              if (o.mort || o.etage !== z.etage || Math.hypot(o.x - z.x, o.y - z.y) > 0.8) continue;
+              if (o.mort || o.horsJeu || o.etage !== z.etage || Math.hypot(o.x - z.x, o.y - z.y) > 0.8) continue;
               z.charge = 0;
               const r = resoudreAttaque({ def, type: z.type, stats: o.stats, rnd: rngCbt, diff });
               evts.push({ type: 'blessure', joueur: o.id, uid: z.uid, typeMort: z.type, sexe: z.sexe, ...r });
@@ -752,7 +752,7 @@ export function creerSimLieu(opts) {
         if (z.etage !== j.etage) continue;
         const dx = z.x - j.x, dy = z.y - j.y, d = Math.hypot(dx, dy);
         // se cogner à un mort endormi / immobile le réveille
-        if (d < 0.8 && (z.etat === 'dort' || z.etat === 'immobile' || z.etat === 'erre') && !j.aTerre) reveiller(z, j);
+        if (d < 0.8 && (z.etat === 'dort' || z.etat === 'immobile' || z.etat === 'erre') && !j.aTerre && !j.horsJeu) reveiller(z, j);
         if (d >= m || d < 1e-4) continue;
         const E = niveau.etages[z.ei], D = dyn[z.ei];
         posTmp.x = z.x; posTmp.y = z.y;
@@ -800,7 +800,7 @@ export function creerSimLieu(opts) {
       return true;
     }
     const j = z.joueur && joueurs.get(z.joueur);
-    if (!j || j.mort || j.aTerre || j.etage !== z.etage) { z.atk = null; z.fente = null; return false; }
+    if (!j || j.mort || j.aTerre || j.horsJeu || j.etage !== z.etage) { z.atk = null; z.fente = null; return false; }
     // la fente : il se jette dans la direction armée
     if (z.fente) {
       const F = RC.FENTE, f = z.fente;
@@ -1192,7 +1192,7 @@ export function creerSimLieu(opts) {
       id, nom: info.nom || id, etage: e, ei: EI(e), x: pos.x ?? niveau.entrees.defaut.x + 0.5, y: pos.y ?? niveau.entrees.defaut.y + 0.5,
       dir: pos.dir || 0, allure: 'immobile', lumiere: 1, lampe: false, lampeSource: null, discretion: info.discretion || 0,
       bruitPas: info.bruitPas || 1, enCombat: false, aTerre: false, fouille: null, tPas: 0, px: 0, py: 0,
-      mort: false, stats: info.stats || null, empoigne: null, geste: null, agonie: false, pv: null,
+      mort: false, stats: info.stats || null, empoigne: null, geste: null, agonie: false, pv: null, horsJeu: false,
     };
     j.px = j.x; j.py = j.y;
     joueurs.set(id, j);
@@ -1215,6 +1215,18 @@ export function creerSimLieu(opts) {
     if (p.aTerre != null) j.aTerre = !!p.aTerre;
     if (p.agonie != null) { j.agonie = !!p.agonie; j.aTerre = j.agonie || !!p.aTerre; if (j.agonie) { j.empoigne = null; for (const z of zombies) if (z.saisit === j.id) z.saisit = null; } }
     if (p.pv != null) j.pv = p.pv;
+    // hors jeu (co-op : il lit une scène, regarde une cinématique) : les morts le perdent de vue et le lâchent
+    if (p.horsJeu != null && !!p.horsJeu !== j.horsJeu) {
+      j.horsJeu = !!p.horsJeu;
+      if (j.horsJeu) {
+        j.empoigne = null;
+        for (const z of zombies) {
+          if (z.saisit === j.id) z.saisit = null;
+          if (z.atk && z.atk.cible === j.id) z.atk = null;
+          if (z.joueur === j.id) { z.joueur = null; z.fente = null; if (z.etat === 'chasse') { changerEtat(z, 'alerte'); z.tEtat = RP.ALERTE_MS * 0.5; } }
+        }
+      }
+    }
     if (p.stats) j.stats = p.stats;
     if (p.mort != null) { j.mort = !!p.mort; if (j.mort) { j.empoigne = null; for (const z of zombies) if (z.saisit === j.id) z.saisit = null; } }
   }
@@ -1484,7 +1496,7 @@ export function creerSimLieu(opts) {
       sol: sol.map(o => ({ ...o })), cadavres: cadavres.map(c => ({ ...c })),
       constructions: constructions.map(c => ({ ...c, items: undefined, n: c.items ? c.items.length : undefined })), retires: [...retires], eau: { ...eauReste },
       joueurs: [...joueurs.values()].map(j => ({ id: j.id, nom: j.nom, x: j.x, y: j.y, etage: j.etage, dir: j.dir, lampe: j.lampe, lampeSource: j.lampeSource, allure: j.allure, mort: j.mort,
-        aTerre: !!j.aTerre, agonie: !!j.agonie, pv: j.pv ?? null,
+        aTerre: !!j.aTerre, agonie: !!j.agonie, pv: j.pv ?? null, horsJeu: !!j.horsJeu,
         geste: j.geste && T - j.geste.t < j.geste.duree ? { type: j.geste.type, p: (T - j.geste.t) / j.geste.duree, combo: j.geste.combo || 0 } : null,
         empoigne: j.empoigne ? { uid: j.empoigne.uid, p: (T - j.empoigne.debut) / j.empoigne.duree, taps: j.empoigne.taps, requis: j.empoigne.requis, reste: Math.max(0, j.empoigne.fin - T) } : null,
         arme: j.stats && j.stats.arme ? j.stats.arme.id : null, sac: j.sac === undefined ? undefined : j.sac, dos: j.dos || null })),

@@ -97,7 +97,7 @@ export function niveauParse(id, def) { return niveauxParses[id] || (niveauxParse
 let V = null;
 const vue = () => V;
 
-export async function entrer({ lieuId, entree, arene = null, venantDe = null } = {}) {
+export async function entrer({ lieuId, entree, arene = null, venantDe = null, position = null } = {}) {
   if (V) sortir();
   await chargerOptionnels();
   lienCss();
@@ -146,7 +146,7 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null } =
 
   // position de départ
   let pos = null;
-  const P = G.player.position;
+  const P = position || G.player.position;
   if (!entree && P && P.mode === 'lieu' && P.lieu === lieuId && P.etage && P.x != null && niveau.etageIdx[P.etage] != null) {
     const ab = niveau.abords, avant = P.abords || { dx: 0, dy: 0 };     // position sauvée avant les abords : décalée
     const dx = ab ? ab.dx - (avant.dx || 0) : 0, dy = ab ? ab.dy - (avant.dy || 0) : 0;
@@ -360,17 +360,26 @@ export function pause() {
   V.entrees && V.entrees.actif(false);
   if (G.mode === 'solo' && V.canal.pause) V.canal.pause();
   cancelAnimationFrame(V.raf);
-  V.canal.majJoueur({ allure: 'immobile' });
+  // à deux, le monde ne s'arrête pas pendant une scène ou une cinématique : on est « hors jeu », les morts ne te voient
+  // plus (comme en solo, où tout se fige) — sinon on se ferait dévorer en lisant
+  V.canal.majJoueur(G.mode === 'solo' ? { allure: 'immobile' } : { allure: 'immobile', horsJeu: true });
 }
 export function reprise() {
   if (!V || !V.enPause) return;
   V.enPause = false;
   if (V.canal.reprise) V.canal.reprise();
+  if (G.mode !== 'solo') V.canal.majJoueur({ horsJeu: false });
   if (!V.occupe && !(V.cbt && V.cbt.etat.mort)) V.entrees.actif(true);
   V.tPrec = performance.now();
   V.raf = requestAnimationFrame(boucle);
 }
 export function etatDebug() { return V; }
+// Un mort menace-t-il le joueur (en chasse ou à l'attaque, vu, à moins de d unités) ? (co-op : partager une cinématique)
+export function menaceProche(d = 9) {
+  if (!V) return false;
+  for (const z of V.zListe) if (z.etage === V.j.etage && !z.terre && (z.etat === 'chasse' || z.atk) && Math.hypot(z.x - V.j.x, z.y - V.j.y) < d) return true;
+  return !!(V.cbt && V.cbt.etat && V.cbt.etat.empoigne);
+}
 export function actif() { return !!V && !V.arene; }
 export function enArene() { return !!(V && V.arene); }
 export const combatIci = (spec) => combatIci_(spec);

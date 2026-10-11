@@ -20,6 +20,51 @@ import { pointsAliment, motPortion } from './survival.js';
 export { MISSIONS };
 const W = () => G && G.world;
 const tenant = () => !!G && G.mode !== 'invite';     // qui fait avancer les missions
+const estInvite = () => !!G && G.mode === 'invite';
+
+// ---------- Co-op (js/net/coop.js) ----------
+// L'hôte tient l'état ; l'invité JOUE aussi les missions : ses gestes (accepter, étape remplie, nourrir, PNJ blessé…)
+// partent chez l'hôte (relais), qui les applique et renvoie l'état. Les récompenses (objets, XP) et le récit de fin vont
+// à celui qui a fait la mission (livrer). Présent·e dans un lieu = l'un OU l'autre des deux joueurs y est.
+let coopM = null;   // { relais(op), livrer({ id, effets, quoi, texte }), lieuAutre() → lieu de l'autre joueur | null }
+export function brancherCoopMissions(o) { coopM = o || null; }
+export const lieuAutre = () => (coopM && coopM.lieuAutre ? coopM.lieuAutre() : null);
+function relayer(op) { if (coopM && coopM.relais) coopM.relais(op); }
+// Qui reçoit les effets d'une étape (ou de la fin) : celui qui vient d'agir, sinon celui qui est sur place.
+function qui(id, e, par) {
+  if (par) return par;
+  const lieu = e && e.lieu;
+  if (lieu && lieuVue === lieu) return 'hote';
+  if (lieu && lieuAutre() === lieu) return 'invite';
+  const s = etat(id); return (s && (s.par || (s.d && s.d.par))) || 'hote';
+}
+// Effets et récit chez le bon joueur.
+function livrerA(dest, id, effets, quoi, texte) {
+  if (dest === 'invite' && coopM && coopM.livrer) { coopM.livrer({ id, effets: effets || null, quoi, texte: texte || null }); return; }
+  if (effets) appliquerEffets(effets);
+  if (texte) raconter(id, quoi, texte);
+}
+// Chez l'invité : ce que l'hôte nous livre (récompense, récit).
+export function recevoirLivraison({ id, effets, quoi, texte } = {}) {
+  if (effets) appliquerEffets(effets);
+  if (texte && MISSIONS[id]) raconter(id, quoi, texte);
+}
+// Chez l'hôte : un geste de mission venu de l'invité.
+export function recevoirOp(op) {
+  if (!tenant() || !op || !MISSIONS[op.id]) return;
+  const s = etat(op.id);
+  switch (op.op) {
+    case 'accepter': accepter(op.id); break;
+    case 'plusTard': plusTard(op.id); break;
+    case 'refuser': refuser(op.id); break;
+    case 'reussir': if (s && s.etat === 'active' && s.i === op.i) reussirEtape(op.id, { par: 'invite' }); break;
+    case 'echouer': if (s && s.etat === 'active' && s.i === op.i) echouer(op.id, op.raison || ''); break;
+    case 'nourrir': nourrirPoints(op.id, op.pts || 0, 'invite'); break;
+    case 'blesser': blesserPnj(op.id, op.n || 0); break;
+    case 'prepare': if (s && s.etat === 'active' && s.i === op.i && !s.d.prepare) { s.d.prepare = true; ecrire(op.id, s); } break;
+    default: break;
+  }
+}
 const maintenant = () => (G ? G.world.minutes : 0);
 const nomLieu = (id) => { const l = lieuDe(id); return l ? l.court || l.nom : id; };
 // Les noms de pièces s'écrivent avec ’ ou ' : on compare sans s'en soucier.
@@ -50,14 +95,14 @@ export function annoncer(type, titre, texte) { const n = bandeau(type, titre, te
 // ---------- Où est le joueur ? ----------
 // Présent·e dans un lieu = l'écran d'exploration de ce lieu est ouvert (le sommeil sur place compte).
 let lieuVue = null;
-export function present(lieuId) { return !!lieuId && lieuVue === lieuId; }
+export function present(lieuId) { return !!lieuId && (lieuVue === lieuId || lieuAutre() === lieuId); }
 
 // ---------- Proposer ----------
 const vuesCetteVisite = new Set();      // une offre n'est montrée qu'une fois par visite
 // La mission à proposer maintenant dans ce lieu : celle dont on est à portée de la pièce (aPortee(piece, pres) → bool).
 // Les missions à PNJ ne se proposent pas toutes seules : on les reçoit en parlant à la personne.
 export function aProposer(lieuId, aPortee = () => false) {
-  if (!tenant()) return null;
+  if (!tenant() && !estInvite()) return null;
   for (const [id, m] of Object.entries(MISSIONS)) {
     const o = m.offre; if (!o || o.lieu !== lieuId || m.pnj) continue;
     const s = etat(id); if (s && s.etat !== 'proposee') continue;
@@ -85,14 +130,21 @@ export function sceneOffre(id) {
 
 // ---------- Avancer ----------
 export function accepter(id) {
+  if (estInvite()) { relayer({ op: 'accepter', id }); return; }
   if (!tenant() || !MISSIONS[id]) return;
   const m = MISSIONS[id];
   ecrire(id, { etat: 'active', i: 0, depuis: maintenant(), d: {} });
   noteJournal(`Mission — ${m.titre}. ${genrer(m.resume || '')}`, 'objectif');
   debutEtape(id, true);
 }
-export function plusTard(id) { if (tenant()) ecrire(id, { etat: 'proposee', depuis: maintenant() }); }
-export function refuser(id) { if (tenant()) ecrire(id, { etat: 'refusee', depuis: maintenant() }); }
+export function plusTard(id) { if (estInvite()) relayer({ op: 'plusTard', id }); else if (tenant()) ecrire(id, { etat: 'proposee', depuis: maintenant() }); }
+export function refuser(id) { if (estInvite()) relayer({ op: 'refuser', id }); else if (tenant()) ecrire(id, { etat: 'refusee', depuis: maintenant() }); }
+// La mise en scène d'une étape est faite (chez l'invité : on prévient l'hôte, qui ne la refera pas en arrivant).
+export function marquerPrepare(id) {
+  const s = etat(id); if (!s || !s.d) return;
+  s.d.prepare = true;
+  if (estInvite()) relayer({ op: 'prepare', id, i: s.i });
+}
 
 function debutEtape(id, premiere) {
   const s = etat(id), m = MISSIONS[id], e = m.etapes[s.i];
@@ -105,10 +157,20 @@ function debutEtape(id, premiere) {
   emit('mission:etape', { id, i: s.i });
 }
 // L'étape courante est remplie : ses effets, le bandeau, puis l'étape suivante (ou la fin).
-export function reussirEtape(id) {
-  const s = etat(id), m = MISSIONS[id]; if (!tenant() || !s || s.etat !== 'active') return;
+export function reussirEtape(id, { par = null } = {}) {
+  const s = etat(id), m = MISSIONS[id]; if (!s || s.etat !== 'active') return;
+  if (estInvite()) {      // l'hôte tranche ; on ne relaie qu'une fois par étape
+    s.d = s.d || {};
+    if (s.d.demande === s.i) return;
+    s.d.demande = s.i;
+    relayer({ op: 'reussir', id, i: s.i });
+    return;
+  }
+  if (!tenant()) return;
   const e = m.etapes[s.i];
-  if (e.effets) appliquerEffets(e.effets);
+  const dest = qui(id, e, par);
+  s.par = dest;
+  if (e.effets) livrerA(dest, id, e.effets);
   ecrire(id, s, bandeau('objectif', 'Objectif rempli', e.texte));
   s.i++;
   if (s.i >= m.etapes.length) { reussir(id); return; }
@@ -121,13 +183,16 @@ function reussir(id) {
     for (const e of m.etapes) if (e.type === 'eliminer') { const L = W().lieux[e.lieu] || (W().lieux[e.lieu] = {}); L.calmeJusqua = maintenant() + m.nettoye * 1440; }
   }
   ecrire(id, s, bandeau('reussite', 'Mission accomplie', m.titre));
-  if (m.fin) { if (m.fin.effets) appliquerEffets(m.fin.effets); if (m.fin.texte) raconter(id, 'fin', m.fin.texte); }
+  if (m.fin) livrerA(s.par || 'hote', id, m.fin.effets, 'fin', m.fin.texte);
 }
 export function echouer(id, raison = '') {
-  const s = etat(id), m = MISSIONS[id]; if (!tenant() || !s || s.etat !== 'active') return;
+  const s = etat(id), m = MISSIONS[id]; if (!s || s.etat !== 'active') return;
+  if (estInvite()) { relayer({ op: 'echouer', id, i: s.i, raison }); return; }
+  if (!tenant()) return;
+  const dest = qui(id, m.etapes[s.i], null);
   s.etat = 'echouee'; s.fin = maintenant();
   ecrire(id, s, bandeau('echec', `Mission échouée — ${m.titre}`, raison));
-  if (m.echec) { if (m.echec.effets) appliquerEffets(m.echec.effets); if (m.echec.texte) raconter(id, 'echec', m.echec.texte); }
+  if (m.echec) livrerA(dest, id, m.echec.effets, 'echec', m.echec.texte);
 }
 
 // ---------- Le récit de fin (scène simple, jouée dès que l'écran est libre) ----------
@@ -229,20 +294,31 @@ export function sceneNourrir(id) {
   return sid;
 }
 export function donner(id, itemId) {
-  const s = etat(id), m = MISSIONS[id], e = etapeDe(id); if (!tenant() || !e || e.type !== 'nourrir') return;
+  const s = etat(id), e = etapeDe(id); if ((!tenant() && !estInvite()) || !e || e.type !== 'nourrir') return;
   const p = G.player;
   let k = p.inventaire.findIndex(it => it.id === itemId && it.reste != null); if (k < 0) k = p.inventaire.findIndex(it => it.id === itemId);
   if (k < 0) return;
   const it = p.inventaire[k], pts = pointsAliment(itemId, it.reste ?? 1);
   inv.removeIndex(k, 1, p);
   const rend = (objet(itemId) || {}).rend; if (rend) inv.addItem(rend, 1, {}, p);
+  if (estInvite()) {
+    // l'hôte compte ; on avance déjà chez soi pour que la scène dise juste (l'état de l'hôte suivra)
+    relayer({ op: 'nourrir', id, pts });
+    s.d.mange = (s.d.mange || 0) + pts;
+    if (s.d.mange >= e.points && s.d.okJour !== clock.jour()) { s.d.okJour = clock.jour(); s.d.faits = (s.d.faits || 0) + 1; }
+  } else nourrirPoints(id, pts, 'hote');
+  sceneNourrir(id);   // la scène se met à jour (on revient dessus après le don)
+}
+// Chez qui tient le monde : des points de nourriture donnés au PNJ (par l'hôte lui-même, ou relayés de l'invité).
+function nourrirPoints(id, pts, par) {
+  const s = etat(id), m = MISSIONS[id], e = etapeDe(id); if (!tenant() || !e || e.type !== 'nourrir') return;
   s.d.mange = (s.d.mange || 0) + pts;
+  s.par = par;
   if (s.d.mange >= e.points && s.d.okJour !== clock.jour()) {
     s.d.okJour = clock.jour(); s.d.faits = (s.d.faits || 0) + 1;
-    if (s.d.faits >= e.jours) { reussirEtape(id); return; }
+    if (s.d.faits >= e.jours) { reussirEtape(id, { par }); return; }
     ecrire(id, s, bandeau('objectif', m.titre, `${m.pnj.nom} a mangé à sa faim aujourd’hui (${s.d.faits} jour${s.d.faits > 1 ? 's' : ''} sur ${e.jours}).`));
   } else ecrire(id, s);
-  sceneNourrir(id);   // la scène se met à jour (on revient dessus après le don)
 }
 
 // ---------- Le PNJ d'une mission ----------
@@ -267,7 +343,14 @@ export function parlerPnj(id) {
 }
 // Protéger : le PNJ prend des coups (missions_vue). → pv restants
 export function blesserPnj(id, n) {
-  const s = etat(id), e = etapeDe(id); if (!tenant() || !e || e.type !== 'proteger') return null;
+  const s = etat(id), e = etapeDe(id); if (!e || e.type !== 'proteger') return null;
+  if (estInvite()) {      // l'hôte compte, par paquets (pas un message à chaque pas)
+    s.d.pv = Math.max(0, (s.d.pv ?? 100) - n);
+    s.d._aEnvoyer = (s.d._aEnvoyer || 0) + n;
+    if (s.d._aEnvoyer >= 3 || s.d.pv <= 0) { relayer({ op: 'blesser', id, n: s.d._aEnvoyer }); s.d._aEnvoyer = 0; }
+    return s.d.pv;
+  }
+  if (!tenant()) return null;
   const avant = s.d.pv ?? 100;
   s.d.pv = Math.max(0, avant - n);
   if (s.d.pv <= 0) { echouer(id, `${MISSIONS[id].pnj.nom} a été tuée par les morts.`); return 0; }

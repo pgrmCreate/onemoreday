@@ -58,7 +58,11 @@ export const SCENES_PROLOGUE = {
     choix: [
       {
         label: 'Te relever',
-        effets: { journal: 'Je me suis {réveillé|réveillée} dans une housse mortuaire. {coequipier} m’a ouvert. Nous sommes deux. Ce qui marche dehors ne respire pas.' },
+        effets: {
+          journal: 'Je me suis {réveillé|réveillée} dans une housse mortuaire. {coequipier} m’a ouvert. Nous sommes deux. Ce qui marche dehors ne respire pas.',
+          objets: [['etiquette_orteil', 1], ['bracelet_p4', 1]],
+          document: 'doc_etiquette',
+        },
         suivant: 'coop_reveil_2',
       },
     ],

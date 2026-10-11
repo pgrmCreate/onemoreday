@@ -49,10 +49,25 @@ export function avancer(n) {
   emit('minute', { delta: n });
   if (jour() !== avantJour) emit('jour', { jour: jour() });
 }
+// Un saut de temps raconté (scène « tempsMin ») : chez l'invité, l'heure appartient à l'hôte — on la lui demande
+// (js/net/coop.js relaie 'horloge:sauter'), et l'on avance tout de suite chez soi pour que le récit tombe juste.
+export function sauter(n) {
+  if (!G || n <= 0) return;
+  if (esclave) emit('horloge:sauter', { n });
+  avancer(n);
+}
+// Chez l'invité : l'heure de l'hôte. Si l'on est EN AVANCE (on vient de dormir ou de sauter du temps chez soi, l'hôte
+// suit dans la seconde), on garde son avance au lieu de reculer : sinon les mêmes minutes seraient comptées deux fois
+// (faim, soif, piles…). Une avance qui dure (plus de 20 s) ou démesurée (plus d'un jour) est une vraie divergence : on se recale.
+let enAvanceDepuis = 0;
 export function setMinutesDistantes(m) {
   if (!G) return;
   const d = m - G.world.minutes;
-  if (d > 0) avancer(d); else G.world.minutes = m;
+  if (d > 0) { enAvanceDepuis = 0; avancer(d); return; }
+  if (d === 0) { enAvanceDepuis = 0; return; }
+  const t = performance.now();
+  if (!enAvanceDepuis) enAvanceDepuis = t;
+  if (-d > 1440 || t - enAvanceDepuis > 20000) { G.world.minutes = m; enAvanceDepuis = 0; }
 }
 
 export const minutes = () => (G ? G.world.minutes : 480);

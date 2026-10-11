@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banc d'essai — Les morts vus de dessus</title>
+<style>
+  html, body { margin: 0; background: #111; color: #e6dfcc; font-family: Oswald, system-ui, sans-serif; }
+  canvas { display: block; }
+  #aide { position: fixed; top: 6px; left: 8px; font-size: 12px; background: rgba(0,0,0,.6); padding: 4px 8px; }
+</style>
+</head>
+<body>
+<div id="aide">?ech=3 (zoom) · ?type=errant (un seul type) · ?sol=bitume · ?nuit=1 · ?fige=1 — lignes : types (homme / femme en alternance) ; colonnes : marche, arme son coup, se fend, vacille, à terre, cadavre frais, cadavre</div>
+<canvas id="c"></canvas>
+<script type="module">
+  import { dessinerMort, dessinerCadavre } from '../js/rendu/personnages.js';
+  import { ZOMBIES } from '../js/data/zombies.js';
+  import { TS } from '../js/rendu/outils.js';
+  const q = new URLSearchParams(location.search);
+  const ECH = +(q.get('ech') || (q.get('type') ? 3 : 1.15)), dpr = devicePixelRatio || 1;
+  const cv = document.getElementById('c'), c = cv.getContext('2d');
+  const types = q.get('type') ? q.get('type').split(',') : Object.keys(ZOMBIES);
+  const colonnes = ['marche', 'armer', 'fente', 'vacille', 'terre', 'cadavre_frais', 'cadavre'];
+  const CW = 2.2, CH = 2.2;      // cellule en unités
+  const cases = []; for (const type of types) colonnes.forEach((col, ci) => cases.push({ type, col, ci }));
+  const parLigne = Math.max(1, Math.floor((innerWidth - 4) / (CW * TS * ECH)));
+  const W = parLigne * CW, H = Math.ceil(cases.length / parLigne) * CH;
+  function taille() { cv.width = W * TS * ECH * dpr; cv.height = H * TS * ECH * dpr; cv.style.width = W * TS * ECH + 'px'; cv.style.height = H * TS * ECH + 'px'; }
+  taille();
+  let sol = null;
+  const nomSol = q.get('sol') || 'bitume';
+  fetch('../img/sols/sols.json').then(r => r.json()).then(J => {
+    const im = new Image();
+    im.onload = () => { sol = c.createPattern(im, 'repeat'); const k = ((J[nomSol] || {}).m || 3) / 0.8 * TS / im.width; sol.setTransform(new DOMMatrix().scale(k)); };
+    im.src = `../img/sols/${nomSol}.jpg`;
+  });
+  const t0 = performance.now();
+  function cadre(t) {
+    c.setTransform(dpr * ECH, 0, 0, dpr * ECH, 0, 0);
+    c.fillStyle = sol || '#3a3a36'; c.fillRect(0, 0, W * TS, H * TS);
+    if (q.get('nuit')) { c.fillStyle = 'rgba(0,0,20,.55)'; c.fillRect(0, 0, W * TS, H * TS); }
+    const tt = q.get('fige') ? 1200 : t - t0;
+    cases.forEach(({ type, col, ci }, n) => {
+      const sexe = ci % 2 ? 'f' : 'm';
+      const x = ((n % parLigne) + 0.5) * CW * TS, y = (Math.floor(n / parLigne) + 0.5) * CH * TS;
+      const uid = `${type}_${sexe}_${ci}${q.get('graine') || ''}`;
+      const z = { uid, type, sexe, dir: -Math.PI / 2 + 0.3, vitesse: 0, etat: 'chasse', _phase: tt / 180, x: x / TS, y: y / TS };
+      if (col === 'marche') z.vitesse = type === 'coureur' ? 3 : 1;
+      if (col === 'armer') z.atk = { p: ((tt / 900) % 1) * 0.85 };
+      if (col === 'fente') z.fente = (tt / 400) % 1;
+      if (col === 'vacille') z.vac = true;
+      if (col === 'terre') z.terre = true;
+      if (col.startsWith('cadavre')) { dessinerCadavre(c, { uid, type, sexe, x: x / TS, y: y / TS, dir: z.dir }, tt, col === 'cadavre_frais' ? (tt % 3000) : null, ZOMBIES[type]); return; }
+      dessinerMort(c, x, y, z, tt, ZOMBIES[type]);
+    });
+    requestAnimationFrame(cadre);
+  }
+  requestAnimationFrame(cadre);
+</script>
+</body>
+</html>
