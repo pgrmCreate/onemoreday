@@ -29,7 +29,7 @@ export function formeArme(id) {
   return 'objet';
 }
 const DEUX_MAINS = new Set(['batte', 'hache', 'pelle', 'masse', 'lance', 'fusil']);
-const LONGUEUR = { couteau: 11, machette: 22, batte: 28, hache: 26, pelle: 32, masse: 28, marteau: 15, lance: 40, barre: 26, pistolet: 10, fusil: 30, lampe: 9, objet: 10 };
+const LONGUEUR = { couteau: 11, machette: 22, batte: 28, hache: 26, pelle: 25, masse: 28, marteau: 15, lance: 40, barre: 26, pistolet: 10, fusil: 30, lampe: 9, objet: 10 };
 
 function dessinerArme(c, forme, L) {
   c.lineCap = 'round';
@@ -40,13 +40,14 @@ function dessinerArme(c, forme, L) {
     case 'hache': c.strokeStyle = '#5a3e24'; c.lineWidth = 3; c.beginPath(); c.moveTo(-4, 0); c.lineTo(L, 0); c.stroke(); c.fillStyle = '#9a1e1e'; c.beginPath(); c.moveTo(L - 7, -1.5); c.lineTo(L - 2, -9); c.lineTo(L + 3, -7); c.lineTo(L, -1.5); c.closePath(); c.fill(); c.fillStyle = '#c0c4c8'; c.fillRect(L - 3, -9, 4, 2); break;
     case 'pelle': {
       // manche clair cerné de sombre, poignée en D, lame d'acier claire avec son reflet : lisible sur tous les sols
-      c.strokeStyle = 'rgba(20,14,8,0.85)'; c.lineWidth = 4.4; c.beginPath(); c.moveTo(-5, 0); c.lineTo(L - 8, 0); c.stroke();
-      c.strokeStyle = '#b08a52'; c.lineWidth = 2.8; c.beginPath(); c.moveTo(-5, 0); c.lineTo(L - 8, 0); c.stroke();
-      c.strokeStyle = '#2a2a2c'; c.lineWidth = 1.6; c.beginPath(); c.ellipse(-7, 0, 2.6, 3.4, 0, 0, PI * 2); c.stroke();
-      c.beginPath(); c.moveTo(L - 11, -6.5); c.lineTo(L + 2.5, -7.2); c.quadraticCurveTo(L + 7.5, 0, L + 2.5, 7.2); c.lineTo(L - 11, 6.5); c.quadraticCurveTo(L - 13, 0, L - 11, -6.5); c.closePath();
-      c.fillStyle = '#a9b1b5'; c.fill(); c.strokeStyle = '#1c1e20'; c.lineWidth = 1.1; c.stroke();
-      c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(L - 8, -5, 8, 1.6);
-      c.fillStyle = '#5a5e62'; rr(c, L - 13, -2, 5, 4, 1); c.fill();
+      // (dessinée à l'échelle d'une vraie pelle : lame ≈ 22 cm de large, poignée en D)
+      c.strokeStyle = 'rgba(20,14,8,0.85)'; c.lineWidth = 3.4; c.beginPath(); c.moveTo(-4, 0); c.lineTo(L - 6, 0); c.stroke();
+      c.strokeStyle = '#b08a52'; c.lineWidth = 2.1; c.beginPath(); c.moveTo(-4, 0); c.lineTo(L - 6, 0); c.stroke();
+      c.strokeStyle = '#2a2a2c'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(-5.6, 0, 1.9, 2.5, 0, 0, PI * 2); c.stroke();
+      c.beginPath(); c.moveTo(L - 8, -4.6); c.lineTo(L + 1.8, -5.1); c.quadraticCurveTo(L + 5.4, 0, L + 1.8, 5.1); c.lineTo(L - 8, 4.6); c.quadraticCurveTo(L - 9.4, 0, L - 8, -4.6); c.closePath();
+      c.fillStyle = '#a9b1b5'; c.fill(); c.strokeStyle = '#1c1e20'; c.lineWidth = 0.9; c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(L - 6, -3.6, 6, 1.2);
+      c.fillStyle = '#5a5e62'; rr(c, L - 9.5, -1.5, 3.8, 3, 0.8); c.fill();
       break;
     }
     case 'masse': c.strokeStyle = '#5a3e24'; c.lineWidth = 3; c.beginPath(); c.moveTo(-4, 0); c.lineTo(L, 0); c.stroke(); c.fillStyle = '#4a4e52'; rr(c, L - 3, -6, 8, 12, 1.5); c.fill(); break;
@@ -204,17 +205,18 @@ function sacAvant(c, S, bal, m, ph) {
 // ---------- L'objet sanglé dans le dos (pelle, fusil, planche…) ----------
 // En travers du dos, derrière les épaules (vu de dessus, presque d'une épaule à l'autre) : ses deux bouts dépassent du corps.
 // Par-dessus un sac à dos, il est sanglé sur le sac.
+// L'objet sanglé dans le dos, en bandoulière, EN BIAIS : un bout dépasse au-dessus d'une épaule, l'autre sous la hanche
+// opposée, le milieu est caché sous le sac et la carrure (dessiné AVANT eux). Sans sac : la sangle en travers du torse.
 function objetDos(c, id, sac, bal) {
   const forme = formeArme(id) || 'objet';
   const L = forme === 'objet' ? 22 : Math.min(30, (LONGUEUR[forme] || 12) * 0.9);
-  const xc = sac && (sac.port === 'dos' || sac.port === 'cube' || sac.port === 'hotte') ? -10 - sac.p * 0.6 : -12;
-  c.save(); c.translate(xc, bal * 0.6); c.rotate(-PI / 2 + 0.14); c.translate(-L / 2 + 2, 0);
-  c.save(); c.translate(1.2, 1.4); c.globalAlpha *= 0.35;   // son ombre sur le dos
-  c.strokeStyle = '#000'; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); c.moveTo(-4, 0); c.lineTo(L, 0); c.stroke(); c.restore();
-  if (forme === 'objet') { c.fillStyle = '#7a6448'; rr(c, -3, -2.6, L + 2, 5.2, 1.2); c.fill(); c.strokeStyle = 'rgba(30,20,10,0.7)'; c.lineWidth = 0.8; rr(c, -3, -2.6, L + 2, 5.2, 1.2); c.stroke(); }
-  else dessinerArme(c, forme, L);
+  c.save();
+  c.translate(-4.5, bal * 0.6); c.rotate(-PI / 2 + 0.78);
+  const l = Math.max(L, forme === 'pelle' ? 24 : 28); c.translate(-l / 2 + 1, 0);
+  if (forme === 'objet') { c.fillStyle = '#7a6448'; rr(c, -3, -2.6, l + 2, 5.2, 1.2); c.fill(); c.strokeStyle = 'rgba(30,20,10,0.7)'; c.lineWidth = 0.8; rr(c, -3, -2.6, l + 2, 5.2, 1.2); c.stroke(); }
+  else dessinerArme(c, forme, l);
   c.restore();
-  if (!sac) {   // la sangle en travers du torse
+  if (!sac) {
     c.strokeStyle = 'rgba(28,24,20,0.9)'; c.lineWidth = 1.4; c.lineCap = 'round';
     c.beginPath(); c.moveTo(-6, 10 + bal * 0.6); c.quadraticCurveTo(3, 0, -5, -10 + bal * 0.6); c.stroke();
   }
@@ -410,8 +412,8 @@ export function dessinerHumain(c, x, y, dir, P, A) {
   }
   // sac (derrière le torse : dos, hanche, valise), objet sanglé dans le dos
   const sac = sacDe(P.sac);
-  if (sac) sacArriere(c, sac, bal, m, ph);
   if (P.dos) objetDos(c, P.dos, sac, bal);
+  if (sac) sacArriere(c, sac, bal, m, ph);
   // bras, arme, torse, mains : la racine des bras passe sous la carrure ; l'arme est tenue (la main par-dessus le manche)
   const tx = course ? 2 : accroupi ? 1 : 0;
   const pose = poseBras(A);
@@ -441,9 +443,13 @@ export function dessinerHumain(c, x, y, dir, P, A) {
   if (A.flash > 0.02) { c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(255,60,60,${0.5 * A.flash})`; ellipse(c, 0, 0, 12, 15); c.fill(); }
   c.restore();
 }
+// L'arme en main : un peu plus grande que nature et cernée de noir, pour qu'elle se lise sur tous les sols.
 function dessinerTenue(c, pose, L) {
   if (!pose.forme) return;
-  c.save(); c.translate(pose.dx, pose.dy); c.rotate(pose.angle); dessinerArme(c, pose.forme, L); c.restore();
+  c.save(); c.translate(pose.dx, pose.dy); c.rotate(pose.angle); c.scale(1.22, 1.22);
+  c.shadowColor = 'rgba(0,0,0,0.9)'; c.shadowBlur = 2.2; c.shadowOffsetX = 0; c.shadowOffsetY = 0;
+  dessinerArme(c, pose.forme, L); dessinerArme(c, pose.forme, L);
+  c.restore();
 }
 // Pose des bras selon l'arme, le geste en cours (coup rapide / lourd / poussée / tir), la charge, l'empoignade.
 function poseBras(A) {
