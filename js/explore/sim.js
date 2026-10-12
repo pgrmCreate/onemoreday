@@ -1211,6 +1211,7 @@ export function creerSimLieu(opts) {
     if (p.bruitPas != null) j.bruitPas = p.bruitPas;
     if (p.sac !== undefined) j.sac = p.sac;
     if (p.dos !== undefined) j.dos = p.dos;
+    if (p.style) j.style = p.style;
     if (p.nom) j.nom = p.nom;
     if (p.aTerre != null) j.aTerre = !!p.aTerre;
     if (p.agonie != null) { j.agonie = !!p.agonie; j.aTerre = j.agonie || !!p.aTerre; if (j.agonie) { j.empoigne = null; for (const z of zombies) if (z.saisit === j.id) z.saisit = null; } }
@@ -1499,7 +1500,7 @@ export function creerSimLieu(opts) {
         aTerre: !!j.aTerre, agonie: !!j.agonie, pv: j.pv ?? null, horsJeu: !!j.horsJeu,
         geste: j.geste && T - j.geste.t < j.geste.duree ? { type: j.geste.type, p: (T - j.geste.t) / j.geste.duree, combo: j.geste.combo || 0 } : null,
         empoigne: j.empoigne ? { uid: j.empoigne.uid, p: (T - j.empoigne.debut) / j.empoigne.duree, taps: j.empoigne.taps, requis: j.empoigne.requis, reste: Math.max(0, j.empoigne.fin - T) } : null,
-        arme: j.stats && j.stats.arme ? j.stats.arme.id : null, sac: j.sac === undefined ? undefined : j.sac, dos: j.dos || null })),
+        arme: j.stats && j.stats.arme ? j.stats.arme.id : null, sac: j.sac === undefined ? undefined : j.sac, dos: j.dos || null, style: j.style || null })),
       t: T, vm,
       joues: joues.slice(),
     };

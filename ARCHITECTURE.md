@@ -31,7 +31,11 @@ js/rendu/               ★ LE MOTEUR DE RENDU (canvas 2D)
   sols.js                 sol : matières, transitions irrégulières, variations, occlusion au pied des murs, décals
   murs.js                 murs : dessus texturé, arêtes, face avant (hauteur), murets, grilles, haies, fenêtres, escaliers
   objets.js               ~70 meubles et objets dessinés (véhicules, tombes, tentes…) + houppiers en sprites
-  personnages.js          squelettes animés des vivants (armes, gestes, enchaînements, sacs, objet du dos)
+  personnages.js          les vivants (joueur, coéquipier habillé comme il l'est, PNJ) : torse selon le vêtement du dessus,
+                          tête et coiffure, mains, chaussures en sprites ; bras à coude, armes, gestes, sacs, objet du dos
+                          (banc d'essai dev/vivants.html)
+  corps.js                outils partagés des corps : cache de sprites (pixels, budget par image), ombre, volume, épaules,
+                          bras à coude qui se raccourcit quand il pend
   morts.js                les morts : apparence tirée de l'uid (vêtement, peau, coiffure, sang, plaies), torse / tête / mains /
                           pieds / corps couché peints UNE fois en sprites (cache mesuré en pixels, peu par image), membres
                           animés à chaque image (bras à coude, mains à doigts) ; couchés : à terre, fait le mort, cadavre

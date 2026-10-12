@@ -11,7 +11,7 @@
 </style>
 </head>
 <body>
-<div id="aide">?ech=3 (zoom) · ?type=errant (un seul type) · ?sol=bitume · ?nuit=1 · ?fige=1 — lignes : types (homme / femme en alternance) ; colonnes : marche, arme son coup, se fend, vacille, à terre, cadavre frais, cadavre</div>
+<div id="aide">?ech=3 (zoom) · ?type=errant (un seul type) · ?sol=bitume · ?nuit=1 · ?fige=1 — lignes : types (homme / femme en alternance) ; colonnes : immobile, erre, dort, marche, arme son coup, se fend, vacille, à terre, cadavre frais, cadavre</div>
 <canvas id="c"></canvas>
 <script type="module">
   import { dessinerMort, dessinerCadavre } from '../js/rendu/personnages.js';
@@ -21,10 +21,10 @@
   const ECH = +(q.get('ech') || (q.get('type') ? 3 : 1.15)), dpr = devicePixelRatio || 1;
   const cv = document.getElementById('c'), c = cv.getContext('2d');
   const types = q.get('type') ? q.get('type').split(',') : Object.keys(ZOMBIES);
-  const colonnes = ['marche', 'armer', 'fente', 'vacille', 'terre', 'cadavre_frais', 'cadavre'];
+  const colonnes = ['immobile', 'erre', 'dort', 'marche', 'armer', 'fente', 'vacille', 'terre', 'cadavre_frais', 'cadavre'];
   const CW = 2.2, CH = 2.2;      // cellule en unités
   const cases = []; for (const type of types) colonnes.forEach((col, ci) => cases.push({ type, col, ci }));
-  const parLigne = Math.max(1, Math.floor((innerWidth - 4) / (CW * TS * ECH)));
+  const parLigne = +(q.get('col') || 0) || Math.max(1, Math.floor(((innerWidth || 800) - 4) / (CW * TS * ECH)));
   const W = parLigne * CW, H = Math.ceil(cases.length / parLigne) * CH;
   function taille() { cv.width = W * TS * ECH * dpr; cv.height = H * TS * ECH * dpr; cv.style.width = W * TS * ECH + 'px'; cv.style.height = H * TS * ECH + 'px'; }
   taille();
@@ -47,6 +47,8 @@
       const uid = `${type}_${sexe}_${ci}${q.get('graine') || ''}`;
       const z = { uid, type, sexe, dir: -Math.PI / 2 + 0.3, vitesse: 0, etat: 'chasse', _phase: tt / 180, x: x / TS, y: y / TS };
       if (col === 'marche') z.vitesse = type === 'coureur' ? 3 : 1;
+      if (col === 'immobile' || col === 'dort') z.etat = col;
+      if (col === 'erre') { z.etat = 'erre'; z.vitesse = 0.5; }
       if (col === 'armer') z.atk = { p: ((tt / 900) % 1) * 0.85 };
       if (col === 'fente') z.fente = (tt / 400) % 1;
       if (col === 'vacille') z.vac = true;

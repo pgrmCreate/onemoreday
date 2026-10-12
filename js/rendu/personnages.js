@@ -1,9 +1,11 @@
 // ============ Personnages vus de dessus, animés : vivants (joueur, coéquipier, PNJ) et morts ============
-// Squelette procédural : ombre, jambes (cycle de marche), torse, sac, bras (pose selon l'arme et le geste), tête.
+// Vivants : torse (vêtement du dessus et ses détails), tête (coiffure mèche à mèche, capuche), mains et chaussures peints
+// une fois en sprites (./corps.js) ; à chaque image : ombre, jambes (cycle de marche), sac, bras à coude, arme, lampe.
 // Tout est dessiné dans le repère du personnage (il regarde vers +x), à l'échelle du monde (1 case = TS px).
 //   dessinerHumain(c, x, y, dir, P, A)   P = apparence, A = animation (voir plus bas)
 //   dessinerMort, dessinerCadavre        les morts : voir ./morts.js (réexportés ici)
-import { TS, rr, cercle, ellipse, teinte, hash, graine, rng, clamp } from './outils.js';
+import { TS, rr, cercle, ellipse, teinte, hash, graine, rng, clamp, hex as hexRgb } from './outils.js';
+import { mul as mulC, css as rgbC, mix as mixC, entre, TAU, volume, contourTorse, coude, sprite, dessinerOmbre } from './corps.js';
 
 const PI = Math.PI;
 const ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -56,14 +58,6 @@ function dessinerArme(c, forme, L) {
     case 'lampe': c.fillStyle = '#2a2a2c'; rr(c, -2, -2.4, L, 4.8, 1.5); c.fill(); c.fillStyle = '#f2e6b8'; c.fillRect(L - 2, -2, 2, 4); break;
     default: c.fillStyle = '#6a5a4a'; rr(c, -2, -2, L, 4, 1.5); c.fill();
   }
-}
-
-// ---------- Bras : segment épaule → main ----------
-function bras(c, sx, sy, hx, hy, manche, peau, ep = 5) {
-  const mx = (sx + hx) / 2 - (hy - sy) * 0.12, my = (sy + hy) / 2 + (hx - sx) * 0.12; // léger coude
-  c.strokeStyle = manche; c.lineWidth = ep; c.lineCap = 'round'; c.lineJoin = 'round';
-  c.beginPath(); c.moveTo(sx, sy); c.quadraticCurveTo(mx, my, hx, hy); c.stroke();
-  c.fillStyle = peau; cercle(c, hx, hy, ep * 0.55); c.fill();
 }
 
 // ---------- Sacs : chacun se voit comme il se porte — TOUJOURS dans le dos ----------
@@ -228,72 +222,223 @@ function objetDos(c, id, sac, bal) {
 
 // ---------- Vivants ----------
 // P = { manteau, col (couleur de la couche de dessous), bras (manches courtes : couleur de peau), pantalon, chaussures, peau,
-//       cheveux, coiffure: 'court'|'long'|'chauve'|'capuche', sac: id du sac porté (SACS) | true (sac à dos) | false,
-//       dos: id de l'objet sanglé dans le dos, taille, contour }
+//       cheveux, coiffure: 'court'|'long'|'chauve'|'capuche', vet (id du vêtement du dessus : sa forme et ses détails),
+//       carrure, sac: id du sac porté (SACS) | true (sac à dos) | false, dos: id de l'objet sanglé dans le dos, taille, contour }
 // A = { t, marche (0..1), phase (rad), allure, geste: { type, p, combo }, charge (0..1), vise, empoigne, arme (id),
-//       lampe (bool), mainG (id), flash (0..1), fantome (bool), aTerre (bool), agonie (bool) }
+//       lampe (bool), mainG (id), flash (0..1), fantome (bool), aTerre (bool), agonie (bool), frontale (bool) }
+// Comme les morts (./morts.js) : le torse, la tête, les mains et les chaussures sont peints UNE fois (sprites, ./corps.js)
+// d'après l'apparence ; à chaque image : l'ombre, les jambes, les bras à coude, l'arme, la lampe, le balancement.
+const hexA = (h, d = [90, 90, 80]) => { try { return h ? hexRgb(h) : d; } catch (e) { return d; } };
+// L'apparence d'un vivant, une fois par combinaison de vêtements (P change d'objet quand on se change).
+const apparencesV = new Map();
+function apparenceVivant(P) {
+  const cle = `${P.manteau}|${P.col || ''}|${P.bras || ''}|${P.pantalon || ''}|${P.chaussures || ''}|${P.peau || ''}|${P.cheveux || ''}|${P.coiffure || ''}|${P.vet || ''}|${P.carrure || 1}`;
+  let a = apparencesV.get(cle);
+  if (a) return a;
+  const vet = P.vet || '';
+  const famille = /debardeur/.test(vet) ? 'debardeur' : /chemise/.test(vet) ? 'chemise' : /tshirt|maillot_thermique/.test(vet) ? 'tshirt'
+    : /sweat|capuche/.test(vet) ? 'sweat' : /pull|polaire|gilet_laine/.test(vet) ? 'pull' : /doudoune/.test(vet) ? 'doudoune'
+    : /gilet_tactique/.test(vet) ? 'tactique' : /pompier/.test(vet) ? 'pompier' : /blouse/.test(vet) ? 'blouse' : /poncho/.test(vet) ? 'poncho'
+    : /cuir|blouson|moto/.test(vet) ? 'cuir' : vet ? 'veste' : 'veste';
+  a = {
+    cle, seed: graine(cle), famille,
+    vet: hexA(P.manteau, [74, 74, 58]), col: P.col ? hexA(P.col) : null, peau: hexA(P.peau, [184, 147, 120]),
+    brasNus: !!P.bras, pantalon: hexA(P.pantalon, [42, 44, 48]), chaussures: hexA(P.chaussures, [24, 20, 15]),
+    cheveux: hexA(P.cheveux, [36, 26, 18]), coiffure: P.coiffure || 'court', carrure: P.carrure || 1,
+  };
+  a.peauSombre = mulC(a.peau, 0.7);
+  a.K = { manche: rgbC(mulC(a.vet, 0.9)), peau: rgbC(a.peau), jambe: rgbC(a.pantalon), poignet: rgbC(mulC(a.vet, 0.62)) };
+  apparencesV.set(cle, a);
+  if (apparencesV.size > 120) apparencesV.delete(apparencesV.keys().next().value);
+  return a;
+}
+// Le torse d'un vivant : épaules, vêtement du dessus et ses détails, la couche de dessous au col, plis, volume.
+function peindreTorseV(c, a) {
+  const r = rng(a.seed ^ 0x3131), car = a.carrure, SW = 12.3 * car, V = a.vet, F = a.famille;
+  const large = F === 'doudoune' ? 1.06 : F === 'poncho' ? 1.12 : 1;
+  const forme = () => { c.save(); c.scale(1, large); contourTorse(c, car, F === 'doudoune' ? 1.2 : 0); c.restore(); };
+  c.fillStyle = rgbC(F === 'debardeur' ? a.peau : V); forme(); c.fill();
+  c.save(); forme(); c.clip();
+  if (F === 'debardeur') { c.fillStyle = rgbC(V); ellipse(c, -0.4, 0, 8.4 * car, SW * 0.6); c.fill(); }
+  if (F === 'pull') { c.strokeStyle = rgbC(mulC(V, 0.8), 0.45); c.lineWidth = 0.45; c.beginPath(); for (let x = -7; x < 7; x += 1.15) { c.moveTo(x, -SW); c.lineTo(x + 0.4, SW); } c.stroke(); }
+  if (F === 'doudoune') for (let x = -6.5 * car; x < 7 * car; x += 3 * car) {
+    const g = c.createLinearGradient(x, 0, x + 3 * car, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0.28)'); g.addColorStop(0.45, 'rgba(255,255,255,0.14)'); g.addColorStop(1, 'rgba(0,0,0,0.28)');
+    c.fillStyle = g; c.fillRect(x, -SW - 2, 3 * car, 2 * SW + 4);
+  }
+  if (F === 'tactique') {   // gilet tactique : poches sanglées sur la poitrine, bretelles larges
+    c.fillStyle = rgbC(mulC(V, 0.78)); for (const y of [-6, -2.2, 2.2, 6]) { rr(c, 2.2, y - 1.6, 3.6, 3.2, 0.6); c.fill(); }
+    c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.4; c.beginPath(); for (let x = -6; x < 2; x += 1.6) { c.moveTo(x, -SW); c.lineTo(x, SW); } c.stroke();
+  }
+  if (F === 'pompier') { c.fillStyle = 'rgba(214,200,60,0.9)'; for (const s of [-1, 1]) c.fillRect(-7 * car, s * 7.6 * car - 0.9, 13 * car, 1.8); c.fillStyle = 'rgba(220,220,214,0.6)'; for (const s of [-1, 1]) c.fillRect(-7 * car, s * 7.6 * car - 0.3, 13 * car, 0.6); }
+  if (F === 'blouse') { c.strokeStyle = 'rgba(0,0,0,0.2)'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(6, 0); c.lineTo(-7, 0); c.stroke(); }
+  if (F === 'poncho') { c.strokeStyle = 'rgba(255,255,255,0.12)'; c.lineWidth = 0.8; c.beginPath(); for (let k = 0; k < 6; k++) { const y = entre(r, -SW, SW); c.moveTo(-7, y); c.lineTo(6, y * 0.9); } c.stroke(); }
+  if (F === 'cuir') { c.fillStyle = 'rgba(255,255,255,0.08)'; ellipse(c, -1.6, -6.4 * car, 3.2, 2.2); c.fill(); ellipse(c, -1.6, 6.4 * car, 3.2, 2.2); c.fill(); }
+  // plis : du col vers les épaules (ombre, lumière)
+  for (const [coul, n, lw] of [['rgba(0,0,0,0.2)', 6, 0.7], ['rgba(255,245,230,0.11)', 4, 0.55]]) {
+    c.strokeStyle = coul; c.lineWidth = lw; c.beginPath();
+    for (let k = 0; k < n; k++) { const s = r() < 0.5 ? -1 : 1, y0 = s * entre(r, 2.5, 5), y1 = s * entre(r, 7, SW - 1); c.moveTo(entre(r, -3, 2), y0); c.quadraticCurveTo(entre(r, -5, 4), (y0 + y1) / 2, entre(r, -4, 3), y1); }
+    c.stroke();
+  }
+  c.strokeStyle = 'rgba(0,0,0,0.2)'; c.lineWidth = 0.55;   // coutures des épaules, creux du dos
+  c.beginPath(); c.moveTo(-0.8, -4); c.quadraticCurveTo(-1.2, -SW * 0.7, -0.6, -SW); c.moveTo(-0.8, 4); c.quadraticCurveTo(-1.2, SW * 0.7, -0.6, SW); c.stroke();
+  c.lineWidth = 1.3; c.strokeStyle = 'rgba(0,0,0,0.14)'; c.beginPath(); c.moveTo(-7 * car, 0); c.lineTo(-3.4 * car, 0); c.stroke();
+  // un peu d'usure : trois semaines dans les mêmes vêtements
+  { const l = []; for (let k = 0; k < 26; k++) l.push([entre(r, -7, 6), entre(r, -SW, SW), entre(r, 0.2, 0.7)]); c.fillStyle = 'rgba(60,46,30,0.18)'; c.beginPath(); for (const [x, y, rr] of l) { c.moveTo(x + rr, y); c.arc(x, y, rr, 0, TAU); } c.fill(); }
+  c.restore();
+  volume(c, forme, -0.6, 0, SW * 1.02, 0.16, 0.5);
+  // le col : la couche de dessous s'y voit (t-shirt sous la veste…), chaque vêtement le sien
+  c.save(); forme(); c.clip();
+  const sous = a.col || mulC(V, 0.62);
+  if (F === 'chemise') {
+    c.fillStyle = rgbC(mulC(V, 1.1)); for (const s of [-1, 1]) { c.beginPath(); c.moveTo(-3.2, s * 4.4); c.lineTo(4.6, s * 3.2); c.lineTo(3, s * 0.6); c.lineTo(-3.6, s * 2.4); c.closePath(); c.fill(); }
+  } else if (F === 'sweat' || F === 'poncho') {
+    c.fillStyle = rgbC(mulC(V, 0.9)); ellipse(c, -6.2 * car, 0, 4.2 * car, 5.4 * car); c.fill();       // la capuche dans le dos
+    c.fillStyle = 'rgba(0,0,0,0.42)'; ellipse(c, -5.6 * car, 0, 2.4 * car, 3.6 * car); c.fill();
+    c.strokeStyle = 'rgba(230,226,214,0.75)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(4.8, -1.6); c.lineTo(6.6, -1.9); c.moveTo(4.8, 1.6); c.lineTo(6.6, 1.9); c.stroke();
+  } else if (F === 'tshirt' || F === 'debardeur' || F === 'pull' || F === 'blouse') {
+    c.strokeStyle = rgbC(mulC(V, 0.72)); c.lineWidth = 1.1; c.beginPath(); c.ellipse(0.8, 0, 4.4, 5.2, 0, 0, TAU); c.stroke();
+    if (a.col) { c.fillStyle = rgbC(sous); ellipse(c, 2.4, 0, 2.6, 4); c.fill(); }
+  } else {
+    // vestes, blousons, doudounes : col montant, fermeture éclair, le dessous au col
+    if (a.col) { c.fillStyle = rgbC(sous); ellipse(c, 2.6, 0, 3, 4.4); c.fill(); }
+    c.strokeStyle = rgbC(mulC(V, 0.62)); c.lineWidth = 2.2; c.beginPath(); c.ellipse(0.6, 0, 4.7, 6.1, 0, PI * 0.3, PI * 1.7); c.stroke();
+    c.strokeStyle = 'rgba(205,200,190,0.55)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(5.2, 0); c.lineTo(6.6 * car, 0); c.stroke();
+  }
+  c.restore();
+  c.strokeStyle = 'rgba(8,6,4,0.6)'; c.lineWidth = 0.75; forme(); c.stroke();
+}
+// La tête d'un vivant : peau chaude, oreilles, coiffure mèche à mèche (ou capuche relevée), nez au bord avant.
+function peindreTeteV(c, a) {
+  const r = rng(a.seed ^ 0x7171), P = a.peau, H = a.cheveux, coif = a.coiffure;
+  for (const s of [-1, 1]) { c.fillStyle = rgbC(mulC(P, 0.9)); ellipse(c, 0.8, s * 5.1, 1.7, 1.15); c.fill(); c.fillStyle = rgbC(mulC(P, 0.66)); ellipse(c, 0.7, s * 5.25, 0.8, 0.5); c.fill(); }
+  c.fillStyle = rgbC(P); c.beginPath(); c.ellipse(0, 0, 6.2, 5.2, 0, 0, TAU); c.fill();
+  // le nez, l'arcade
+  c.fillStyle = rgbC(mulC(P, 0.95)); c.beginPath(); c.moveTo(5.4, -1); c.quadraticCurveTo(7.4, -0.5, 7.4, 0); c.quadraticCurveTo(7.4, 0.5, 5.4, 1); c.closePath(); c.fill();
+  c.fillStyle = rgbC(mulC(P, 0.72), 0.7); ellipse(c, 4.8, -2.2, 1, 0.75); c.fill(); ellipse(c, 4.8, 2.2, 1, 0.75); c.fill();
+  if (coif === 'capuche') {
+    // capuche relevée : le tissu couvre le crâne, l'ouverture laisse voir le front et le nez
+    c.fillStyle = rgbC(mulC(a.vet, 0.88)); c.beginPath(); c.ellipse(-0.8, 0, 7.4, 6.3, 0, PI * 0.3, PI * 1.7); c.quadraticCurveTo(5.6, 0, 5.4, 5.9); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(-6.5, 0); c.lineTo(3, 0); c.stroke();
+    c.strokeStyle = rgbC(mulC(a.vet, 0.6)); c.lineWidth = 1; c.beginPath(); c.ellipse(-0.8, 0, 7.4, 6.3, 0, PI * 0.3, PI * 1.7); c.stroke();
+  } else if (coif !== 'chauve') {
+    const front = 3.4;
+    const masse = () => { c.beginPath(); c.moveTo(front, -4.4); c.bezierCurveTo(front + 1.6, -1.6, front + 1.6, 1.6, front, 4.4); c.ellipse(-0.2, 0, 6.45, 5.55, 0, PI * 0.36, PI * 1.64); c.closePath(); };
+    if (coif === 'long') {
+      c.fillStyle = rgbC(mulC(H, 0.85)); c.beginPath(); c.moveTo(-1, -5.6); c.bezierCurveTo(-7, -7.4, -12, -5, -12.3, 0); c.bezierCurveTo(-12, 5, -7, 7.4, -1, 5.6); c.closePath(); c.fill();
+      c.strokeStyle = rgbC(mulC(H, 0.6), 0.7); c.lineWidth = 0.35; c.beginPath();
+      for (let k = 0; k < 26; k++) { const y = entre(r, -5.4, 5.4); c.moveTo(-2, y * 0.8); c.quadraticCurveTo(-7, y * 1.2 + entre(r, -1, 1), entre(r, -12, -9.5), y * entre(r, 0.85, 1.12)); }
+      c.stroke();
+    }
+    c.fillStyle = rgbC(H); masse(); c.fill();
+    c.save(); masse(); c.clip();
+    for (const [coul, n, lw] of [[rgbC(mulC(H, 0.62), 0.55), 55, 0.34], [rgbC(mixC(H, [230, 220, 200], 0.28), 0.4), 40, 0.27]]) {
+      c.strokeStyle = coul; c.lineWidth = lw; c.beginPath();
+      for (let k = 0; k < n; k++) { const t = entre(r, -PI, PI), l = entre(r, 3, 7); c.moveTo(-1.6 + Math.cos(t) * 0.6, Math.sin(t) * 0.6); c.quadraticCurveTo(-1.6 + Math.cos(t + 0.3) * l * 0.6, Math.sin(t + 0.3) * l * 0.6, -1.6 + Math.cos(t + 0.15) * l, Math.sin(t + 0.15) * l); }
+      c.stroke();
+    }
+    c.restore();
+  }
+  volume(c, () => { c.beginPath(); c.ellipse(0, 0, 6.6, 5.6, 0, 0, TAU); }, -0.8, -0.2, 7, 0.2, 0.45);
+  c.strokeStyle = 'rgba(8,6,4,0.5)'; c.lineWidth = 0.6; c.beginPath(); c.ellipse(0, 0, 6.2, 5.2, 0, 0, TAU); c.stroke();
+}
+// La main d'un vivant : un poing (elle tient quelque chose) ou une main ouverte, doigts serrés.
+function peindreMainV(c, a, s, ouverte) {
+  const P = a.peau;
+  c.fillStyle = 'rgba(8,6,4,0.55)'; ellipse(c, 0.6, 0, ouverte ? 3 : 2.5, 2.25); c.fill();
+  c.fillStyle = rgbC(mulC(P, 0.95)); ellipse(c, 0.5, 0, ouverte ? 2.55 : 2.05, 1.85); c.fill();
+  if (ouverte) { c.strokeStyle = rgbC(mulC(P, 0.7)); c.lineWidth = 0.35; c.beginPath(); for (const y of [-0.9, 0, 0.9]) { c.moveTo(1.4, y); c.lineTo(3, y); } c.stroke(); }
+  else { c.fillStyle = rgbC(mulC(P, 0.78)); for (const y of [-1.1, -0.35, 0.4, 1.15]) { cercle(c, 2.1, y, 0.42); c.fill(); } }   // les jointures
+  c.fillStyle = rgbC(mulC(P, 0.9)); ellipse(c, 0.2, -s * 1.6, 1.1, 0.7, -s * 0.5); c.fill();                                  // le pouce
+  c.fillStyle = 'rgba(255,246,230,0.16)'; ellipse(c, 0.1, -0.5, 1.1, 0.7); c.fill();
+}
+function peindreChaussureV(c, a) {
+  const C = a.chaussures;
+  c.fillStyle = 'rgba(8,6,4,0.6)'; ellipse(c, 0.8, 0, 4.9, 2.75); c.fill();
+  c.fillStyle = rgbC(C); ellipse(c, 0.6, 0, 4.4, 2.3); c.fill();
+  c.fillStyle = 'rgba(255,246,230,0.14)'; ellipse(c, 0.2, -0.4, 2.8, 1); c.fill();
+  c.strokeStyle = rgbC(mixC(C, [200, 196, 186], 0.45), 0.55); c.lineWidth = 0.35; c.beginPath(); for (let q = 0; q < 3; q++) { c.moveTo(0.4 + q * 0.9, -0.7); c.lineTo(0.4 + q * 0.9, 0.7); } c.stroke();
+}
+const posee = (c, s) => c.drawImage(s.cv, -s.hx, -s.hy, 2 * s.hx, 2 * s.hy);
+// Un bras de vivant : épaule → coude → main (le coude calculé, raccourci quand le bras pend), la manche, la main.
+function brasV(c, a, sx, sy, hx, hy, s) {
+  const car = a.carrure, ep = 5.2 * car;
+  let ex, ey;
+  [ex, ey, hx, hy] = coude(sx, sy, hx, hy, 9 * car, 8.6 * car, s, 0.8);
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  c.strokeStyle = 'rgba(8,6,4,0.55)'; c.lineWidth = ep + 1.3; c.beginPath(); c.moveTo(sx, sy); c.lineTo(ex, ey); c.lineTo(hx, hy); c.stroke();
+  c.strokeStyle = a.brasNus ? a.K.peau : a.K.manche; c.lineWidth = ep * 0.86; c.beginPath(); c.moveTo(ex, ey); c.lineTo(hx, hy); c.stroke();
+  // manches courtes : la manche s'arrête avant le coude ; longues : le poignet de la manche
+  const mx = a.brasNus ? sx + (ex - sx) * 0.6 : ex, my = a.brasNus ? sy + (ey - sy) * 0.6 : ey;
+  if (a.brasNus) { c.strokeStyle = a.K.peau; c.lineWidth = ep * 0.9; c.beginPath(); c.moveTo(mx, my); c.lineTo(ex, ey); c.stroke(); }
+  c.strokeStyle = a.K.manche; c.lineWidth = ep; c.beginPath(); c.moveTo(sx, sy); c.lineTo(mx, my); c.stroke();
+  if (!a.brasNus) { const px = hx - (hx - ex) * 0.2, py = hy - (hy - ey) * 0.2; c.strokeStyle = a.K.poignet; c.lineWidth = ep * 0.9; c.beginPath(); c.moveTo(px, py); c.lineTo(px + (hx - ex) * 0.04, py + (hy - ey) * 0.04); c.stroke(); }
+  return Math.atan2(hy - ey, hx - ex);
+}
+function mainV(c, a, x, y, ang, s, ouverte) {
+  const M = sprite(`vm:${a.seed}:${s}:${ouverte ? 1 : 0}`, 4.5, 3.6, (cc) => peindreMainV(cc, a, s, ouverte));
+  c.save(); c.translate(x, y); c.rotate(ang); c.scale(a.carrure, a.carrure);
+  if (M) posee(c, M); else { c.fillStyle = a.K.peau; ellipse(c, 0.5, 0, 2.2, 1.9); c.fill(); }
+  c.restore();
+}
+
 export function dessinerHumain(c, x, y, dir, P, A) {
   const s = (P.taille || 1);
+  const a = apparenceVivant(P), car = a.carrure;
+  if (!A.fantome && !(A.agonie || A.aTerre)) dessinerOmbre(c, x, y, dir, 15 * car * s, 12 * car * s, s);
   c.save();
   c.translate(x, y); c.rotate(dir); c.scale(s, s);
   if (A.fantome) c.globalAlpha = 0.55;
-  if (A.agonie || A.aTerre) { couche(c, P, A); c.restore(); return; }
+  if (A.agonie || A.aTerre) { couche(c, P, A, a); c.restore(); return; }
   const m = A.marche || 0, ph = A.phase || 0;
   const pas = Math.sin(ph) * 7 * m, bal = Math.sin(ph * 2) * 0.8 * m;
   const accroupi = A.allure === 'accroupi', course = A.allure === 'course';
-  // ombre
-  if (!A.fantome) { c.fillStyle = 'rgba(0,0,0,0.4)'; ellipse(c, 2.5, 3.5, 14, 12); c.fill(); }
   // contour (coéquipier) : un halo net, visible même dans le noir
   if (P.contour) {
     c.strokeStyle = P.contour; c.lineWidth = 3;
-    ellipse(c, -1, 0, 10.5, 15.5); c.stroke(); cercle(c, 2, 0, 9); c.stroke();
+    contourTorse(c, car * 1.08, 0); c.stroke(); cercle(c, 2, 0, 8.4); c.stroke();
     if (A.fantome) { c.restore(); return; }
   }
-  // jambes
-  const jb = P.pantalon || '#2a2a2e', ch = P.chaussures || '#18140f';
-  c.strokeStyle = jb; c.lineWidth = 5.5; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(-1, -4.5); c.lineTo(pas * 0.9 + (accroupi ? 4 : 0), -5.5); c.moveTo(-1, 4.5); c.lineTo(-pas * 0.9 + (accroupi ? 4 : 0), 5.5); c.stroke();
-  c.fillStyle = ch; ellipse(c, pas + 1.5 + (accroupi ? 4 : 0), -5.5, 4.6, 3); c.fill(); ellipse(c, -pas + 1.5 + (accroupi ? 4 : 0), 5.5, 4.6, 3); c.fill();
-  // sac (derrière le torse : dos, hanche, valise)
+  // jambes et chaussures (accroupi : genoux devant, pieds sous soi)
+  c.lineCap = 'round';
+  const Ch = sprite(`vp:${a.seed}`, 6, 3.6, (cc) => peindreChaussureV(cc, a));
+  for (const sd of [-1, 1]) {
+    const fx = (sd < 0 ? pas : -pas) * 0.95 + 1.2 + (accroupi ? 4 : 0), fy = sd * 5.4 * car;
+    c.strokeStyle = 'rgba(8,6,4,0.5)'; c.lineWidth = 6.4 * car; c.beginPath(); c.moveTo(-1.5, sd * 4.3 * car); c.lineTo(fx - 1, fy); c.stroke();
+    c.strokeStyle = a.K.jambe; c.lineWidth = 5.4 * car; c.stroke();
+    c.save(); c.translate(fx, fy); if (Ch) posee(c, Ch); else { c.fillStyle = rgbC(a.chaussures); ellipse(c, 0.6, 0, 4.4, 2.3); c.fill(); } c.restore();
+  }
+  // sac (derrière le torse : dos, hanche, valise), objet sanglé dans le dos
   const sac = sacDe(P.sac);
   if (sac) sacArriere(c, sac, bal, m, ph);
   if (P.dos) objetDos(c, P.dos, sac, bal);
-  // torse (manteau) avec ombrage
+  // bras, arme, torse, mains : la racine des bras passe sous la carrure ; l'arme est tenue (la main par-dessus le manche)
   const tx = course ? 2 : accroupi ? 1 : 0;
-  const g = c.createLinearGradient(-6, -12, 6, 12);
-  g.addColorStop(0, teinte(P.manteau, 1.28)); g.addColorStop(1, teinte(P.manteau, 0.72));
-  c.fillStyle = g; ellipse(c, -1 + tx, bal, 9.5, accroupi ? 13 : 14.5); c.fill();
-  c.strokeStyle = 'rgba(0,0,0,0.55)'; c.lineWidth = 1; c.stroke();
-  c.fillStyle = P.col ? teinte(P.col, 0.9) : teinte(P.manteau, 0.6); ellipse(c, 2.5 + tx, bal, 3.5, 6.5); c.fill(); // col (la couche de dessous s'y voit)
-  if (sac) sacAvant(c, sac, bal, m, ph);
-  // bras
-  const peau = P.peau || '#b89378', manche = P.bras || teinte(P.manteau, 0.92);   // manches courtes : bras nus
   const pose = poseBras(A);
-  // arme dans la main droite (côté +y)
   const Ld = LONGUEUR[pose.forme] || 10;
+  const SWb = 12.3 * car - 1.8;
   if (pose.armeAvant === false) dessinerTenue(c, pose, Ld);
-  bras(c, 1 + tx, -12 + bal, pose.gx, pose.gy, manche, peau);
-  bras(c, 1 + tx, 12 + bal, pose.dx, pose.dy, manche, peau);
+  const angG = brasV(c, a, 0.6 + tx, -SWb + bal, pose.gx, pose.gy, -1);
+  const angD = brasV(c, a, 0.6 + tx, SWb + bal, pose.dx, pose.dy, 1);
+  c.save(); c.translate(tx * 0.5, bal); if (accroupi) c.scale(0.94, 1);
+  const T = sprite(`vt:${a.seed}`, 12 * car * 1.12 + 3, 13.5 * car * 1.12 + 2, (cc) => peindreTorseV(cc, a));
+  if (T) posee(c, T); else { c.fillStyle = rgbC(a.vet); contourTorse(c, car, 0); c.fill(); }
+  c.restore();
+  if (sac) sacAvant(c, sac, bal, m, ph);
   if (pose.armeAvant !== false) dessinerTenue(c, pose, Ld);
-  // lampe à la main gauche
   if (pose.lampeG) { c.save(); c.translate(pose.gx, pose.gy); c.rotate(pose.lampeG); dessinerArme(c, 'lampe', 9); c.restore(); }
+  const tient = !!pose.forme;
+  mainV(c, a, pose.gx, pose.gy, angG, -1, !(tient && DEUX_MAINS.has(pose.forme)) && !pose.lampeG);
+  mainV(c, a, pose.dx, pose.dy, tient ? pose.angle : angD, 1, !tient);
   // tête
-  const hx = 2.5 + tx + (course ? 1.5 : 0);
-  c.fillStyle = peau; cercle(c, hx, bal * 0.5, 7.2); c.fill();
-  c.fillStyle = 'rgba(0,0,0,0.18)'; cercle(c, hx + 2, bal * 0.5 + 1.5, 4); c.fill();
-  const che = P.cheveux || '#241a12';
-  c.fillStyle = che;
-  const coif = P.coiffure || 'court';
-  if (coif === 'capuche') { c.fillStyle = teinte(P.manteau, 0.85); c.beginPath(); c.arc(hx, bal * 0.5, 8.2, PI * 0.35, PI * 1.65); c.closePath(); c.fill(); }
-  else if (coif !== 'chauve') {
-    c.beginPath(); c.arc(hx - 0.5, bal * 0.5, 7.4, PI * 0.42, PI * 1.58); c.closePath(); c.fill();
-    if (coif === 'long') { ellipse(c, hx - 6.5, bal * 0.5, 4.5, 6.5); c.fill(); }
-    c.fillStyle = 'rgba(255,240,220,0.08)'; cercle(c, hx - 2.5, bal * 0.5 - 2.5, 3); c.fill();
-  }
-  // lampe frontale
-  if (A.frontale) { c.fillStyle = '#2a2a2c'; rr(c, hx + 4, -2, 3, 4, 1); c.fill(); c.fillStyle = '#f8ecc0'; c.fillRect(hx + 6.5, -1.4, 1.2, 2.8); }
+  const hx = 2 + tx + (course ? 1.5 : 0) + (accroupi ? 0.8 : 0);
+  c.save(); c.translate(hx, bal * 0.5);
+  const H = sprite(`vh:${a.seed}`, 13, 8, (cc) => peindreTeteV(cc, a));
+  if (H) posee(c, H); else { c.fillStyle = a.K.peau; cercle(c, 0, 0, 6.5); c.fill(); }
+  if (A.frontale) { c.fillStyle = '#2a2a2c'; rr(c, 3.4, -2, 3, 4, 1); c.fill(); c.fillStyle = '#f8ecc0'; c.fillRect(5.9, -1.4, 1.2, 2.8); c.strokeStyle = 'rgba(30,30,32,0.9)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(0, 0, 6.3, 5.3, 0, -PI * 0.42, PI * 0.42); c.stroke(); }
+  c.restore();
   // éclair de coup reçu
-  if (A.flash > 0.02) { c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(255,60,60,${0.5 * A.flash})`; ellipse(c, 0, 0, 12, 16); c.fill(); }
+  if (A.flash > 0.02) { c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(255,60,60,${0.5 * A.flash})`; ellipse(c, 0, 0, 12, 15); c.fill(); }
   c.restore();
 }
 function dessinerTenue(c, pose, L) {
@@ -347,19 +492,35 @@ function poseBras(A) {
   if (A.vise) { P.dx = 16; P.dy = 2; P.angle = 0; }
   return P;
 }
-// Allongé (à terre, agonie) : on rampe sur le dos.
-function couche(c, P, A) {
-  const t = A.t || 0;
-  c.fillStyle = 'rgba(0,0,0,0.35)'; ellipse(c, 0, 2, 20, 12); c.fill();
-  if (P.contour) { c.strokeStyle = P.contour; c.lineWidth = 3; ellipse(c, 0, 0, 20, 11); c.stroke(); }
-  c.strokeStyle = P.pantalon || '#2a2a2e'; c.lineWidth = 5.5; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(-6, -4); c.lineTo(-20, -6 + Math.sin(t / 300) * 2); c.moveTo(-6, 4); c.lineTo(-20, 7); c.stroke();
-  c.fillStyle = teinte(P.manteau, 1); ellipse(c, 0, 0, 11, 9.5); c.fill();
-  bras(c, 4, -8, 12 + Math.sin(t / 250) * 3, -14, teinte(P.manteau, 0.9), P.peau || '#b89378');
-  bras(c, 4, 8, 14, 12, teinte(P.manteau, 0.9), P.peau || '#b89378');
-  c.fillStyle = P.peau || '#b89378'; cercle(c, 12, 0, 7); c.fill();
-  c.fillStyle = P.cheveux || '#241a12'; c.beginPath(); c.arc(11.5, 0, 7.2, PI * 0.42, PI * 1.58); c.closePath(); c.fill();
-  if (A.agonie) { c.fillStyle = 'rgba(80,8,10,0.75)'; ellipse(c, -2, 4, 14, 9); c.fill(); }
+// Allongé (à terre, agonie) : sur le dos, il rampe en tirant sur ses coudes ; à l'agonie, il saigne.
+function couche(c, P, A, a) {
+  const t = A.t || 0, car = a.carrure;
+  if (A.agonie) { c.fillStyle = 'rgba(46,4,6,0.75)'; ellipse(c, -2, 3, 15, 10); c.fill(); c.fillStyle = 'rgba(120,20,22,0.22)'; ellipse(c, 0, 0, 7, 4); c.fill(); }
+  c.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(c, 1, 2, 21, 12); c.fill();
+  if (P.contour) { c.strokeStyle = P.contour; c.lineWidth = 3; ellipse(c, -2, 0, 21, 11.5); c.stroke(); }
+  // jambes étendues, l'une qui pousse
+  const k = Math.sin(t / 300) * 2;
+  c.lineCap = 'round';
+  for (const [y0, y1] of [[-4, -6 + k], [4, 7]]) {
+    c.strokeStyle = 'rgba(8,6,4,0.5)'; c.lineWidth = 7 * car; c.beginPath(); c.moveTo(-6, y0); c.lineTo(-21, y1); c.stroke();
+    c.strokeStyle = a.K.jambe; c.lineWidth = 6 * car; c.stroke();
+    c.fillStyle = rgbC(a.chaussures); ellipse(c, -22.5, y1, 2.6, 2.3); c.fill();
+  }
+  // le corps, couché sur le dos : le torse vu de face, le col
+  c.fillStyle = 'rgba(8,6,4,0.55)'; ellipse(c, 0, 0, 11.8, 10.6); c.fill();
+  c.fillStyle = rgbC(a.vet); ellipse(c, 0, 0, 11, 9.8); c.fill();
+  volume(c, () => { c.beginPath(); c.ellipse(0, 0, 11, 9.8, 0, 0, TAU); }, 1, 0, 11.5, 0.16, 0.5);
+  if (a.col) { c.fillStyle = rgbC(a.col); ellipse(c, 8.4, 0, 2.6, 3.6); c.fill(); }
+  // les bras : l'un tire sur le sol, l'autre se tient le flanc
+  const angG = brasV(c, a, 6, -8.5, 15 + Math.sin(t / 250) * 3, -14, -1);
+  const angD = brasV(c, a, 6, 8.5, 4, 6, 1);
+  mainV(c, a, 15 + Math.sin(t / 250) * 3, -14, angG, -1, true);
+  mainV(c, a, 4, 6, angD, 1, false);
+  // la tête, le visage vers le ciel
+  c.save(); c.translate(13, 0);
+  const H = sprite(`vh:${a.seed}`, 13, 8, (cc) => peindreTeteV(cc, a));
+  if (H) posee(c, H); else { c.fillStyle = a.K.peau; cercle(c, 0, 0, 6.5); c.fill(); }
+  c.restore();
 }
 
 // ---------- Morts ----------

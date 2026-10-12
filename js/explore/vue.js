@@ -519,7 +519,10 @@ function image(t, dt) {
   j.lumiere = Math.min(1, lumJ);
   V.canal.majJoueur({ x: j.x, y: j.y, etage: j.etage, dir: j.dir, allure: j.allure, lumiere: j.lumiere, lampe: !!la, lampeSource: la ? la.id : null });
   { const sac = (G.player.equip && G.player.equip.sac) || null, dos = (G.player.equip && G.player.equip.dos) || null;   // le coéquipier voit ton sac et ce que tu portes dans le dos
-    if (sac !== V._sacEnvoye || dos !== V._dosEnvoye) { V._sacEnvoye = sac; V._dosEnvoye = dos; V.canal.majJoueur({ sac, dos }); } }
+    if (sac !== V._sacEnvoye || dos !== V._dosEnvoye) { V._sacEnvoye = sac; V._dosEnvoye = dos; V.canal.majJoueur({ sac, dos }); }
+    // co-op : le coéquipier te voit habillé comme tu l'es (vêtements, coiffure)
+    const st = styleJoueur();
+    if (st !== V._styleEnvoye && G.mode !== 'solo') { V._styleEnvoye = st; V.canal.majJoueur({ style: { manteau: st.manteau, col: st.col, bras: st.bras, pantalon: st.pantalon, cheveux: st.cheveux, coiffure: st.coiffure, vet: st.vet, carrure: st.carrure } }); } }
 
   // --- morts interpolés (figés pendant le micro-arrêt) ---
   const f = clamp((V.tVis - V.tSnapVis) / V.periode, 0, 1);
@@ -611,6 +614,7 @@ function styleJoueur() {
     manteau, col: dessous ? COUL_VET[dessous] || null : null, bras: longues ? null : '#b89378',
     pantalon: COUL_JAMBES[e.jambes] || '#2a2c30', cheveux: p.genre === 'f' ? '#3a2416' : '#241a12', peau: '#b89378',
     coiffure: p.genre === 'f' ? 'long' : 'court', sac: e.sac || false, dos: e.dos || null,
+    vet: dessus || 'tshirt', carrure: p.genre === 'f' ? 0.93 : 1,       // la forme du vêtement du dessus (ses détails), la carrure
   };
   return styleCache;
 }

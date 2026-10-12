@@ -220,7 +220,10 @@ export function creerRendu(cv, niveau) {
       const e = entree(p.y, 'pair', p);
       e.v = visCase(p.x, p.y);
       e.ph = phase('pair:' + p.id, p.x, p.y);
-      e.st = { ...(p.lampe ? STYLE_PAIR_L : STYLE_PAIR), contour: 'rgba(110,200,255,0.9)', sac: p.sac === undefined ? true : p.sac, dos: p.dos || null };
+      // le coéquipier habillé comme il l'est (son style arrive par la sim), cerné de bleu ; un objet stable par style
+      const base = p.style || (p.lampe ? STYLE_PAIR_L : STYLE_PAIR), sac = p.sac === undefined ? true : p.sac, dos = p.dos || null;
+      if (!p._st || p._stB !== base || p._st.sac !== sac || p._st.dos !== dos) { p._stB = base; p._st = { ...STYLE_PAIR, ...base, contour: 'rgba(110,200,255,0.9)', sac, dos }; }
+      e.st = p._st;
     }
     const J = S.joueur;
     entree(J.y, 'moi', J).ph = phase('moi', J.x, J.y);

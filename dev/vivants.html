@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banc d'essai — Les vivants vus de dessus</title>
+<style>
+  html, body { margin: 0; background: #111; color: #e6dfcc; font-family: Oswald, system-ui, sans-serif; }
+  canvas { display: block; }
+  #aide { position: fixed; top: 6px; left: 8px; font-size: 12px; background: rgba(0,0,0,.6); padding: 4px 8px; }
+</style>
+</head>
+<body>
+<div id="aide">?ech=3 · ?col=6 · ?fige=1 · ?sol=paves — lignes : tenues ; colonnes : repos, marche, course, accroupi, couteau, batte (charge), pistolet (vise), lampe, coup, empoigné, à terre</div>
+<canvas id="c"></canvas>
+<script type="module">
+  import { dessinerHumain } from '../js/rendu/personnages.js';
+  import { TS } from '../js/rendu/outils.js';
+  const q = new URLSearchParams(location.search);
+  const ECH = +(q.get('ech') || 2), dpr = devicePixelRatio || 1;
+  const cv = document.getElementById('c'), c = cv.getContext('2d');
+  const TENUES = [
+    { manteau: '#3e5274', col: '#5a5e4a', pantalon: '#2e3e5a', cheveux: '#241a12', peau: '#b89378', coiffure: 'court', vet: 'veste_jean', sac: 'sac_a_dos' },
+    { manteau: '#a0402c', col: '#2a2a2e', pantalon: '#3a3a40', cheveux: '#3a2416', peau: '#c9a083', coiffure: 'long', vet: 'doudoune', carrure: 0.93, sac: 'sac_randonnee', dos: 'pelle' },
+    { manteau: '#4a5260', pantalon: '#4a4a36', cheveux: '#5a3a20', peau: '#9a7258', coiffure: 'capuche', vet: 'sweat_capuche', sac: 'musette' },
+    { manteau: '#5a5e4a', bras: '#b89378', pantalon: '#2e3e5a', cheveux: '#1a1410', peau: '#7a5a44', coiffure: 'court', vet: 'tshirt', sac: false },
+    { manteau: '#3e4630', col: '#2a2a2e', pantalon: '#3e4630', cheveux: '#241a12', peau: '#b89378', coiffure: 'court', vet: 'gilet_tactique', sac: 'sac_militaire', dos: 'fusil_chasse' },
+  ];
+  const POSES = [
+    { n: 'repos' }, { n: 'marche', marche: 1 }, { n: 'course', marche: 1, allure: 'course' }, { n: 'accroupi', marche: 0.5, allure: 'accroupi' },
+    { n: 'couteau', arme: 'couteau_cuisine', marche: 1 }, { n: 'batte', arme: 'batte_baseball', charge: 0.8 }, { n: 'pistolet', arme: 'pistolet_9mm', vise: true },
+    { n: 'lampe', lampe: true, marche: 1 }, { n: 'coup', arme: 'machette', geste: { type: 'rapide', p: 0.5, combo: 0 } }, { n: 'empoigné', empoigne: true }, { n: 'à terre', agonie: true },
+  ];
+  const CW = 2.2;
+  const cases = []; TENUES.forEach((P, li) => POSES.forEach((A, ci) => cases.push({ P, A, li, ci })));
+  const parLigne = +(q.get('col') || 0) || Math.max(1, Math.floor(((innerWidth || 800) - 4) / (CW * TS * ECH)));
+  const W = parLigne * CW, H = Math.ceil(cases.length / parLigne) * CW;
+  cv.width = W * TS * ECH * dpr; cv.height = H * TS * ECH * dpr; cv.style.width = W * TS * ECH + 'px'; cv.style.height = H * TS * ECH + 'px';
+  let sol = null; const nomSol = q.get('sol') || 'paves';
+  fetch('../img/sols/sols.json').then(r => r.json()).then(J => { const im = new Image(); im.onload = () => { sol = c.createPattern(im, 'repeat'); sol.setTransform(new DOMMatrix().scale(((J[nomSol] || {}).m || 2) / 0.8 * TS / im.width)); }; im.src = `../img/sols/${nomSol}.jpg`; });
+  const t0 = performance.now();
+  function cadre(t) {
+    c.setTransform(dpr * ECH, 0, 0, dpr * ECH, 0, 0);
+    c.fillStyle = sol || '#3a3a36'; c.fillRect(0, 0, W * TS, H * TS);
+    const tt = q.get('fige') ? 1200 : t - t0;
+    cases.forEach(({ P, A }, n) => {
+      const x = ((n % parLigne) + 0.5) * CW * TS, y = (Math.floor(n / parLigne) + 0.5) * CW * TS;
+      dessinerHumain(c, x, y, -Math.PI / 2 + 0.3, P, { t: tt, phase: tt / 160, lampe: false, ...A });
+    });
+    requestAnimationFrame(cadre);
+  }
+  requestAnimationFrame(cadre);
+</script>
+</body>
+</html>
