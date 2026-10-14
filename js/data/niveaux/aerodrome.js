@@ -3,6 +3,7 @@
 // l'atelier du mécano, le club-house de l'aéroclub (le plan de vol déposé est dans le bureau). Haies de cyprès.
 export default {
   id: 'aerodrome', nom: 'Aérodrome de Salon-Eyguières', exterieur: true,
+  sansSanitaires: ['Le hangar vide'],   // pas de toilettes, et c'est normal : un hangar d'avions vide (tools/verifier_realisme.mjs)
   typeButin: 'aerodrome',
   pool: ['errant', 'errant', 'coureur', 'militaire'],
   morts: { n: [2, 4] },
@@ -31,9 +32,9 @@ export default {
       'T"__________________________________________________________________"T',
       'T""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""T',
       'T"#####|#####/#####|#####,,#####|#####/#####|#####,,###||##/##||##|#"T',
-      'T"#ss.................ss#,,#.....................#,,#rrrrr.....pp..#"T',
-      'T"#ss.................ss#,,#......K.......ss..sss#,,#..........pp..#"T',
-      'T"#.....................#,,#...KKKKKKK........sss#,,#.t..t.........#"T',
+      'T"#ss.................ss#,,#qw#..................#,,#rrrrr.....pp#q#"T',
+      'T"#ss.................ss#,,#..#...K.......ss..sss#,,#..........pp#.#"T',
+      'T"#.....................#,,##+#KKKKKKK........sss#,,#.t..t.......#+#"T',
       'T"#..;...........;......#,,#......K..............#,,#.c..c....t..t.#"T',
       'T"#.....................#,,#.....KKK.............#,,#.........c..c.#"T',
       'T"#..........Z..........#,,#.....................#,,#ss............#"T',
@@ -51,6 +52,8 @@ export default {
     ] },
   ],
   pieces: [
+    { etage: 'rdc', x: 29, y: 24, nom: 'Les toilettes', sol: 'carrelage', sombre: 1 },
+    { etage: 'rdc', x: 66, y: 24, nom: 'Les toilettes', sol: 'carrelage', sombre: 1 },
     { etage: 'rdc', x: 10, y: 15, nom: 'L\'aire de stationnement', sol: 'bitume' },
     { etage: 'rdc', x: 10, y: 28, nom: 'Le hangar vide', sol: 'beton', sombre: 1 },
     { etage: 'rdc', x: 30, y: 30, nom: 'Le hangar de l\'atelier', sol: 'beton', sombre: 1 },

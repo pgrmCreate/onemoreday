@@ -4,6 +4,7 @@
 // net. Presque plus personne, vivant ou mort. Sortie : le chemin (sud).
 export default {
   id: 'miramas_le_vieux', nom: 'Miramas-le-Vieux', exterieur: true,
+  sansSanitaires: ['Notre-Dame-de-Beauvezer'],   // pas de toilettes, et c'est normal : l'église (tools/verifier_realisme.mjs)
   typeButin: 'village',
   pool: ['errant', 'rampant'],
   morts: { n: [0, 2] },
@@ -21,9 +22,9 @@ export default {
       'T"T"""#,,#.nnnn..nnnn.#,,,,,#.........#..t.t..#,,#""T""T',
       'T"""""#,,|............|,,,,,#b.b.%.b.b#.......#,,#"""""T',
       'TT""""#,,#.nnnn..nnnn.#,,,,,#.........###+#####,,#"""T"T',
-      'T"""""#,,#.....%......#,,,,,#..RR.....#ss.s.PP#,,#T"T""T',
-      'T"""""#,,######/#######,,,,,#..tt..c..+.......#,,#"""""T',
-      'T"""TT#,,,,,,,,,,,,,,,,,,,,,#.........#..%....#,,#""T""T',
+      'T"""""#,,#.....%......#,,,,,#..RR.....#ss.s.###,,#T"T""T',
+      'T"""""#,,######/#######,,,,,#..tt..c..+.....+.#,,#"""""T',
+      'T"""TT#,,,,,,,,,,,,,,,,,,,,,#.........#..%.w#q#,,#""T""T',
       'T""TT"#,,,,,,,,,,,,,,,,,,,,,####/##############,,#""T"TT',
       'T"T"""#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,%,,,,#TT"""T',
       'T""T"T#,,####/#######,,,,,,,,,,,,,,,,,,,,,,,,,,,,#"""""T',
@@ -33,7 +34,7 @@ export default {
       'T"T"""#,,#..tc.#.%..#,,,,,,,,,,,,x..x.......;,,,,#"""""T',
       'T"""""#,,##+####+####,,,,T,,,,,,,#....;..x..#,,,,#""""TT',
       'TT""""#,,#k..f.#.w.h#,,,,,,,,,,,,#x...Z...x.#,,,,#T""TTT',
-      'TT""""#,,#.....#....#,,,,,,,,,,,,,...x..;...#,,,,#""""TT',
+      'TT""""#,,#.....#...q#,,,,,,,,,,,,,...x..;...#,,,,#""""TT',
       'T"""T"#,,####|#######,,,,,,,,,,,,#.;......x.#,,,,#"""""T',
       'TT""""#,,,,,,,,,,,,,,,Z,,,,,,,,,,##x##,###x##,,T,#"""""T',
       'T"T""T#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#"T"""T',
@@ -52,6 +53,7 @@ export default {
     ] },
   ],
   pieces: [
+    { etage: 'rdc', x: 45, y: 13, nom: 'Le Refuge — les toilettes', sol: 'carrelage', sombre: 1 },
     { etage: 'rdc', x: 27, y: 33, nom: 'Au pied du rempart', sol: 'terre' },
     { etage: 'rdc', x: 20, y: 15, nom: 'Le village fortifié', sol: 'paves' },
     { etage: 'rdc', x: 15, y: 7, nom: 'Notre-Dame-de-Beauvezer', sol: 'paves', sombre: 1 },

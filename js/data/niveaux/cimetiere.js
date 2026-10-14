@@ -19,6 +19,7 @@ const OUVRIR_GRILLE = {
 
 export default plan({
   id: 'cimetiere', nom: 'Cimetière Saint-Roch', exterieur: true, typeButin: 'cimetiere',
+  sansSanitaires: ['Chapelle Estève', 'Chapelle Roux-Bérenger', 'L’ossuaire'],   // pas de toilettes, et c'est normal : les chapelles funéraires et l'ossuaire (tools/verifier_realisme.mjs)
   pool: ['errant', 'errant', 'rampant'], morts: { n: [1, 3] },
 }, (p) => {
   const W = 46, H = 34;
@@ -130,8 +131,15 @@ export default plan({
   e.zombie('errant', lo.x0 + 2, lo.y0 + 1, { si: { flag: 'pro_cle_prise' }, reveil: true, dir: -1.57 });
   e.objet('lit_simple', lo.x0, lo.y0 + 3, { w: 1, h: 2 });
   e.objet('armoire', lo.x0, lo.y0, { w: 1, h: 2, rot: 1 });
-  e.objet('cuisine', lo.x0 + 3, lo.y1, { w: 3, h: 1 });
-  e.document('doc_cimetiere_manieres', lo.x0 + 4, lo.y0 + 2);
+  e.objet('cuisine', lo.x0 + 2, lo.y1, { w: 2, h: 1 });
+  e.objet('lavabo', lo.x0 + 1, lo.y1);
+  e.document('doc_cimetiere_manieres', lo.x0 + 3, lo.y0 + 2);
+  // les toilettes de la loge, dans le coin sud-est (leur porte s'ouvre juste à côté de l'entrée)
+  e.cloison('platre', lo.x1 - 1, lo.y1 - 2, lo.x1, lo.y1 - 2);
+  e.cloison('platre', lo.x1 - 1, lo.y1 - 1, lo.x1 - 1, lo.y1);
+  e.porte(lo.x1, lo.y1 - 2, { nom: 'la porte des toilettes' });
+  e.objet('wc', lo.x1, lo.y1);
+  e.nommer(lo.x1, lo.y1 - 1, 'Les toilettes', { sol: 'carrelage', sombre: 2 });
   e.lumiere('lanterne', lo.x0 + 4.5, lo.y0 + 0.6, { r: 4, i: 0.6 });
   e.decal('papiers', lo.x0 + 3.2, lo.y0 + 0.8, { n: 3 });
 

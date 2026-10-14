@@ -28,6 +28,7 @@ const S = {
 
 export default plan({
   id: 'emperi', nom: 'Château de l’Empéri', exterieur: true, version: 2, typeButin: 'chateau',
+  sansSanitaires: ['La chapelle Sainte-Catherine', 'Le porche', 'La tour d’angle', 'Le dortoir', 'Le réfectoire', 'L’infirmerie'],   // pas de toilettes, et c'est normal : la chapelle, le porche, la tour ; le campement (dortoir, réfectoire, infirmerie) se sert des toilettes du musée, à l'étage (tools/verifier_realisme.mjs)
   pool: ['errant', 'errant', 'rampant', 'hurleur'], morts: { n: [0, 2] }, mortsDehorsSeulement: false,
 }, (p) => {
   // ======================= REZ-DE-CHAUSSÉE : la montée et le château =======================
@@ -186,5 +187,11 @@ export default plan({
     portes: [{ cote: 'e', a: 3 }] });
   for (const [x, y] of [[un.x0 + 1, un.y0 + 1], [un.x0 + 4, un.y0 + 1], [un.x0 + 7, un.y0 + 1], [un.x0 + 10, un.y0 + 1]]) e1.objet('statue', x, y, { nom: 'un mannequin à moitié déshabillé' });
   e1.objet('caisse', un.x1, un.y1, { nom: 'la caisse du musée' });
+  // les toilettes du musée, dans le coin sud-ouest : le groupe s'en sert (on y monte l'eau du puits par seaux)
+  e1.cloison('platre', un.x0, un.y1 - 2, un.x0 + 2, un.y1 - 2);
+  e1.cloison('platre', un.x0 + 2, un.y1 - 1, un.x0 + 2, un.y1);
+  e1.porte(un.x0 + 1, un.y1 - 2, { nom: 'la porte des toilettes du musée' });
+  e1.objet('wc', un.x0, un.y1); e1.objet('lavabo', un.x0 + 1, un.y1);
+  e1.nommer(un.x0 + 1, un.y1 - 1, 'Les toilettes du musée', { sol: 'carrelage', sombre: 2, sansMorts: true });
   e1.decal('papiers', un.x0 + 6, un.y0 + 5, { n: 3 });
 });

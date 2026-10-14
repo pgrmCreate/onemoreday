@@ -143,7 +143,7 @@ export const OBJETS = {
   fauteuil:   { cat: 'canape', bloque: 1, t: [1, 1], nom: 'le fauteuil' },
   banc:       { c: 'n', cat: null, bloque: 1, t: [2, 1], nom: 'le banc' },
   lavabo:     { c: 'w', cat: 'salle_de_bain', bloque: 1, t: [1, 1], nom: 'le lavabo' },
-  wc:         { cat: 'salle_de_bain', bloque: 1, t: [1, 1], nom: 'les toilettes' },
+  wc:         { c: 'q', cat: 'salle_de_bain', bloque: 1, t: [1, 1], nom: 'les toilettes' },
   baignoire:  { c: 'h', cat: 'salle_de_bain', bloque: 1, t: [1, 2], nom: 'la baignoire' },
   chaise:     { c: 'c', cat: null, bloque: 0, t: [1, 1], tf: [1, 1], nom: 'la chaise', decor: 1 },
   tapis:      { cat: null, bloque: 0, t: [3, 2], nom: 'le tapis', decor: 1, sol: 1 },

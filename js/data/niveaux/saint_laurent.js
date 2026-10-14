@@ -14,6 +14,7 @@ const EST = 0;                         // regard vers l'autel
 
 export default plan({
   id: 'saint_laurent', nom: 'Collégiale Saint-Laurent', exterieur: true, version: 2, typeButin: 'eglise',
+  sansSanitaires: ['La nef'],   // pas de toilettes, et c'est normal : la collégiale (tools/verifier_realisme.mjs)
   pool: ['errant', 'errant', 'putrefie'], morts: { n: [0, 1] }, mortsDehorsSeulement: true,
 }, (p) => {
   const e = p.etage('rdc', 'La collégiale', W, H, { sol: 'paves', monte: 'clocher' });

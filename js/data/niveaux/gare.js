@@ -4,6 +4,7 @@
 // La passerelle (étage) enjambe les voies entre les deux quais. Les voies filent vers le nord et le sud (sorties).
 export default {
   id: 'gare', nom: 'Gare SNCF', exterieur: true,
+  sansSanitaires: ['Le local de l’équipement', 'Voiture 1'],   // pas de toilettes, et c'est normal : le local technique et le train (tools/verifier_realisme.mjs)
   typeButin: 'gare',
   pool: ['errant', 'errant', 'coureur', 'hurleur', 'rampant', 'chien_infecte'],
   morts: { n: [4, 7] },
@@ -42,7 +43,7 @@ export default {
       '       ##...................HHD...............#ww..ww##           ',
       '       ##.rrrrrr..rrrrrr...............m.m....#......##           ',
       '       ##.g.......g........nnn..nnn...........#w....w##           ',
-      '       ##...........................Z.........#......##           ',
+      '       ##...........................Z.........#q.....##           ',
       '       ####|||####|||#######//######|||###||###########           ',
       'E,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,E',
       'E,,,,,,,,,,,,,,,,,,,nnn,,,,,,,,,,,,,nnn,,,,,,,,,,,,,,,,,,,,,,,,,,E',

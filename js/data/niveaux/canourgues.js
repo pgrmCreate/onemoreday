@@ -4,6 +4,7 @@
 // et le B22 (verrouillé, quelque chose cogne).
 export default {
   id: 'canourgues', nom: 'Les Canourgues', exterieur: true,
+  sansSanitaires: ['Le local vélos', 'Le local poubelles', 'Le hall C'],   // pas de toilettes, et c'est normal : locaux communs de l'immeuble (chaque appartement a sa salle de bain) (tools/verifier_realisme.mjs)
   typeButin: 'cite',
   pool: ['errant', 'errant', 'coureur', 'chien_infecte', 'hurleur', 'enrage'],
   morts: { n: [5, 9] },
@@ -67,7 +68,7 @@ export default {
       '  #..tt..#..c...#............#.tt....#....dd.#  ',
       '  #..T...#......W............QU......#.......#  ',
       '  ###+#######+###............####+#######+####  ',
-      '  #bb...a#.w..h.#............#bb..aa.#w..h...#  ',
+      '  #bb...a#.w..hq#............#bb..aa.#w..h...#  ',
       '  #....../......#...xxMM.....#.......+.......#  ',
       '  #bb....#......#............#bb.....#.......#  ',
       '  #......#a.....#............#.......#a......#  ',

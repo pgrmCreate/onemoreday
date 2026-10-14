@@ -57,29 +57,29 @@ export const MISSIONS = {
   // ─────────────── PROTÉGER : Mireille, la pharmacienne ───────────────
   m_mireille: {
     titre: 'L’insuline de Mireille',
-    resume: 'Mireille, la pharmacienne du cours Carnot, cherche de l’insuline dans sa réserve : je dois la protéger le temps qu’elle la trouve.',
+    resume: 'Mireille, la pharmacienne du cours Carnot, cherche de l’insuline dans son préparatoire : je dois la protéger le temps qu’elle la trouve.',
     si: { jourMin: 1 },
-    pnj: { id: 'mireille', nom: 'Mireille', lieu: 'pharmacie_carnot', piece: 'La réserve', pv: 100,
+    pnj: { id: 'mireille', nom: 'Mireille', lieu: 'pharmacie_carnot', piece: 'Le préparatoire', pv: 100,
       appel: 'Quelqu’un t’appelle à voix basse, quelque part dans la pharmacie : « Hé ! Par ici… »',
       style: { manteau: '#c4ccca', cheveux: '#8a8a86', coiffure: 'court' },
-      repliques: ['Encore un peu… Je cherche une boîte bleue, dans le frigo ou dans les cartons.', 'Ne les laisse pas entrer dans la réserve !', 'Les antibiotiques, je les mets de côté pour toi.'] },
+      repliques: ['Encore un peu… Je cherche une boîte bleue, dans le frigo ou dans les cartons.', 'Ne les laisse pas entrer ici !', 'Les antibiotiques, je les mets de côté pour toi.'] },
     offre: {
       lieu: 'pharmacie_carnot',
-      texte: 'Dans la pharmacie du cours Carnot, une femme en blouse blanche fouille la réserve à la lampe frontale. Elle sursaute en te voyant, puis elle lève les mains, une boîte de médicaments dans chacune.\n\n« Je suis Mireille, c’est ma pharmacie. » Elle parle vite et à voix basse. « Mon mari est diabétique : il lui faut de l’insuline, et il en reste quelque part ici, dans le frigo ou dans les cartons. Il me faut trois quarts d’heure, peut-être moins. »\n\nElle jette un regard vers la vitrine. « Tout à l’heure, j’ai fait tomber un tiroir, et ils ont entendu. Ils vont venir. Tu peux les tenir loin de moi pendant que je cherche ? »',
+      texte: 'Dans la pharmacie du cours Carnot, une femme en blouse blanche fouille le préparatoire à la lampe frontale. Elle sursaute en te voyant, puis elle lève les mains, une boîte de médicaments dans chacune.\n\n« Je suis Mireille, c’est ma pharmacie. » Elle parle vite et à voix basse. « Mon mari est diabétique : il lui faut de l’insuline, et il en reste quelque part ici, dans le frigo ou dans les cartons. Il me faut trois quarts d’heure, peut-être moins. »\n\nElle jette un regard vers la vitrine. « Tout à l’heure, j’ai fait tomber un tiroir, et ils ont entendu. Ils vont venir. Tu peux les tenir loin de moi pendant que je cherche ? »',
       accepter: 'Monter la garde pendant qu’elle cherche',
       refuser: 'Lui dire de se débrouiller',
     },
     etapes: [
       { type: 'proteger', lieu: 'pharmacie_carnot', minutes: 45, vagues: { chaqueMin: 7, n: [2, 3] },
-        texte: 'Protéger Mireille pendant qu’elle fouille la réserve de la pharmacie' },
+        texte: 'Protéger Mireille pendant qu’elle fouille le préparatoire de la pharmacie' },
     ],
     fin: {
-      texte: 'Mireille sort de la réserve en serrant contre elle une glacière de camping. Il y a du sang sur sa blouse, et ce n’est pas le sien.\n\n« Je l’ai. » Elle ouvre la glacière pour te montrer les stylos d’insuline, puis elle pose sur le comptoir tout ce qu’elle a mis de côté pour toi. « Prends. Et si un jour tu te fais mordre, ne viens pas me voir : il n’y a rien à faire contre ça. »\n\nElle s’en va par la porte de service, et tu ne la revois pas.',
+      texte: 'Mireille sort du préparatoire en serrant contre elle une glacière de camping. Il y a du sang sur sa blouse, et ce n’est pas le sien.\n\n« Je l’ai. » Elle ouvre la glacière pour te montrer les stylos d’insuline, puis elle pose sur le comptoir tout ce qu’elle a mis de côté pour toi. « Prends. Et si un jour tu te fais mordre, ne viens pas me voir : il n’y a rien à faire contre ça. »\n\nElle s’en va par la porte de service, et tu ne la revois pas.',
       effets: { objets: [['antibiotiques', 1], ['antidouleur', 2], ['desinfectant', 1], ['bandage', 3], ['kit_suture', 1]], xp: { medecine: 15 },
         journal: 'J’ai protégé Mireille, la pharmacienne du cours Carnot, le temps qu’elle trouve l’insuline de son mari. Elle m’a laissé des médicaments.' },
     },
     echec: {
-      texte: 'Tu entends Mireille crier dans la réserve, puis plus rien. Les morts sont agenouillés autour d’elle, et la glacière a roulé sous un rayonnage.',
+      texte: 'Tu entends Mireille crier dans le préparatoire, puis plus rien. Les morts sont agenouillés autour d’elle, et la glacière a roulé sous la paillasse.',
       effets: { journal: 'Je n’ai pas su protéger Mireille. Son mari attendra l’insuline pour rien.' },
     },
   },

@@ -3,6 +3,7 @@
 // les vestiaires et le bureau ; la cour de chargement donne sur l'avenue.
 export default {
   id: 'marius_fabre', nom: 'Savonnerie Marius Fabre', exterieur: false,
+  sansSanitaires: ['Le quai des expéditions'],   // pas de toilettes, et c'est normal : le quai de chargement (tools/verifier_realisme.mjs)
   typeButin: 'savonnerie',
   pool: ['errant', 'errant', 'putrefie'],
   morts: { n: [2, 4] },
@@ -21,7 +22,7 @@ export default {
       '#.......#....#..................#.......Z....#',
       '#......K+....#########Q##########.ssss.SSSSS.#',
       '#w.w..h.#..............D........#............#',
-      '#.......#...........######/###################',
+      '#q......#...........######/###################',
       '#########...........#U.U.U.U.U.U#............#',
       '#dd...ss#...........#...........#............#',
       '#d......#...........#...........#..PP.PP.PP..#',

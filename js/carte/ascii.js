@@ -165,7 +165,7 @@ export function asciiVersPlan(def, avert = () => {}) {
       e.mur[i] = MUR_IDX[style] || 1;
     }
     // Pièces nommées
-    for (const pd of def.pieces || []) if (pd.etage === ed.id) e.nommages.push({ x: pd.x, y: pd.y, nom: pd.nom, sol: pd.sol, sombre: pd.sombre, exterieur: pd.exterieur });
+    for (const pd of def.pieces || []) if (pd.etage === ed.id) e.nommages.push({ x: pd.x, y: pd.y, nom: pd.nom, sol: pd.sol, sombre: pd.sombre, exterieur: pd.exterieur, sansMorts: pd.sansMorts, genere: pd.genere });
     // Déclencheurs de zone
     for (const dz of def.declencheurs || []) if (dz.etage === ed.id) e.declencheurs.push({ ...dz });
     e.car = car;

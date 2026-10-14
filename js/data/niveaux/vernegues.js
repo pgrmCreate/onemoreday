@@ -8,6 +8,7 @@
 // Écart : la chute par le sol qui cède n’a pas de mécanique ; les trous sont des passages « descendre » vers les caves.
 export default {
   id: 'vernegues', nom: 'Vieux-Vernègues', exterieur: true,
+  sansSanitaires: true,   // un village en ruine depuis le séisme de 1909 : ni eau courante ni toilettes (tools/verifier_realisme.mjs)
   typeButin: 'ruines', pool: ['errant', 'rampant', 'putrefie'], morts: { n: [0, 0] }, solDefaut: 'terre',
   etages: [
     { id: 'surface', nom: 'Les ruines', monte: null, descend: 'caves', plan: [

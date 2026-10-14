@@ -17,6 +17,7 @@ const APRES = { flag: 'prologue_fini' };
 
 export default plan({
   id: 'tour_horloge', nom: 'Tour de l’Horloge', exterieur: true, version: 2, typeButin: 'monument',
+  sansSanitaires: ['La salle de l’horloge'],   // pas de toilettes, et c'est normal : la tour (le campement de Maud) (tools/verifier_realisme.mjs)
   pool: ['errant', 'rampant'], morts: { n: [0, 0] }, mortsDehorsSeulement: true,
 }, (p) => {
   // ================= REZ-DE-CHAUSSÉE : place, café, tour, rue =================
@@ -37,8 +38,13 @@ export default plan({
   e.cloison('platre', 13, 2, 13, 5);
   e.porte(13, 3, { nom: 'la porte de l’arrière-cuisine' });   // derrière elle : deux unités libres
   e.nommer(14, 2, 'L’arrière-cuisine', { sol: 'tomettes', sombre: 2 });
-  e.objet('cuisine', 16, 2, { rot: 1, w: 1, h: 3, nom: 'les placards de l’arrière-cuisine' });   // le long du mur du fond
-  e.objet('frigo', 16, 5);
+  e.objet('cuisine', 16, 2, { rot: 1, w: 1, h: 2, nom: 'les placards de l’arrière-cuisine' });   // le long du mur du fond
+  e.objet('frigo', 16, 4);
+  // les toilettes du café, au fond de l'arrière-cuisine (porte en face de l'arrivée : deux unités libres devant elle)
+  e.cloison('platre', 14, 4, 15, 4); e.cloison('platre', 16, 5, 16, 5);
+  e.porte(15, 4, { nom: 'la porte des toilettes' });
+  e.objet('wc', 14, 5);
+  e.nommer(15, 5, 'Les toilettes', { sol: 'carrelage', sombre: 2 });
   e.objet('comptoir', cafe.x0 + 4, cafe.y0 + 1, { w: 3, h: 1, nom: 'le comptoir du café' });
   e.objet('table_ronde', cafe.x0, cafe.y0); e.objet('table_ronde', cafe.x0 + 2, cafe.y0 + 2); e.objet('table_ronde', cafe.x0, cafe.y0 + 3);
   e.objet('chaise', cafe.x0 + 1, cafe.y0); e.objet('chaise', cafe.x0 + 1, cafe.y0 + 3);

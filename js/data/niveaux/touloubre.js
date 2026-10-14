@@ -8,6 +8,7 @@ import { parcelle } from '../../carte/parcelle.js';
 
 export default parcelle({
   id: 'touloubre', nom: 'Les berges de la Touloubre', typeButin: 'nature',
+  sansSanitaires: ['Le vieux moulin'],   // pas de toilettes, et c'est normal : un moulin en ruine (la cachette d'Aimé) (tools/verifier_realisme.mjs)
   pool: ['errant', 'errant', 'rampant'], morts: { n: [2, 4] },
 }, { W: 128, H: 96, milieu: 'riviere' }, (e, P) => {
   const { W, H, rnd } = P;

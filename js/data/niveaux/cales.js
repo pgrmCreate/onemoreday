@@ -8,6 +8,7 @@
 // Morts : 2 errants dans le village, rien dans les grottes. Silhouettes des vivants et chien roux : non représentables.
 export default {
   id: 'cales', nom: 'Grottes de Calès', exterieur: true,
+  sansSanitaires: ['L’église de Lamanon', 'Le garage', 'La grande salle', 'La grotte du conseil', 'La grotte du puits', 'Le grand dortoir', 'Le dortoir des familles', 'La niche de Lou', 'Le poste du guetteur', 'L’infirmerie'],   // pas de toilettes, et c'est normal : l'église, le garage et le campement troglodyte (les latrines sont dehors, au fond du cirque) (tools/verifier_realisme.mjs)
   typeButin: 'grotte', pool: ['errant', 'rampant', 'putrefie', 'rampant'], morts: { n: [0, 1] }, solDefaut: 'terre',
   etages: [
     { id: 'bas', nom: 'Lamanon et le cirque', monte: 'n1', descend: null, plan: [
@@ -17,19 +18,19 @@ export default {
       '##################################,,,,,#....e....#,,#kkf...#',
       '##################################,,,,,#.........#,,#......#',
       '##################################,,,,,#nnn...nnn#,,+.tt.b.#',
-      '##################################,,,,,|.........|,,#.c..b.#',
-      '##################################,,,,,#nnn...nnn#,,#......#',
+      '##################################,,,,,|.........|,,####.b.#',
+      '##################################,,,,,#nnn...nnn#,,#q.+..w#',
       '##################################,,,,,#.........#,,####|###',
       '##################################,,,,,#.%.......#,,,,,,,,,,',
       '##################################,,,,,#####+#####,,,,,,,,,,',
       '##################################,,,,,,,,,,,,,,,,,,,,,,,,,,',
       '##################################,,,,,,,,,,,,,,,,,,###|####',
-      '##################################,v,,,,,,T,,,,,,,,,#aa....#',
+      '##################################,v,,,,,,T,,,,,,,,,#aakkf.#',
       '##################################,v,,,,,,,,,,,,,,,,#......#',
       '##################################,,,,,,,,,,,,,,,,,,#.t..bb#',
       '##################################,,,,,,,Z,,,,,,,,,,+.c....#',
-      '##################################,,,,,,,,,,,,,,,,,,#......#',
-      '##################################,,,,,,,,,,,,,,,,,,#s....o#',
+      '##################################,,,,,,,,,,,,,,,,,,#...#+##',
+      '##################################,,,,,,,,,,,,,,,,,,#s.w#.q#',
       '##################################,,,,,,,,,,,,,,,,,,########',
       '####""""%"""""""""""""""""""""""""#,,,,,,,,,,,,,,,,,,,,,,,,,',
       '####""""""""<"""""""""""""<"""""""#,,,,,,,,,,,,,,,,,,,,,,,,E',
@@ -180,6 +181,8 @@ export default {
     ] },
   ],
   pieces: [
+    { etage: 'bas', x: 54, y: 7, nom: 'Les toilettes', sol: 'carrelage', sombre: 1 },
+    { etage: 'bas', x: 57, y: 18, nom: 'Les toilettes', sol: 'carrelage', sombre: 1 },
     { etage: 'bas', x: 18, y: 30, nom: 'Le cirque de Calès', sol: 'terre' },
     { etage: 'bas', x: 40, y: 20, nom: 'Lamanon', sol: 'bitume' },
     { etage: 'bas', x: 44, y: 8, nom: 'L’église de Lamanon', sol: 'tomettes', sombre: 1 },

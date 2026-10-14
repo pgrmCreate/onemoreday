@@ -122,6 +122,11 @@ const LEG = {
   'ͳ': { prop: 'fourgon_postal', nom: 'le fourgon postal' },
   'ϡ': { prop: 'table', nom: 'la table', conteneur: false },
   'ϟ': { prop: 'palette', nom: 'la palette vide', conteneur: false },
+  // l'intérieur des maisons habitées (amenager)
+  'ϰ': { prop: 'wc', nom: 'les toilettes', conteneur: false },        // rien à fouiller, mais parfois de l'eau dans le réservoir
+  'ϲ': { prop: 'lit_simple', nom: 'le lit' }, 'ϳ': { prop: 'commode', nom: 'la commode' },
+  'ϴ': { prop: 'televiseur', nom: 'le téléviseur' },
+  'ϵ': { prop: 'etabli_meuble', nom: 'l’établi' },
 };
 // Part des voitures générées qu'on peut encore fouiller.
 const VOITURES_FOUILLABLES = 0.2;
@@ -138,7 +143,7 @@ const CAMPING_CAR = { centre: 0.15, ville: 0.25, zone: 0.2, village: 0.35, campa
 const FOURGON_POSTAL = { centre: 0.22, ville: 0.2, zone: 0.12, village: 0.15, campagne: 0.08 };
 const CALCINEES = { centre: 0.14, ville: 0.12, zone: 0.12, village: 0.06, campagne: 0.05 };
 // Ce qu'on peut traverser à pied (pour la passe d'accessibilité).
-const MARCHE = new Set([',', '"', ':', '.', ';', '%', 'E', '+', '/', 'ϗ', '@', 'Z', 'α', 'β', 'γ', 'δ', 'ε', 'τ', 'ω', 'ψ', 'χ', 'ϕ', 'ϑ']);
+const MARCHE = new Set([',', '"', ':', '.', ';', '%', 'c', 'E', '+', '/', 'ϗ', '@', 'Z', 'α', 'β', 'γ', 'δ', 'ε', 'τ', 'ω', 'ψ', 'χ', 'ϕ', 'ϑ']);
 const FOND_LIBRE = new Set(['"', 'δ', 'γ', 'β', ',', ':']);
 
 export function agrandirDef(def) {
@@ -164,7 +169,8 @@ export function agrandirDef(def) {
   const G = []; for (let y = 0; y < TH; y++) G.push(new Array(TW).fill(M.fond));
   const occ = new Uint8Array(TW * TH);            // 1 cœur, 2 route, 3 trottoir, 4 bâti, 5 réservé (jardin, parking…)
   const dans = (x, y) => x >= 0 && y >= 0 && x < TW && y < TH;
-  const set = (x, y, c, o) => { if (!dans(x, y)) return; G[y][x] = c; if (o != null) occ[y * TW + x] = o; };
+  // (un jardin, un champ, un parking n'écrasent jamais un bâtiment déjà posé : deux parcelles de campagne peuvent se chevaucher)
+  const set = (x, y, c, o) => { if (!dans(x, y)) return; if (o === 5 && occ[y * TW + x] === 4) return; G[y][x] = c; if (o != null) occ[y * TW + x] = o; };
   const get = (x, y) => (dans(x, y) ? G[y][x] : null);
   const oc = (x, y) => (dans(x, y) ? occ[y * TW + x] : 255);
   const rect = (x, y, w, h, c, o) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) set(xx, yy, c, o); };
@@ -256,6 +262,7 @@ export function agrandirDef(def) {
 
   // ---------- bâtiments ----------
   const solMaison = { centre: 'ω', village: 'ω', ville: 'ψ', zone: 'ϕ', campagne: 'ω' }[milieu];
+  const piecesMaisons = [];   // pièces nommées des maisons générées (déjà à leur place sur la grande carte)
   // Une maison : murs, fenêtres, une porte côté rue ; habitée (meubles, fouillable), fermée à clé, ou sans porte (on ne voit que le toit).
   function maison(x, y, w, h, cote, o = {}) {
     if (w < 5 || h < 5) return;
@@ -278,21 +285,259 @@ export function agrandirDef(def) {
     for (let k = 0; k < large; k++) {
       const qx = cote === 'n' || cote === 's' ? Math.min(px + k, x + w - 2) : px, qy = cote === 'n' || cote === 's' ? py : Math.min(py + k, y + h - 2);
       set(qx, qy, t === 'verrou' ? 'ϗ' : o.ouverte ? '/' : '+', 4); portes.push([qx, qy]);
+      // devant la porte, dehors : rien qui bloque (un arbre du jardin planté avant la maison la condamnait)
+      const [fx, fy] = cote === 'n' ? [qx, qy - 1] : cote === 's' ? [qx, qy + 1] : cote === 'o' ? [qx - 1, qy] : [qx + 1, qy];
+      if ((oc(fx, fy) === 5 || oc(fx, fy) === 0) && !MARCHE.has(get(fx, fy))) set(fx, fy, oc(fx, fy) === 5 ? '"' : M.fond);
     }
     if (o.vide) return;
-    // une cloison au milieu des grandes maisons
+    // le tirage de l'ancien aménagement est consommé tel quel : le reste du quartier (maisons suivantes, voitures,
+    // arbres) ne bouge pas d'une case, et les sauvegardes restent valables
+    { const iw0 = w - 2, ih0 = h - 2; let n = iw0 >= 10 ? 4 + (ih0 >= 4 ? 1 : 0) : iw0 >= 3 ? 2 : 0; while (n--) r(); }
+    amenager(x, y, w, h, cote, sepPrevue, o);
+  }
+  // ---------- L'aménagement d'une maison habitée : un plan qui tient debout ----------
+  // Repère local : a le long de la façade sur rue (0 … L-1), b la profondeur depuis cette façade (0 … D-1).
+  //   côté rue   la pièce de vie (on entre dans le séjour, le coin cuisine sous la fenêtre) ; dans les grandes maisons,
+  //              une cloison sépare la cuisine du séjour ;
+  //   au fond    derrière une cloison : la salle de bain (WC, lavabo, baignoire) au bout « eau », les toilettes à part
+  //              dans les grandes maisons, puis les chambres (un placard ou un cellier quand la maison est trop petite).
+  // Chaque pièce ouvre sur la pièce de vie ; devant et derrière chaque porte, rien n'est posé (P4, diagonales comprises),
+  // et un meuble qui couperait le passage vers une porte n'est pas posé. Hasard propre à la maison (graine : sa position).
+  function amenager(x, y, w, h, cote, sepPrevue, o) {
+    const q = seedRng(`maison:${ABORDS_VERSION}:${def.id}:${x}:${y}`);
     const ix = x + 1, iy = y + 1, iw = w - 2, ih = h - 2;
-    let sep = null;
-    if (iw >= 10) { sep = ix + (iw >> 1); for (let yy = y; yy < y + h; yy++) set(sep, yy, '#', 4); set(sep, iy + ri(0, ih - 1), '+', 4); }
-    // meubles (le long des murs, jamais devant une porte)
-    const libre = (xx, yy) => { const c = get(xx, yy); if (c !== solMaison && c !== (o.sol || solMaison)) return false; return ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const v = get(xx + dx, yy + dy); return v === '+' || v === 'ϗ' || v === '/'; }); };
-    const poser = (xx, yy, ww, hh, c) => { for (let a = 0; a < hh; a++) for (let b = 0; b < ww; b++) if (!libre(xx + b, yy + a)) return false; for (let a = 0; a < hh; a++) for (let b = 0; b < ww; b++) set(xx + b, yy + a, c, 4); return true; };
-    const zone2 = sep ? [[ix, sep - ix], [sep + 1, ix + iw - sep - 1]] : [[ix, iw]];
-    zone2.forEach(([zx, zw], k) => {
-      if (zw < 3) return;
-      if (k === 0) { poser(zx, iy, Math.min(3, zw), 1, 'k') || poser(zx, iy + ih - 1, Math.min(3, zw), 1, 'k'); if (r() < 0.7) poser(zx + (zw >> 1) - 1, iy + (ih >> 1), 2, 1, 'ϡ'); if (r() < 0.4) poser(zx + zw - 1, iy, 1, 1, 'f'); }
-      else { if (ih >= 4 && zw >= 3 && r() < 0.8) poser(zx, iy, 2, 3, 'b'); if (r() < 0.7) poser(zx + zw - 2, iy + ih - 1, 2, 1, 'a'); }
+    const ns = cote === 'n' || cote === 's';
+    const L = ns ? iw : ih, D = ns ? ih : iw;
+    const XY = (a, b) => cote === 'n' ? [ix + a, iy + b] : cote === 's' ? [ix + a, iy + ih - 1 - b] : cote === 'o' ? [ix + b, iy + a] : [ix + iw - 1 - b, iy + a];
+    const sL = (a, b, c) => { const [xx, yy] = XY(a, b); set(xx, yy, c, 4); };
+    const gL = (a, b) => { const [xx, yy] = XY(a, b); return get(xx, yy); };
+    const dans2 = (a, b) => a >= 0 && b >= 0 && a < L && b < D;
+    const solVie = o.sol || solMaison, SOLS_M = new Set([solVie, solMaison, 'χ', 'ψ', 'ω', 'ϑ', 'ϕ']);
+    const PORTES_M = new Set(['+', '/', 'ϗ']);
+    const garde = new Set(), cle = (a, b) => a * 1000 + b;
+    // les cases devant et derrière une porte (selonB : porte dans une rangée, on passe selon b ; sinon selon a).
+    // leger : une petite pièce d'eau ou un placard (côté b + 1) ; seule la case juste derrière la porte reste vide.
+    const garder = (a, b, selonB, leger = false) => {
+      for (const sg of [-1, 1]) {
+        if (leger && sg > 0) { garde.add(cle(a, b + 1)); continue; }
+        for (let t = -1; t <= 1; t++) garde.add(selonB ? cle(a + t, b + sg) : cle(a + sg, b + t));
+        garde.add(selonB ? cle(a, b + 2 * sg) : cle(a + 2 * sg, b));
+      }
+    };
+    const portesInt = [];   // portes intérieures (repère local)
+    const porteL = (a, b, c, selonB, leger) => { sL(a, b, c); portesInt.push([a, b]); garder(a, b, selonB, leger); };
+    // les portes d'entrée (dans la façade sur rue, b = -1)
+    const entrees = [];
+    for (let a = 0; a < L; a++) if (PORTES_M.has(gL(a, -1))) { entrees.push(a); garder(a, -1, true); }
+    if (!entrees.length) return;
+    // trop petit pour un logement (3,2 m de large ou 16 m² au plus à l'intérieur) : c'est une remise, un atelier
+    if (L <= 4 || D < 5 || L * D <= 25) {
+      for (let a = 0; a < L; a++) for (let b = 0; b < D; b++) sL(a, b, 'ϕ');
+      const ok = (a, b) => dans2(a, b) && gL(a, b) === 'ϕ' && !garde.has(cle(a, b));
+      // une rangée d'étagères contre le mur du fond, l'établi contre un mur du bout, un fût dans un coin de la façade
+      // (rien qui forme un recoin : le fond reste d'un seul tenant, l'établi s'arrête avant lui)
+      for (let a = 0; a < L; a++) if (ok(a, D - 1)) sL(a, D - 1, 's');
+      const bout = q() < 0.5 ? 0 : L - 1;
+      if (D >= 6 && [1, 2, 3].every(b => ok(bout, b))) for (const b of [1, 2, 3]) sL(bout, b, 'ϵ');
+      if (ok(L - 1 - bout, 0)) sL(L - 1 - bout, 0, 'ρ');
+      const [xx, yy] = XY(entrees[0], 0); piecesMaisons.push({ etage: etages[g].id, x: xx, y: yy, nom: 'La remise', genere: true });
+      return;
+    }
+    // un mur extérieur à la jonction d'une cloison : pas de fenêtre coupée en deux
+    const plein = (a, b) => { if (gL(a, b) === '|') sL(a, b, '#'); };
+
+    // 1. le fond : sa profondeur, et la cloison qui le sépare de la pièce de vie (rangée b = f)
+    // (maison peu profonde : seule la salle de bain est cloisonnée, dans un coin du fond ; le reste est la pièce de vie)
+    const bk = D >= 10 ? 4 : D >= 7 ? 3 : 2, f = D - bk - 1;
+    const coin = D <= 6 || L === 5;
+    if (!coin) { for (let a = 0; a < L; a++) sL(a, f, '#'); plein(-1, f); plein(L, f); }
+    // 2. les pièces du fond, depuis le bout « eau » (à gauche ou à droite)
+    const versDroite = q() < 0.5;
+    const wcSep = bk >= 3 && L >= 12;
+    const seq = [];
+    if (L <= 4) seq.push({ t: 'sdb', l: L });
+    else if (coin) seq.push({ t: 'sdb', l: 3 });
+    else {
+      // une petite salle de bain (2 de large : baignoire, WC, lavabo) quand elle laisse ainsi la place d'une chambre
+      seq.push({ t: 'sdb', l: bk >= 3 && L === 6 ? 2 : 3 });
+      if (wcSep) seq.push({ t: 'wc', l: 2 });
+      const reste = L - seq.reduce((n, e) => n + e.l + 1, 0);
+      if (bk >= 3 && reste >= 8) { const l1 = Math.ceil((reste - 1) / 2); seq.push({ t: 'chambre', l: l1 }, { t: 'enfant', l: reste - 1 - l1 }); }
+      else if (bk >= 3 && reste >= 3) seq.push({ t: 'chambre', l: reste });
+      else if (reste >= 1) seq.push({ t: 'cellier', l: reste });
+      else seq[seq.length - 1].l += reste + 1;   // pas la place d'une pièce de plus : la dernière s'élargit
+    }
+    // étendue locale [a0, a1] ; c(i) : la i-ième colonne depuis le bout « eau »
+    let cur = 0;
+    const fond = seq.map((e, k) => {
+      const a0 = versDroite ? cur : L - cur - e.l, a1 = a0 + e.l - 1;
+      cur += e.l + 1;
+      if (k < seq.length - 1) { const sep = versDroite ? a1 + 1 : a0 - 1; for (let b = f + 1; b < D; b++) sL(sep, b, '#'); plein(sep, D); }
+      return { ...e, a0, a1, c: (i) => versDroite ? a0 + i : a1 - i };
     });
+    let V0 = 0, V1 = L - 1;   // les colonnes de la pièce de vie
+    if (coin) {
+      const R = fond[0], sep = versDroite ? R.a1 + 1 : R.a0 - 1;
+      for (let a = R.a0; a <= R.a1; a++) sL(a, f, '#');
+      for (let b = f; b < D; b++) sL(sep, b, '#');
+      plein(versDroite ? -1 : L, f); plein(sep, D);
+      if (versDroite) V0 = sep + 1; else V1 = sep - 1;
+    }
+    // sols : carrelage dans les pièces d'eau, parquet dans les chambres, béton au cellier
+    for (const R of fond) for (let a = R.a0; a <= R.a1; a++) for (let b = f + 1; b < D; b++) sL(a, b, R.t === 'sdb' || R.t === 'wc' ? 'χ' : R.t === 'cellier' ? 'ϕ' : 'ψ');
+
+    // 3. la pièce de vie : une cloison entre séjour et cuisine dans les grandes maisons (jamais en face de la porte d'entrée)
+    let sFront = ns && !coin && sepPrevue != null ? sepPrevue - ix : -1;
+    if (sFront > 0 && (sFront >= L - 1 || entrees.includes(sFront) || f < 3)) sFront = -1;
+    const ent = entrees[0];
+    // la cuisine : du côté opposé à la porte d'entrée (on entre dans le séjour)
+    const LV = V1 - V0 + 1, mil = V0 + (LV >> 1);
+    const cuisineAGauche = sFront > 0 ? ent > sFront : ent >= V0 + LV / 2;
+    const zoneCuisine = sFront > 0 ? (cuisineAGauche ? [0, sFront - 1] : [sFront + 1, L - 1])
+      : (cuisineAGauche ? [V0, Math.min(V1, Math.max(V0 + 2, mil - 1))] : [Math.max(V0, Math.min(V1 - 2, mil)), V1]);
+    const zoneSejour = sFront > 0 ? (cuisineAGauche ? [sFront + 1, L - 1] : [0, sFront - 1]) : [V0, V1];
+    if (sFront > 0) {
+      for (let b = 0; b < f; b++) sL(sFront, b, '#');
+      plein(sFront, -1);
+      for (let a = zoneCuisine[0]; a <= zoneCuisine[1]; a++) for (let b = 0; b < f; b++) sL(a, b, 'χ');
+    }
+    // 4. les portes du fond (dans la rangée b = f), du côté opposé aux meubles qui touchent le mur du fond
+    const porteDe = new Map();
+    for (const R of fond) {
+      const choix = [];
+      if (R.t === 'sdb') choix.push(R.c(Math.min(1, R.l - 1)), R.c(Math.min(2, R.l - 1)));
+      else if (R.t === 'wc') choix.push(R.c(1));
+      else if (R.t === 'chambre' || R.t === 'enfant') { const loin = R.l >= 4 && q() < 0.5; choix.push(loin ? R.c(R.l - 1) : R.c(0), loin ? R.c(0) : R.c(R.l - 1)); }
+      else choix.push(R.c(0));
+      const pa = choix.find(a => a !== sFront);
+      if (pa == null) continue;
+      porteL(pa, f, R.t === 'wc' || R.t === 'sdb' || q() < 0.75 ? '+' : '/', true, R.t === 'sdb' || R.t === 'wc' || R.t === 'cellier');
+      porteDe.set(R, pa);
+    }
+    if (sFront > 0) porteL(sFront, Math.max(0, Math.min(f - 1, (f >> 1) - (q() < 0.5 ? 0 : 1))), q() < 0.6 ? '/' : '+', false);
+
+    // 5. les meubles : jamais devant une porte, jamais en travers du passage
+    const libreL = (a, b) => dans2(a, b) && SOLS_M.has(gL(a, b)) && !garde.has(cle(a, b));
+    const passage = () => { // tout le sol de la maison (et chaque porte) reste atteignable depuis l'entrée : ni recoin, ni pièce coupée
+      const vu = new Set([cle(ent, 0)]), pile = [[ent, 0]];
+      while (pile.length) {
+        const [a, b] = pile.pop();
+        for (const [da, db] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const na = a + da, nb = b + db, k = cle(na, nb);
+          if (!dans2(na, nb) || vu.has(k)) continue;
+          const c = gL(na, nb);
+          if (!SOLS_M.has(c) && !PORTES_M.has(c) && c !== 'c') continue;
+          vu.add(k); pile.push([na, nb]);
+        }
+      }
+      if (!portesInt.every(([a, b]) => vu.has(cle(a, b)))) return false;
+      for (let a = 0; a < L; a++) for (let b = 0; b < D; b++) if (SOLS_M.has(gL(a, b)) && !vu.has(cle(a, b))) return false;
+      return true;
+    };
+    const poser = (a, b, wa, hb, c) => {
+      const cases = [];
+      for (let j = 0; j < hb; j++) for (let i = 0; i < wa; i++) { if (!libreL(a + i, b + j)) return false; cases.push([a + i, b + j]); }
+      // deux meubles pareils côte à côte se fondraient en un seul
+      for (const [ca, cb] of cases) for (const [da, db] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const na = ca + da, nb = cb + db;
+        if (dans2(na, nb) && gL(na, nb) === c && !cases.some(([u, v]) => u === na && v === nb)) return false;
+      }
+      const avant = cases.map(([u, v]) => gL(u, v));
+      for (const [u, v] of cases) sL(u, v, c);
+      if (!passage()) { cases.forEach(([u, v], k) => sL(u, v, avant[k])); return false; }
+      return true;
+    };
+    const essayer = (...positions) => positions.some(pp => pp && poser(...pp));
+    const coteLit = (R) => { // le côté du lit : à l'opposé de la porte
+      const pa = porteDe.get(R);
+      return pa != null && Math.abs(pa - R.c(0)) < Math.abs(pa - R.c(R.l - 1));
+    };
+    for (const R of fond) {
+      const c0 = R.c(0), c1 = R.c(Math.min(1, R.l - 1)), c2 = R.c(Math.min(2, R.l - 1));
+      if (R.t === 'sdb') {
+        // la baignoire contre le mur du bout « eau » ; le lavabo et le WC (ou le lave-linge) contre le mur du fond
+        poser(c0, D - 2, 1, 2, 'h');
+        essayer([c1, D - 1, 1, 1, 'w'], [c2, D - 2, 1, 1, 'w']);
+        if (!wcSep) essayer([c2, D - 1, 1, 1, 'ϰ'], [c1, D - 1, 1, 1, 'ϰ'], [c2, D - 2, 1, 1, 'ϰ']);
+        else if (q() < 0.6) essayer([c2, D - 1, 1, 1, 'm']);
+      } else if (R.t === 'wc') {
+        essayer([c0, D - 1, 1, 1, 'ϰ'], [c0, D - 2, 1, 1, 'ϰ']);
+        if (bk >= 4 && q() < 0.5) poser(c0, f + 1, 1, 1, 'w');     // le lave-mains
+      } else if (R.t === 'chambre') {
+        const loin = coteLit(R);
+        const ca = loin ? R.c(R.l - 1) : R.c(0), cb = loin ? R.c(R.l - 2) : R.c(1);
+        // le lit, la tête contre le mur du fond (un lit simple si la chambre est trop petite pour un grand)
+        if (!poser(Math.min(ca, cb), D - 3, 2, 3, 'b')) essayer([ca, D - 2, 1, 2, 'ϲ'], [cb, D - 2, 1, 2, 'ϲ'], [Math.min(ca, cb), D - 1, 2, 1, 'ϲ']);
+        if (R.l >= 5) {
+          const ra = loin ? R.c(R.l - 3) : R.c(2), rb = loin ? R.c(R.l - 4) : R.c(3);
+          essayer([Math.min(ra, rb), D - 1, 2, 1, 'a'], [Math.min(ra, rb), f + 1, 2, 1, 'ϳ']);
+        } else if (bk >= 4) poser(Math.min(ca, cb), f + 1, 2, 1, 'ϳ');
+      } else if (R.t === 'enfant') {
+        const loin = coteLit(R);
+        poser(loin ? R.c(R.l - 1) : R.c(0), D - 2, 1, 2, 'ϲ');
+        if (R.l >= 3) { const da = loin ? R.c(R.l - 3) : R.c(1), db = loin ? R.c(R.l - 2) : R.c(2); essayer([Math.min(da, db), D - 1, 2, 1, 'd'], [Math.min(da, db), D - 1, 2, 1, 'ϳ']); }
+      } else if (R.t === 'cellier') {
+        for (let i = 0; i < R.l; i++) poser(R.c(i), D - 1, 1, 1, i % 2 ? 'σ' : 's');
+      }
+    }
+    // la pièce de vie : chaque meuble cherche sa place contre un mur (façade, cloison du fond, murs du bout), par ordre de
+    // préférence ; z = { a0, a1 } (b de 0 à f - 1). Un meuble long peut se raccourcir d'une case (placards de 2).
+    const contre = (z, l, ep = 1) => {
+      const out = [];
+      for (let a = z.a0; a + l - 1 <= z.a1; a++) { out.push([a, 0, l, ep]); out.push([a, z.d - ep, l, ep]); }
+      for (let b = 0; b + l - 1 <= z.d - 1; b++) { out.push([z.a0, b, ep, l]); out.push([z.a1 - ep + 1, b, ep, l]); }
+      return out;
+    };
+    const centre = (pp) => [pp[0] + pp[2] / 2, pp[1] + pp[3] / 2];
+    const dist = (pp, pt) => { const [u, v] = centre(pp); return Math.hypot(u - pt[0], v - pt[1]); };
+    const placer = (cands, c, score) => { cands.sort((u, v) => score(u) - score(v)); return cands.find(pp => poser(pp[0], pp[1], pp[2], pp[3], c)) || null; };
+    const porteEnt = [ent + 0.5, 0];
+    const dV = coin ? D : f;   // profondeur de la pièce de vie
+    const ZK = { a0: zoneCuisine[0], a1: zoneCuisine[1], d: dV }, ZS = { a0: zoneSejour[0], a1: zoneSejour[1], d: dV };
+    // la cuisine : les placards le plus loin possible de la porte d'entrée (sous la fenêtre de la façade de préférence)
+    const ZV = { a0: V0, a1: V1, d: dV };   // toute la pièce de vie (repli quand le coin prévu est trop encombré)
+    const cuisine = () => {
+      for (const [z, l] of [[ZK, 3], [ZK, 2], [ZV, 3], [ZV, 2]]) { const c = placer(contre(z, l), 'k', pp => -dist(pp, porteEnt) - (pp[1] === 0 && pp[3] === 1 ? 1.5 : 0)); if (c) return c; }
+      return null;
+    };
+    // sans chambre (petite maison) : un lit dans la pièce de vie, loin de la porte
+    const lit = () => {
+      if (placer(contre(ZS, 3, 2), 'b', pp => -dist(pp, porteEnt)) || placer(contre(ZS, 2), 'ϲ', pp => -dist(pp, porteEnt))) return true;
+      if (placer(contre({ a0: 0, a1: L - 1, d: f }, 2), 'ϲ', pp => -dist(pp, porteEnt))) return true;
+      // dernier recours : un lit simple là où il reste de la place, même loin d'un mur
+      const tout = []; for (let a = 0; a < L; a++) for (let b = 0; b < dV; b++) tout.push([a, b, 1, 2], [a, b, 2, 1]);
+      return !!placer(tout, 'ϲ', pp => -dist(pp, porteEnt));
+    };
+    let cuis = null;
+    if (fond.some(R => R.t === 'chambre')) cuis = cuisine();
+    else {
+      // un studio doit avoir et sa cuisine et son lit : on essaie les deux ordres, on garde le premier qui case les deux
+      const photo = []; for (let a = 0; a < L; a++) for (let b = 0; b < D; b++) photo.push(gL(a, b));
+      const remettre = () => { let k = 0; for (let a = 0; a < L; a++) for (let b = 0; b < D; b++) sL(a, b, photo[k++]); };
+      cuis = cuisine();
+      if (!lit()) { remettre(); const okLit = lit(); cuis = cuisine(); if (!cuis && okLit) { remettre(); cuis = cuisine(); lit(); } }
+    }
+    // le frigo juste à côté des placards
+    if (cuis) { const cc = centre(cuis); placer(contre(ZV, 1), 'f', pp => { const d = dist(pp, cc); return d < 1 ? 99 : d; }); }
+    // la table et ses chaises au milieu de la cuisine, quand il y a la place
+    const kw = zoneCuisine[1] - zoneCuisine[0] + 1;
+    if (dV >= 4 && kw >= 4) {
+      const tx = zoneCuisine[0] + ((kw - 2) >> 1), ty = Math.max(1, (dV >> 1) - (dV >= 5 ? 0 : 1));
+      if (poser(tx, ty, 2, 1, 'ϡ')) { poser(tx - 1, ty, 1, 1, 'c'); poser(tx + 2, ty, 1, 1, 'c'); }
+    }
+    // le séjour : le canapé contre un mur, la télé en face (à environ trois cases)
+    const sw = zoneSejour[1] - zoneSejour[0] + 1;
+    if (sw >= 3 && dV >= 3) {
+      const cs = [(zoneSejour[0] + zoneSejour[1] + 1) / 2, dV / 2];
+      const can = placer(contre(ZS, 3), 'p', pp => dist(pp, cs) + (pp[3] === 1 && pp[1] === dV - 1 ? -1 : 0));
+      if (can && dV >= 4) { const cc = centre(can); placer(contre(ZS, 1), 'ϴ', pp => Math.abs(dist(pp, cc) - 3)); }
+    }
+    // 6. les pièces nommées (le nom s'affiche quand on y entre) : la case derrière chaque porte, toujours libre
+    const NOMS = { sdb: 'La salle de bain', wc: 'Les toilettes', chambre: 'La chambre', enfant: 'La chambre d’enfant' };
+    const nommer = (a, b, nom) => { const [xx, yy] = XY(a, b); piecesMaisons.push({ etage: etages[g].id, x: xx, y: yy, nom, genere: true }); };
+    for (const R of fond) { const pa = porteDe.get(R); if (pa != null) nommer(pa, f + 1, NOMS[R.t] || (R.l >= 2 ? 'Le cellier' : 'Le placard')); }
+    if (sFront > 0) { nommer(zoneCuisine[0] + (kw >> 1), f - 1, 'La cuisine'); nommer(ent, 0, 'Le séjour'); }
+    else nommer(ent, 0, 'La pièce à vivre');
   }
   function hangar(x, y, w, h) {
     maison(x, y, w, h, ['n', 's', 'o', 'e'][ri(0, 3)], { type: r() < 0.5 ? 'ouverte' : 'verrou', sol: 'ϕ', vide: true, large: 3, ouverte: true });
@@ -400,12 +645,13 @@ export function agrandirDef(def) {
     if (r() > densite * 0.12) continue;
     let ok = true;
     for (let a = 0; a < 2 && ok; a++) for (let b = -1; b < 4 && ok; b++) if (oc(x + b, y + a) !== 2 || get(x + b, y + a) !== M.route) ok = false;
-    if (ok) rect(x, y, 3, 2, r() < 0.15 ? 'ξ' : r() < VOITURES_FOUILLABLES ? 'v' : 'ϛ', 2), x += 4;
+    // jamais garée devant une porte (la maison serait murée) ; le tirage est fait quand même, le reste ne bouge pas
+    if (ok) { const c = r() < 0.15 ? 'ξ' : r() < VOITURES_FOUILLABLES ? 'v' : 'ϛ'; let devant = false; for (let a = -1; a < 3 && !devant; a++) for (let b = 0; b < 4; b++) if (devantPorte(x + b, y + a)) { devant = true; break; } if (!devant) rect(x, y, 3, 2, c, 2); x += 4; }
   }
   for (let k = 0; k < Math.round(TW * TH / 1500); k++) { const x = ri(0, TW - 1), y = ri(0, TH - 1); if (oc(x, y) === 2 && !devantPorte(x, y)) set(x, y, r() < 0.5 ? ';' : '%', 2); }
   // camionnettes : 4 × 2 (le « ξ » posé en 3 × 2 doit faire 4 de long)
   for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) if (G[y][x] === 'ξ' && get(x - 1, y) !== 'ξ' && (y === 0 || G[y - 1][x] !== 'ξ')) {
-    if (get(x + 3, y) === M.route && get(x + 3, y + 1) === M.route) { set(x + 3, y, 'ξ'); set(x + 3, y + 1, 'ξ'); }
+    if (get(x + 3, y) === M.route && get(x + 3, y + 1) === M.route && !devantPorte(x + 3, y) && !devantPorte(x + 3, y + 1) && !devantPorte(x + 3, y - 1) && !devantPorte(x + 3, y + 2)) { set(x + 3, y, 'ξ'); set(x + 3, y + 1, 'ξ'); }
     else for (let a = 0; a < 2; a++) for (let b = 0; b < 3; b++) set(x + b, y + a, 'ϛ');
   }
 
@@ -552,7 +798,7 @@ export function agrandirDef(def) {
     exterieur: true,                                   // il y a désormais un dehors autour (toits vus de dehors)
     solDefaut: def.solDefaut || (def.exterieur ? 'beton' : 'parquet'),
     etages: nouveaux,
-    pieces: (def.pieces || []).map(decaler),
+    pieces: [...(def.pieces || []).map(decaler), ...piecesMaisons],
     declencheurs: (def.declencheurs || []).map(decaler),
     legende: { ...LEG, ...legStyle, ...(def.legende || {}) },
     abords: { version: ABORDS_VERSION, milieu, style: ST ? ST.id : null, dx: ox, dy: oy, w: TW, h: TH, coeur: { x: ox, y: oy, w: Wg, h: Hg },

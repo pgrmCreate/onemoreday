@@ -4,6 +4,7 @@
 // font encore les morts. Au sud, la grève et l'étang de Berre. Sorties : ouest (l'allée) et est (la grève).
 export default {
   id: 'saint_chamas', nom: 'Saint-Chamas — la Poudrerie', exterieur: true,
+  sansSanitaires: ['Le magasin à poudre'],   // pas de toilettes, et c'est normal : la poudrière (tools/verifier_realisme.mjs)
   typeButin: 'usine',
   pool: ['errant', 'errant', 'putrefie', 'coureur', 'gonfleur'],
   morts: { n: [3, 6] },
@@ -13,10 +14,10 @@ export default {
       'T"""""TT""""""""""""""TTTTT"""""""""""""""""""""""""""""""""""""""T""T',
       'T"""############""""##################T"T"""""""""T""""T"""""""""""""T',
       'T"""#b..a#kk.f.#""""#dd..s#dd..s#ss.s#T""T""T""""""TT"""""""""""""T""T',
-      'T"""#....#.....#""""#.....#.....#....#"""""""""""""""""""""""""""""""T',
-      'T""T#....+..t..#""""#..c..#..c..#..s.#""""""""""T"""T""""""T"""""""""T',
-      'T"""#..%.#..tc.#""""#.....+.....+....#""""""T""T""""""TT""T""""""""""T',
-      'T"""#w...#.....#""""#s...;#.....#g...#"""""""""""""""""""""""""""""""T',
+      'T"""#..%.#.....#""""#.....#.....#....#"""""""""""""""""""""""""""""""T',
+      'T""T####.+..t..#""""#..c..#..c..#..#+#""""""""""T"""T""""""T"""""""""T',
+      'T"""#..+.#..tc.#""""#.....+.....+..#.#""""""T""T""""""TT""T""""""""""T',
+      'T"""#wq#.#.....#""""#s...;#.....#g.#q#"""""""""""""""""""""""""""""""T',
       'T"""####|###/###"""T###/##||##/#######""T""""T""""""""T""""""T"""""""T',
       'T"""""""""""""""""""""""""""""""""""""""""T""""""""""""""""""""""""""T',
       'E,@,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,vvv,,,,,,T',
@@ -56,6 +57,8 @@ export default {
     ] },
   ],
   pieces: [
+    { etage: 'rdc', x: 6, y: 6, nom: 'La salle d’eau', sol: 'carrelage', sombre: 1 },
+    { etage: 'rdc', x: 36, y: 6, nom: 'Les toilettes', sol: 'carrelage', sombre: 1 },
     { etage: 'rdc', x: 3, y: 10, nom: 'Le parc de la Poudrerie', sol: 'terre' },
     { etage: 'rdc', x: 6, y: 4, nom: 'La chambre du gardien', sol: 'tomettes', sombre: 1 },
     { etage: 'rdc', x: 12, y: 4, nom: 'La cuisine du gardien', sol: 'tomettes' },

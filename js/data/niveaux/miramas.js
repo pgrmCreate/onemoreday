@@ -4,6 +4,7 @@
 // quai de chargement et le poste d'aiguillage où traîne le bulletin de composition. Sorties : ouest (la ville) et est.
 export default {
   id: 'miramas', nom: 'Miramas — gare de triage', exterieur: true,
+  sansSanitaires: ["Le poste d'aiguillage"],   // pas de toilettes, et c'est normal : le poste d'aiguillage (tools/verifier_realisme.mjs)
   typeButin: 'triage',
   pool: ['errant', 'errant', 'coureur', 'hurleur', 'putrefie', 'enrage', 'chien_infecte'],
   morts: { n: [4, 8] },
@@ -13,13 +14,13 @@ export default {
       'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
       'G,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G',
       'G,,##########||########||########,,,,,,,######||######||######,,,,,,,,,,,,,G',
-      'G,,#ss....m..................#a.#,,,,,,,#d.d.s#kkkf....#a.a.a#,,,,,,,,,,,,,G',
-      'G,,#ss....m..................#a.#,,,,,,,#.....#........#.....#,,,,,,,,,,,,,G',
-      'G,,#.........LLLLLLLLLL......+..#,,,,,,,#..c..+..t..t..+.....#,,,,,,,,,,,,,G',
+      'G,,#ss#q#.m..................#a.#,,,,,,,#d.d.s#kkkf....#a.a.a#,,,,,,,,,,,,,G',
+      'G,,#ss#.#.m..................#a.#,,,,,,,#.....#........#.....#,,,,,,,,,,,,,G',
+      'G,,#..#+#....LLLLLLLLLL......+..#,,,,,,,#..c..+..t..t..+.....#,,,,,,,,,,,,,G',
       'G,,#.........LLLLLLLLLL......#..#,,,,,,,#.....#..tc.tc.#w...w#,,,,,,,,,,,,,G',
-      'G,,#.....%...................#w.#,,,,,,,#dd...#........#.....#,,,,,,,,,,,,,G',
-      'G,,#mm.....................;.####,,,,,,,#s..%.#..t..t..#.....#,,,,,,,,,,,,,G',
-      'G,,#mm.........................s#,,,,,,,#.....#.;......#.....#,,,,,,,,,,,,,G',
+      'G,,#.....%...................#w.#,,,,,,,#dd...#........###...#,,,,,,,,,,,,,G',
+      'G,,#mm.....................;.####,,,,,,,#s..%.#..t..t..#.+...#,,,,,,,,,,,,,G',
+      'G,,#mm.........................s#,,,,,,,#.....#.;......#q#...#,,,,,,,,,,,,,G',
       'G,,#...........g..........ssss.s#,,,,,,,###+#####/#########+##,,,,,,,,,,,,,G',
       'G,,#####/##############/#########,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G',
       'E,@,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G',
@@ -57,6 +58,8 @@ export default {
     ] },
   ],
   pieces: [
+    { etage: 'rdc', x: 56, y: 8, nom: 'Les toilettes', sol: 'carrelage', sombre: 1 },
+    { etage: 'rdc', x: 7, y: 4, nom: 'Les toilettes', sol: 'carrelage', sombre: 1 },
     { etage: 'rdc', x: 2, y: 12, nom: 'Le triage de Miramas', sol: 'beton' },
     { etage: 'rdc', x: 6, y: 6, nom: 'L\'atelier de maintenance', sol: 'beton', sombre: 1 },
     { etage: 'rdc', x: 30, y: 5, nom: 'Le vestiaire des cheminots', sol: 'carrelage', sombre: 2 },

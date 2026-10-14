@@ -8,6 +8,7 @@ import { parcelle } from '../../carte/parcelle.js';
 
 export default parcelle({
   id: 'chaine_cotes', nom: 'La chaîne des Côtes', typeButin: 'nature',
+  sansSanitaires: ['Le cabanon de chasse'],   // pas de toilettes, et c'est normal : un cabanon de chasseurs (tools/verifier_realisme.mjs)
   pool: ['errant', 'errant', 'rampant'], morts: { n: [2, 4] },
 }, { W: 132, H: 100, milieu: 'pinede' }, (e, P) => {
   const { W, H, rnd } = P;

@@ -13,6 +13,8 @@ import { lancerAction, jouerScene } from './interactions.js';
 import { overlayOuvert } from '../game/flow.js';
 
 let V = null, tMaj = 0, tOffre = 0;
+// Distance (unités) à laquelle on entend appeler la personne d'une mission : une dizaine de mètres.
+const PORTEE_APPEL = 12;
 const tenant = () => !!G && G.mode !== 'invite';
 // Qui mène le LIEU ici : l'hôte (ou le solo) ; l'invité seulement quand l'hôte n'y est pas.
 const meneLieu = () => tenant() || (!!G && G.mode === 'invite' && !!V && M.lieuAutre() !== V.lieuId);
@@ -20,7 +22,7 @@ const meneLieu = () => tenant() || (!!G && G.mode === 'invite' && !!V && M.lieuA
 export function lierMissions(v) {
   V = v; tMaj = 0; tOffre = 1600;   // les offres attendent que l'arrivée (et ses scènes d'histoire) soit passée
   if (!v || v.arene) return;
-  v.missions = { repere: false, tVague: {}, tBruit: 0, tCri: 0, t0: {} };
+  v.missions = { repere: false, tVague: {}, tBruit: 0, tCri: 0, t0: {}, entendus: new Set() };
   // un mort qui te prend en chasse : tu es repéré·e (missions de discrétion)
   v.off.push(v.canal.on('zombie', (e) => { if (e && e.etat === 'chasse' && V && V.missions) V.missions.repere = true; }));
 }
@@ -32,7 +34,7 @@ export function pieceNommee(niveau, nom) {
   if (!nom) return null;
   let c = cachePieces.get(niveau); if (!c) { c = new Map(); cachePieces.set(niveau, c); }
   const k = M.normNom(nom); if (c.has(k)) return c.get(k);
-  const P = niveau.pieces.find(p => p.nom && M.normNom(p.nom) === k);
+  const P = niveau.pieces.find(p => p.nom && !p.genere && M.normNom(p.nom) === k);   // jamais une pièce d'une maison des abords
   const r = P ? { etage: P.etage, x0: P.x0 / FIN, y0: P.y0 / FIN, x1: (P.x1 + 1) / FIN, y1: (P.y1 + 1) / FIN, cx: (P.x0 + P.x1 + 1) / 2 / FIN, cy: (P.y0 + P.y1 + 1) / 2 / FIN } : null;
   if (!P) console.warn(`[missions] pièce « ${nom} » introuvable dans ${V && V.lieuId}`);
   c.set(k, r);
@@ -186,12 +188,16 @@ function proteger(id, m, s, e, pas) {
 // ---------- Les offres : en arrivant dans le lieu, ou en entrant dans une pièce ----------
 function offres() {
   // en arrivant : on entend la personne d'une mission appeler (une fois par visite) — on va la voir, on lui parle
-  if (!V.missions.appelFait) {
-    V.missions.appelFait = true;
-    for (const { id, pnj } of M.pnjsDuLieu(V.lieuId)) {
-      const s = M.etat(id);
-      if (pnj.appel && (!s || s.etat === 'proposee')) { message(genrer(pnj.appel), 5200); break; }
-    }
+  // en approchant : on entend la personne d'une mission appeler (une fois par visite, quand on est assez près d'elle,
+  // au même étage) — pas dès l'arrivée sur le lieu. On va la voir, on lui parle.
+  for (const { id, pnj } of M.pnjsDuLieu(V.lieuId)) {
+    if (!pnj.appel || V.missions.entendus.has(id)) continue;
+    const s = M.etat(id); if (s && s.etat !== 'proposee') { V.missions.entendus.add(id); continue; }
+    const q = V.pnj.find(p => p.mission === id);
+    if (!q || q.etage !== V.j.etage || Math.hypot(q.x - V.j.x, q.y - V.j.y) > PORTEE_APPEL) continue;
+    V.missions.entendus.add(id);
+    message(genrer(pnj.appel), 5200);
+    break;
   }
   if (V.occupe || V.action || V.butin || overlayOuvert() || (V.cbt && V.cbt.etat && V.cbt.etat.empoigne)) return;   // une scène à l'écran : on attend
   if (V.zListe.some(z => z.etage === V.j.etage && z.etat === 'chasse' && Math.hypot(z.x - V.j.x, z.y - V.j.y) < 12)) return;   // pas en plein combat
@@ -207,6 +213,7 @@ export function reperesMissions() {
   for (const q of V.pnj) {
     if (!q.mission) continue;
     const s = M.etat(q.mission), e = M.etapeDe(q.mission);
+    if ((!s || s.etat === 'proposee') && V.missions && !V.missions.entendus.has(q.mission)) continue;   // pas encore entendue
     out.push({ etage: q.etage, x: q.x, y: q.y, nom: q.nom, danger: !!(e && e.type === 'proteger'), actif: !!(s && s.etat === 'active') });
   }
   return out;

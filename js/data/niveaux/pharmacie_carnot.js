@@ -1,6 +1,7 @@
 // Pharmacie du cours Carnot — la croix verte s'est éteinte le 6.
-// Officine (comptoir, tiroirs à médicaments, parapharmacie), préparatoire, bureau de la pharmacienne,
+// Officine (comptoir, tiroirs à médicaments, parapharmacie), préparatoire, bureau de la pharmacienne et ses toilettes,
 // et la réserve : pleine, noire, verrouillée, avec quelque chose qui cogne derrière la porte.
+// Mireille (mission m_mireille) fouille le préparatoire, là où est le frigo : on la rejoint sans rien forcer.
 export default {
   id: 'pharmacie_carnot', nom: 'Pharmacie du cours Carnot', exterieur: false,
   typeButin: 'pharmacie',
@@ -12,9 +13,9 @@ export default {
       '#ssss.SSSS.#mm..ddd#dd...a.#',
       '#..........#.......#.......#',
       '#ssss.SSSS.#rr..c..#.c.....#',
-      '#..........#.......#..pp...#',
-      '#ssss.SSSS.#ff....w#.......#',
-      '#G...K.....#...I...#w......#',
+      '#..........#.......####pp..#',
+      '#ssss.SSSS.#ff....w#w.+....#',
+      '#G...K..I..#.......#W.#....#',
       '#####X#########+#########+##',
       '#UUUU.UUUU.UUUU.UUUU.UUUU..#',
       '#..Y.......D...............#',
@@ -32,8 +33,9 @@ export default {
   ],
   pieces: [
     { etage: 'rdc', x: 5, y: 2, nom: 'La réserve', sol: 'beton', sombre: 2 },
-    { etage: 'rdc', x: 14, y: 2, nom: 'Le préparatoire', sol: 'carrelage', sombre: 1 },
+    { etage: 'rdc', x: 14, y: 2, nom: 'Le préparatoire', sol: 'carrelage', sombre: 1, sansMorts: true },   // Mireille y cherche l'insuline (m_mireille)
     { etage: 'rdc', x: 23, y: 2, nom: 'Le bureau de Mireille', sol: 'lino', sombre: 1 },
+    { etage: 'rdc', x: 21, y: 5, nom: 'Les toilettes', sol: 'carrelage', sombre: 1 },
     { etage: 'rdc', x: 14, y: 11, nom: 'L’officine', sol: 'carrelage', sombre: 0 },
     { etage: 'rdc', x: 8, y: 16, nom: 'Cours Carnot', sol: 'bitume' },
   ],
@@ -46,6 +48,7 @@ export default {
     'Y': { zombie: 'coureur', etat: 'fait_le_mort' },
     'I': { zombie: 'errant', etat: 'immobile' },
     'D': { document: 'doc_ordonnance_luc' },
+    'W': { prop: 'wc', nom: 'les toilettes' },
   },
   declencheurs: [],
 };

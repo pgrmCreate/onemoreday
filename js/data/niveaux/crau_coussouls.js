@@ -7,6 +7,7 @@ import { parcelle } from '../../carte/parcelle.js';
 
 export default parcelle({
   id: 'crau_coussouls', nom: 'Les coussouls de la Crau', typeButin: 'nature',
+  sansSanitaires: ['La bergerie', 'L’abri du berger'],   // pas de toilettes, et c'est normal : la bergerie et l'abri du berger (tools/verifier_realisme.mjs)
   pool: ['errant', 'errant', 'rampant'], morts: { n: [2, 4] },
 }, { W: 140, H: 100, milieu: 'crau' }, (e, P) => {
   const { W, H, rnd } = P;

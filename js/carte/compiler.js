@@ -253,6 +253,7 @@ export function compilerPlan(plan, def = {}) {
       if (pd.sombre != null) Pc.sombre = pd.sombre;
       if (pd.exterieur != null) Pc.exterieur = !!pd.exterieur;
       if (pd.sansMorts) Pc.sansMorts = true;   // ni morts procéduraux ni repeuplement dans cette pièce
+      if (pd.genere) Pc.genere = true;         // nommée par le générateur d'abords (une maison) : les missions ne la visent jamais
     }
     // toits : rattachés à la pièce de leur case de référence (rectangles en unités)
     for (const t of P.toits) {

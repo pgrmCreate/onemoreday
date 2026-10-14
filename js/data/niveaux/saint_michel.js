@@ -3,6 +3,7 @@
 // Le clocher de l'horloge domine la place Saint-Michel et les étals du marché bio.
 export default {
   id: 'saint_michel', nom: 'Église Saint-Michel', exterieur: false,
+  sansSanitaires: ['La nef'],   // pas de toilettes, et c'est normal : l'église (tools/verifier_realisme.mjs)
   typeButin: 'eglise',
   pool: ['errant', 'errant', 'putrefie', 'rampant'],
   morts: { n: [1, 4] },

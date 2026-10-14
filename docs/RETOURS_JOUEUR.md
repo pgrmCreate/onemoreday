@@ -146,6 +146,21 @@ Comme dans Project Zomboid, les besoins du corps se règlent dans la durée, pas
   son modèle le justifie.
 - Les **vêtements se superposent** de façon réaliste : t-shirt, pull et veste en même temps sur le torse.
 
+### P15. Un bâtiment est disposé comme un vrai
+En exploration (pas sur la grande carte), un bâtiment doit pouvoir exister : on comprend où l'on dort, où l'on mange, où
+sont les toilettes.
+- **Tout bâtiment où l'on vit ou travaille a des toilettes** : un WC (objet `wc`, caractère `q` dans les plans ASCII), pas
+  seulement un lavabo. Une pièce nommée « Les toilettes », « Les sanitaires », « La salle de bain » contient son WC.
+- **Un logement** a un point d'eau pour se laver (lavabo, baignoire ou douche) et de quoi cuisiner.
+- **La disposition est logique** : on entre par la pièce de vie (séjour, cuisine sous la fenêtre de la façade) ; chambres
+  et salle de bain au fond ; les pièces d'eau sont groupées ; la réserve, les toilettes du personnel sont à l'arrière
+  d'un commerce. Jamais de toilettes juste derrière la porte d'entrée, jamais d'entrée qui passe par elles.
+- Un bâtiment trop petit pour être un logement (≤ 3,2 m de large, ≤ 16 m²) est une remise, un atelier.
+- **Exceptions dites dans le plan** : église, chapelle, hangar, garage, grotte, cave, wagon, ruine… se déclarent avec
+  `sansSanitaires: ['nom d'une pièce', …]` et la raison en commentaire.
+- **Contrôle** : `node tools/verifier_realisme.mjs [id]` (bâtiment par bâtiment, ce qui manque). Les maisons des abords
+  sont aménagées par `js/carte/abords.js` (`amenager`) selon ces règles.
+
 ---
 
 ## 2. Journal des retours
@@ -234,6 +249,13 @@ Comme dans Project Zomboid, les besoins du corps se règlent dans la durée, pas
 | 45 | Les cadavres sont un peu trop grands ; certains morts ont, au départ, les bras trop allongés ou les épaules comme remontées. | Corps couché en taille réelle à côté de silhouettes debout tassées ; bras au repos à demi levés et coude calculé à longueur fixe (il saillait sur le côté). | Corps couchés réduits (× 0,76) ; au repos les bras pendent le long du corps ; le bras se raccourcit quand la main est proche (vu de dessus, un bras qui pend est court) au lieu de plier le coude vers l'extérieur. | fait |
 | 46 | Les gros objets dans le dos sont posés à l'horizontale, c'est bizarre : ils doivent être à moitié cachés par le sac ou les vêtements. L'arme en main doit se voir davantage. La pelle est trop grande. | Objet du dos dessiné en travers, par-dessus le sac ; arme à sa taille nue, sans contour. | Sur planches de propositions, choix du propriétaire : dans le dos **en bandoulière, en biais** (un bout au-dessus d'une épaule, l'autre sous la hanche, le milieu caché sous le sac et la carrure) ; en main **un peu plus grande et cernée de noir**. Pelle redessinée plus petite (manche 25, lame réduite). | fait |
 
+### 14 octobre 2026 — des bâtiments qui tiennent debout, et Mireille
+
+| # | Ce qu'il dit | Cause probable | Décision (session de code du 14 oct.) | Statut |
+|---|---|---|---|---|
+| 47 | Plein de bâtiments n'ont pas de toilettes, on ne comprend pas. Il faut une logique dans la disposition des bâtiments, plus proche de la réalité, au moins l'endroit des toilettes. | Aucun plan du jeu n'avait de WC : même les pièces nommées « Les toilettes » n'avaient qu'un lavabo. Les maisons générées autour des lieux n'avaient qu'une cuisine et un lit, en vrac. | P15. **Maisons générées** (`abords.js`, `amenager`) : pièce de vie côté rue (cuisine sous la fenêtre, frigo, table, canapé et télé), au fond une salle de bain avec WC, lavabo et baignoire, des chambres (grand lit, armoire ; chambre d'enfant), des toilettes séparées dans les grandes maisons ; dans une maison peu profonde, la salle de bain dans un coin ; un bâtiment trop petit devient une remise. Chaque pièce est nommée. Au passage, trois défauts anciens corrigés : un arbre du jardin ou une voiture garée devant une porte muraient la maison, et une parcelle de campagne pouvait en écraser une autre. **Lieux dessinés** : un WC dans chaque pièce « toilettes », un cabinet creusé dans le coin le plus logique (vestiaire, réserve, arrière-boutique, palier) de chaque bâtiment qui n'en avait pas, un WC à côté de la baignoire des chambres d'hôtel et d'hôpital, une salle d'eau dans les maisons ; églises, hangars, grottes, wagons déclarés `sansSanitaires`. Nouvel outil `tools/verifier_realisme.mjs`. | fait |
+| 48 | À la pharmacie, la personne qui a besoin d'aide est bloquée derrière une porte. Dès qu'on arrive, on l'entend crier : il faudrait s'approcher un peu avant. | L'appel de Mireille partait 1,6 s après l'arrivée sur le lieu, où qu'on soit. Elle était placée dans la réserve, fermée à clé (pied-de-biche ou crochetage), avec un mort qui cogne dedans. | L'appel ne part que quand on est à une dizaine de mètres d'elle, au même étage, et son repère n'apparaît qu'après. Mireille cherche l'insuline dans le **préparatoire** (le frigo y est, la porte est ouverte, aucun mort procédural) ; la réserve reste fermée avec ses deux morts. | fait |
+
 ---
 
 ## 3. Check-list de revue d'un niveau
@@ -266,6 +288,10 @@ dans l'en-tête du fichier du niveau.
 - [ ] Escaliers droits ≥ 2 × 3, escaliers à vis 2 × 2, aux mêmes coordonnées d'un étage à l'autre, avec une case libre
       autour de l'arrivée.
 - [ ] Chaque étage a une fonction ; son nom (affiché dans le libellé « Monter : … ») est clair.
+
+**Réalisme (P15)**
+- [ ] Chaque bâtiment où l'on vit ou travaille a ses toilettes (WC), à un endroit logique ; chaque logement a de quoi se
+      laver et cuisiner : `node tools/verifier_realisme.mjs <id>` sans défaut, exceptions déclarées (`sansSanitaires`).
 
 **Repérage (P7)**
 - [ ] Toutes les pièces où l'on peut entrer sont nommées (`nom`), avec un nom que le joueur comprend.
