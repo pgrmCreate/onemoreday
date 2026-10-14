@@ -4,12 +4,12 @@
 // Vérifie : imports, formats (REFONTE §4.5 à §4.11), références croisées (scènes, quêtes, lieux, objets,
 // documents, morts, cinématiques, décors, marqueurs de niveau documentés), drapeaux testés jamais posés,
 // scènes orphelines, lieux clés ≤ 14, syntaxe {masculin|féminin}, absence d'émojis.
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
-const url = p => 'file://' + join(RACINE, p);
+const url = p => pathToFileURL(join(RACINE, p)).href;
 const erreurs = [], avertissements = [];
 const err = m => erreurs.push(m), warn = m => avertissements.push(m);
 
@@ -286,6 +286,43 @@ const FLAGS_MOTEUR = new Set([]);
 for (const [f, ctxs] of flagsTestes) if (!flagsPoses.has(f) && !FLAGS_MOTEUR.has(f)) err(`drapeau « ${f} » testé mais jamais posé (${ctxs[0]})`);
 
 // ─── 13. Scènes orphelines ───
+// Le récit n'est pas le seul point d'entrée : le moteur et les zones des plans lancent aussi des scènes.
+// Lire les définitions importées, comme valider_niveaux, sans compiler les grilles de collision/rendu.
+// Les plans à couches portent leurs déclencheurs par étage ; les anciens plans les portent à la racine.
+const { SCENES_RENCONTRES = {} } = await imp('js/data/rencontres_scenes.js', 'SCENES_RENCONTRES');
+const scenesConnues = { ...SCENES_RENCONTRES, ...SCENES };
+function sceneExterne(id, contexte) {
+  if (!scenesConnues[id]) err(`${contexte} : scène inconnue « ${id} »`);
+  else scenesCibles.add(id);
+}
+const dossierPlans = 'js/data/niveaux';
+for (const fichier of readdirSync(join(RACINE, dossierPlans)).filter(f => f.endsWith('.js')).sort()) {
+  const chemin = `${dossierPlans}/${fichier}`;
+  const { default: def } = await imp(chemin, 'default');
+  if (!def) continue; // l'échec d'import est déjà signalé
+  try {
+    const zones = def.format === 'couches' ? def.plan.etages.flatMap(e => e.declencheurs) : (def.declencheurs || []);
+    for (const [i, d] of zones.entries()) if (d.scene) sceneExterne(d.scene, `${chemin} déclencheur[${i}]`);
+  } catch (e) { err(`${chemin} : lecture des déclencheurs impossible (${e.message})`); }
+}
+function* fichiersJS(dossier) {
+  for (const e of readdirSync(join(RACINE, dossier), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const chemin = `${dossier}/${e.name}`;
+    if (e.isDirectory()) yield* fichiersJS(chemin);
+    else if (e.isFile() && e.name.endsWith('.js')) yield chemin;
+  }
+}
+// Appels scene('id') / flow.scene('id') à identifiant littéral simple. Les commentaires et chaînes sont
+// consommés séparément : un exemple dans un commentaire ou du texte ne rend pas une scène accessible.
+// Les identifiants calculés (dont les missions) ne sont pas résolus par cette analyse statique limitée.
+const appelsScene = /\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\[\s\S]|[^`\\])*`|\bscene\s*\(\s*(['"])([a-z0-9_]+)\1\s*(?=[,)])/g;
+for (const chemin of fichiersJS('js')) {
+  const source = readFileSync(join(RACINE, chemin), 'utf8');
+  for (const m of source.matchAll(appelsScene)) if (m[2]) {
+    const ligne = source.slice(0, m.index).split('\n').length;
+    sceneExterne(m[2], `${chemin}:${ligne}`);
+  }
+}
 const racines = new Set([...scenesCibles]);
 for (const id of Object.keys(SCENES)) if (!racines.has(id)) warn(`scène orpheline « ${id} » (aucun lien vers elle)`);
 

@@ -190,6 +190,7 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null, po
     accroupi: () => {}, aide: () => V && V.hud.basculerAide(),
     frapper: (appui, annule, mode) => { if (!V || !V.cbt || V.occupe) return; if (enPlacement()) { if (appui) poserPlacement(); return; } if (appui) stopperActions(); V.cbt.frapper(appui, annule, mode); },
     crosse: (appui, annule) => { if (!V || !V.cbt || V.occupe || enPlacement()) return; if (appui) stopperActions(); V.cbt.frapper(appui, annule, 'crosse'); },
+    annuler: () => { if (V && V.cbt) V.cbt.annuler(); },
     clicDroit: (appui) => { if (!V || !V.cbt || V.occupe) return; if (enPlacement()) { if (appui) tournerPlacement(); return; } if (appui) stopperActions(); V.cbt.clicDroit(appui); },
     secondaire: () => basculerChoix(),
     recherche: () => { if (V && !V.arene) basculerRecherche(); },

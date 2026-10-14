@@ -69,6 +69,19 @@ export function charger(mode = 'solo') {
 export function aSauvegarde(mode = 'solo') {
   try { const r = localStorage.getItem(CLE[mode] || mode); return !!r && JSON.parse(r).v === VERSION; } catch (e) { return false; }
 }
+// Lecture seule : même une sauvegarde illisible mérite un avertissement avant son remplacement.
+export function resumeSauvegarde(mode = 'solo') {
+  try {
+    const raw = localStorage.getItem(CLE[mode] || mode);
+    if (raw === null) return null;
+    let g;
+    try { g = JSON.parse(raw); } catch (e) { return { nom: null, jour: null }; }
+    return {
+      nom: typeof g?.player?.nom === 'string' ? g.player.nom : null,
+      jour: Number.isFinite(g?.world?.minutes) ? Math.max(1, Math.floor(g.world.minutes / 1440) + 1) : null,
+    };
+  } catch (e) { return null; }
+}
 export function effacerSauvegarde(mode) { try { localStorage.removeItem(mode ? (CLE[mode] || mode) : cleActive); } catch (e) {} }
 
 // ---------- Drapeaux (monde partagé) ----------

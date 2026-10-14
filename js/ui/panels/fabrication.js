@@ -13,7 +13,7 @@ import { el, icoEl, bouton, avecScroll, vide, pct, g } from './commun.js';
 
 let etat = { cat: null, sel: null, qty: 1, cible: null };
 let apiPanneau = null;
-let enCours = null; // { raf, debut, duree, id }
+let enCours = null; // { raf, debut, duree, id, qty, cible } : choix figés au lancement
 
 export function monter(racine, opts = {}, api) {
   apiPanneau = api || null;
@@ -28,6 +28,7 @@ function interrompre() { if (enCours) { cancelAnimationFrame(enCours.raf); enCou
 function iconeRecette(r) { return r.resultat ? iconeObjet(r.resultat.id) : r.special === 'feu_camp' ? 'feu' : r.special === 'barricade' ? 'materiau' : 'reparer'; }
 
 function dessiner(racine) {
+  if (enCours) return; // garder la progression et son bouton Interrompre jusqu'à la fin
   const p = G.player; racine.textContent = '';
   const comptes = craft.compteParCategorie(p);
   // Catégories
@@ -141,23 +142,27 @@ function remplirFiche(f, p, racine) {
 }
 
 function lancer(r, e, pied, racine) {
+  if (enCours) return;
   const duree = craft.dureeBarreMs(e.tempsMin);
+  const travail = { id: r.id, qty: etat.qty, cible: etat.cible, debut: performance.now(), duree, raf: 0 };
+  enCours = travail;
+  // Seul Interrompre reste actif dans la recette. Le rail et la fermeture du panneau gardent leur annulation.
+  for (const b of racine.querySelectorAll('button')) b.disabled = true;
   const barre = el('div', { class: 'fa-progres' }, el('i'), el('span', {}, `${r.nom}…`));
   const stop = bouton({ label: 'Interrompre', icone: 'fermer', cls: 'second', onclick: () => { interrompre(); toast('Interrompu. Rien n\'est perdu.', 'info'); dessiner(racine); } });
   pied.textContent = ''; pied.append(barre, stop);
-  const i = barre.firstChild; const debut = performance.now();
-  enCours = { debut, duree };
+  const i = barre.firstChild;
   const pas = (t) => {
-    if (!enCours) return;
-    const k = Math.min(1, (t - debut) / duree);
+    if (enCours !== travail) return;
+    const k = Math.min(1, (t - travail.debut) / duree);
     i.style.width = `${k * 100}%`;
-    if (k < 1) { enCours.raf = requestAnimationFrame(pas); return; }
+    if (k < 1) { travail.raf = requestAnimationFrame(pas); return; }
     enCours = null;
-    const res = craft.fabriquer(r.id, etat.qty, { cible: etat.cible });
+    const res = craft.fabriquer(travail.id, travail.qty, { cible: travail.cible });
     if (!res.ok) toast(res.raison, 'alerte');
     etat.qty = 1; etat.cible = null;
     import('../../game/survival.js').then(m => m.son && m.son('craft'));
     dessiner(racine);
   };
-  enCours.raf = requestAnimationFrame(pas);
+  travail.raf = requestAnimationFrame(pas);
 }

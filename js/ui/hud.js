@@ -146,7 +146,7 @@ export function montrerHUD(on_ = true) {
   if (visible) {
     if (!offs.length) {
       const maj = () => { if (visible) majHUD(); };
-      for (const e of ['minute', 'flag', 'inventaire', 'blessure', 'quete', 'temps', 'survie', 'lieu:entre', 'lieu:sort', 'voyage:debut', 'voyage:fin'])
+      for (const e of ['minute', 'flag', 'inventaire', 'blessure', 'quete', 'temps', 'survie', 'lieu:entre', 'lieu:sort', 'voyage:debut', 'voyage:direction', 'voyage:fin'])
         offs.push(on(e, maj));
       offs.push(on('journal', () => { if (!panneauOuvert()) els.pastJournal.hidden = false; }));
       offs.push(on('document', () => { els.pastJournal.hidden = false; }));

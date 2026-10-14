@@ -9,7 +9,7 @@ import { G, genrer } from '../core/state.js';
 import { emit, on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 import { texteHorloge } from './temps_connu.js';
-import { el } from '../core/util.js';
+import { el, fmtDuree } from '../core/util.js';
 import { REGLAGES } from '../data/reglages.js';
 import { dormir, categorieCouchage } from './survival.js';
 import { icase } from '../carte/catalogue.js';
@@ -81,11 +81,11 @@ export async function ouvrirSommeil({ couchage = null } = {}) {
   if (!sit.ok) boite.append(el('p', { class: 'som-alerte' }, sit.raison));
   else boite.append(el('p', { class: sit.sur ? 'som-sur' : 'som-alerte' }, sit.sur ? 'Lieu sûr : portes fermées, rien ici.' : `Lieu exposé (${sit.raisonRisque || 'des morts rôdent'}) : tu risques d’être {surpris|surprise}. Ferme les portes, ou barricade-toi.`.replace('{surpris|surprise}', p.genre === 'f' ? 'surprise' : 'surpris')));
   if (G.mode !== 'solo') boite.append(el('p', { class: 'som-coop' }, `À deux, vous dormez ensemble : ${coop ? coop.pairNom() : 'ton coéquipier'} doit accepter.`));
-  const h = clock.heureDecimale();
-  const jusquAube = Math.round(((REGLAGES.temps.HEURES.JOUR - h + 24) % 24) || 8);
+  // Jusqu'au prochain lever du jour, à la minute près (pile à l'heure du jour : le lendemain, jamais une durée nulle).
+  const minAube = ((REGLAGES.temps.HEURES.JOUR * 60 - clock.minutes() % 1440) % 1440 + 1440) % 1440 || 1440;
   const choix = el('div', { class: 'som-choix' });
   const peut = sit.ok && fat < SO().FATIGUE_MAX_POUR_DORMIR;
-  for (const [lab, hh] of [['2 h', 2], ['4 h', 4], ['8 h', 8], [`Jusqu’au jour (${jusquAube} h)`, jusquAube]]) {
+  for (const [lab, hh] of [['2 h', 2], ['4 h', 4], ['8 h', 8], [`Jusqu’au jour (${fmtDuree(minAube)})`, minAube / 60]]) {
     choix.append(el('button', { class: 'btn', type: 'button', disabled: peut ? null : true, onclick: () => { fermer(); demander(hh, sit, C.categorie); } }, lab));
   }
   boite.append(choix, el('button', { class: 'btn som-annuler', type: 'button', onclick: fermer }, 'Annuler'));
@@ -97,7 +97,7 @@ function demander(heures, sit, couchage) {
   if (G.mode !== 'solo' && coop) {
     propose = { heures, couchage, t: performance.now() };
     coop.proposer(heures);
-    emit('toast', { texte: `Tu proposes de dormir ${heures} h. On attend ${coop.pairNom()}.` });
+    emit('toast', { texte: `Tu proposes de dormir ${fmtDuree(heures * 60)}. On attend ${coop.pairNom()}.` });
     return;
   }
   executer(heures, sit, couchage);
@@ -105,7 +105,7 @@ function demander(heures, sit, couchage) {
 // Le coéquipier propose : bandeau « Dormir aussi ».
 export function invitation(nom, heures) {
   if (propose && performance.now() - propose.t < 120000) { const h = Math.min(heures, propose.heures); coop && coop.accepter(h); lancerApresAccord(h); return; }
-  const b = el('div', { class: 'som-invite' }, el('span', {}, `${nom} veut dormir ${heures} h.`),
+  const b = el('div', { class: 'som-invite' }, el('span', {}, `${nom} veut dormir ${fmtDuree(heures * 60)}.`),
     el('button', { class: 'btn', type: 'button', onclick: async () => { b.remove(); const sit = await situation(); if (!sit.ok) { emit('toast', { texte: sit.raison, type: 'alerte' }); return; } coop && coop.accepter(heures); lancerApresAccord(heures); } }, 'Dormir aussi'),
     el('button', { class: 'btn', type: 'button', onclick: () => b.remove() }, 'Pas maintenant'));
   document.body.append(b);
@@ -133,8 +133,9 @@ async function executer(heures, sit, couchage = 'sol') {
   const majH = () => { voile.lastChild.textContent = texteHorloge(); };
   await new Promise(r => setTimeout(r, 700));
   let interrompu = false, dormi = 0, plafond = false;
-  for (let k = 0; k < heures && G && !G.player.mort; k++) {
-    const r = dormir(1, { force: true, silencieux: true, sur: sit.sur, danger: sit.danger, mortsPresents: sit.mortsPresents, couchage, sansCourbatures: true });
+  // heure par heure, le dernier bloc seulement ce qui reste (jusqu'au jour : 7 h 15 = 7 blocs d'une heure + 15 min)
+  for (let reste = Math.round(heures * 60); reste > 0 && G && !G.player.mort; reste -= 60) {
+    const r = dormir(Math.min(60, reste) / 60, { force: true, silencieux: true, sur: sit.sur, danger: sit.danger, mortsPresents: sit.mortsPresents, couchage, sansCourbatures: true });
     if (!r.ok) { plafond = !!r.plafond; break; }
     dormi += r.dormi || 0;
     majH();
@@ -147,13 +148,14 @@ async function executer(heures, sit, couchage = 'sol') {
   setTimeout(() => voile.remove(), 500);
   enCours = false;
   if (V && flow.tempsCourant() === 'exploration') { V.occupe = false; if (!V.enPause) V.entrees.actif(true); }
-  const h = Math.max(1, Math.round(dormi / 60)), f = G.player.fatigue, SE = REGLAGES.survie.SEUILS.fatigue;
+  const duree = fmtDuree(dormi), f = G.player.fatigue, SE = REGLAGES.survie.SEUILS.fatigue;
   const etat = f < SE.grave ? 'épuisé{|e}' : f < SE.gene ? 'fatigué{|e}' : f < SE.gene + 20 ? 'las{|se}' : null;
   let texte;
   if (interrompu) texte = 'Tu te réveilles en sursaut.';
   else if (plafond && couchage === 'sol' && dormi < 60) texte = 'Le sol est trop dur : impossible de te rendormir.';
-  else if (etat) texte = `Tu as dormi ${h} h${ICI[couchage] ? ' ' + ICI[couchage] : ''}. Tu te réveilles encore ${etat}${cb ? ', et {courbaturé|courbaturée}' : ''}.`;
-  else texte = `Tu as dormi ${h} h${ICI[couchage] ? ' ' + ICI[couchage] : ''}. ${f < 80 ? 'Tu te sens un peu mieux' : 'Tu te sens {reposé|reposée}'}${cb ? ', mais {courbaturé|courbaturée}' : ''}.`;
+  else if (!dormi) texte = 'Tu n’arrives pas à trouver le sommeil.';
+  else if (etat) texte = `Tu as dormi ${duree}${ICI[couchage] ? ' ' + ICI[couchage] : ''}. Tu te réveilles encore ${etat}${cb ? ', et {courbaturé|courbaturée}' : ''}.`;
+  else texte = `Tu as dormi ${duree}${ICI[couchage] ? ' ' + ICI[couchage] : ''}. ${f < 80 ? 'Tu te sens un peu mieux' : 'Tu te sens {reposé|reposée}'}${cb ? ', mais {courbaturé|courbaturée}' : ''}.`;
   emit('toast', { texte: genrer(texte), type: interrompu ? 'mauvais' : 'info' });
 }
 // Les courbatures (mal dormi), posées une fois au réveil selon le temps passé sur ce couchage.

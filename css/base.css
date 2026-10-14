@@ -83,6 +83,11 @@ input.saisie:focus { border-color: var(--ambre); }
 .cr-actions .btn { min-height: 46px; justify-content: center; }
 .cr-retour { flex: 0 0 auto; padding: 0 18px; }
 .cr-go { flex: 1; font-size: 18px; letter-spacing: .14em; }
+.creation [hidden] { display: none !important; }
+.cr-confirmation h3 { margin: 18px 0 8px; font-family: var(--f-recit); font-size: 24px; color: var(--ambre2); }
+.cr-confirmation p { max-width: 54ch; line-height: 1.5; color: var(--creme); overflow-wrap: anywhere; }
+.cr-confirmation .cr-actions { flex-wrap: wrap; }
+.cr-confirmation .cr-go { letter-spacing: .06em; }
 @media (max-height: 420px) { .cr-diff small { font-size: 12px; } .creation .champ { margin-top: 6px; } }
 .code-salon { font-family: var(--f-ui); font-size: 44px; letter-spacing: .3em; color: var(--ambre2); }
 

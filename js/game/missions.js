@@ -273,6 +273,12 @@ function besoinMots(e, s) {
 }
 export function sceneNourrir(id) {
   const s = etat(id), m = MISSIONS[id], e = etapeDe(id), nom = m.pnj.nom, sid = 'mission_pnj_' + id;
+  // Le don qu'on vient de faire a rempli l'étape (ou la mission) : plus rien à proposer, la scène se referme et le
+  // récit de fin, déjà en file, prend le relais.
+  if (!e || e.type !== 'nourrir') {
+    SCENES[sid] = { illu: null, musique: null, orateur: nom, texte: `${nom} prend ce que tu lui tends et mange lentement, jusqu’à la dernière miette.`, choix: [{ label: 'Continuer', suivant: '#fin' }] };
+    return sid;
+  }
   const p = G.player, faitAujourdhui = s.d.okJour === clock.jour();
   const besoin = besoinMots(e, s);
   const jours = `${s.d.faits || 0} jour${(s.d.faits || 0) > 1 ? 's' : ''} sur ${e.jours}`;

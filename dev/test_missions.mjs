@@ -98,13 +98,25 @@ M.accepter('m_aime');
 inv.addItem('ouvre_boite', 1); inv.addItem('conserve_raviolis', 6); inv.addItem('biscuits', 3);
 let sc = SCENES[M.sceneNourrir('m_aime')];
 ok(sc.choix.some(c => /raviolis/.test(c.label)), 'parler à Aimé : on choisit quoi lui donner');
+// Une exception attrapée par les effets ne se voit qu'au journal : on l'écoute pendant toute la mission.
+const journalAime = [], warnAvant = console.warn, errorAvant = console.error;
+console.warn = (...a) => { journalAime.push(a.map(String).join(' ')); warnAvant(...a); };
+console.error = (...a) => { journalAime.push(a.map(String).join(' ')); errorAvant(...a); };
 appliquerEffets({ mission: ['donner', 'm_aime', 'biscuits'] });
 ok(M.etat('m_aime').d.faits === 1, 'jour 1 : il a mangé à sa faim');
 clock.avancer(1440);
 appliquerEffets({ mission: ['donner', 'm_aime', 'biscuits'] });
 clock.avancer(1440);
+M.sceneNourrir('m_aime');   // comme en jeu : on lui reparle, la scène propose le don du jour
 appliquerEffets({ mission: ['donner', 'm_aime', 'biscuits'] });
 ok(M.etat('m_aime').etat === 'reussie' && inv.countItem('canne_peche') === 1, 'trois jours nourri : il remarche, sa canne à pêche en récompense');
+const fermeture = SCENES['mission_pnj_m_aime'];
+ok(fermeture && fermeture.choix.length === 1 && fermeture.choix[0].suivant === '#fin', 'après le dernier repas, la scène se referme (plus de don proposé)');
+const biscuitsAvant = inv.countItem('biscuits');
+appliquerEffets({ mission: ['donner', 'm_aime', 'biscuits'] });
+ok(inv.countItem('biscuits') === biscuitsAvant && inv.countItem('canne_peche') === 1, 'un don tardif ne retire rien et ne récompense pas deux fois');
+console.warn = warnAvant; console.error = errorAvant;
+ok(!journalAime.length, `aucune exception pendant la mission d’Aimé${journalAime.length ? ' (' + journalAime[0].slice(0, 120) + ')' : ''}`);
 // échec : deux jours sans manger
 G.world.missions.m_aime = undefined; delete G.world.missions.m_aime;
 M.accepter('m_aime');

@@ -5,7 +5,7 @@
 //   Retours : micro-arrêt de l'image à l'impact, secousse, gerbes de sang qui tachent le sol, traînée d'arme,
 //            chiffres, voile rouge, vibration. (Pas d'esquive : on recule, on pousse, on interrompt.)
 // creerCombatVue(o) → { frapper(appui, annule), pousser(), recharger(), echangerMains(), dos(), rapide(i),
-//                       maj(dt), vitesseMult(), dirForcee(), echelleTemps(), surEvt(e), rendu(), fx, sang, etat, fermer() }
+//                       maj(dt), vitesseMult(), dirForcee(), echelleTemps(), surEvt(e), rendu(), annuler(), fx, sang, etat, fermer() }
 // o = { canal, j, zombies, message, sfx, sfxA, vib, inv, player, survie, entrees, tactile, pause, effets (rendu.effets),
 //       etage () → E, mouvement () → { mx, my }, ralentir (f, ms), solo: bool }
 import { G } from '../core/state.js';
@@ -418,9 +418,14 @@ export function creerCombatVue(o) {
     return { geste: g, charge: S.charge ? (S.charge.visee ? -1 : ch) : 0, vise: !!(S.charge && S.charge.visee), empoigne: emp, secousse: S.secousse, flash: S.flash };
   }
 
+  // Les commandes sont coupées (pause, plan, scène, cinématique) : le coup ou la visée en préparation et l'appui mis en
+  // attente sont oubliés, sans rien déclencher ni dépenser. Un coup déjà parti va au bout. Pas de garde de pause ici :
+  // c'est justement pendant la pause qu'on l'appelle.
+  function annuler() { S.charge = null; S.tampon = null; }
+
   majStats();
   return {
-    frapper, clicDroit, pousser, recharger, echangerMains, dos, rapide, rangerMain, estTir, maj, vitesseMult, echelleTemps, surEvt, rendu, majStats, mourir,
+    frapper, clicDroit, pousser, recharger, echangerMains, dos, rapide, rangerMain, estTir, maj, vitesseMult, echelleTemps, surEvt, rendu, majStats, mourir, annuler,
     dirForcee: () => S.dirForcee, fx, sang, etat: S,
     occupe: () => occupe() || !!S.charge || !!S.empoigne,
     fermer() { S.mort = true; },

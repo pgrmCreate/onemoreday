@@ -192,7 +192,9 @@ b.r1 { color: #4e6a30; } b.r2 { color: #7a6a10; } b.r3 { color: #a55a10; } b.r4 
 .v-bandeau { position: absolute; z-index: 4; top: 8px; left: 50%; transform: translateX(-50%) rotate(-.5deg); width: min(620px, calc(100% - 20px));
   display: flex; align-items: center; gap: 12px; padding: 7px 14px 11px; color: #21180f;
   background: linear-gradient(#f2e6c6, #e4d2a6); box-shadow: 0 6px 22px #000b; border-radius: 2px; }
-.v-textes { flex: 1; min-width: 0; }
+/* La rangée du HUD garde sa place ; le papier laisse aussi libres les états du corps à gauche. */
+.voyage-ecran .v-bandeau { top: calc(max(10px, env(safe-area-inset-top)) + 58px); width: min(620px, calc(100% - 144px)); }
+.v-textes { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .v-vers { font: 600 16px/1.1 var(--f-ui); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .v-reste { font: 700 24px/1.05 var(--f-main); color: #8e1b24; }
 .v-droite { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }

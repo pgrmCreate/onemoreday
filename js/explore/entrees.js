@@ -3,7 +3,8 @@
 // etat : { mx, my (−1..1, vecteur de déplacement, norme = poussée), course, accroupi, viseeSouris (bool), sx, sy (souris écran) }
 // actions : { interagir(), lampe(), inventaire(), carte(), echap(), zoom(facteur), accroupi(bool),
 //             frapper(appui: bool), pousser(), recharger(), echangerMains(), dos(), rapide(i),
-//             secondaire() (G / petit rond : menu des autres actions), viser(sx, sy) (placement : un toucher place le fantôme) }
+//             secondaire() (G / petit rond : menu des autres actions), viser(sx, sy) (placement : un toucher place le fantôme),
+//             annuler() (commandes coupées : oublier le geste en préparation) }
 // COMBAT : se déplacer, FRAPPER (tape = coup rapide, enchaîner = enchaînement, maintenir = coup chargé), POUSSER. Pas d'esquive.
 //   PC : ZQSD + souris (le personnage regarde la souris) ; clic gauche = frapper, clic droit / Espace = pousser
 //        (arme à feu en main : clic droit maintenu = viser, clic gauche = tirer ; sans viser, clic gauche = crosse),
@@ -251,6 +252,7 @@ export function creerEntrees({ racine, canvas, actions }) {
         if (sourisFrappe || doigtFrappe) { sourisFrappe = doigtFrappe = false; actions.frapper && actions.frapper(false, true); }
         if (doigtCrosse) { doigtCrosse = false; actions.crosse && actions.crosse(false, true); }
         if (sourisVise) { sourisVise = false; actions.clicDroit && actions.clicDroit(false); }
+        actions.annuler && actions.annuler();   // le jeu est souvent déjà en pause : les relâchements ci-dessus n'y suffisent pas
       }
     },
     fermer() { for (const f of off) f(); zoneJoy.remove(); pad.remove(); },

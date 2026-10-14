@@ -1,5 +1,5 @@
 // ============ One More Day — démarrage, écran titre, création, mort, fin ============
-import { G, nouvellePartie, charger, sauver, aSauvegarde, effacerSauvegarde, genrer, noteJournal } from './core/state.js';
+import { G, nouvellePartie, charger, sauver, aSauvegarde, resumeSauvegarde, effacerSauvegarde, genrer, noteJournal } from './core/state.js';
 import { on, emit } from './core/bus.js';
 import * as clock from './core/clock.js';
 import { el, $, texteHtml, escapeHtml } from './core/util.js';
@@ -69,7 +69,7 @@ export function ecranTitre() {
     <p class="sous-titre">Salon-de-Provence. Trois semaines après le Mercredi.</p>
     <div class="menu">
       ${peutContinuer ? btn({ cls: 'primaire', data: 'data-a="continuer"' }, 'Continuer', 'reprendre la partie en cours') : ''}
-      ${btn({ cls: peutContinuer ? '' : 'primaire', data: 'data-a="nouvelle"' }, 'Nouvelle partie', 'seul')}
+      ${btn({ cls: peutContinuer ? '' : 'primaire', data: 'data-a="nouvelle"' }, 'Nouvelle partie', resumeSauvegarde('solo') ? 'remplace la partie solo en cours' : 'seul')}
       ${btn({ data: 'data-a="coop"' }, 'Jouer à deux', 'en ligne ou sur le même Wi-Fi')}
     </div>
     <p class="aide">Jeu pour adultes : violence et gore explicites.</p>`, 'salon_mistral_vide');
@@ -108,19 +108,57 @@ export function ecranCreation({ mode = 'solo', apres } = {}) {
         <button type="button" class="btn cr-retour" data-a="retour">${mode === 'releve' ? 'Quitter la partie' : 'Retour'}</button>
         <button type="button" class="btn primaire cr-go" data-a="go">${mode === 'hote' ? 'Ouvrir le salon' : mode === 'releve' ? 'Ouvrir les yeux' : 'Commencer'}</button>
       </div>
+      <section class="cr-confirmation" role="alertdialog" aria-modal="true" aria-labelledby="cr-confirm-titre" aria-describedby="cr-confirm-texte" hidden>
+        <h3 id="cr-confirm-titre">Remplacer ta partie ?</h3>
+        <p id="cr-confirm-texte"></p>
+        <div class="cr-actions">
+          <button type="button" class="btn cr-retour" data-a="annuler">Annuler</button>
+          <button type="button" class="btn cr-go" data-a="remplacer">Remplacer la partie</button>
+        </div>
+      </section>
     </div>`, 'cimetiere_caveau');
   c.classList.add('ec-creation');
   c.querySelectorAll('#c-genre button').forEach(b => b.onclick = () => { genre = b.dataset.g; c.querySelectorAll('#c-genre button').forEach(x => x.classList.toggle('on', x === b)); });
   c.querySelectorAll('#c-diff button').forEach(b => b.onclick = () => { diff = b.dataset.d; setPref('difficulte', diff); c.querySelectorAll('#c-diff button').forEach(x => x.classList.toggle('on', x === b)); });
   c.querySelector('[data-a="retour"]').onclick = () => { if (mode === 'releve') coop.abandonnerApresMort(); ecranTitre(); };
-  const go = () => {
+  const confirmation = c.querySelector('.cr-confirmation');
+  const grille = c.querySelector('.cr-grille'), actions = c.querySelector('.creation > .cr-actions');
+  const annuler = c.querySelector('[data-a="annuler"]'), commencer = c.querySelector('[data-a="go"]');
+  let lancementEnCours = false;
+  const lancer = () => {
+    if (lancementEnCours) return;
     const nom = ($('#c-nom').value || 'Sam').trim().slice(0, 16) || 'Sam';
     if (apres) return apres({ nom, genre, difficulte: diff });
+    lancementEnCours = true;
     nouvelleAventure({ nom, genre, difficulte: diff, mode });
   };
-  c.querySelector('[data-a="go"]').onclick = go;
+  commencer.onclick = () => {
+    const sauvegarde = mode === 'solo' && !apres ? resumeSauvegarde('solo') : null;
+    if (!sauvegarde) { lancer(); return; }
+    const qui = sauvegarde.nom ? ` avec ${sauvegarde.nom}` : '';
+    const quand = sauvegarde.jour ? ` au jour ${sauvegarde.jour}` : '';
+    c.querySelector('#cr-confirm-texte').textContent = `Ta partie solo${qui}${quand} sera effacée. Tu ne pourras plus la reprendre.`;
+    grille.hidden = actions.hidden = true;
+    confirmation.hidden = false;
+    annuler.focus();
+  };
+  annuler.onclick = () => {
+    confirmation.hidden = true;
+    grille.hidden = actions.hidden = false;
+    commencer.focus();
+  };
+  c.querySelector('[data-a="remplacer"]').onclick = lancer;
+  c.addEventListener('keydown', e => {
+    if (confirmation.hidden) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); annuler.click(); }
+    // Les deux seules actions du dialogue restent accessibles au clavier.
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      (document.activeElement === annuler ? c.querySelector('[data-a="remplacer"]') : annuler).focus();
+    }
+  });
   $('#c-nom').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
-  setTimeout(() => { const i = $('#c-nom'); if (i && !matchMedia('(pointer: coarse)').matches) i.focus(); }, 100);
+  setTimeout(() => { const i = c.querySelector('#c-nom'); if (i && i.isConnected && confirmation.hidden && !matchMedia('(pointer: coarse)').matches) i.focus(); }, 100);
 }
 
 // ---------- Démarrer / reprendre ----------

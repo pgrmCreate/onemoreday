@@ -10,14 +10,19 @@ Jouable sur **PC** et **Android** (PWA, hors-ligne), **seul ou à deux**. Web pu
 
 | Temps | Ce qu'on fait |
 |---|---|
-| **1. Exploration — et combat** | Dans un lieu (cimetière, Tour de l'Horloge, Empéri, hôpital…) : déplacement libre vue de dessus, lampe torche, obscurité réelle, morts qui voient et entendent, fouille des meubles en temps réel, documents, personnages. **On se bat sur place, en temps réel** : **frapper** (tape = coup rapide, 3 tapes en rythme = enchaînement, maintenir = coup chargé), **esquiver**, **pousser**, **achever** un mort à terre. Aucun raté au hasard : si le coup atteint le mort, il porte. Les morts arment leur coup (bras levés, arc rouge = coup, ambre = empoignade) puis se jettent sur toi : on esquive au dernier moment, on pousse, on les interrompt. À deux : côte à côte, on se relève l'un l'autre. |
+| **1. Exploration — et combat** | Dans un lieu (cimetière, Tour de l'Horloge, Empéri, hôpital…) : déplacement libre vue de dessus, lampe torche, obscurité réelle, morts qui voient et entendent, fouille des meubles en temps réel, documents, personnages. **On se bat sur place, en temps réel** : **frapper** (tape = coup rapide, 3 tapes en rythme = enchaînement, maintenir = coup chargé), **pousser**, **achever** un mort à terre. Aucun raté au hasard : si le coup atteint le mort, il porte. Les morts arment leur coup (bras levés, arc rouge = coup, ambre = empoignade) puis se jettent sur toi : il n'y a pas d'esquive, on recule, on pousse, on les interrompt. À deux : côte à côte, on se relève l'un l'autre. |
 | **2. La carte** | Carte illustrée « plan abîmé » de Salon et du pays salonais, **positions et distances réelles** (OpenStreetMap). On choisit une destination (distance, durée, risque, allure) ; l'écran de voyage affiche **« il te reste 640 m »** et les **rencontres** surgissent en chemin. Une rencontre qui tourne mal = une **embuscade jouable** sur un bout de route. |
 
-**Contrôles** — PC : ZQSD, le personnage regarde la souris ; clic gauche = frapper (maintenir = coup chargé), Espace = esquiver,
-clic droit = pousser, E = interagir, F = lampe, I = sac, Tab = plan du lieu, X = échanger les mains, B = dos ↔ main,
-R = recharger, 1-4 = accès rapide, H = aide des commandes.
-Mobile : joystick n'importe où, gros bouton **Frapper**, **Esquiver** et **Pousser** à droite (visée assistée).
-Un **guide d'objectif** en haut de l'écran dit où aller, un losange marque l'endroit (une flèche au bord s'il est hors champ).
+**Contrôles** — PC : ZQSD, le personnage regarde la souris ; Maj = courir, C = s'accroupir ; clic gauche = frapper
+(maintenir = coup chargé), clic droit ou Espace = repousser ; arme à feu en main : clic droit maintenu = viser, clic gauche =
+tirer (sans viser : coup de crosse), R = recharger. E = interagir / fouiller, O = chercher par terre, P = objets au sol autour,
+G = autres actions ici, F = lampe, I = sac, Tab ou M = plan du lieu, X = échanger les mains, B = dos ↔ main,
+1-4 = ceinture (réappuyer : ranger), H = aide des commandes.
+Mobile : joystick n'importe où ; à droite, gros bouton **Frapper** et **Pousser** (visée assistée), **Interagir** avec son petit
+rond « autres actions » ; petites icônes pour courir, s'accroupir, chercher par terre et voir les objets au sol.
+Arme à feu en main : le gros bouton tire (maintenir = viser), un bouton à part frappe à la crosse, **Recharger** apparaît.
+**Pas de fil d'Ariane** : un nouvel objectif est annoncé une fois, puis il reste dans le **Journal** (onglet Objectifs) et,
+quand ton personnage connaît le lieu, il est marqué sur la carte de Salon ; une mission en cours sur place dit en mots où tu en es.
 
 **Inventaire réaliste** (façon Project Zomboid) : **main droite, main gauche, deux mains, dos** ; volume en **litres**
 (sac d'écolier 20 L, randonnée 45 L ; une pile 0,02 L, une conserve 0,45 L, une planche 6 L) + poids. Les poches ne prennent que les petits objets.

@@ -619,8 +619,13 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border: 1px soli
    Dormir — choix de la durée, invitation à deux, écran noir qui fait filer l'horloge
    ====================================================================== */
 .co-dormir { margin-left: auto; }
-.som-fond { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; background: rgba(0,0,0,.6); }
+.som-fond { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; background: rgba(0,0,0,.6);
+  padding: calc(12px + env(safe-area-inset-top, 0px)) calc(12px + var(--safe-r)) calc(12px + env(safe-area-inset-bottom, 0px)) calc(12px + var(--safe-l)); }
 .som-boite { width: min(440px, 92vw); padding: 18px 20px 16px; background: rgba(16,15,18,.98); border: 1px solid var(--ui-bord-fort); border-radius: 10px; box-shadow: var(--ui-ombre); color: var(--ui-texte); }
+/* Paysage bas : le contenu défile, sans réduire les textes ni les boutons. */
+.som-boite { max-width: 100%; max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
 .som-boite h3 { margin: 0 0 8px; font-family: var(--ui-f-titre, Oswald, sans-serif); font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--ui-ambre); }
 .som-boite p { margin: 6px 0; font-family: var(--ui-f-recit); font-size: 16px; line-height: 1.3; }
 .som-etat { color: var(--ui-texte-2); }

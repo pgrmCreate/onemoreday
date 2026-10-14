@@ -21,6 +21,7 @@ import { itineraire, pointA, sousTrace, inverser, allonger, projeter, echelleDe,
 import { monterFeuille, creerMarqueur, SVGNS, percerBrouillard } from './art_carte.js';
 import { contexteVoyage, vitesse, evaluerRisque, tirerRencontres } from './rencontres_voyage.js';
 import { lieuCourant } from './carte.js';
+import { panneauOuvert } from '../ui/panels/index.js';
 
 let V = null;
 
@@ -58,7 +59,15 @@ export async function entrer({ de, vers, allure = 'normale', groupe = null, minu
   V.offs.push(on('voyage:demiTour', () => demiTour()));
   V.offs.push(on('voyage:butin', (x) => { if (x) V.butinsEnAttente = (V.butinsEnAttente || []).concat([x]); }));
   V.offs.push(on('minute', () => { if (V) V.horloge.textContent = texteHorloge(); }));
-  const onKey = (e) => { if (e.key === ' ' && !V.pauses.size) basculerAccel(); };
+  // Espace = accélérer, une fois par appui : pas sur un bouton ou un champ (ils ont leur propre activation),
+  // pas en touche maintenue, ni derrière un panneau ou une scène.
+  const onKey = (e) => {
+    if (e.key !== ' ' || e.repeat || e.defaultPrevented || V.pauses.size) return;
+    if (e.target && e.target.closest && e.target.closest('button, a, input, textarea, select, [contenteditable], [role="button"]')) return;
+    if (flow.overlayOuvert() || panneauOuvert() || (G && G.mode !== 'solo')) return;
+    e.preventDefault();
+    basculerAccel();
+  };
   window.addEventListener('keydown', onKey); V.offs.push(() => window.removeEventListener('keydown', onKey));
   V.t = performance.now();
   V.raf = requestAnimationFrame(boucle);
@@ -210,6 +219,7 @@ export function demiTour() {
   V.btnDemi.disabled = true;
   majTitre(); majJauge(); dessinerRoute(); majPion(); majBandeau(true);
   if (G && G.player.position.voyage) Object.assign(G.player.position.voyage, { de: V.de, vers, d: 0, metres: retour.metres });
+  emit('voyage:direction', { de: V.de, vers });
   flow.toast('Tu rebrousses chemin.');
 }
 export function detour(m) {
