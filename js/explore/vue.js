@@ -223,6 +223,7 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null, po
   for (const t of EVTS_COMBAT) V.off.push(V.canal.on(t, (e) => { if (V && V.cbt) V.cbt.surEvt(e); }));
   V.off.push(on('mort', () => { if (!V) return; V.cbt.mourir(); V.entrees.actif(false); }));
   V.off.push(on('inventaire', () => { if (!V) return; V.cbt.majStats(); V.hud.majMains(V, mod.inv); }));
+  V.off.push(on('sac:comparaison', ({ ouvert }) => { if (V) V.entrees.actif(!ouvert && !V.enPause && !V.occupe && !G.player.mort); }));
   // enfiler / retirer un vêtement, un sac : le froissement du tissu (l'arme et la lampe ont leurs propres gestes)
   V.off.push(on('inventaire', (e) => { const s = e && (e.equip || e.desequip); if (s && !['arme', 'mainG', 'lampe'].includes(s)) sfx('vetement'); }));
   V.hud.majMains(V, mod.inv);
@@ -331,6 +332,7 @@ function ajouterJoueurSim(pos) {
 
 export function sortir() {
   if (!V) return;
+  emit('sac:annuler');
   const v = V;
   v.actif = false;
   cancelAnimationFrame(v.raf);
@@ -879,6 +881,7 @@ function alerteMort(t) {
   if (nouveau) couperTout();
 }
 function couperTout() {
+  emit('sac:annuler');
   let coupe = false;
   const pn = mod.panneaux;
   if (pn && pn.panneauOuvert && pn.panneauOuvert() && pn.panneauOuvert() !== 'options') { pn.fermerPanneau(); coupe = true; }

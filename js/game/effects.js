@@ -59,7 +59,8 @@ export function appliquerEffets(effets, ctx = {}) {
           break;
         }
         case 'bruit': emit('bruit', { rayon: v * 4, source: 'scene' }); break;
-        case 'mission': missions.effet(v); break;    // ['accepter' | 'plusTard' | 'refuser', id] | ['donner', id, objet]
+        case 'mission': missions.effet(v); break;
+        case 'consequence': emit('mission:consequence', v); break;   // vacarme / réveil / annonce d'une étape (js/explore/missions_vue.js)    // ['accepter' | 'plusTard' | 'refuser', id] | ['donner', id, objet]
         case 'combat': res.combat = v; break;
         case 'teleporter': res.teleporter = v; break;
         case 'cinematique': res.cinematique = v; break;

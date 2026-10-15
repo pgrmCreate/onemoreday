@@ -347,4 +347,18 @@ export const SCENES_PNJ = {
       PARTIR,
     ],
   },
+
+  // ─────────── AIMÉ (mission m_aime) : la boîte sous le troisième frêne, après la passerelle de la Touloubre ───────────
+  aime_cache: {
+    illu: null, musique: 'calme',
+    texte: 'Au pied du troisième frêne, la terre est plus sombre qu’ailleurs, et quelqu’un l’a tassée du plat de la main. Tu creuses avec les doigts, puis avec une branche, et à une main de profondeur tu touches du métal : une vieille boîte à biscuits, enveloppée dans deux sacs plastique et serrée par un morceau de chambre à air.\n\nDedans, Aimé a rangé ce qu’un pêcheur garde pour les mauvais jours : deux poissons fumés roulés dans du papier journal, une boîte de raviolis et une bouteille d’eau-de-vie.',
+    choix: [
+      {
+        label: 'Prendre ce qu’il y a dans la boîte',
+        // un seul lot, même à deux : c'est l'hôte qui le donne (MISSIONS.m_aime.cache)
+        effets: { mission: ['cache', 'm_aime'] },
+        suivant: '#fin',
+      },
+    ],
+  },
 };

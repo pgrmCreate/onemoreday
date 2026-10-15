@@ -215,7 +215,7 @@ async function reprendrePosition() {
     else await flow.explorer(pos.lieu, { entree: pos.entree || undefined });
   } else if (pos.mode === 'voyage' && pos.voyage) {
     const v = pos.voyage;
-    await flow.ouvrirCarte({ echelle: lieuEchelle(v.de), depuis: v.de });
+    await flow.ouvrirCarte({ echelle: lieuEchelle(v.vers), depuis: v.de, reprise: v });
   } else {
     await flow.explorer('cimetiere', { entree: 'caveau' });
   }

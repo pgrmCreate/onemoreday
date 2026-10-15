@@ -105,8 +105,18 @@ export const MISSIONS = {
     ],
     fin: {
       texte: 'Ce matin-là, Aimé se lève tout seul en s’appuyant sur une branche de frêne, et il fait trois pas jusqu’à la porte du moulin. Il rit comme un enfant.\n\n« Je vais remonter vers Grans, chez ma fille, si elle est encore là. » Il te met dans les mains sa canne à pêche et sa nasse. « La Touloubre nourrit ceux qui savent attendre. Sous le troisième frêne, après le pont, j’ai enterré une boîte : prends-la, je n’en aurai plus besoin. »',
-      effets: { objets: [['canne_peche', 1], ['nasse', 1], ['poisson_fume', 2], ['conserve_raviolis', 1], ['alcool_fort', 1]], xp: { chasse: 15 },
-        journal: 'Aimé, le pêcheur de la Touloubre, a remarché grâce à moi. Il m’a donné sa canne à pêche et le contenu de sa cachette.' },
+      // la boîte n'est pas donnée : elle attend sous le troisième frêne (scène aime_cache, js/data/histoire/scenes_pnj.js).
+      // Les parties où Aimé a déjà donné tout le contenu n'ont pas ce drapeau : pas de seconde boîte.
+      effets: { objets: [['canne_peche', 1], ['nasse', 1]], xp: { chasse: 15 }, flag: 'aime_cache_promise',
+        journal: 'Aimé, le pêcheur de la Touloubre, a remarché grâce à moi. Il m’a donné sa canne à pêche et sa nasse. Il m’a aussi laissé une boîte qu’il a enterrée au pied du troisième frêne, après la passerelle, sur la rive opposée au moulin.' },
+    },
+    // la boîte promise : un seul lot pour la partie, attribué par l'hôte en co-op (js/game/missions.js prendreCache) ;
+    // on la déterre au marqueur 'cache_aime' de la Touloubre (scène aime_cache, js/data/histoire/scenes_pnj.js).
+    cache: {
+      flag: 'aime_cache_prise',
+      effets: { objets: [['poisson_fume', 2], ['conserve_raviolis', 1], ['alcool_fort', 1]],
+        journal: 'J’ai déterré la boîte d’Aimé au pied du troisième frêne, après la passerelle de la Touloubre : deux poissons fumés, des raviolis et de l’eau-de-vie.' },
+      deja: '{coequipier} a été plus rapide que toi : la boîte d’Aimé est déjà entre ses mains, et il n’y a plus rien dans le trou.',
     },
     echec: {
       texte: 'Aimé a passé deux jours sans rien manger. Quand on ne peut pas marcher, c’est assez pour mourir, au bord d’une rivière pleine de truites.',
@@ -132,7 +142,7 @@ export const MISSIONS = {
     fin: {
       texte: 'Au matin du quatrième jour, tu sais lire la plaine. Les convois de l’armée passent sur la route de Lançon à l’aube, toujours vers le nord, et les hordes descendent de la Crau vers l’étang de Berre chaque fois que le mistral tombe.\n\nTu recopies tout dans le cahier du guetteur, sous sa dernière ligne, puis tu prends ses jumelles, parce qu’il n’en aura plus besoin.',
       effets: { objets: [['jumelles', 1]], decouvrir: ['berre', 'istres', 'saint_chamas', 'lancon', 'miramas'], xp: { recherche: 15, discretion: 10 },
-        journal: 'J’ai tenu trois jours à Cornillon. D’en haut, j’ai repéré Berre, Istres, Saint-Chamas, Lançon et Miramas, et compris par où passent les convois et les hordes.' },
+        journal: 'J’ai tenu trois jours à Cornillon. D’en haut, j’ai repéré Berre, Istres, Saint-Chamas, Lançon et Miramas. J’ai noté les convois sur la route de Lançon à l’aube et les hordes qui descendent de la Crau vers Berre quand le mistral tombe. Sur la carte du pays salonais, je peux maintenant suivre les chemins du guetteur : des détours par les passages notés dans son cahier, plus longs et moins exposés. Ils ne garantissent pas un trajet sans mauvaise rencontre.' },
     },
   },
 
@@ -178,16 +188,32 @@ export const MISSIONS = {
         preparer: { piece: 'L’hypermarché', n: 14, etat: 'dort' },
         siRepere: { texte: 'Repéré{|e} ! Un mort t’a vu{|e}, et ses grognements réveillent tout le magasin.', reveil: { piece: 'L’hypermarché' } },
         texte: 'Traverser l’hypermarché sans réveiller les morts et gagner le bureau de la direction' },
-      { type: 'agir', lieu: 'leclerc', piece: 'La direction', libelle: 'Ouvrir le coffre', ms: 7000, bruit: 70, reveil: { piece: 'L’hypermarché' },
+      // Deux façons d'ouvrir, choisies devant le coffre (js/explore/missions_vue.js choisir) : vite, et la sirène réveille
+      // le magasin ; ou en coupant d'abord la sirène avec un outil qui visse, plus long et presque sans bruit. Le vacarme
+      // et le journal suivent la façon acceptée par l'hôte (js/game/missions.js effetsEtape) ; la récompense est la même.
+      { type: 'agir', lieu: 'leclerc', piece: 'La direction', libelle: 'Examiner le coffre', libelleVite: 'Ouvrir le coffre', ms: 7000, bruit: 70, reveil: { piece: 'L’hypermarché' },
         annonce: 'Le coffre s’ouvre, et une sonnerie stridente éclate dans tout le magasin. Les morts se réveillent.',
         texte: 'Ouvrir le coffre de la direction',
-        effets: { objets: [['pistolet_9mm', 1], ['munitions_9mm', 12], ['crochets_serrure', 1]] } },
+        effets: { objets: [['pistolet_9mm', 1], ['munitions_9mm', 12], ['crochets_serrure', 1]] },
+        choix: {
+          texte: 'Le coffre est scellé dans le mur, sous le bureau. La combinaison est écrite au feutre au dos du sous-main, comme promis. Sur le flanc du coffre, un boîtier gris est vissé, et un fil en part pour monter jusqu’au plafond : c’est la sirène.',
+          vite: { label: 'Composer la combinaison et ouvrir tout de suite', bruit: 'la sirène réveillera le magasin',
+            journal: 'J’ai ouvert le coffre du Leclerc à la combinaison, et la sirène a réveillé tout le magasin.' },
+          silence: { tag: 'visser', ms: 40000, bruitAction: 2, bruit: 'presque sans bruit',
+            label: 'Dévisser le boîtier et couper la sirène d’abord', reprendre: 'Finir de couper la sirène', libelle: 'Tu coupes la sirène du coffre',
+            sansOutil: 'Pour couper la sirène avant d’ouvrir, il te faudrait de quoi dévisser le boîtier, un tournevis par exemple.',
+            interrompu: 'Tu t’arrêtes. Le boîtier est en partie démonté : tu pourras reprendre là où tu en étais.',
+            annonce: 'Le dernier fil cède, et le boîtier se tait. La porte du coffre s’ouvre avec un simple déclic, sans que la sirène sonne.',
+            journal: 'J’ai coupé la sirène du coffre du Leclerc avant de l’ouvrir : il s’est ouvert sans sonner.' },
+          fait: '{coequipier} a déjà ouvert le coffre avant toi.',
+        } },
       { type: 'fuir', lieu: 'leclerc', texte: 'Sortir du Leclerc vivant{|e}' },
     ],
     fin: {
-      texte: 'Dehors, tu t’adosses à un chariot renversé et tu reprends ton souffle. Le coffre contenait le pistolet du directeur, des balles et un étui de crochets de serrurier, au milieu d’enveloppes de billets qui ne valent plus rien.\n\nDerrière les portes vitrées, les morts tournent encore dans les allées, sous la sonnerie qui ne s’arrête pas.',
+      texte: 'Dehors, tu t’adosses à un chariot renversé et tu reprends ton souffle. Le coffre contenait le pistolet du directeur, des balles et un étui de crochets de serrurier, au milieu d’enveloppes de billets qui ne valent plus rien.\n\nDerrière les portes vitrées, les morts sont toujours là, dans la pénombre des allées.',
+      // neutre : la façon d'ouvrir (sirène ou non) est dite par l'annonce et le journal de l'étape « agir »
       effets: { xp: { discretion: 20 },
-        journal: 'J’ai vidé le coffre du Leclerc des Viougues : le pistolet du directeur et des balles. Le magasin entier s’est réveillé.' },
+        journal: 'J’ai vidé le coffre du Leclerc des Viougues : le pistolet du directeur et des balles.' },
     },
   },
 };

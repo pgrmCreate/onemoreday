@@ -33,6 +33,7 @@ const { LIEUX_GEO = {} } = await imp('js/data/lieux.js', 'LIEUX_GEO');
 const { ITEMS = {} } = await imp('js/data/items.js', 'ITEMS', true);
 const { ZOMBIES = {} } = await imp('js/data/zombies.js', 'ZOMBIES', true);
 const { ZONES_CORPS = null } = await imp('js/data/clothing.js', null, true);
+const { MISSIONS = {} } = await imp('js/data/histoire/missions.js', 'MISSIONS', true);
 
 const histoireMd = (() => { try { return readFileSync(join(RACINE, 'docs/HISTOIRE.md'), 'utf8'); } catch { err('docs/HISTOIRE.md absent'); return ''; } })();
 const niveauxMd = (() => { try { return readFileSync(join(RACINE, 'docs/NIVEAUX_BESOINS.md'), 'utf8'); } catch { err('docs/NIVEAUX_BESOINS.md absent'); return ''; } })();
@@ -46,7 +47,7 @@ const PLAIES = new Set(['egratignure', 'contusion', 'entaille', 'profonde', 'mor
 const MUSIQUES_SCENE = new Set(['calme', 'sombre', 'tension', 'combat', 'mort', null]);
 const MUSIQUES_CINE = new Set(['titre', 'calme', 'sombre', 'tension', 'combat', 'mort', 'refuge']);
 const COND_CLES = new Set(['flag', 'pasFlag', 'flagEgal', 'objet', 'skill', 'nuit', 'jourMin', 'lieuVisite', 'quete', 'ou']);
-const EFFET_CLES = new Set(['flag', 'flags', 'retirerFlag', 'objet', 'objets', 'blessure', 'pv', 'sta', 'faim', 'soif', 'fatigue',
+const EFFET_CLES = new Set(['flag', 'mission', 'flags', 'retirerFlag', 'objet', 'objets', 'blessure', 'pv', 'sta', 'faim', 'soif', 'fatigue',
   'tempsMin', 'xp', 'decouvrir', 'quete', 'journal', 'document', 'combat', 'cinematique', 'teleporter', 'bruit', 'infection', 'detour']);
 const DECL_QUAND = new Set(['entree_lieu', 'marqueur', 'flag', 'heure', 'voyage']);
 const TYPES_RENC = new Set(['combat', 'choix', 'butin', 'ambiance', 'pnj']);
@@ -86,6 +87,7 @@ function verifEffets(e, ctx) {
     if (!EFFET_CLES.has(k)) err(`${ctx} : effet inconnu « ${k} »`);
     switch (k) {
       case 'flag': if (Array.isArray(v)) flagsPoses.add(v[0]); else if (typeof v === 'string') flagsPoses.add(v); else err(`${ctx} : flag mal formé`); break;
+      case 'mission': if (!Array.isArray(v) || typeof v[0] !== 'string') err(`${ctx} : mission doit être ['geste', id, …]`); else if (v[0] === 'cache' && !(MISSIONS[v[1]] && MISSIONS[v[1]].cache)) err(`${ctx} : mission « ${v[1]} » sans cache`); break;
       case 'flags': if (typeof v !== 'object') err(`${ctx} : flags mal formé`); else Object.keys(v).forEach(f => flagsPoses.add(f)); break;
       case 'objet': if (!Array.isArray(v) || typeof v[1] !== 'number') err(`${ctx} : objet doit être ['id', qty]`); else objetOk(v[0], ctx); break;
       case 'objets': if (!Array.isArray(v)) err(`${ctx} : objets mal formé`); else v.forEach(o => objetOk(o[0], ctx)); break;
@@ -247,6 +249,10 @@ for (const [id, o] of Object.entries(OBJETS_QUETE)) {
   if (!o.nom || !o.desc || typeof o.poids !== 'number' || typeof o.espace !== 'number') err(`${c} : nom/desc/poids/espace manquant`);
   verifTexte(o.desc, c);
 }
+
+// ─── 8 bis. Missions : les drapeaux que posent leurs étapes et leur fin (le moteur des missions les applique) ───
+const flagsDe = (e) => { if (!e) return; if (typeof e.flag === 'string') flagsPoses.add(e.flag); else if (Array.isArray(e.flag)) flagsPoses.add(e.flag[0]); if (e.flags && typeof e.flags === 'object') Object.keys(e.flags).forEach(f => flagsPoses.add(f)); };
+for (const m of Object.values(MISSIONS)) { for (const et of m.etapes || []) flagsDe(et.effets); flagsDe(m.fin && m.fin.effets); flagsDe(m.echec && m.echec.effets); if (m.cache) { flagsPoses.add(m.cache.flag); verifEffets(m.cache.effets, 'cache ' + m.cache.flag); } }
 
 // ─── 9. Morts, fins ───
 for (const k of MORTS_REQUISES) if (!MORTS[k]) err(`morts : cause « ${k} » manquante`);

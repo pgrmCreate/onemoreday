@@ -10,7 +10,7 @@ export default parcelle({
   id: 'touloubre', nom: 'Les berges de la Touloubre', typeButin: 'nature',
   sansSanitaires: ['Le vieux moulin'],   // pas de toilettes, et c'est normal : un moulin en ruine (la cachette d'Aimé) (tools/verifier_realisme.mjs)
   pool: ['errant', 'errant', 'rampant'], morts: { n: [2, 4] },
-}, { W: 128, H: 96, milieu: 'riviere' }, (e, P) => {
+}, { W: 128, H: 96, milieu: 'riviere', apres: fresnesAime }, (e, P) => {
   const { W, H, rnd } = P;
   const lit = P.lit;
 
@@ -60,3 +60,25 @@ export default parcelle({
   for (let k = 0; k < 3; k++) P.semis(k % 2 ? 'figuier' : 'amandier', 4, 4, W - 8, H - 8, 1, 2);
   for (let k = 0; k < 5; k++) { const x = 6 + Math.floor(rnd() * (W - 12)), y = 6 + Math.floor(rnd() * (H - 12)); if (P.libre(x, y)) e.objetSol('branche', x, y); }
 });
+
+// ---------- Les frênes après la passerelle : la boîte d'Aimé (mission m_aime, js/data/histoire/missions.js) ----------
+// Rive est (de l'autre côté du moulin), en descendant le courant : on les compte depuis la passerelle. La boîte est
+// enterrée au pied du troisième, marqueur 'cache_aime' posé au sol (il survit si l'arbre est abattu) ; on ne peut
+// creuser qu'après la promesse d'Aimé (js/data/histoire/declencheurs.js). Posés après toute la végétation et sans
+// tirage : le reste du plan ne bouge pas.
+function fresnesAime(e, P) {
+  const { H, lit } = P;
+  if (P.passerelle == null) return;
+  let n = 0;
+  for (let y = P.passerelle + 3; y < H - 4 && n < 3; y++) {
+    for (const dx of [2, 3, 4]) {
+      const x = lit[y] + P.largeurLit + dx;
+      if (!P.libre(x, y, 1, 2)) continue;
+      e.objet('arbre', x, y, { nom: 'le frêne' });
+      P.reserver(x, y, 1, 2);
+      if (++n === 3) e.marqueur('cache_aime', x, y + 1);
+      y += 3;
+      break;
+    }
+  }
+}

@@ -330,10 +330,10 @@ export function prendreATrier(i, p) {
   return { ok: true };
 }
 // Porter directement (sac à dos, vêtement, arme en main…) la i-ème pile à trier.
-export function porterATrier(i, p) {
+export function porterATrier(i, p, choixSac = null) {
   p = joueur(p); const it = aTrier[i]; if (!it) return { ok: false };
   const un = { ...it, qty: 1 };
-  const r = porterObjet(un, p);
+  const r = porterObjet(un, p, null, choixSac);
   if (r && r.ok) { it.qty -= 1; if (it.qty <= 0) aTrier.splice(i, 1); emit('inventaire', { tri: true }); }
   return r || { ok: false };
 }
@@ -354,6 +354,62 @@ export function finirTri() {
 
 // ---------- Sac porté ----------
 export function sacPorte(p) { p = joueur(p); const id = p.equip.sac; const c = id && CLOTHES[id]; return c ? { id, nom: c.nom, espace: contenanceSac(id), contenance: contenanceSac(id), portage: c.portage || 0 } : null; }
+
+// Un aperçu ne touche ni le joueur, ni le sol, ni le bus. Le même plan est appliqué après confirmation.
+export function prevoirSac(id, p, index = null) {
+  p = joueur(p);
+  if (slotDe(id) !== 'sac') return null;
+  const copie = { ...p, inventaire: p.inventaire.map(it => ({ ...it })), equip: { ...p.equip }, accesRapide: [...p.accesRapide] };
+  const origines = new Map(copie.inventaire.map((it, i) => [it, p.inventaire[i]]));
+  if (index != null) {
+    const it = copie.inventaire[index];
+    if (!it || it.id !== id) return null;
+    if ((it.qty || 1) > 1) it.qty--; else copie.inventaire.splice(index, 1);
+  }
+  const ancien = p.equip.sac;
+  const empreinte = JSON.stringify([id, copie.inventaire, copie.equip, copie.accesRapide]);
+  copie.equip.sac = id;
+  nettoyerAccesRapide(copie);
+  const volume = occupation(copie).total;
+  const surplus = [];
+  // Même ordre que deborder : les plus gros objets d'abord, hors accès rapide.
+  for (let garde = 0; garde < 400; garde++) {
+    const cap = capacites(copie), o = occupation(copie), exces = o.sac - cap.sac;
+    if (exces <= 1e-6) break;
+    let best = -1, bv = -1;
+    copie.inventaire.forEach((it, i) => {
+      if (copie.accesRapide.includes(it.id) || (o.gros > cap.sac + 1e-6 && estPetit(it.id))) return;
+      const v = volumeDe(it.id); if (v > bv) { best = i; bv = v; }
+    });
+    if (best < 0 || bv <= 0) break;
+    const it = copie.inventaire[best], n = Math.max(1, Math.min(it.qty || 1, Math.ceil((exces - 1e-6) / bv)));
+    surplus.push({ ...it, qty: n });
+    it.qty = (it.qty || 1) - n; if (!it.qty) copie.inventaire.splice(best, 1);
+  }
+  const garderPossible = !surplus.length && (!ancien || combienTient(ancien, 1, copie) >= 1);
+  return { id, ancien, empreinte, volume, surplus, garderPossible, inventaire: copie.inventaire, sources: copie.inventaire.map(it => origines.get(it)), accesRapide: copie.accesRapide };
+}
+function changerSac(id, p, index, choix) {
+  const plan = prevoirSac(id, p, index);
+  if (!plan || !choix || !['poser', 'garder'].includes(choix.ancien)) return { ok: false, raison: 'Compare les deux sacs avant de changer.' };
+  if (choix.empreinte !== plan.empreinte) return { ok: false, raison: 'Tes affaires ont changé. Compare les sacs à nouveau.' };
+  if (choix.ancien === 'garder' && !plan.garderPossible) return { ok: false, raison: 'L’ancien sac ne tient pas avec tes affaires.' };
+  const ancien = plan.ancien ? { id: plan.ancien, qty: 1, ...(p.equipEtat.sac || {}) } : null;
+  // Garder le tableau et les instances qui restent : une action en cours peut encore les référencer.
+  const restants = plan.inventaire.map((it, i) => { const source = plan.sources[i]; source.qty = it.qty; return source; });
+  p.inventaire.splice(0, p.inventaire.length, ...restants);
+  p.equip.sac = id;
+  delete p.equipEtat.sac;
+  p.accesRapide = plan.accesRapide;
+  if (ancien && choix.ancien === 'garder') p.inventaire.push(ancien);
+  const poses = [...plan.surplus, ...(ancien && choix.ancien === 'poser' ? [ancien] : [])];
+  for (const it of poses) {
+    if (p.position && p.position.mode !== 'lieu') mettreATrier(it);
+    else { try { sol.deposer(it); } catch (e) { mettreATrier(it); } }
+  }
+  emit('inventaire', { equip: 'sac', sol: !!poses.length });
+  return { ok: true, slot: 'sac', poses };
+}
 
 // ---------- Mains et dos ----------
 // Une instance « tenue » (main droite, main gauche, dos) garde tout son état dans equipEtat[slot].
@@ -482,13 +538,18 @@ export function dosVersMain(p) {
 }
 
 // Enfiler / prendre en main / sangler un objet SANS passer par le sac (marche même sac plein). → { ok, raison?, slot? }
-export function porterObjet(item, p, ou = null) {
+export function porterObjet(item, p, ou = null, choixSac = null) {
   p = joueur(p); if (!item) return { ok: false, raison: 'Rien à porter.' };
   ou = ou || ouPorter(item.id, p);
   if (!ou) return { ok: false, raison: 'Ça ne se porte pas.' };
   const { id, qty, ...inst } = item;
   const d = def(id);
   let r;
+  if (slotDe(id) === 'sac' && p.equip.sac) {
+    r = changerSac(id, p, null, choixSac);
+    if (r.ok && (qty || 1) > 1) addItem(id, qty - 1, inst, p, { siPlein: 'tri' });
+    return r;
+  }
   if (ou === 'main' || ou === 'droite' || ou === 'gauche' || ou === 'deux') r = tenirInstance({ id, qty: 1, ...inst }, ou === 'main' ? 'droite' : ou, p);
   else if (ou === 'dos') {
     if (!peutDos(id)) return { ok: false, raison: 'Trop petit pour le dos.' };
@@ -506,9 +567,9 @@ export function porterObjet(item, p, ou = null) {
   return r;
 }
 // Porter directement un objet posé au sol (depuis le panneau « Au sol »).
-export async function equiperDepuisSol(indexSol, p, ou = null) {
-  p = joueur(p); const item = await sol.prendre(indexSol); if (!item) return { ok: false, raison: 'Plus rien ici.' };
-  const r = porterObjet(item, p, ou);
+export async function equiperDepuisSol(indexSol, p, ou = null, choixSac = null) {
+  p = joueur(p); const item = await sol.prendre(indexSol, 1); if (!item) return { ok: false, raison: 'Plus rien ici.' };
+  const r = porterObjet(item, p, ou, choixSac);
   if (!r.ok) { try { sol.deposer(item); } catch (e) {} }
   return r;
 }
@@ -522,9 +583,10 @@ export function slotDe(id) {
   return null;
 }
 // Équiper l'objet d'index `index` du sac (vêtement → son emplacement, arme → en main, lampe → lampe).
-export function equiper(index, p) {
+export function equiper(index, p, choixSac = null) {
   p = joueur(p); const it = p.inventaire[index]; if (!it) return { ok: false, raison: 'Objet introuvable.' };
   const slot = slotDe(it.id); if (!slot) return { ok: false, raison: 'Ça ne se porte pas.' };
+  if (slot === 'sac' && p.equip.sac) return changerSac(it.id, p, index, choixSac);
   if (slot === 'arme') return tenir(index, 'droite', p);
   if (slot === 'lampe' && lampeTenue(it.id)) {
     if (p.deuxMains) return { ok: false, raison: 'Tes deux mains tiennent déjà l\'arme. Prends une frontale, ou passe l\'arme à une main.' };

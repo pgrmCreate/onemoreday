@@ -16,6 +16,11 @@ export const DECLENCHEURS = [
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'loge_gardien', si: { pasFlag: 'pro_cle_prise' }, scene: 'pro_loge', libelle: 'Examiner le bureau du gardien' },
   { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'grille_sortie', si: { pasFlag: 'pro_grille_ouverte' }, scene: 'pro_grille', deux: true, libelle: 'Examiner la grille' },
 
+  // ─────────── MISSIONS ───────────
+  // La boîte d'Aimé (m_aime) : sous le troisième frêne après la passerelle de la Touloubre, une fois qu'il l'a promise.
+  // Pas `unique` : c'est le drapeau posé en la prenant qui la vide (une partie fermée en pleine scène ne la perd pas).
+  { quand: 'marqueur', lieu: 'touloubre', marqueur: 'cache_aime', si: { flag: 'aime_cache_promise', pasFlag: 'aime_cache_prise' }, scene: 'aime_cache', libelle: 'Creuser au pied du frêne' },
+
   // Voyage cimetière → Tour de l'Horloge (tutoriel de la carte, puis du combat)
   { quand: 'voyage', de: 'cimetiere', vers: 'tour_horloge', a: 0.35, si: { pasFlag: 'prologue_fini' }, rencontre: 'rh_pro_marche', unique: true },
   { quand: 'voyage', de: 'cimetiere', vers: 'tour_horloge', a: 0.75, si: { pasFlag: 'prologue_fini' }, rencontre: 'rh_pro_premier', unique: true },

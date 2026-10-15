@@ -8,6 +8,7 @@ import { DOCUMENTS } from '../data/histoire/documents.js';
 import { mod, sfx, message, nomObjet, capitaliser } from './commun.js';
 import { CONSTRUCTIONS, tailleConstruction } from '../data/construction.js';
 import { commandeTransfert, transfertEnCours } from '../ui/transferts.js';
+import { choisirSac, comparaisonSac } from '../ui/sacs.js';
 
 const boutonTransfert = (attrs, ...contenu) => commandeTransfert(el('button', attrs, ...contenu));
 
@@ -70,7 +71,7 @@ export function rendreButin() {
     const portable = !!ou;
     const libPorter = { vetement: 'Porter', lampe: 'Équiper', main: 'En main', dos: 'Dans le dos', deux: 'À deux mains' }[ou] || 'Porter';
     const libConso = mod.survie && mod.survie.libelleConsommer ? mod.survie.libelleConsommer(it.id) : null;
-    ul.append(el('li', { class: (tient ? '' : 'plein') + (i >= (B.dejaVus || 0) ? ' neuf' : '') }, boutonTransfert({ class: 'ex-b-nom', type: 'button', onclick: () => (portable ? porterItem(i) : prendreItem(i)) }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
+    ul.append(el('li', { class: (tient ? '' : 'plein') + (i >= (B.dejaVus || 0) ? ' neuf' : '') }, boutonTransfert({ class: 'ex-b-nom', type: 'button', onclick: () => (portable ? porterItem(i) : prendreItem(i)) }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null, el('span', { class: 'sac-ecart' }, comparaisonSac(it.id))),
       portable ? boutonTransfert({ class: 'ex-b', type: 'button', onclick: () => porterItem(i) }, libPorter) : null,
       libConso ? boutonTransfert({ class: 'ex-b', type: 'button', onclick: () => consommerItem(i) }, libConso) : null,
       boutonTransfert({ class: 'ex-b', type: 'button', disabled: tient ? null : true, title: tient ? null : (inv.raisonPlace && inv.raisonPlace(it.id)) || 'Plus de place', onclick: () => prendreItem(i) }, tient ? 'Prendre' : (inv.estPetit && !inv.estPetit(it.id) && !G.player.equip.sac ? 'Trop gros' : 'Sac plein'))));
@@ -196,17 +197,24 @@ async function consommerItem(i) {
   }
   if (!B.items.length && B.fini) fermerButin(); else rendreButin();
 }
+let portEnCours = false;
 async function porterItem(i) {
-  if (transfertEnCours()) return;
+  if (transfertEnCours() || portEnCours) return;
   const B = V && V.butin, inv = mod.inv; if (!B || i >= B.visibles || !inv || !inv.porterObjet) return;
-  const it = await prendreDe(B, i);
+  portEnCours = true;
+  try {
+  const prevu = B.items[i], p = G.player;
+  const choix = await choisirSac(prevu.id, p, { valide: () => V && V.butin === B && B.items[i] === prevu });
+  if (!choix || !V || V.butin !== B || B.items[i] !== prevu) return;
+  const it = await prendreDe(B, i, 1);
   if (!it) return;
-  retirerDuButin(B, i);
-  const r = inv.porterObjet(it);
-  if (r.ok && V.cbt) V.cbt.majStats();
-  if (!r.ok) { donner(it); message(r.raison || 'Impossible de le porter.', 2200); }
+  if ((prevu.qty || 1) > 1) prevu.qty--; else retirerDuButin(B, i);
+  const r = inv.porterObjet(it, p, null, choix);
+  if (r.ok && V && V.cbt) V.cbt.majStats();
+  if (!r.ok) { inv.mettreATrier(it); message(r.raison || 'Impossible de le porter.', 2200); }
   else sfx('loot');
-  if (!B.items.length && B.fini) fermerButin(); else rendreButin();
+  if (V && V.butin === B) { if (!B.items.length && B.fini) fermerButin(); else rendreButin(); }
+  } finally { portEnCours = false; }
 }
 export async function prendreTout() {
   if (transfertEnCours()) return;

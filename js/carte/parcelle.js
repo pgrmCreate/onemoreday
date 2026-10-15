@@ -138,6 +138,9 @@ export function parcelle(meta, o, details) {
       e.semer('feuilles', 2, 2, W - 4, H - 4, Math.round(W * H / 60));
       e.semer('herbes', 2, 2, W - 4, H - 4, Math.round(W * H / 70));
     }
+    // o.apres : un détail posé tout à la fin, sans tirage, qui ne déplace rien de ce qui précède (les sauvegardes gardent
+    // leurs arbres abattus et leurs fruits cueillis) — p. ex. les frênes d'Aimé à la Touloubre.
+    if (o.apres) o.apres(e, P);
   });
 }
 
@@ -153,15 +156,16 @@ function riviere(e, P) {
   }
   // le chemin principal passe la rivière : une passerelle de planches à cette hauteur
   const croise = (y) => { for (let k = 0; k < P.chemin.length - 1; k++) { const [x0, y0] = P.chemin[k], [x1, y1] = P.chemin[k + 1]; const xx = lit[y]; if (xx >= x0 && xx <= x1) { const t = (xx - x0) / Math.max(1, x1 - x0); return Math.abs(y - (y0 + (y1 - y0) * t)) <= 1.5; } } return false; };
+  let passerelle = null;
   for (let y = 0; y < H; y++) {
     const x0 = lit[y];
     e.solRect('boue', x0 - 2, y, 1, 1); e.solRect('sable', x0 + larg + 1, y, 1, 1);
     e.solRect('boue', x0 - 1, y, 1, 1); e.solRect('boue', x0 + larg, y, 1, 1);
-    if (croise(y)) { e.solRect('planches', x0, y, larg, 1); reserver(x0 - 2, y - 1, larg + 4, 3); continue; }
+    if (croise(y)) { e.solRect('planches', x0, y, larg, 1); reserver(x0 - 2, y - 1, larg + 4, 3); passerelle = y; continue; }
     e.eau(x0, y, larg, 1); reserver(x0 - 1, y, larg + 2, 1);
   }
   e.semer('flaque', lit[Math.floor(H / 2)] - 3, 2, 3, H - 4, Math.round(H / 6));
-  P.lit = lit; P.largeurLit = larg;
+  P.lit = lit; P.largeurLit = larg; P.passerelle = passerelle;   // passerelle : la DERNIÈRE rangée de planches (côté aval)
 }
 // Les berges (après les bâtiments du lieu) : les cannes de Provence en touffes.
 function berges(e, P) {

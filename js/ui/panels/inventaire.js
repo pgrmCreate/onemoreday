@@ -13,6 +13,7 @@ import { iconeObjet } from '../icons.js';
 import { lireMontre, lireCalendrier } from '../../game/temps_connu.js';
 import { el, icoEl, onglets, jauge, bouton, avecScroll, vide, fmtKg, fmtL, pct, g } from './commun.js';
 import { commandeTransfert, transfertEnCours } from '../transferts.js';
+import { choisirSac, comparaisonSac } from '../sacs.js';
 
 const ONGLET_KEY = 'inv';
 let etat = { onglet: 'sac', sel: null, cat: 'tout' }; // sel : { zone: 'sac'|'slot'|'sol', ref } ; cat : filtre du sac
@@ -98,6 +99,7 @@ function ligneObjet({ index, it, def: d }, p, actif, onclick) {
   if (it.qty > 1) nom.append(el('em', { class: 'inv-qty' }, `×${it.qty}`));
   if (it.reste != null) nom.append(el('em', { class: 'inv-qty' }, surv.aTourne(it) ? ' (entamé, a tourné)' : ' (entamé)'));
   const sous = el('span', { class: 'inv-meta' }, metaObjet(it, d || {}));
+  if (inv.slotDe(it.id) === 'sac') sous.append(el('span', { class: 'sac-ecart' }, `Vide · ${comparaisonSac(it.id, p)}`));
   const txt = el('span', { class: 'inv-txt' }, nom, sous);
   b.append(ic, txt);
   const u = inv.etatUsure(it);
@@ -155,14 +157,14 @@ function listeTri(col, p, racine, api) {
   const apres = (r) => { if (r && r.ok === false && r.raison) emit('toast', { texte: r.raison, type: 'alerte' }); dessiner(racine, api); };
   const ligne = (it, boutons) => el('div', { class: `tri-ligne cat-${inv.categorie(it.id)}` },
     el('span', { class: 'inv-ic' }, icoEl(iconeObjet(it.id))),
-    el('span', { class: 'inv-txt' }, el('span', { class: 'inv-nom' }, inv.nomObjet(it.id), it.qty > 1 ? el('em', { class: 'inv-qty' }, `×${it.qty}`) : null), el('span', { class: 'inv-meta' }, metaObjet(it, inv.def(it.id) || {}))),
+    el('span', { class: 'inv-txt' }, el('span', { class: 'inv-nom' }, inv.nomObjet(it.id), it.qty > 1 ? el('em', { class: 'inv-qty' }, `×${it.qty}`) : null), el('span', { class: 'inv-meta' }, metaObjet(it, inv.def(it.id) || {}), el('span', { class: 'sac-ecart' }, comparaisonSac(it.id, p)))),
     el('span', { class: 'tri-btns' }, ...boutons.filter(Boolean)));
   col.append(el('p', { class: 'tri-intro' }, 'Tu n’as pas la place de tout emporter. Prends ce que tu veux garder. Pour faire de la place, laisse des affaires de ton sac. Ce qui reste ici sera abandonné.'));
   col.append(el('h3', { class: 'pn-section' }, 'Trouvé', el('em', {}, String(inv.listeATrier().length))));
   inv.listeATrier().forEach((it, i) => {
     const tient = inv.combienTient(it.id, 1) >= 1, ou = inv.ouPorter(it.id);
     col.append(ligne(it, [
-      ou ? bouton({ label: { vetement: porterLabel(it.id), lampe: 'Équiper', main: 'En main', dos: 'Dans le dos', deux: 'À deux mains' }[ou] || 'Porter', cls: 'second mini', onclick: () => apres(inv.porterATrier(i)) }) : null,
+      ou ? bouton({ label: { vetement: porterLabel(it.id), lampe: 'Équiper', main: 'En main', dos: 'Dans le dos', deux: 'À deux mains' }[ou] || 'Porter', cls: 'second mini', onclick: attendreAction(async () => { const choix = await choisirSac(it.id, p, { valide: () => inv.listeATrier()[i] === it }); if (choix) apres(inv.porterATrier(i, p, choix)); }) }) : null,
       bouton({ label: tient ? 'Prendre' : 'Pas de place', cls: tient ? 'principal mini' : 'second mini', disabled: !tient, titre: tient ? null : inv.raisonPlace(it.id), onclick: () => apres(inv.prendreATrier(i)) }),
     ]));
   });
@@ -275,9 +277,9 @@ function statsObjet(id, it, p) {
     const c = CLOTHES[id];
     if (c.protection) rows.push(['Protection', `${c.protection}`]);
     if (c.chaleur) rows.push(['Chaleur', `+${c.chaleur}`]);
-    if (c.slot === 'sac') rows.push(['Contenance', fmtL(inv.contenanceSac(id))]);
+    if (c.slot === 'sac') rows.push(['Contenance', comparaisonSac(id, p)], ['Ton sac porté', p.equip.sac ? inv.nomObjet(p.equip.sac) : 'Aucun']);
     else if (c.espace) rows.push(['Poches', `+${fmtL(c.espace)}`]);
-    if (c.portage) rows.push(['Portage', `+${fmtKg(c.portage)}`]);
+    if (c.portage) rows.push(['Charge en plus', `+${fmtKg(c.portage)}`]);
     if (c.accesRapide) rows.push(['Accès rapide', `+${c.accesRapide}`]);
     if (c.agilite) rows.push(['Agilité', `${c.agilite > 0 ? '+' : ''}${c.agilite}`]);
   }
@@ -291,7 +293,7 @@ function statsObjet(id, it, p) {
     if (d.fatigue) rows.push(['Fatigue', 'te réveille un peu']);
     if (d.risque) rows.push(['Risque', d.risque.p >= 0.5 ? 'gros risque d\'intoxication' : 'risque d\'intoxication']);
   }
-  if (d.contenance) rows.push(['Contenance', fmtL(d.contenance)]);
+  if (d.contenance && !CLOTHES[id]) rows.push(['Contenance', fmtL(d.contenance)]);
   if (it && it.eau) rows.push(['Contenu', `${fmtL(it.eau.L)} ${it.eau.q === 'propre' ? 'propre' : 'croupie'}`]);
   if (REGLAGES.lumiere.SOURCES[id] && ITEMS[id]) { const s = REGLAGES.lumiere.SOURCES[id]; rows.push(['Portée', `${s.portee} cases`], ['Autonomie', `${Math.round(s.minParCharge / 60 * 10) / 10} h / ${s.charge ? inv.nomObjet(s.charge).toLowerCase() : 'charge'}`]); }
   if (d.type === 'livre') rows.push(['Lecture', `${d.lecture} min`], ['Lu', p.livresLus.includes(id) ? 'oui' : 'non']);
@@ -331,7 +333,7 @@ function actionsSac(index, it, p, racine, api) {
   if (d.type === 'livre') a.push({ label: p.livresLus.includes(it.id) ? 'Relire' : 'Lire', icone: 'lire', principal: true, f: () => res(craft.lire(index)) });
   const slot = inv.slotDe(it.id);
   if (slot === 'lampe') a.push({ label: 'Équiper la lampe', icone: 'lampe', principal: true, f: () => res(inv.equiper(index)) });
-  else if (slot && slot !== 'arme') a.push({ label: porterLabel(it.id), icone: slot === 'poignet' ? 'montre' : 'equiper', principal: true, f: () => res(inv.equiper(index)) });
+  else if (slot && slot !== 'arme') a.push({ label: porterLabel(it.id), icone: slot === 'poignet' ? 'montre' : 'equiper', principal: true, f: async () => { const choix = await choisirSac(it.id, p, { index, valide: () => p.inventaire[index] === it }); if (choix) res(inv.equiper(index, p, choix)); } });
   if (d.date) a.push({ label: 'Regarder la date', icone: 'calendrier', principal: true, f: () => emit('toast', { texte: lireCalendrier(), duree: 4200 }) });
   if (!CLOTHES[it.id] && (d.type === 'arme' || d.melee || inv.peutDos(it.id) || inv.volumeDe(it.id) >= 1.5)) {
     const arme = d.type === 'arme' || d.melee;
@@ -403,7 +405,7 @@ function remplirFiche(f, p, racine, api) {
     acts = [];
     const ou = inv.ouPorter(it.id);
     if (ou) acts.push({ label: { vetement: porterLabel(it.id), lampe: 'Prendre la lampe', main: 'Prendre en main', dos: 'Dans le dos', deux: 'Porter à deux mains' }[ou], icone: 'equiper', principal: true,
-      f: async () => { const r = await inv.equiperDepuisSol(s.ref, p, ou); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
+      f: async () => { const choix = await choisirSac(it.id, p, { valide: () => inv.objetsAuSol()[s.ref]?.id === it.id }); if (!choix) return; const r = await inv.equiperDepuisSol(s.ref, p, ou, choix); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
     if (ou === 'dos' || (ou === 'main' && inv.peutDos(it.id) && !p.equip.dos)) {
       if (ou === 'dos') acts.push({ label: 'Prendre en main', icone: 'main_arme', f: async () => { const r = await inv.equiperDepuisSol(s.ref, p, 'main'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
       else acts.push({ label: 'Dans le dos', icone: 'sac', f: async () => { const r = await inv.equiperDepuisSol(s.ref, p, 'dos'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });

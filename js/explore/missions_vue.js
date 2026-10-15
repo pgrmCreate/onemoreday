@@ -6,10 +6,13 @@
 // chacun ; ce qui touche le LIEU (mise en scène, vagues, morts restants, PNJ qui prend des coups) se joue chez l'hôte s'il
 // est là, sinon chez l'invité — jamais deux fois. Les décisions remontent à l'hôte (js/game/missions.js, relais).
 import { G, genrer } from '../core/state.js';
+import { on } from '../core/bus.js';
+import { SCENES } from '../game/donnees.js';
+import { hasTagDispo } from '../game/inventory.js';
 import { FIN, icase } from '../carte/catalogue.js';
 import * as M from '../game/missions.js';
 import { message, sfx, sfxA, vib, caseLibrePres } from './commun.js';
-import { lancerAction, jouerScene } from './interactions.js';
+import { lancerAction, jouerScene, couperAction } from './interactions.js';
 import { overlayOuvert } from '../game/flow.js';
 
 let V = null, tMaj = 0, tOffre = 0;
@@ -25,6 +28,11 @@ export function lierMissions(v) {
   v.missions = { repere: false, tVague: {}, tBruit: 0, tCri: 0, t0: {}, entendus: new Set() };
   // un mort qui te prend en chasse : tu es repéré·e (missions de discrétion)
   v.off.push(v.canal.on('zombie', (e) => { if (e && e.etat === 'chasse' && V && V.missions) V.missions.repere = true; }));
+  // étape « agir » à choix : le geste choisi dans la scène, puis ce que l'hôte a accepté (vacarme, réveil, annonce)
+  v.off.push(on('mission:agir', ({ id, variante }) => geste(id, variante)));
+  v.off.push(on('mission:consequence', consequence));
+  // le coéquipier a fini l'étape pendant mon geste : je m'arrête (rien ne sonne, rien n'est donné)
+  v.off.push(on('mission:maj', () => { const a = V && V.action; if (a && a.mission && M.etapeDe(a.mission.id) !== a.mission.e) couperAction(genrer(a.mission.fait)); }));
 }
 
 // ---------- Lieux du plan ----------
@@ -82,6 +90,7 @@ export function ciblesMissions(proposer) {
   }
 }
 function agir(id, e) {
+  if (e.choix) return choisir(id, e);
   lancerAction(`${e.libelle}…`, e.ms || 4000, V.j.x, V.j.y, () => {
     if (!V) return;
     if (e.bruit) V.canal.bruit({ etage: V.j.etage, x: V.j.x, y: V.j.y, rayon: e.bruit });
@@ -89,6 +98,53 @@ function agir(id, e) {
     if (e.annonce) { message(genrer(e.annonce), 4200); sfx('alerte'); vib(120); }
     M.reussirEtape(id);
   }, e.bruitAction || 0, 'clouer', 1800);
+}
+
+// ---------- Une étape « agir » à choix (le coffre du Leclerc) ----------
+// Le choix dit d'avance le temps et le bruit de chaque façon de faire ; sans l'outil, la façon lente reste écrite avec
+// sa raison. Le geste lui-même ne fait rien sonner : c'est la variante acceptée par l'hôte qui revient en conséquence
+// (js/game/missions.js effetsEtape). Le geste lent s'interrompt sans alarme ni récompense, et reprend où il en était.
+const secondes = (ms) => `${Math.round(ms / 1000)} secondes`;
+function choisir(id, e) {
+  const c = e.choix, outil = c.silence && hasTagDispo(c.silence.tag, G.player);
+  const deja = (V.missions.fait && V.missions.fait[id]) || 0;
+  const reste = c.silence ? Math.round(c.silence.ms * (1 - deja)) : 0;
+  const choix = [{ label: `${c.vite.label} (${secondes(e.ms || 4000)}, ${c.vite.bruit})`, effets: { mission: ['agir', id, 'vite'] }, suivant: '#fin' }];
+  if (outil) choix.push({ label: `${deja > 0 ? c.silence.reprendre : c.silence.label} (${secondes(reste)}, ${c.silence.bruit})`, effets: { mission: ['agir', id, 'silence'] }, suivant: '#fin' });
+  choix.push({ label: 'Pas maintenant', suivant: '#fin' });
+  const sid = `mission_choix_${id}`;
+  SCENES[sid] = { illu: null, musique: null, texte: c.texte + (c.silence && !outil ? `
+
+${c.silence.sansOutil}` : ''), choix };
+  return jouerScene(sid);
+}
+function geste(id, variante) {
+  if (!V || V.arene || V.action) return;
+  const e = M.etapeDe(id);
+  if (!e || e.type !== 'agir' || !e.choix || e.lieu !== V.lieuId) return;
+  const r = pieceNommee(V.niveau, e.piece);
+  if (!dansPiece(r, V.j.x, V.j.y, V.j.etage, 0.6)) { message('Tu n’es plus devant le coffre.'); return; }
+  const c = e.choix, lent = variante === 'silence' && c.silence;
+  if (lent && !hasTagDispo(c.silence.tag, G.player)) { message(c.silence.sansOutil); return; }
+  const VM = V.missions; VM.fait = VM.fait || {};
+  const deja = lent ? VM.fait[id] || 0 : 0, ms = lent ? Math.max(500, Math.round(c.silence.ms * (1 - deja))) : (e.ms || 4000);
+  const finir = () => {
+    if (!V) return;
+    if (M.etapeDe(id) !== e) { message(genrer(c.fait)); return; }       // l'autre a fini entre-temps : rien ne sonne
+    if (lent) delete VM.fait[id];
+    M.reussirEtape(id, { variante: lent ? 'silence' : 'vite' });
+  };
+  // interrompu : rien ne sonne, rien n'est donné ; le boîtier à moitié démonté le reste
+  const interrompre = lent ? (f) => { if (V && M.etapeDe(id) === e) { VM.fait[id] = Math.min(0.95, deja + (1 - deja) * f); message(c.silence.interrompu, 3200); } } : null;
+  lancerAction(`${lent ? c.silence.libelle : e.libelleVite || e.libelle}…`, ms, V.j.x, V.j.y, finir, lent ? c.silence.bruitAction || 0 : e.bruitAction || 0, 'clouer', 1800, interrompre);
+  if (V.action) V.action.mission = { id, e, fait: c.fait };
+}
+// Ce que l'hôte a accepté revient ici (chez celui qui a agi) : le vacarme, le réveil, l'annonce.
+function consequence(v) {
+  if (!V || !v || (v.lieu && v.lieu !== V.lieuId)) return;
+  if (v.bruit) V.canal.bruit({ etage: V.j.etage, x: V.j.x, y: V.j.y, rayon: v.bruit });
+  if (v.reveil) reveiller(v.reveil);
+  if (v.annonce) { message(genrer(v.annonce), 4600); if (v.bruit) { sfx('alerte'); vib(120); } }
 }
 
 // ---------- Le pas (appelé par la boucle de la vue) ----------

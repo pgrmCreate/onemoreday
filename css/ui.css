@@ -648,3 +648,31 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border: 1px soli
 .som-voile.on { opacity: 1; }
 .som-t { font-family: 'EB Garamond', Georgia, serif; font-style: italic; font-size: 26px; color: #b8b0a0; }
 .som-h { font-family: Oswald, sans-serif; letter-spacing: .14em; font-size: 15px; color: #6e685e; }
+
+/* Changer de sac : comparaison et décision avant toute mutation. */
+.sac-dialog { width: min(540px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 16px; border: 1px solid #8c7952; border-radius: 8px; background: #191b1d; color: #eee7d7; font: 16px/1.4 system-ui, sans-serif; box-sizing: border-box; }
+.sac-dialog[open] { display: flex; flex-direction: column; gap: 10px; }
+.sac-dialog::backdrop { background: #000b; }
+.sac-dialog h2 { margin: 0; font-size: 21px; }
+.sac-comparaison { overflow-y: auto; min-height: 0; }
+.sac-comparaison p { margin: 0 0 10px; }
+.sac-comparaison table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 12px; }
+.sac-comparaison th, .sac-comparaison td { padding: 5px 3px; text-align: left; border-bottom: 1px solid #ffffff24; }
+.sac-comparaison td small { display: block; color: #dfc28c; }
+.sac-depot { color: #efd3a2; }
+.sac-actions { display: grid; gap: 6px; flex-shrink: 0; }
+.sac-actions button { min-height: 44px; padding: 8px 10px; border: 1px solid #8c7952; border-radius: 5px; background: #292b2d; color: #f6edda; font: inherit; cursor: pointer; }
+.sac-actions button:first-child { background: #57482b; }
+.sac-actions button:disabled { opacity: .5; cursor: default; }
+.sac-actions button:focus-visible { outline: 2px solid #efcc87; outline-offset: -3px; }
+.sac-ecart { font-size: 12px; color: #e3c286; white-space: nowrap; margin-left: 6px; }
+@media (max-height: 480px) and (min-width: 600px) {
+  .sac-dialog { width: min(760px, calc(100vw - 24px)); height: calc(100dvh - 24px); padding: 12px; }
+  .sac-dialog[open] { display: grid; grid-template-columns: minmax(0, 1fr) 225px; grid-template-rows: auto minmax(0, 1fr); gap: 8px 14px; }
+  .sac-dialog h2 { grid-column: 1 / -1; }
+  .sac-comparaison { height: 100%; font-size: 13px; }
+  .sac-comparaison table { font-size: 12px; }
+  .sac-comparaison th, .sac-comparaison td { padding: 3px; }
+  .sac-comparaison td small { display: inline; }
+  .sac-actions { align-self: end; font-size: 14px; }
+}

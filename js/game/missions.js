@@ -6,7 +6,7 @@
 // Ce qui se joue sur place (morts restants, pièce atteinte, vagues, PNJ blessé, geste) : js/explore/missions_vue.js.
 // Bus : 'mission:maj' { id, notif?, distant? } ; 'mission:notif' { type, titre, texte } (bandeau, js/ui/notif.js) ;
 //       'mission:etape' { id, i }. Effet de scène : { mission: ['accepter' | 'plusTard' | 'refuser', id] | ['donner', id, objet] }.
-import { G, genrer, noteJournal } from '../core/state.js';
+import { G, genrer, noteJournal, getFlag, setFlag } from '../core/state.js';
 import { emit, on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 import { MISSIONS } from '../data/histoire/missions.js';
@@ -57,11 +57,12 @@ export function recevoirOp(op) {
     case 'accepter': accepter(op.id); break;
     case 'plusTard': plusTard(op.id); break;
     case 'refuser': refuser(op.id); break;
-    case 'reussir': if (s && s.etat === 'active' && s.i === op.i) reussirEtape(op.id, { par: 'invite' }); break;
+    case 'reussir': if (s && s.etat === 'active' && s.i === op.i) reussirEtape(op.id, { par: 'invite', variante: op.variante || null }); break;
     case 'echouer': if (s && s.etat === 'active' && s.i === op.i) echouer(op.id, op.raison || ''); break;
     case 'nourrir': nourrirPoints(op.id, op.pts || 0, 'invite'); break;
     case 'blesser': blesserPnj(op.id, op.n || 0); break;
     case 'prepare': if (s && s.etat === 'active' && s.i === op.i && !s.d.prepare) { s.d.prepare = true; ecrire(op.id, s); } break;
+    case 'cache': prendreCache(op.id, 'invite'); break;
     default: break;
   }
 }
@@ -157,20 +158,21 @@ function debutEtape(id, premiere) {
   emit('mission:etape', { id, i: s.i });
 }
 // L'étape courante est remplie : ses effets, le bandeau, puis l'étape suivante (ou la fin).
-export function reussirEtape(id, { par = null } = {}) {
+export function reussirEtape(id, { par = null, variante = null } = {}) {
   const s = etat(id), m = MISSIONS[id]; if (!s || s.etat !== 'active') return;
   if (estInvite()) {      // l'hôte tranche ; on ne relaie qu'une fois par étape
     s.d = s.d || {};
     if (s.d.demande === s.i) return;
     s.d.demande = s.i;
-    relayer({ op: 'reussir', id, i: s.i });
+    relayer({ op: 'reussir', id, i: s.i, variante });
     return;
   }
   if (!tenant()) return;
   const e = m.etapes[s.i];
   const dest = qui(id, e, par);
   s.par = dest;
-  if (e.effets) livrerA(dest, id, e.effets);
+  const effets = effetsEtape(e, variante);
+  if (effets) livrerA(dest, id, effets);
   ecrire(id, s, bandeau('objectif', 'Objectif rempli', e.texte));
   s.i++;
   if (s.i >= m.etapes.length) { reussir(id); return; }
@@ -410,12 +412,34 @@ export function avancee(id) {
 }
 
 // ---------- Effets de scène ----------
+// Une étape « agir » à choix (le coffre du Leclerc : vite ou en coupant la sirène) : ses conséquences (vacarme, réveil,
+// annonce) et sa ligne de journal ne partent qu'avec la variante ACCEPTÉE par l'hôte, livrées une seule fois à celui qui
+// a agi. Sans variante connue, c'est le geste rapide (l'alarme sonne).
+function effetsEtape(e, variante) {
+  if (!e.choix) return e.effets || null;
+  const v = variante === 'silence' && e.choix.silence ? 'silence' : 'vite', c = e.choix[v] || {};
+  const consequence = v === 'vite' ? { lieu: e.lieu, bruit: e.bruit || 0, reveil: e.reveil || null, annonce: e.annonce || null }
+    : { lieu: e.lieu, bruit: 0, reveil: null, annonce: c.annonce || null };
+  return { ...(e.effets || {}), ...(c.journal ? { journal: c.journal } : {}), consequence };
+}
+// ---------- La cache d'une mission (la boîte d'Aimé) ----------
+// UN SEUL lot pour la partie, attribué par l'hôte : même si les deux joueurs creusent en même temps, le premier geste
+// arrivé chez l'hôte pose le drapeau (sauvegardé, envoyé à l'autre) puis reçoit les objets ; le second reçoit `deja`.
+// Tant que personne n'a choisi « Prendre », rien n'est retiré (une partie fermée en pleine scène ne perd pas la cache).
+function prendreCache(id, dest) {
+  const c = MISSIONS[id] && MISSIONS[id].cache; if (!c || !tenant()) return;
+  if (getFlag(c.flag)) { livrerA(dest, id, null, 'cache', c.deja); return; }
+  setFlag(c.flag, true);
+  livrerA(dest, id, c.effets, 'cache', null);
+}
 export function effet(v) {
   const [quoi, id, x] = Array.isArray(v) ? v : [v];
   if (quoi === 'accepter') accepter(id);
   else if (quoi === 'plusTard') plusTard(id);
   else if (quoi === 'refuser') refuser(id);
   else if (quoi === 'donner') donner(id, x);
+  else if (quoi === 'agir') emit('mission:agir', { id, variante: x });   // le geste choisi dans la scène (js/explore/missions_vue.js)
+  else if (quoi === 'cache') { if (estInvite()) relayer({ op: 'cache', id }); else prendreCache(id, 'hote'); }
 }
 
 // ---------- Branchement ----------

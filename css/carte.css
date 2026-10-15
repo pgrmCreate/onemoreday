@@ -175,7 +175,12 @@ b.r1 { color: #4e6a30; } b.r2 { color: #7a6a10; } b.r3 { color: #a55a10; } b.r4 
 .f-allure.actif { background: #2a1f14; color: #f6ecd2; border-color: #2a1f14; }
 .f-allure.actif small { color: #d9c9a0; }
 .f-jumelles p { font: 16px/1.2 var(--f-main); color: #1d3d8f; margin: 4px 0; }
-.f-jumelles label { font: 14px var(--f-imp); display: flex; gap: 6px; align-items: center; min-height: 36px; }
+.f-chemins { border-top: 1px solid #b6a78c; margin-top: 8px; }
+.f-chemins:empty { display: none; }
+.f-chemins label { display: flex; align-items: center; gap: 8px; min-height: 44px; font: 500 14px var(--f-imp); cursor: pointer; }
+.f-chemins input { flex: 0 0 auto; width: 18px; height: 18px; }
+.f-chemins p { font: 16px/1.25 var(--f-main); margin: 0 0 8px; color: #314f37; }
+.f-jumelles label { font: 14px var(--f-imp); display: flex; gap: 6px; align-items: center; min-height: 44px; }
 .f-actions { display: flex; gap: 8px; margin-top: 8px; }
 /* Partir : collé en bas de l'écran, au centre, tant qu'un lieu est choisi */
 .carte-partir { position: absolute; z-index: 6; left: 50%; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -242,4 +247,6 @@ b.r1 { color: #4e6a30; } b.r2 { color: #7a6a10; } b.r3 { color: #a55a10; } b.r4 
 }
 .f-actions { position: sticky; bottom: -14px; margin: 8px -14px -14px; padding: 8px 14px 12px; background: linear-gradient(#e9d9b100, #e9d9b1 30%); }
 @media (max-height: 430px) { .f-allure { min-height: 40px; } .f-infos { padding-top: 4px; } .f-ligne { margin: 1px 0; } .f-raisons { margin-bottom: 4px; } }
+/* Sur un écran étroit en paysage, Partir recouvre le bord gauche de la fiche : garder les cases au-dessus. */
+@media (min-width: 561px) and (max-width: 900px) { .carte-fiche { bottom: 72px; } }
 .carte-hote.nuit::after { background: radial-gradient(ellipse at 50% 50%, rgba(20, 28, 60, .30) 40%, rgba(6, 8, 20, .72) 100%); }

@@ -12,9 +12,10 @@ import { LIEUX, SALON_SUR_REGION } from '../game/donnees.js';
 import { QUETES } from '../data/histoire/quetes.js';
 import { CARTE_SALON } from '../data/carte_salon.js';
 import { REGLAGES } from '../data/reglages.js';
-import { itineraire, projeter, lieuxAffiches, estDecouvert, echelleDe, zonesVues } from './geo.js';
+import { projeter, lieuxAffiches, estDecouvert, echelleDe, zonesVues } from './geo.js';
 import { monterFeuille, creerMarqueur, desencombrer, SVGNS, pictoPath } from './art_carte.js';
-import { contexteVoyage, vitesse, evaluerRisque, tirerRencontres, estHostile } from './rencontres_voyage.js';
+import { estHostile } from './rencontres_voyage.js';
+import { preparerVoyage } from './preparer_voyage.js';
 
 let E = null;                 // état de l'écran courant
 let allure = 'normale';       // mémorisée d'une ouverture à l'autre
@@ -59,7 +60,7 @@ function aJumelles() {
 }
 
 // ---------------------------------------------------------------- entrée / sortie
-export async function entrer({ echelle, depuis } = {}) {
+export async function entrer({ echelle, depuis, reprise = null } = {}) {
   sortir();
   depuis = depuis || lieuCourant();
   echelle = echelle || echelleDe(depuis);
@@ -67,7 +68,7 @@ export async function entrer({ echelle, depuis } = {}) {
   const vueHote = el('div', { class: 'carte-vue' });
   racine.append(vueHote);
   flow.stage().appendChild(racine);
-  E = { racine, vueHote, depuis, echelle, offs: [], sel: null, F: null, marqueurs: [], raf: 0 };
+  E = { racine, vueHote, depuis, echelle, reprise, offs: [], sel: null, F: null, marqueurs: [], raf: 0 };
   construireBarre();
   montrer(echelle, { premier: true });
   const onKey = (e) => {
@@ -78,6 +79,9 @@ export async function entrer({ echelle, depuis } = {}) {
   window.addEventListener('keydown', onKey);
   E.offs.push(() => window.removeEventListener('keydown', onKey));
   E.offs.push(on('minute', () => majHorloge()));
+  E.offs.push(on('inventaire', () => { if (E?.sel && E.sel !== E.depuis) majFiche(); }));
+  E.offs.push(on('mission:maj', () => { if (E?.sel && E.sel !== E.depuis) majFiche(); }));
+  if (reprise && LIEUX[reprise.vers]) { allure = reprise.allure || 'normale'; ouvrirFiche(reprise.vers); }
 }
 export function sortir() {
   if (!E) return;
@@ -239,13 +243,17 @@ function ouvrirFiche(id) {
         el('b', {}, a.nom), el('small', {}, `${a.kmh} km/h`)));
     }
     E.fJumelles = el('div', { class: 'f-jumelles' });
+    E.fChemins = el('div', { class: 'f-chemins' });
     // Partir : hors de la fiche, collé en bas de l'écran, au centre ; il n'existe que tant qu'un lieu est choisi
     E.fPartir = el('button', { class: 'carte-btn principal carte-partir-btn', onclick: partir }, 'Partir');
     E.fAttendre = el('button', { class: 'carte-btn carte-attendre', hidden: true, onclick: attendreFenetre }, 'Attendre');
     E.barrePartir = el('div', { class: 'carte-partir' }, E.fAttendre, E.fPartir);
-    fiche.append(E.fInfos, allures, E.fJumelles);
+    fiche.append(E.fInfos, allures, E.fChemins, E.fJumelles);
   }
-  E.fiche = fiche; E.contourner = false;
+  const reprise = E.reprise && E.reprise.vers === id ? E.reprise : null;
+  E.reprise = null;
+  E.fiche = fiche; E.contourner = !!reprise?.contourner; E.guetteur = !!reprise?.guetteur;
+  E.minutesDepart = reprise?.minutesDepart ?? G?.world.minutes;
   E.racine.append(fiche); E.racine.classList.add('avec-fiche');
   if (E.barrePartir) E.racine.append(E.barrePartir);
   if (!ici) majFiche(true);
@@ -254,11 +262,10 @@ function ouvrirFiche(id) {
 function majFiche(cadrer = false) {
   const id = E.sel; if (!id) return;
   for (const b of E.fiche.querySelectorAll('.f-allure')) { b.classList.toggle('actif', b.dataset.a === allure); b.setAttribute('aria-checked', String(b.dataset.a === allure)); }
-  const iti = itineraire(E.depuis, id);
-  const ctx = contexteVoyage({ allure });
-  const v = vitesse(ctx);
-  const duree = iti.metres / v.mParMin;
-  const r = evaluerRisque(iti, ctx, { de: E.depuis, vers: id });
+  const plan = preparerVoyage({ de: E.depuis, vers: id, allure, minutesDepart: E.minutesDepart,
+    guetteur: E.guetteur, contourner: E.contourner && aJumelles() });
+  const { iti, v, duree, risque: r } = plan;
+  E.preparation = plan; E.guetteur = plan.guetteur;
   E.iti = iti;
   let crans = '';
   // forte migration en cours (et connue) : on entend les morts, on ne sait pas où ils sont — le danger est inconnu
@@ -278,16 +285,24 @@ function majFiche(cadrer = false) {
     E.fAttendre.hidden = !(fen && !fen.ok);
     if (fen && !fen.ok) E.fAttendre.textContent = `Attendre ${fen.debut} h (≈ ${fmtDuree(fen.attente)})`;
   }
-  // jumelles : la première rencontre hostile est repérée sur l'itinéraire
+  E.fChemins.innerHTML = '';
+  if (plan.disponible) {
+    const cb = el('input', { type: 'checkbox', id: 'chemins-guetteur', onchange: (e) => {
+      E.guetteur = e.target.checked; majFiche(); E.fChemins.querySelector('input').focus();
+    } });
+    cb.checked = plan.guetteur;
+    E.fChemins.append(el('label', { for: 'chemins-guetteur' }, cb, 'Suivre les chemins du guetteur'),
+      el('p', {}, `Les passages notés dans son cahier : +${fmtDistance(plan.supplementGuetteur)}, ≈ +${fmtDuree(plan.supplementGuetteur / v.mParMin)}. Moins de rencontres imprévues, sans garantie de sécurité.`));
+  }
+  // Jumelles : le repère vient du même tirage que le départ, après les détours du cahier.
   E.fJumelles.innerHTML = '';
   E.repere = null;
   if (aJumelles()) {
-    const ts = tirerRencontres(iti, ctx, { de: E.depuis, vers: id, minutes: G.world.minutes });
-    const h = ts.find(t => t.hostile && !t.scripte);
+    const h = plan.repere;
     if (h) {
       E.repere = h;
       const m = REGLAGES.voyage.DETOUR_REPERE_M[iti.echelle] || 250;
-      const cb = el('input', { type: 'checkbox', onchange: (e) => { E.contourner = e.target.checked; dessinerTrajet(); } });
+      const cb = el('input', { type: 'checkbox', onchange: (e) => { E.contourner = e.target.checked; majFiche(); E.fJumelles.querySelector('input')?.focus(); } });
       if (E.contourner) cb.checked = true;
       E.fJumelles.append(el('p', {}, `Aux jumelles : ça bouge à ${fmtDistance(h.d)} d’ici.`), el('label', {}, cb, ` Contourner (+${fmtDistance(m)})`));
     } else E.fJumelles.append(el('p', {}, 'Aux jumelles : rien de visible sur le trajet.'));
@@ -337,12 +352,14 @@ function fenetreHoraire(id) {
 function attendreFenetre() {
   const fen = E && E.sel && fenetreHoraire(E.sel); if (!fen || fen.ok) return;
   clock.avancer(fen.attente);
+  E.minutesDepart = G.world.minutes;
   majFiche();
 }
 function partir() {
   const vers = E.sel; if (!vers) return;
   { const fen = fenetreHoraire(vers); if (fen && !fen.ok) return; }
-  const params = { de: E.depuis, vers, allure, groupe: null, minutesDepart: G ? G.world.minutes : undefined, contourner: !!(E.contourner && E.repere) };
-  flow.voyager(params);
+  // Transmettre l'aperçu lui-même : aucun nouveau tirage après le clic sur Partir.
+  const plan = E.preparation;
+  flow.voyager({ ...plan.params, preparation: plan });
 }
 export { estHostile };

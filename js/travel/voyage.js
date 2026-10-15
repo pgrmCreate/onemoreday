@@ -17,10 +17,11 @@ import { el, fmtDistance, fmtDuree, texteHtml } from '../core/util.js';
 import { seedRng } from '../core/rng.js';
 import { LIEUX, objet } from '../game/donnees.js';
 import { REGLAGES } from '../data/reglages.js';
-import { itineraire, pointA, sousTrace, inverser, allonger, projeter, echelleDe, zonesVues, reveler, RAYONS } from './geo.js';
+import { pointA, sousTrace, inverser, allonger, projeter, echelleDe, zonesVues, reveler, RAYONS } from './geo.js';
 import { monterFeuille, creerMarqueur, SVGNS, percerBrouillard } from './art_carte.js';
-import { contexteVoyage, vitesse, evaluerRisque, tirerRencontres } from './rencontres_voyage.js';
+import { evaluerRisque, tirerRencontres } from './rencontres_voyage.js';
 import { lieuCourant } from './carte.js';
+import { preparerVoyage } from './preparer_voyage.js';
 import { panneauOuvert } from '../ui/panels/index.js';
 
 let V = null;
@@ -28,32 +29,26 @@ let V = null;
 const TITRES = { combat: 'Mauvaise rencontre', butin: 'Au bord de la route', ambiance: 'En chemin', choix: 'Sur ta route', pnj: 'Quelqu’un' };
 
 // ---------------------------------------------------------------- entrée / sortie
-export async function entrer({ de, vers, allure = 'normale', groupe = null, minutesDepart, contourner = false } = {}) {
+export async function entrer({ de, vers, allure = 'normale', groupe = null, minutesDepart, contourner = false, guetteur = false, preparation = null } = {}) {
   sortir();
   de = de || lieuCourant();
-  const iti0 = itineraire(de, vers);
-  const ctx = contexteVoyage({ allure, groupe, minutes: minutesDepart });
-  let iti = iti0;
-  let rencontres = tirerRencontres(iti, ctx, { de, vers, minutes: minutesDepart ?? ctx.minutes });
-  if (contourner) {
-    const h = rencontres.find(t => t.hostile && !t.scripte);
-    if (h) { rencontres = rencontres.filter(t => t !== h); iti = allonger(iti, REGLAGES.voyage.DETOUR_REPERE_M[iti.echelle] || 250, h.d); decalerApres(rencontres, h.d, iti.metres - iti0.metres, iti0.metres); }
-  }
-  const surp = await surpoidsJoueur();
+  const plan = preparation || preparerVoyage({ de, vers, allure, groupe, minutesDepart, contourner, guetteur });
+  const { iti, ctx, rencontres } = plan;
+  guetteur = plan.guetteur;
   const racine = el('div', { class: 'carte-ecran voyage-ecran' });
   const vueHote = el('div', { class: 'carte-vue' });
   racine.append(vueHote);
   flow.stage().appendChild(racine);
-  V = { de, vers, allure, groupe, ctx, iti, rencontres, d: 0, total: 0, racine, vueHote, offs: [], pauses: new Set(), accel: false, fini: false, surp, raf: 0, dernierTexte: '' };
-  V.v = vitesse(ctx, { surpoids: surp }).mParMin;
-  V.risque = evaluerRisque(iti, ctx, { de, vers });
+  V = { de, vers, allure, groupe, ctx, iti, rencontres, guetteur, d: 0, total: 0, racine, vueHote, offs: [], pauses: new Set(), accel: false, fini: false, raf: 0, dernierTexte: '' };
+  V.v = plan.v.mParMin;
+  V.risque = plan.risque;
   V.F = monterFeuille(vueHote, iti.echelle, { zones: true, nuit: ctx.nuit, brouillard: zonesVues(iti.echelle) });
   construireUI();
   dessinerRoute();
   cadrer(false);
-  if (G) G.player.position = { mode: 'voyage', voyage: { de, vers, allure, d: 0, metres: iti.metres } };
+  if (G) G.player.position = { mode: 'voyage', voyage: { ...plan.params, d: 0, metres: iti.metres } };
   clock.setVitesse(vitesseBase());
-  emit('voyage:debut', { de, vers, allure, metres: iti.metres });
+  emit('voyage:debut', { de, vers, allure, guetteur, metres: iti.metres, duree: plan.duree, risque: plan.risque });
   V.offs.push(on('mort', () => { if (V) { V.fini = true; V.pauses.add('mort'); } }));
   V.offs.push(on('voyage:detour', (x) => detour(x && x.m)));
   V.offs.push(on('voyage:demiTour', () => demiTour()));
@@ -85,9 +80,6 @@ export function pause() { if (V) V.pauses.add('flow'); }
 export function reprise() { if (V) { V.pauses.delete('flow'); V.t = performance.now(); } }
 
 const vitesseBase = () => (REGLAGES.temps.VITESSE_SOLO && REGLAGES.temps.VITESSE_SOLO.voyage) ?? 1;
-async function surpoidsJoueur() {
-  try { const m = await import('../game/inventory.js'); return m.surpoids ? (m.surpoids(G.player).f || 0) : 0; } catch (e) { return 0; }
-}
 function decalerApres(ts, d0, m, ancien) {
   const k = (ancien - d0 + m) / Math.max(1, ancien - d0);
   for (const t of ts) if (t.d > d0) t.d = d0 + (t.d - d0) * k;
@@ -123,9 +115,9 @@ function construireUI() {
   V.F.couches.pion.appendChild(V.pion);
   void L;
 }
-function majTitre() { const L = LIEUX[V.vers]; V.titre.textContent = (V.iti.demiTour ? 'Retour vers ' : 'Vers ') + (L ? (L.court || L.nom) : V.vers); }
+function majTitre() { const L = LIEUX[V.vers]; V.titre.textContent = (V.iti.demiTour ? 'Retour vers ' : 'Vers ') + (L ? (L.court || L.nom) : V.vers) + (V.guetteur ? ' · chemins du guetteur' : ''); }
 function majJauge() {
-  let s = ''; for (let i = 1; i <= 5; i++) s += `<i class="${i <= V.risque.cran ? 'on r' + V.risque.cran : ''}"></i>`;
+  let s = ''; for (let i = 1; i <= 5; i++) s += V.risque.inconnu ? '<i class="inconnu">?</i>' : `<i class="${i <= V.risque.cran ? 'on r' + V.risque.cran : ''}"></i>`;
   V.jauge.innerHTML = `<span class="f-jauge">${s}</span><small>${V.risque.raisons[0] || V.risque.libelle}</small>`;
   V.jauge.title = 'Risque : ' + V.risque.libelle + (V.risque.raisons.length ? ' — ' + V.risque.raisons.join(', ') : '');
 }
@@ -175,7 +167,7 @@ const sauterImage = limiteur();   // 60 images/s au plus, 30 en mode économie (
 function boucle(t) {
   if (!V) return;
   if (sauterImage(t)) { V.raf = requestAnimationFrame(boucle); return; }
-  const dt = Math.min(250, t - V.t); V.t = t;
+  const dt = Math.max(0, Math.min(250, t - V.t)); V.t = t;
   const solo = !G || G.mode === 'solo';
   const bloque = V.pauses.size || V.fini || (solo && clock.enPause());
   if (!bloque) {

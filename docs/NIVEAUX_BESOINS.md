@@ -332,6 +332,12 @@ Chaque niveau secondaire reçoit son document (posé librement, sans marqueur) :
 | `lancon` | `doc_lancon` | voiture dans la file du péage |
 | `cornillon` | `doc_cornillon` | belvédère |
 
+Marqueurs des missions sur les lieux secondaires :
+
+| Lieu | Marqueur | Placement | Ce qui s'y passe |
+|---|---|---|---|
+| `touloubre` | `cache_aime` | au sol, au pied du troisième frêne de la rive est en aval de la passerelle (posé par `js/data/niveaux/touloubre.js`) | `aime_cache` : la boîte d'Aimé (poissons fumés, raviolis, eau-de-vie), seulement après `aime_cache_promise` (fin de `m_aime`) et tant que `aime_cache_prise` n'est pas posé |
+
 **Rappel de ton** : chaque lieu secondaire garde une trace de la vie interrompue (couverts dressés, cartables, jouets,
 un gâteau d’anniversaire) — c’est ce qui rend le monde réel. Le **marché mort** (morts `immobile` devant les étals) est
 bienvenu sur les cours et la place de Gaulle tant que `troupeau_passe` n’est pas posé ; après, Salon est **vide**.

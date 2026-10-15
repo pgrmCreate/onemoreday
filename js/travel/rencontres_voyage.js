@@ -76,7 +76,7 @@ export function contexteVoyage({ allure = 'normale', groupe = null, minutes } = 
 
 // ---------------------------------------------------------------- vitesse (m par minute de jeu)
 const ZONE_JAMBE = /jambe|genou|cuisse|mollet|pied|cheville/i;
-export function vitesse(ctx, { surpoids = 0 } = {}) {
+export function vitesse(ctx, { surpoids = ctx.surpoids || 0 } = {}) {
   const A = V().ALLURES[ctx.allure], M = V().MALUS_VITESSE; const raisons = [];
   let v = A.kmh * 1000 / 60;
   if (surpoids > 0) { v *= 1 + (M.surpoids - 1) * Math.min(1, surpoids); raisons.push('trop chargé'); }
@@ -111,7 +111,9 @@ export function lambdas(iti, ctx, { demiTour = false } = {}) {
     * (ctx.E.rencontres ?? 1) * (ctx.saigne ? Rr.SAIGNEMENT : 1) * (ctx.diff.rencontres ?? 1) * (demiTour ? Rr.DEMI_TOUR : 1);
   return iti.troncons.map(t => {
     const d = dangerTroncon(t, ctx);
-    return { t, d, lambda: (Rr.PAR_KM[t.echelle] ?? 0.3) * (Rr.DANGER.base + Rr.DANGER.pente * d) * (t.metres / 1000) * commun * rueeTroncon(t.echelle).mult };
+    // Les passages notés évitent une partie des rencontres imprévues en plaine, pas les scènes imposées.
+    const chemins = ctx.guetteur && t.echelle === 'region' ? 0.5 : 1;
+    return { t, d, lambda: (Rr.PAR_KM[t.echelle] ?? 0.3) * (Rr.DANGER.base + Rr.DANGER.pente * d) * (t.metres / 1000) * commun * rueeTroncon(t.echelle).mult * chemins };
   });
 }
 // Rencontres éligibles en un point (tronçon t, danger d, nuit au moment du passage).
@@ -150,7 +152,7 @@ function scenarisees(de, vers) {
 
 // ---------------------------------------------------------------- jauge de risque
 const LIBELLES = ['calme', 'prudence', 'risqué', 'dangereux', 'suicidaire'];
-export function evaluerRisque(iti, ctx, { de, vers, demiTour = false } = {}) {
+export function evaluerRisque(iti, ctx, { de, vers, demiTour = false, hostilesEvites = 0 } = {}) {
   const Ls = lambdas(iti, ctx, { demiTour });
   const rapide = V().ALLURES[ctx.allure].distance || 0;
   let E = 0, zoneMax = null;
@@ -163,6 +165,7 @@ export function evaluerRisque(iti, ctx, { de, vers, demiTour = false } = {}) {
     for (const z of t.zones) { const Z = zone(z); if (Z && Z.echelle === t.echelle && (!zoneMax || Z.danger > zoneMax.danger)) zoneMax = Z; }
   }
   E = Math.min(E, R().MAX[iti.echelle] || 3);
+  E = Math.max(0, E - hostilesEvites);
   if (!demiTour) for (const s of scenarisees(de, vers)) if (estHostile(s.def)) E += 1;
   const crans = V().RISQUE_CRANS; let cran = 1; for (const s of crans) if (E >= s) cran++;
   const RS = V().RAISONS_SEUILS, raisons = [];
@@ -172,6 +175,7 @@ export function evaluerRisque(iti, ctx, { de, vers, demiTour = false } = {}) {
   if (ctx.allure === RS.allure) raisons.push('allure rapide : on t’entend venir');
   if (RS.coop && ctx.coop) raisons.push('à deux, on se fait remarquer');
   if (RS.saigne && ctx.saigne) raisons.push('tu saignes');
+  if (ctx.guetteur && Ls.some(({ t }) => t.echelle === 'region')) raisons.push('chemins du cahier du guetteur');
   if (!raisons.length && cran <= 2) raisons.push(ctx.allure === 'discrete' ? 'tu rases les murs' : 'rien ne bouge, en apparence');
   // une forte migration (sirènes, horde) sur le trajet ou à l'arrivée, et qu'on la sait : on entend les morts au loin,
   // on ne sait pas où ils sont — le danger est inconnu (sûrement fort)
