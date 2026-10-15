@@ -38,7 +38,10 @@ document.addEventListener('pointerdown', function once() {
 // ---------- Plein écran + paysage (mobile) ----------
 function pleinEcran() {
   const d = document.documentElement;
-  try { if (!document.fullscreenElement && d.requestFullscreen && matchMedia('(pointer: coarse)').matches) d.requestFullscreen({ navigationUI: 'hide' }).then(() => { try { screen.orientation.lock('landscape'); } catch (e) {} }).catch(() => {}); } catch (e) {}
+  try { if (!document.fullscreenElement && d.requestFullscreen && matchMedia('(pointer: coarse)').matches) d.requestFullscreen({ navigationUI: 'hide' }).then(() => {
+    // Le verrouillage reste facultatif : son refus asynchrone rejoint celui du plein écran.
+    if (screen.orientation && screen.orientation.lock) return screen.orientation.lock('landscape');
+  }).catch(() => {}); } catch (e) {}
 }
 
 // ---------- Écrans ----------
@@ -120,7 +123,8 @@ export function ecranCreation({ mode = 'solo', apres } = {}) {
   c.classList.add('ec-creation');
   c.querySelectorAll('#c-genre button').forEach(b => b.onclick = () => { genre = b.dataset.g; c.querySelectorAll('#c-genre button').forEach(x => x.classList.toggle('on', x === b)); });
   c.querySelectorAll('#c-diff button').forEach(b => b.onclick = () => { diff = b.dataset.d; setPref('difficulte', diff); c.querySelectorAll('#c-diff button').forEach(x => x.classList.toggle('on', x === b)); });
-  c.querySelector('[data-a="retour"]').onclick = () => { if (mode === 'releve') coop.abandonnerApresMort(); ecranTitre(); };
+  // l'invité qui renonce avant d'entrer quitte aussi le salon (sinon il l'occupe : la partie, pleine, disparaît des listes)
+  c.querySelector('[data-a="retour"]').onclick = () => { if (mode === 'releve') coop.abandonnerApresMort(); if (mode === 'invite') coop.arreter(); ecranTitre(); };
   const confirmation = c.querySelector('.cr-confirmation');
   const grille = c.querySelector('.cr-grille'), actions = c.querySelector('.creation > .cr-actions');
   const annuler = c.querySelector('[data-a="annuler"]'), commencer = c.querySelector('[data-a="go"]');

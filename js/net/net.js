@@ -8,6 +8,7 @@ let ws = null;
 let etat = 'ferme'; // 'ferme' | 'connexion' | 'ouvert'
 let infos = { role: null, code: null, pair: false, nomPair: null };
 const handlers = { message: [], etat: [], pair: [] };
+let dernierRecu = 0;        // dernier message reçu (performance.now) : un Wi-Fi perdu ne ferme rien, il se tait
 
 // L'URL par défaut = le serveur d'où vient la page (LAN). En ligne : passe une URL.
 export function urlDefaut() {
@@ -24,12 +25,13 @@ function baseHttp(wsUrl) {
 }
 
 // Liste des salons ouverts sur le serveur visé (LAN : même origine ; en ligne : son domaine).
+// → tableau (éventuellement vide : aucune partie) ou null si le serveur n'a pas pu répondre.
 export async function listerSalons(wsUrl) {
   try {
     const r = await fetch(baseHttp(wsUrl) + '/api/salons', { cache: 'no-store' });
     if (r.ok) { const j = await r.json(); return Array.isArray(j.salons) ? j.salons : []; }
-  } catch (e) { /* serveur injoignable : liste vide */ }
-  return [];
+  } catch (e) { /* serveur injoignable */ }
+  return null;
 }
 
 // Se connecte et s'annonce. Résout { ok, infos } ou { ok:false, raison }.
@@ -44,6 +46,7 @@ export function connecter({ url, code, role, nom, meta }) {
     etat = 'connexion';
     ws.onopen = () => { try { ws.send(JSON.stringify({ t: 'hello', salon: code, role, nom, ...(meta || {}) })); } catch (e) {} };
     ws.onmessage = (ev) => {
+      dernierRecu = performance.now();
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.t === 'bienvenue') {
         etat = 'ouvert';
@@ -78,7 +81,10 @@ export function deconnecter() {
 export function connecte() { return etat === 'ouvert'; }
 export function code() { return infos.code; }
 export function role() { return infos.role; }
-export function pairPresent() { return infos.pair; }
+// connexion fermée = plus personne en face (sinon l'hôte coupé croirait encore jouer à deux)
+export function pairPresent() { return etat === 'ouvert' && infos.pair; }
+// depuis combien de temps rien n'est arrivé (ms) ; 0 hors connexion
+export function silenceMs() { return etat === 'ouvert' ? performance.now() - dernierRecu : 0; }
 export function nomPair() { return infos.nomPair; }
 export function on(type, fn) { if (handlers[type]) handlers[type].push(fn); }
 function emit(type, ...args) { (handlers[type] || []).forEach(fn => { try { fn(...args); } catch (e) { console.warn('net handler', e); } }); }

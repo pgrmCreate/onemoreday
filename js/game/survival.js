@@ -36,6 +36,9 @@ function estDehors(p) { if (contexte.exterieur != null) return contexte.exterieu
 let activiteCourante = 'normal';
 export function setActivite(a) { activiteCourante = a || 'normal'; }
 export function activite() { return activiteCourante; }
+// Repos sans saut d'heure (évanoui à deux, js/game/sommeil.js) : les minutes qui passent comptent comme du sommeil sur ce couchage.
+export function commencerRepos(couchage = 'sol') { couchageEnCours = couchage; setActivite('sommeil'); }
+export function finirRepos() { setActivite('normal'); }
 
 // ---------- Douleur, froid ----------
 export function douleur(p) {
@@ -719,7 +722,8 @@ export function demarrerSurvie() {
   if (branche) return;
   if (G) normaliserJoueur(G.player);
   const off1 = on('minute', ({ delta }) => { if (!G) return; tickMinutes(delta, activiteCourante); inv.consommerLumiere(delta); });
-  const off2 = on('survie:evanoui', () => { setTimeout(() => dormir(S().EFFETS.EVANOUI_H, { force: true, sur: false }), 0); });
+  // seul : 2 h d'un coup ; à deux, l'heure est commune : js/game/sommeil.js garde le joueur à terre sans la faire sauter
+  const off2 = on('survie:evanoui', () => { if (G && G.mode !== 'solo') return; setTimeout(() => dormir(S().EFFETS.EVANOUI_H, { force: true, sur: false }), 0); });
   branche = () => { off1(); off2(); };
 }
 export function arreterSurvie() { if (branche) branche(); branche = null; }

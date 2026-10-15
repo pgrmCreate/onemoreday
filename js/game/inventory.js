@@ -56,7 +56,7 @@ let sol = {
   deposer: (item) => { const s = solLocal.find(x => x.id === item.id && !aEtat(x) && !aEtat(item)); if (s) s.qty += item.qty; else solLocal.push({ ...item }); },
   prendre: (i, qty) => { const s = solLocal[i]; if (!s) return null; if (qty > 0 && qty < s.qty) { s.qty -= qty; return { ...s, qty }; } return solLocal.splice(i, 1)[0]; },
 };
-// provider : { lister() → [items], deposer(item), prendre(index, qty?) → item|null }
+// provider : { lister() → [items], deposer(item), prendre(index, qty?) → item|null ou Promise }
 export function setSol(provider) { sol = provider || sol; emit('inventaire', { sol: true }); }
 export function objetsAuSol() { try { return sol.lister() || []; } catch (e) { return []; } }
 
@@ -76,19 +76,42 @@ export function objetsAvecTagDispo(tag, p) {
   for (const it of aPortee()) { const d = def(it.id); if (d && (d.usage || []).includes(tag) && !r.includes(it.id)) r.push(it.id); }
   return r;
 }
-// Retire d'abord du sac, puis de ce qui est à portée (le sol, les rangements). → nombre retiré.
-export function retirerDispo(id, qty = 1, p) {
-  let n = removeItem(id, qty, p);
-  if (n >= qty) return n;
-  const pris = [];
-  for (const it of aPortee()) {
-    if (n >= qty) break;
-    if (it.id !== id) continue;
-    const k = Math.min(qty - n, it.qty || 1);
-    pris.push({ src: it.src, id, qty: k }); n += k;
-  }
-  if (pris.length) { try { proximite.prendre(pris); } catch (e) { console.warn('[inv] à portée', e); } }
-  return n;
+// Privilégie le sac, puis réserve le complément à portée (sol, rangements). → Promise du nombre retiré.
+export async function retirerDispo(id, qty = 1, p) {
+  const r = await preleverIngredients([{ id, qty }], p);
+  return r.ok ? qty : 0;
+}
+const prelevements = new WeakSet();
+// Réserver tous les matériaux partagés avant de payer avec son sac. Un refus ne consomme rien chez soi.
+export async function preleverIngredients(liste, p) {
+  p = joueur(p);
+  if (!p || prelevements.has(p)) return { ok: false, pris: [] };
+  prelevements.add(p);
+  try {
+    const besoins = new Map(), propres = [], distants = [], proches = aPortee();
+    for (const x of liste) besoins.set(x.id, (besoins.get(x.id) || 0) + x.qty);
+    for (const [id, qty] of besoins) {
+      let reste = qty;
+      for (const it of p.inventaire) if (reste > 0 && it.id === id) {
+        const q = Math.min(reste, it.qty || 1); propres.push({ it, qty: q }); reste -= q;
+      }
+      for (const it of proches) if (reste > 0 && it.id === id) {
+        const q = Math.min(reste, it.qty || 1); distants.push({ src: it.src, id, qty: q }); reste -= q;
+      }
+      if (reste > 0) return { ok: false, pris: [] };
+    }
+    const partages = distants.length ? await proximite.prendre(distants) : [];
+    if (!Array.isArray(partages)) return { ok: false, pris: [] };
+    if (propres.some(x => !p.inventaire.includes(x.it) || x.it.qty < x.qty)) {
+      rendreIngredients(partages, p); return { ok: false, pris: [] };
+    }
+    const pris = [...partages];
+    for (const x of propres) pris.push(removeIndex(p.inventaire.indexOf(x.it), x.qty, p));
+    return { ok: true, pris };
+  } finally { prelevements.delete(p); }
+}
+export function rendreIngredients(pris, p) {
+  for (const it of pris || []) if (it) { const { id, qty, ...etat } = it; addItem(id, qty || 1, etat, p, { siPlein: 'tri' }); }
 }
 
 // ---------- Volume (litres) ----------
@@ -270,15 +293,15 @@ export function poser(index, qty, p) {
 }
 // Ramasser depuis le sol (index de la liste du sol). → { ajoute, auSol }
 // Une seule unité d'une pile du sol (pour la consommer sur place). → item { id, qty: 1, …état } | null
-export function prendreUnAuSol(indexSol) {
+export async function prendreUnAuSol(indexSol) {
   const s = objetsAuSol()[indexSol]; if (!s) return null;
-  const it = sol.prendre(indexSol, 1); if (!it) return null;
+  const it = await sol.prendre(indexSol, 1); if (!it) return null;
   if ((it.qty || 1) > 1) { sol.deposer({ ...it, qty: it.qty - 1 }); return { ...it, qty: 1 }; }  // fournisseur sans « qty »
   emit('inventaire', { sol: true });
   return it;
 }
-export function ramasser(indexSol, p) {
-  p = joueur(p); const item = sol.prendre(indexSol); if (!item) return { ajoute: 0, auSol: 0 };
+export async function ramasser(indexSol, p) {
+  p = joueur(p); const item = await sol.prendre(indexSol); if (!item) return { ajoute: 0, auSol: 0 };
   const { id, qty, ...inst } = item;
   return addItem(id, qty || 1, inst, p);
 }
@@ -483,8 +506,8 @@ export function porterObjet(item, p, ou = null) {
   return r;
 }
 // Porter directement un objet posé au sol (depuis le panneau « Au sol »).
-export function equiperDepuisSol(indexSol, p, ou = null) {
-  p = joueur(p); const item = sol.prendre(indexSol); if (!item) return { ok: false, raison: 'Plus rien ici.' };
+export async function equiperDepuisSol(indexSol, p, ou = null) {
+  p = joueur(p); const item = await sol.prendre(indexSol); if (!item) return { ok: false, raison: 'Plus rien ici.' };
   const r = porterObjet(item, p, ou);
   if (!r.ok) { try { sol.deposer(item); } catch (e) {} }
   return r;

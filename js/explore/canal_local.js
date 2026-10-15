@@ -55,6 +55,7 @@ export function creerCanalLocal(sim, joueurId, { proprietaire = true, hz = 20 } 
     fouiller(cle) { return ok(sim.fouiller(joueurId, cle)); },
     arreterFouille(progres) { sim.arreterFouille(joueurId, progres); },
     prendre(cle, i, qty, id) { return ok(sim.prendre(joueurId, cle, i, qty, id)); },
+    prendreLot(pris) { return ok(sim.prendreLot(joueurId, pris)); },
     contenu(cle) { return ok(sim.contenu(joueurId, cle)); },
     deposer(pos, item) { return ok(sim.deposer(joueurId, pos, item)); },
     // construction (js/data/construction.js)

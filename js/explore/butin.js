@@ -7,6 +7,9 @@ import { el } from '../core/util.js';
 import { DOCUMENTS } from '../data/histoire/documents.js';
 import { mod, sfx, message, nomObjet, capitaliser } from './commun.js';
 import { CONSTRUCTIONS, tailleConstruction } from '../data/construction.js';
+import { commandeTransfert, transfertEnCours } from '../ui/transferts.js';
+
+const boutonTransfert = (attrs, ...contenu) => commandeTransfert(el('button', attrs, ...contenu));
 
 let V = null;
 export function lierButin(v) { V = v; }
@@ -65,10 +68,10 @@ export function rendreButin() {
     const portable = !!ou;
     const libPorter = { vetement: 'Porter', lampe: 'Équiper', main: 'En main', dos: 'Dans le dos', deux: 'À deux mains' }[ou] || 'Porter';
     const libConso = mod.survie && mod.survie.libelleConsommer ? mod.survie.libelleConsommer(it.id) : null;
-    ul.append(el('li', { class: (tient ? '' : 'plein') + (i >= (B.dejaVus || 0) ? ' neuf' : '') }, el('button', { class: 'ex-b-nom', type: 'button', onclick: () => (portable ? porterItem(i) : prendreItem(i)) }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
-      portable ? el('button', { class: 'ex-b', type: 'button', onclick: () => porterItem(i) }, libPorter) : null,
-      libConso ? el('button', { class: 'ex-b', type: 'button', onclick: () => consommerItem(i) }, libConso) : null,
-      el('button', { class: 'ex-b', type: 'button', disabled: tient ? null : true, title: tient ? null : (inv.raisonPlace && inv.raisonPlace(it.id)) || 'Plus de place', onclick: () => prendreItem(i) }, tient ? 'Prendre' : (inv.estPetit && !inv.estPetit(it.id) && !G.player.equip.sac ? 'Trop gros' : 'Sac plein'))));
+    ul.append(el('li', { class: (tient ? '' : 'plein') + (i >= (B.dejaVus || 0) ? ' neuf' : '') }, boutonTransfert({ class: 'ex-b-nom', type: 'button', onclick: () => (portable ? porterItem(i) : prendreItem(i)) }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
+      portable ? boutonTransfert({ class: 'ex-b', type: 'button', onclick: () => porterItem(i) }, libPorter) : null,
+      libConso ? boutonTransfert({ class: 'ex-b', type: 'button', onclick: () => consommerItem(i) }, libConso) : null,
+      boutonTransfert({ class: 'ex-b', type: 'button', disabled: tient ? null : true, title: tient ? null : (inv.raisonPlace && inv.raisonPlace(it.id)) || 'Plus de place', onclick: () => prendreItem(i) }, tient ? 'Prendre' : (inv.estPetit && !inv.estPetit(it.id) && !G.player.equip.sac ? 'Trop gros' : 'Sac plein'))));
   }
   B.dejaVus = Math.min(B.visibles, B.items.length);
   const reste = B.items.length - B.visibles;
@@ -90,16 +93,16 @@ export function rendreButin() {
       const ul2 = el('ul', { class: 'ex-butin-l' });
       G.player.inventaire.forEach((it, i) => {
         const v = inv.volumeDe(it.id) * (it.qty || 1), tient = occ + v <= cap + 1e-6;
-        if (B.sol) { ul2.append(el('li', {}, el('span', { class: 'ex-b-nom' }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null), el('button', { class: 'ex-b', type: 'button', onclick: () => poserItem(i) }, 'Poser'))); return; }
+        if (B.sol) { ul2.append(el('li', {}, el('span', { class: 'ex-b-nom' }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null), boutonTransfert({ class: 'ex-b', type: 'button', onclick: () => poserItem(i) }, 'Poser'))); return; }
         ul2.append(el('li', { class: tient ? '' : 'plein' }, el('span', { class: 'ex-b-nom' }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
-          el('button', { class: 'ex-b', type: 'button', disabled: tient ? null : true, onclick: () => rangerItem(i) }, tient ? 'Ranger' : 'Trop gros')));
+          boutonTransfert({ class: 'ex-b', type: 'button', disabled: tient ? null : true, onclick: () => rangerItem(i) }, tient ? 'Ranger' : 'Trop gros')));
       });
       if (!G.player.inventaire.length) ul2.append(el('li', { class: 'ex-butin-cache' }, 'Ton sac est vide.'));
       h.append(ul2);
     }
   }
   h.append(el('div', { class: 'ex-butin-a' },
-    el('button', { class: 'ex-b ex-b-p', type: 'button', disabled: B.visibles ? null : true, onclick: prendreTout }, 'Tout prendre'),
+    boutonTransfert({ class: 'ex-b ex-b-p', type: 'button', disabled: B.visibles ? null : true, onclick: prendreTout }, 'Tout prendre'),
     B.fini ? el('button', { class: 'ex-b', type: 'button', onclick: () => { B.ranger = !B.ranger; rendreButin(); } }, B.ranger ? (B.sol ? 'Fini' : 'Fini de ranger') : (B.sol ? 'Poser…' : 'Ranger…')) : null,
     el('button', { class: 'ex-b', type: 'button', onclick: () => { interrompreFouille(); fermerButin(); } }, 'Fermer')));
 }
@@ -111,6 +114,7 @@ function capaciteRangement(B) {
 }
 // Par terre : poser une affaire du sac à ses pieds, la fenêtre se met à jour.
 function poserItem(i) {
+  if (transfertEnCours()) return;
   const B = V && V.butin, inv = mod.inv; if (!B || !inv) return;
   const it = G.player.inventaire[i]; if (!it) return;
   inv.poser(i, it.qty || 1);
@@ -124,10 +128,12 @@ function poserItem(i) {
   }, 80);
 }
 async function rangerItem(i) {
+  if (transfertEnCours()) return;
   const B = V && V.butin, inv = mod.inv; if (!B || !inv) return;
   const it = G.player.inventaire[i]; if (!it) return;
   const sorti = inv.removeIndex(i, it.qty || 1); if (!sorti) return;
   const r = await V.canal.ranger(B.cle, sorti);
+  if (r && r.attente) return; // après coupure, le reçu décidera si l'objet est dans le rangement ou revient au sac
   if (!r || !r.ok) { const { id, qty, ...etat } = sorti; inv.addItem(id, qty || 1, etat); message('Impossible de le ranger ici.', 1800); rendreButin(); return; }
   const pile = !Object.keys(sorti).some(k => k !== 'id' && k !== 'qty') && B.items.find(x => x.id === sorti.id && !Object.keys(x).some(k => k !== 'id' && k !== 'qty'));
   if (pile) pile.qty = (pile.qty || 1) + (sorti.qty || 1); else B.items.push({ ...sorti });
@@ -146,6 +152,7 @@ function retirerDuButin(B, i) {
   if (V.fouille && V.fouille.cle === B.cle) { V.fouille.items = B.items; V.fouille.reveles = Math.max(0, V.fouille.reveles - 1); }
 }
 async function prendreItem(i) {
+  if (transfertEnCours()) return;
   const B = V && V.butin, inv = mod.inv; if (!B || i >= B.visibles) return;
   const prevu = B.items[i];
   if (inv && inv.combienTient && inv.combienTient(prevu.id, prevu.qty || 1) < 1) {
@@ -160,6 +167,7 @@ async function prendreItem(i) {
 }
 // Manger / boire / se soigner sur place avec ce qu'on vient de trouver (sans le prendre). Le reste d'une boîte entamée est gardé.
 async function consommerItem(i) {
+  if (transfertEnCours()) return;
   const B = V && V.butin, S = mod.survie, inv = mod.inv; if (!B || i >= B.visibles || !S) return;
   const prevu = B.items[i];
   const v = S.peutConsommer(prevu);
@@ -187,6 +195,7 @@ async function consommerItem(i) {
   if (!B.items.length && B.fini) fermerButin(); else rendreButin();
 }
 async function porterItem(i) {
+  if (transfertEnCours()) return;
   const B = V && V.butin, inv = mod.inv; if (!B || i >= B.visibles || !inv || !inv.porterObjet) return;
   const it = await prendreDe(B, i);
   if (!it) return;
@@ -198,6 +207,7 @@ async function porterItem(i) {
   if (!B.items.length && B.fini) fermerButin(); else rendreButin();
 }
 export async function prendreTout() {
+  if (transfertEnCours()) return;
   const B = V && V.butin, inv = mod.inv; if (!B) return;
   if (inv && inv.sacPorte && !inv.sacPorte()) {
     const k = B.items.slice(0, B.visibles).findIndex(x => inv.slotDe(x.id) === 'sac');
@@ -246,13 +256,16 @@ export function fournisseurSol() {
   const proches = () => (V && V.snap ? V.snap.sol.filter(o => !o.doc && o.etage === V.j.etage && Math.hypot(o.x - V.j.x, o.y - V.j.y) <= 1.6) : []);
   return {
     lister: () => proches().map(o => { const { uid: _u, etage: _e, x: _x, y: _y, ...r } = o; return r; }),
-    deposer: (item) => { if (V) V.canal.deposer({ etage: V.j.etage, x: V.j.x + Math.cos(V.j.dir) * 0.4, y: V.j.y + Math.sin(V.j.dir) * 0.4 }, item).then(() => { V && (V.snap = V.canal.instantane()); }); },
-    prendre: (i, qty) => {
+    deposer: (item) => {
+      const v = V;
+      if (v) return v.canal.deposer({ etage: v.j.etage, x: v.j.x + Math.cos(v.j.dir) * 0.4, y: v.j.y + Math.sin(v.j.dir) * 0.4 }, item)
+        .then(r => { if (V === v) v.snap = v.canal.instantane(); return r; });
+    },
+    prendre: async (i, qty) => {
       const o = proches()[i]; if (!o) return null;
-      V.canal.prendre('#sol:' + o.uid, 0, qty);
-      const { uid: _u, etage: _e, x: _x, y: _y, ...r } = o;
-      if (qty > 0 && qty < (o.qty || 1)) { o.qty -= qty; return { ...r, qty }; }
-      V.snap.sol = V.snap.sol.filter(x => x !== o); return r;
+      const v = V, r = await v.canal.prendre('#sol:' + o.uid, 0, qty);
+      if (V === v) v.snap = v.canal.instantane();
+      return r;
     },
   };
 }
@@ -306,21 +319,13 @@ export function fournisseurProximite() {
       return r;
     },
     // pris : [{ src, id, qty }] — un même rangement : des derniers aux premiers (les indices ne glissent pas)
-    prendre(pris) {
-      if (!V) return;
+    async prendre(pris) {
+      if (!V) return null;
+      const v = V;
       const tri = [...pris].sort((a, b) => (a.src.cle || '').localeCompare(b.src.cle || '') || (b.src.i ?? 0) - (a.src.i ?? 0));
-      for (const x of tri) {
-        if (x.src.sol != null) {
-          const o = V.snap.sol.find(q => q.uid === x.src.sol); if (!o) continue;
-          V.canal.prendre('#sol:' + o.uid, 0, x.qty);
-          if (x.qty < (o.qty || 1)) o.qty -= x.qty; else V.snap.sol = V.snap.sol.filter(q => q !== o);
-        } else if (x.src.cle) {
-          V.canal.prendre(x.src.cle, x.src.i, x.qty, x.id);
-          const items = V.proxi && V.proxi.contenus[x.src.cle], it = items && items[x.src.i];
-          if (it) { if (x.qty < (it.qty ?? 1)) it.qty = (it.qty ?? 1) - x.qty; else it.qty = 0; }   // décompté tout de suite ; relu au prochain passage
-        }
-      }
-      if (V.proxi) V.proxi.t = 0;
+      const r = await v.canal.prendreLot(tri.map(x => ({ cle: x.src.sol != null ? '#sol:' + x.src.sol : x.src.cle, i: x.src.i || 0, id: x.id, qty: x.qty })));
+      if (V === v) { v.snap = v.canal.instantane(); if (v.proxi) { v.proxi.t = 0; v.proxi.cle = ''; } }
+      return r;
     },
   };
 }

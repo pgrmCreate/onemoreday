@@ -1412,9 +1412,9 @@ export function creerSimLieu(opts) {
       const k = sol.findIndex(o => o.uid === uid);
       if (k < 0) return null;
       const o = sol[k];
-      if (!o.doc && qty > 0 && qty < (o.qty || 1)) { o.qty -= qty; evts.push({ type: 'sol', action: 'pris', uid, joueur: joueurId }); vm++; return { ...etatObjet(o), qty }; }
+      if (!o.doc && qty > 0 && qty < (o.qty || 1)) { o.qty -= qty; evts.push({ type: 'sol', action: 'pris', uid, joueur: joueurId }); vm++; cache = null; return { ...etatObjet(o), qty }; }
       sol.splice(k, 1);
-      evts.push({ type: 'sol', action: 'pris', uid, joueur: joueurId }); vm++;
+      evts.push({ type: 'sol', action: 'pris', uid, joueur: joueurId }); vm++; cache = null;
       return o.doc ? { doc: o.doc } : etatObjet(o);
     }
     const c = cle.startsWith('#c:') ? constructions.find(q => q.uid === cle.slice(3)) : conteneurs[cle];
@@ -1425,8 +1425,30 @@ export function creerSimLieu(opts) {
     let it;
     if (qty > 0 && qty < (src.qty || 1)) { src.qty -= qty; it = { ...src, qty }; }
     else it = c.items.splice(index, 1)[0];
-    evts.push({ type: 'conteneur', cle, reste: c.items.length, joueur: joueurId }); vm++;
+    evts.push({ type: 'conteneur', cle, reste: c.items.length, joueur: joueurId }); vm++; cache = null;
     return it;
+  }
+  // Tous les matériaux d'une fabrication sont réservés ensemble, ou aucun : une image du sol périmée ne suffit pas.
+  function prendreLot(joueurId, pris) {
+    const plan = [], demandes = new Map();
+    for (const x of pris || []) {
+      if (!x || !Number.isInteger(x.qty) || x.qty <= 0 || typeof x.cle !== 'string') return null;
+      let source, index = x.i;
+      if (x.cle.startsWith('#sol:')) source = sol.find(o => o.uid === +x.cle.slice(5));
+      else {
+        const c = x.cle.startsWith('#c:') ? constructions.find(q => q.uid === x.cle.slice(3)) : conteneurs[x.cle];
+        if (!c || !c.items) return null;
+        if (!c.items[index] || c.items[index].id !== x.id) index = c.items.findIndex(o => o.id === x.id);
+        source = c.items[index];
+      }
+      if (!source || source.id !== x.id) return null;
+      const q = (demandes.get(source) || 0) + x.qty;
+      if (q > (source.qty || 1)) return null;
+      demandes.set(source, q); plan.push({ ...x, i: index });
+    }
+    // Aucun await entre le contrôle et le prélèvement : les deux joueurs ne peuvent pas payer avec les mêmes objets.
+    plan.sort((a, b) => a.cle.localeCompare(b.cle) || b.i - a.i);
+    return plan.map(x => prendre(joueurId, x.cle, x.i, x.qty, x.id));
   }
   // contenu(cle) : ce qu'il y a dans un rangement DÉJÀ fouillé (meuble, caisse construite) — pour fabriquer avec
   // ce qu'on a sous la main. Un meuble pas encore fouillé jusqu'au bout ne dit rien.
@@ -1443,7 +1465,7 @@ export function creerSimLieu(opts) {
     if (!item || EI(e) == null) return null;
     const o = { uid: uidSeq++, etage: e, x: pos && pos.x != null ? pos.x : j.x, y: pos && pos.y != null ? pos.y : j.y, ...(item.doc ? { doc: item.doc } : { ...etatObjet(item), qty: item.qty || 1 }) };
     sol.push(o);
-    evts.push({ type: 'sol', action: 'pose', uid: o.uid, joueur: joueurId }); vm++;
+    evts.push({ type: 'sol', action: 'pose', uid: o.uid, joueur: joueurId }); vm++; cache = null;
     return o;
   }
   function retirerZombies(uids, { tues = false } = {}) {
@@ -1665,7 +1687,7 @@ export function creerSimLieu(opts) {
 
   return {
     lieuId, niveau, seed,
-    ajouterJoueur, majJoueur, retirerJoueur, bruit, porte, fouiller, arreterFouille, prendre, contenu, deposer,
+    ajouterJoueur, majJoueur, retirerJoueur, bruit, porte, fouiller, arreterFouille, prendre, prendreLot, contenu, deposer,
     construire, agirConstruction, ranger, demonterMeuble, puiserEau, ouvrirVoiture, constructions: () => constructions,
     retirerZombies, repousserZombies, finCombat, blesserZombie, tick, instantane, sauver,
     action, faireApparaitre, appelerMorts, preparerMission, reveillerZone, viderEvenements, temps: () => T,

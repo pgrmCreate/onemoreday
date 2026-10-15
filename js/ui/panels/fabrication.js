@@ -10,6 +10,7 @@ import { nomCompetence } from '../../game/player.js';
 import { iconeObjet, ICONE_CATEGORIE_RECETTE } from '../icons.js';
 import { toast } from '../toast.js';
 import { el, icoEl, bouton, avecScroll, vide, pct, g } from './commun.js';
+import { commandeTransfert, transfertEnCours } from '../transferts.js';
 
 let etat = { cat: null, sel: null, qty: 1, cible: null };
 let apiPanneau = null;
@@ -135,14 +136,14 @@ function remplirFiche(f, p, racine) {
       el('button', { type: 'button', 'aria-label': 'Plus', disabled: etat.qty >= e.maxQty ? true : null, onclick: () => { etat.qty = Math.min(e.maxQty, etat.qty + 1); dessiner(racine); } }, icoEl('plus')),
       el('button', { type: 'button', class: 'max', onclick: () => { etat.qty = e.maxQty; dessiner(racine); } }, 'max')));
   }
-  const go = bouton({ label: e.faisable ? 'Fabriquer' : 'Impossible', icone: 'fabriquer', cls: 'principal fa-go', disabled: !e.faisable, raison: e.faisable ? null : e.manques[0] && e.manques[0].texte,
-    onclick: () => lancer(r, e, pied, racine) });
+  const go = commandeTransfert(bouton({ label: e.faisable ? 'Fabriquer' : 'Impossible', icone: 'fabriquer', cls: 'principal fa-go', disabled: !e.faisable, raison: e.faisable ? null : e.manques[0] && e.manques[0].texte,
+    onclick: () => lancer(r, e, pied, racine) }));
   pied.append(go);
   f.append(pied);
 }
 
 function lancer(r, e, pied, racine) {
-  if (enCours) return;
+  if (enCours || transfertEnCours()) return;
   const duree = craft.dureeBarreMs(e.tempsMin);
   const travail = { id: r.id, qty: etat.qty, cible: etat.cible, debut: performance.now(), duree, raf: 0 };
   enCours = travail;
@@ -152,13 +153,15 @@ function lancer(r, e, pied, racine) {
   const stop = bouton({ label: 'Interrompre', icone: 'fermer', cls: 'second', onclick: () => { interrompre(); toast('Interrompu. Rien n\'est perdu.', 'info'); dessiner(racine); } });
   pied.textContent = ''; pied.append(barre, stop);
   const i = barre.firstChild;
-  const pas = (t) => {
+  const pas = async (t) => {
     if (enCours !== travail) return;
     const k = Math.min(1, (t - travail.debut) / duree);
     i.style.width = `${k * 100}%`;
     if (k < 1) { travail.raf = requestAnimationFrame(pas); return; }
+    stop.disabled = true;
+    const res = await craft.fabriquer(travail.id, travail.qty, { cible: travail.cible });
+    if (enCours !== travail) return; // le panneau a été fermé ou un autre travail a commencé pendant la confirmation
     enCours = null;
-    const res = craft.fabriquer(travail.id, travail.qty, { cible: travail.cible });
     if (!res.ok) toast(res.raison, 'alerte');
     etat.qty = 1; etat.cible = null;
     import('../../game/survival.js').then(m => m.son && m.son('craft'));

@@ -60,8 +60,12 @@ export function sauter(n) {
 // suit dans la seconde), on garde son avance au lieu de reculer : sinon les mêmes minutes seraient comptées deux fois
 // (faim, soif, piles…). Une avance qui dure (plus de 20 s) ou démesurée (plus d'un jour) est une vraie divergence : on se recale.
 let enAvanceDepuis = 0;
+// Pendant un sommeil à deux, l'invité n'avance que par les heures que l'hôte a dormies (js/game/sommeil.js) :
+// l'heure diffusée ne doit pas les compter une seconde fois. À la reprise, elle recale ce qui manque.
+let distantSuspendu = false;
+export function suspendreDistant(v) { distantSuspendu = !!v; enAvanceDepuis = 0; }
 export function setMinutesDistantes(m) {
-  if (!G) return;
+  if (!G || distantSuspendu) return;
   const d = m - G.world.minutes;
   if (d > 0) { enAvanceDepuis = 0; avancer(d); return; }
   if (d === 0) { enAvanceDepuis = 0; return; }

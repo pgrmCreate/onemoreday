@@ -918,6 +918,8 @@ export const REGLAGES = {
     PV_RELEVE: 20,              // … tu repars à 20 PV. Deuxième « à terre » en moins de 10 min de jeu : mort.
     A_TERRE_RELANCE_MIN: 10,
     REJOINDRE_CASES: 4,         // un combat est rejoint automatiquement par l'autre joueur à ≤ 4 cases.
+    SILENCE_MS: 5000,           // rien reçu du coéquipier depuis 5 s (il en envoie 4 par seconde) : « ne répond plus ».
+    LISTE_SALONS_MS: 3000,      // l'écran « Parties ouvertes » se relit toutes les 3 s (une demande à la fois, page visible).
     FLANC: { degats: 1.25, stagger: 0.2 }, // aider : frapper le mort de l'autre (ton propre mort continue de charger).
     SOMMEIL_COMMUN: true,       // l'horloge n'accélère que si les deux dorment (même lieu, ou chacun en lieu sûr).
     REPOS_SEUL_FATIGUE: 0.08,   // se reposer seul(e) sans accélérer : fatigue +0,08/min.

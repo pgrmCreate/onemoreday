@@ -26,13 +26,16 @@ export function etatConstruction(type, p) {
   ];
   return { d, faisable: !manques.length, manques, ingredients, outils, competences };
 }
-// Après une pose réussie : les matériaux sont consommés, l'expérience gagnée.
-export function payerConstruction(type, p) {
-  p = joueur(p); const d = CONSTRUCTIONS[type]; if (!d) return false;
-  for (const x of d.ingredients || []) inv.retirerDispo(x.id, x.qty, p);
-  gagnerXps(d.xp || {}, 1, p);
-  return true;
+// Réserver les matériaux avant la pose ; l'expérience n'est gagnée qu'après sa confirmation.
+export async function payerConstruction(type, p) {
+  p = joueur(p); const d = CONSTRUCTIONS[type]; if (!d) return { ok: false, pris: [] };
+  return inv.preleverIngredients(d.ingredients || [], p);
 }
+export function confirmerConstruction(type, p) {
+  p = joueur(p); const d = CONSTRUCTIONS[type]; if (!d) return;
+  gagnerXps(d.xp || {}, 1, p);
+}
+export const rendreMateriaux = (pris, p) => inv.rendreIngredients(pris, p);
 // Ce que rend un démontage (construction ou meuble) : dans le sac, le reste au sol.
 export function recevoir(liste, p) { p = joueur(p); for (const x of liste || []) if (x.qty > 0) inv.addItem(x.id, x.qty, {}, p); }
 // Durée réelle d'une construction (ms) : 30 min de jeu ≈ 5 s, −8 % par niveau de Construction.

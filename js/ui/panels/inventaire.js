@@ -12,9 +12,18 @@ import * as craft from '../../game/crafting.js';
 import { iconeObjet } from '../icons.js';
 import { lireMontre, lireCalendrier } from '../../game/temps_connu.js';
 import { el, icoEl, onglets, jauge, bouton, avecScroll, vide, fmtKg, fmtL, pct, g } from './commun.js';
+import { commandeTransfert, transfertEnCours } from '../transferts.js';
 
 const ONGLET_KEY = 'inv';
 let etat = { onglet: 'sac', sel: null, cat: 'tout' }; // sel : { zone: 'sac'|'slot'|'sol', ref } ; cat : filtre du sac
+let actionEnCours = false;
+function attendreAction(f) {
+  return async () => {
+    if (actionEnCours || transfertEnCours()) return;
+    actionEnCours = true;
+    try { await f(); } finally { actionEnCours = false; }
+  };
+}
 
 export function monter(racine, opts = {}, api) {
   if (opts.onglet) etat.onglet = opts.onglet;
@@ -242,10 +251,10 @@ function poupee(col, p, racine, api) {
 function listeSol(col, p, racine, api) {
   const s = inv.objetsAuSol();
   if (!s.length) { col.append(vide('Rien au sol, ici.', 'poser')); return; }
-  col.append(el('div', { class: 'pn-actions-liste' }, bouton({ label: 'Tout ramasser', icone: 'ramasser', cls: 'second', onclick: () => {
-    for (let i = inv.objetsAuSol().length - 1; i >= 0; i--) { const r = inv.ramasser(i, p); if (r.auSol) break; }
+  col.append(el('div', { class: 'pn-actions-liste' }, commandeTransfert(bouton({ label: 'Tout ramasser', icone: 'ramasser', cls: 'second', onclick: attendreAction(async () => {
+    for (let i = inv.objetsAuSol().length - 1; i >= 0; i--) { const r = await inv.ramasser(i, p); if (r.auSol) break; }
     etat.sel = null; dessiner(racine, api);
-  } })));
+  }) }))));
   s.forEach((it, i) => {
     const d = inv.def(it.id);
     const actif = etat.sel && etat.sel.zone === 'sol' && etat.sel.ref === i;
@@ -394,21 +403,21 @@ function remplirFiche(f, p, racine, api) {
     acts = [];
     const ou = inv.ouPorter(it.id);
     if (ou) acts.push({ label: { vetement: porterLabel(it.id), lampe: 'Prendre la lampe', main: 'Prendre en main', dos: 'Dans le dos', deux: 'Porter à deux mains' }[ou], icone: 'equiper', principal: true,
-      f: () => { const r = inv.equiperDepuisSol(s.ref, p, ou); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
+      f: async () => { const r = await inv.equiperDepuisSol(s.ref, p, ou); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
     if (ou === 'dos' || (ou === 'main' && inv.peutDos(it.id) && !p.equip.dos)) {
-      if (ou === 'dos') acts.push({ label: 'Prendre en main', icone: 'main_arme', f: () => { const r = inv.equiperDepuisSol(s.ref, p, 'main'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
-      else acts.push({ label: 'Dans le dos', icone: 'sac', f: () => { const r = inv.equiperDepuisSol(s.ref, p, 'dos'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
+      if (ou === 'dos') acts.push({ label: 'Prendre en main', icone: 'main_arme', f: async () => { const r = await inv.equiperDepuisSol(s.ref, p, 'main'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
+      else acts.push({ label: 'Dans le dos', icone: 'sac', f: async () => { const r = await inv.equiperDepuisSol(s.ref, p, 'dos'); if (!r.ok && r.raison) emit('toast', { texte: r.raison }); etat.sel = null; dessiner(racine, api); } });
     }
     const lib = surv.libelleConsommer(it.id);
     if (lib) {
       const v = surv.peutConsommer(it, p);
       const forcer = !v.ok && v.peutForcer;
       acts.push({ label: forcer ? `${lib} quand même` : lib, icone: ({ Manger: 'manger', Boire: 'boire' })[lib] || 'soin', principal: v.ok && !acts.length, disabled: !v.ok && !forcer, raison: v.ok || forcer ? null : v.raison,
-        f: () => { consommerAuSol(s.ref, p, { forcer }); etat.sel = null; dessiner(racine, api); } });
+        f: async () => { await consommerAuSol(s.ref, p, { forcer }); etat.sel = null; dessiner(racine, api); } });
     }
     const tient = inv.combienTient(it.id, it.qty || 1) >= 1;
     acts.push({ label: tient ? 'Ramasser' : (inv.estPetit(it.id) ? 'Sac plein' : 'Trop gros pour le sac'), icone: 'ramasser', principal: !acts.length, disabled: !tient, raison: tient ? null : inv.raisonPlace(it.id),
-      f: () => { if (!tient) return; inv.ramasser(s.ref); etat.sel = null; dessiner(racine, api); } });
+      f: async () => { if (!tient) return; await inv.ramasser(s.ref); etat.sel = null; dessiner(racine, api); } });
   }
   const d = inv.def(id) || { nom: id };
   const fermer = el('button', { type: 'button', class: 'fi-fermer', 'aria-label': 'Fermer la fiche', onclick: () => { etat.sel = null; dessiner(racine, api); } }, icoEl('fermer'));
@@ -419,7 +428,7 @@ function remplirFiche(f, p, racine, api) {
   if (u != null) f.append(jauge({ label: 'État', v: u, texte: `${it.dur} / ${it.durMax}`, cls: `mini ${u < 0.2 ? 'rouge' : u < 0.5 ? 'ambre' : 'vert'}` }));
   if (s.zone === 'slot' && s.ref === 'lampe') { const l = inv.lampe(p); f.append(jauge({ label: l.allumee ? 'Allumée' : 'Éteinte', v: l.frac, texte: `${Math.round(l.charge)} min`, cls: `mini ${l.allumee ? 'ambre' : ''}` })); }
   const acDiv = el('div', { class: 'fi-actions' });
-  for (const a of acts) acDiv.append(bouton({ label: a.label, icone: a.icone, cls: a.principal ? 'principal' : 'second', disabled: a.disabled, raison: a.raison, onclick: a.f }));
+  for (const a of acts) acDiv.append(commandeTransfert(bouton({ label: a.label, icone: a.icone, cls: a.principal ? 'principal' : 'second', disabled: a.disabled, raison: a.raison, onclick: attendreAction(a.f) })));
   f.append(acDiv);
   if (d.desc) f.append(el('p', { class: 'fi-desc' }, g(d.desc)));
   const tb = el('dl', { class: 'fi-stats' });
@@ -435,17 +444,17 @@ function demanderRepas(d, repli) {
   if (G && G.mode === 'solo') import('../../core/clock.js').then(c => c.avancer(REGLAGES.survie.REPAS.MIN_HORS_EXPLORATION)).catch(() => {});
 }
 // Consommer un objet du sol sans le ramasser ; ce qui reste (boîte entamée, gourde) est gardé dans le sac.
-function consommerAuSol(i, p, opts) {
+async function consommerAuSol(i, p, opts) {
   const s0 = inv.objetsAuSol()[i];
   if (s0 && (inv.def(s0.id) || {}).type === 'nourriture') {
     demanderRepas({ prendre: () => inv.prendreUnAuSol(i), rendre: (e) => inv.addItem(e.id, 1, etatDe(e), p), forcer: !!(opts && opts.forcer), fermer: null },
       () => consommerAuSolDirect(i, p, opts));
     return;
   }
-  consommerAuSolDirect(i, p, opts);
+  await consommerAuSolDirect(i, p, opts);
 }
-function consommerAuSolDirect(i, p, opts) {
-  const it = inv.prendreUnAuSol(i); if (!it) return;
+async function consommerAuSolDirect(i, p, opts) {
+  const it = await inv.prendreUnAuSol(i); if (!it) return;
   const r = surv.consommer(it, p, opts);
   if (!r.ok) { inv.addItem(it.id, 1, etatDe(it), p); if (r.raison) emit('toast', { texte: r.raison }); return; }
   if (!r.fini) inv.addItem(it.id, 1, { ...etatDe(it), ...(r.reste != null ? { reste: r.reste, ouvert: r.ouvert } : {}), ...(r.eau ? { eau: r.eau } : {}) }, p);

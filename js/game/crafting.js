@@ -64,13 +64,6 @@ function disponible(id, p) {
   if (id === EAU_ING) n += Math.floor(inv.litresEau(null, p) / REGLAGES.survie.EAU.DOSE_L + 1e-6);
   return n;
 }
-function consommer(id, qty, p) {
-  let reste = qty - inv.retirerDispo(id, qty, p);
-  if (id === EAU_ING) {
-    p.inventaire.forEach((it, i) => { while (reste > 0 && it.eau && it.eau.L >= REGLAGES.survie.EAU.DOSE_L - 1e-6) { inv.preleverEau(i, REGLAGES.survie.EAU.DOSE_L, p); reste--; } });
-  }
-  return reste <= 0;
-}
 
 // ---------- État détaillé d'une recette ----------
 // → { r, connue, faisable, maxQty, tempsMin, manques: [{ type, texte }], ingredients: [{ id, nom, a, faut, ok }],
@@ -132,7 +125,7 @@ export function dureeBarreMs(tempsMin) {
 // ---------- Fabriquer ----------
 // fabriquer(id, qty = 1, { cible }) — cible (réparation) : 'arme' ou index du sac.
 // Consomme, fait passer le temps (solo : clock.avancer), donne l'XP. → { ok, raison?, obtenu?: {id, qty}, texte }
-export function fabriquer(id, qty = 1, opts = {}, p) {
+export async function fabriquer(id, qty = 1, opts = {}, p) {
   p = normaliserJoueur(joueur(p)); const r = RECIPES.find(x => x.id === id);
   if (!r) return { ok: false, raison: 'Recette inconnue.' };
   qty = Math.max(1, Math.floor(qty)); if (r.special) qty = 1;
@@ -145,7 +138,18 @@ export function fabriquer(id, qty = 1, opts = {}, p) {
     cible = inv.instanceDe(ref, p);
     if (!cible || !e.cibles.some(c => c.ref === ref)) return { ok: false, raison: 'Choisis quoi réparer.' };
   }
-  for (const x of r.ingredients || []) if (!consommer(x.id, x.qty * qty, p)) console.warn('[craft] consommation incomplète', x.id);
+  let dosesEau = 0;
+  const ingredients = (r.ingredients || []).map(x => {
+    let n = x.qty * qty;
+    if (x.id === EAU_ING) { const objets = Math.min(n, inv.countDispo(x.id, p)); dosesEau += n - objets; n = objets; }
+    return { id: x.id, qty: n };
+  });
+  const paiement = await inv.preleverIngredients(ingredients, p);
+  if (!paiement.ok) return { ok: false, raison: 'Ces matériaux ne sont plus disponibles.' };
+  if (dosesEau > Math.floor(inv.litresEau(null, p) / REGLAGES.survie.EAU.DOSE_L + 1e-6)) {
+    inv.rendreIngredients(paiement.pris, p); return { ok: false, raison: 'Il ne reste plus assez d’eau.' };
+  }
+  p.inventaire.forEach((it, i) => { while (dosesEau > 0 && it.eau && it.eau.L >= REGLAGES.survie.EAU.DOSE_L - 1e-6) { inv.preleverEau(i, REGLAGES.survie.EAU.DOSE_L, p); dosesEau--; } });
   let texte = '', obtenu = null;
   if (r.resultat) {
     const d = ITEMS[r.resultat.id] || inv.def(r.resultat.id);

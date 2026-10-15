@@ -17,7 +17,7 @@
 //   - REPRENDRE : l'hôte peut rouvrir sa partie sauvegardée ; l'invité y retrouve son personnage.
 // Réseau : instantanés du lieu de l'invité à 15 Hz, en DIFFÉRENTIEL (portes, sol, cadavres, conteneurs seulement
 // quand ils changent), position de l'invité à 20 Hz, positions croisées (lieu, étage, x, y) à 4 Hz.
-import { G, setG, joueurNeuf, setFlag, genrer, utiliserCleSauvegarde, avantSauvegarde, aSauvegarde, effacerSauvegarde, noteJournal } from '../core/state.js';
+import { G, setG, joueurNeuf, setFlag, genrer, utiliserCleSauvegarde, avantSauvegarde, aSauvegarde, effacerSauvegarde, noteJournal, sauver } from '../core/state.js';
 import { on, emit } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 import { el, $, escapeHtml } from '../core/util.js';
@@ -27,7 +27,9 @@ import * as flow from '../game/flow.js';
 import * as quetes from '../game/quetes.js';
 import { lieu as lieuDe } from '../game/donnees.js';
 import { intercepterMort } from '../game/survival.js';
-import { brancherCoopSommeil, invitation as inviterSommeil, lancerApresAccord } from '../game/sommeil.js';
+import { brancherCoopSommeil, invitation as inviterSommeil, accordRecu, refusRecu, recuSommeil, attenteRecue } from '../game/sommeil.js';
+import { inviter, annulerInvitations } from '../ui/invitations.js';
+import { afficherEtatTransferts } from '../ui/transferts.js';
 import * as vueExplore from '../explore/vue.js';
 import { REGLAGES } from '../data/reglages.js';
 import { SERVEUR_EN_LIGNE } from '../data/serveur.js';
@@ -35,18 +37,25 @@ import { majDisponible, appliquerMaj } from '../version.js';
 import { appliquerConstructions } from '../data/construction.js';
 import { brancherCoopMissions, recevoirOp, recevoirLivraison, MISSIONS } from '../game/missions.js';
 import { aUneRadio, setRadioAutre, recevoirRadio } from '../game/radio.js';
-import { SLOTS_TENUS } from '../game/inventory.js';
+import { SLOTS_TENUS, addItem } from '../game/inventory.js';
+import { confirmerConstruction } from '../game/construction.js';
 import { normaliserJoueur } from '../game/player.js';
 import { panneauOuvert } from '../ui/panels/index.js';
 
 const ID_HOTE = 'hote', ID_INVITE = 'invite';
+const NOM_PROVISOIRE = 'Invité';   // le nom de l'invité tant que son personnage n'est pas choisi
+let arriveeAnnoncee = false;        // l'hôte a-t-il déjà dit « X arrive » pour cette connexion ?
 const RC = REGLAGES.coop;
 let role = null;           // 'hote' | 'invite' | null
 let actif = false;
 let offs = [];
 let nomPair = null;
 let pairPos = null;        // { mode, lieu, etage, x, y, agonie, nom }
+let muet = false;          // le coéquipier ne répond plus (Wi-Fi perdu : la connexion reste ouverte, mais rien n'arrive)
+let finie = false;         // la liaison a pris fin (coupée, ou l'hôte est parti) : on ne le dit qu'une fois
 const rpcAttente = new Map(); let rpcSeq = 1;
+const transfertsEnCours = new Map();
+const METHODES_TRANSFERT = new Set(['prendre', 'prendreLot', 'deposer', 'ranger', 'construire']);
 const ctx = {};            // callbacks du main (afficher, ecranTitre, ecranCreation, demarrerInvite, nouvelleAventure)
 
 export function estCoop() { return actif; }
@@ -101,19 +110,79 @@ function ecranSalons(url) {
     <div class="menu" id="co-liste"><p class="aide">Recherche…</p></div>
     <p class="aide" id="co-statut"></p>
     <div class="menu">${btn('data-s="maj"', 'Rafraîchir')}${btn('data-s="retour"', 'Retour')}</div>`, 'place_crousillat_nuit');
-  const charger = async () => {
-    const liste = $('#co-liste'); if (!liste) return;
-    liste.innerHTML = '<p class="aide">Recherche…</p>';
-    const salons = await net.listerSalons(url);
-    if (!$('#co-liste')) return;
-    if (!salons.length) { liste.innerHTML = '<p class="aide">Aucune partie ouverte. Héberge la tienne, ou demande à l\'autre joueur de le faire.</p>'; return; }
-    liste.innerHTML = salons.map(s => btn(`data-code="${escapeHtml(s.code)}"`, escapeHtml(s.nom || 'Partie'), `Jour ${s.jour} — ${String(s.heure).padStart(2, '0')}:${String(s.minute).padStart(2, '0')}`)).join('');
-    liste.querySelectorAll('[data-code]').forEach(b => b.onclick = () => rejoindre(url, b.dataset.code));
+  // La liste se relit toute seule (REGLAGES.coop.LISTE_SALONS_MS) tant que cet écran est affiché et la page visible :
+  // la partie de l'autre apparaît sans geste. Une seule demande à la fois ; chaque partie garde SON bouton d'une lecture à
+  // l'autre (on ajoute, retire ou met à jour l'heure, sans tout redessiner : ni clignotement, ni toucher perdu), et tant
+  // qu'un doigt est posé sur la liste, rien n'y bouge avant son clic (une partie ne glisse pas sous le doigt). Une panne
+  // passagère garde la liste affichée. On s'arrête net en quittant l'écran, en lançant une partie, ou page cachée.
+  const liste = c.querySelector('#co-liste'), statut = c.querySelector('#co-statut');
+  let codes = null, enCours = false, minuteur = null, fini = false;
+  const doigt = { pose: false, attente: null, t: null };   // un toucher en cours sur la liste, et la lecture qui l'attend
+  const actif = () => !fini && liste.isConnected;
+  const surVisibilite = () => { if (document.hidden) { clearTimeout(minuteur); minuteur = null; } else if (actif() && !enCours) charger(false); };
+  const poser = () => { doigt.pose = true; clearTimeout(doigt.t); };
+  // le clic suit le relâcher : on attend un peu avant d'appliquer une lecture mise de côté
+  const lever = () => { if (!doigt.pose) return; clearTimeout(doigt.t); doigt.t = setTimeout(() => { doigt.pose = false; const s = doigt.attente; doigt.attente = null; if (s && actif()) montrer(s); }, 400); };
+  liste.addEventListener('pointerdown', poser);
+  document.addEventListener('pointerup', lever); document.addEventListener('pointercancel', lever);
+  const arreter = () => {
+    fini = true; clearTimeout(minuteur); minuteur = null; clearTimeout(doigt.t);
+    document.removeEventListener('visibilitychange', surVisibilite);
+    document.removeEventListener('pointerup', lever); document.removeEventListener('pointercancel', lever);
   };
-  charger();
+  const planifier = () => { clearTimeout(minuteur); minuteur = actif() && !document.hidden ? setTimeout(() => charger(false), RC.LISTE_SALONS_MS) : null; };
+  const sousTitre = (s) => `Jour ${s.jour} — ${String(s.heure).padStart(2, '0')}:${String(s.minute).padStart(2, '0')}`;
+  const majTextes = (b, s) => {
+    const nom = s.nom || 'Partie', sous = sousTitre(s), petit = b.querySelector('small');
+    if (b.firstChild && b.firstChild.nodeType === 3 && b.firstChild.textContent !== nom) b.firstChild.textContent = nom;
+    if (petit && petit.textContent !== sous) petit.textContent = sous;
+  };
+  const creerBouton = (s) => {
+    const t = document.createElement('template');
+    t.innerHTML = btn(`data-code="${escapeHtml(s.code)}"`, escapeHtml(s.nom || 'Partie'), sousTitre(s));
+    const b = t.content.firstElementChild;
+    b.onclick = () => { arreter(); rejoindre(url, b.dataset.code); };
+    return b;
+  };
+  const montrer = (salons) => {
+    const nouveaux = salons.map(s => s.code).join('|');
+    const parCode = new Map([...liste.querySelectorAll('[data-code]')].map(b => [b.dataset.code, b]));
+    // mêmes parties que l'affichage : l'heure seulement, et une liste différée plus ancienne n'a plus lieu d'être
+    if (nouveaux === codes) { doigt.attente = null; salons.forEach(s => { const b = parCode.get(s.code); if (b) majTextes(b, s); }); return; }
+    if (doigt.pose) { doigt.attente = salons; return; }     // la liste change sous un doigt : après son clic
+    const focus = liste.contains(document.activeElement) ? document.activeElement.dataset.code : null;
+    codes = nouveaux;
+    if (!salons.length) { liste.innerHTML = '<p class="aide">Aucune partie ouverte. Héberge la tienne, ou demande à l\'autre joueur de le faire.</p>'; return; }
+    // retirer les parties fermées et les messages ; garder, mettre à jour et ranger les autres ; ajouter les nouvelles
+    for (const e of [...liste.children]) if (!e.dataset.code || !salons.some(s => s.code === e.dataset.code)) e.remove();
+    salons.forEach((s, k) => {
+      let b = parCode.get(s.code);
+      if (b && b.isConnected) majTextes(b, s); else b = creerBouton(s);
+      if (liste.children[k] !== b) liste.insertBefore(b, liste.children[k] || null);
+    });
+    if (focus && document.activeElement !== liste.querySelector(`[data-code="${CSS.escape(focus)}"]`)) { const b = liste.querySelector(`[data-code="${CSS.escape(focus)}"]`); if (b) b.focus(); }
+  };
+  // demande : premier chargement ou « Rafraîchir » (on dit ce qui se passe) ; sinon relecture discrète
+  const charger = async (demande) => {
+    if (!actif()) { arreter(); return; }
+    if (enCours) return;                // déjà une demande en route : pas de seconde en parallèle
+    clearTimeout(minuteur); minuteur = null;
+    enCours = true;
+    if (demande && codes === null) liste.innerHTML = '<p class="aide">Recherche…</p>';
+    let salons = null;
+    try { salons = await net.listerSalons(url); } finally { enCours = false; }
+    if (!actif()) { arreter(); return; }
+    if (salons) { montrer(salons); if (statut.dataset.echec) { statut.textContent = ''; delete statut.dataset.echec; } }
+    else if (codes === null) liste.innerHTML = '<p class="aide">Impossible de charger les parties. Vérifie le réseau : la liste se remettra à jour d’elle-même.</p>';
+    else if (demande) { statut.textContent = 'Le serveur ne répond pas : la liste affichée n’est peut-être plus à jour.'; statut.dataset.echec = '1'; }
+    planifier();
+  };
+  document.addEventListener('visibilitychange', surVisibilite);
+  charger(true);
   c.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+    if (b.dataset.s === 'maj') return charger(true);
+    arreter();
     if (b.dataset.s === 'retour') return ecranCoop(ctx);
-    if (b.dataset.s === 'maj') return charger();
     if (b.dataset.s === 'reprendre') return heberger(url, null, reprise);
     if (b.dataset.s === 'hote') return ctx.ecranCreation({ mode: 'hote', apres: (opts) => heberger(url, opts) });
   });
@@ -138,8 +207,10 @@ const crochetCoop = {
   ailleurs() { const moi = vueExplore.joueurLocal(); return !!(pairPos && (!moi || pairPos.lieu !== moi.lieu || pairPos.mode !== 'lieu')); },
   // encart du HUD : où est l'autre ?
   info(V, pairs) {
+    if (actif && !net.connecte()) return { texte: 'Hors ligne', alerte: true };
     if (!actif || !net.pairPresent()) return actif ? { texte: 'En attente de ton coéquipier…' } : null;
     const nom = nomPair || 'Coéquipier';
+    if (muet) return { texte: `${nom} ne répond plus…`, alerte: true };
     const p = pairs.find(q => q.etage === V.j.etage) || pairs[0];
     if (p) {
       if (p.agonie) return { texte: `${nom} est à terre ! Va le relever (E)`, alerte: true };
@@ -164,7 +235,7 @@ async function heberger(url, opts, reprise = null) {
   const meta = reprise ? { jour: reprise.jour, heure: reprise.heure, minute: reprise.minute } : { jour: 1, heure: 8, minute: 0 };
   const r = await net.connecter({ url, code, role: 'host', nom, meta });
   if (!r.ok) { emit('toast', { texte: 'Hébergement impossible : ' + (r.raison || 'serveur injoignable.') }); return; }
-  role = 'hote'; actif = true;
+  role = 'hote'; actif = true; finie = false;
   brancherHote();
   brancherCommun();
   if (reprise) {
@@ -180,8 +251,9 @@ async function heberger(url, opts, reprise = null) {
 function brancherHote() {
   vueExplore.definirCrochets({ obtenirCanal: (lieuId, niveau, L) => autorite.canalLieu(lieuId, niveau, L, ID_HOTE), coop: crochetCoop });
   net.on('pair', (present, m) => {
-    if (present) { majNomPair((m && m.nom) || net.nomPair()); emit('toast', { texte: `${nomPair || 'Ton coéquipier'} arrive.` }); envoyerMonde(); }
-    else { emit('toast', { texte: `${nomPair || 'Ton coéquipier'} est parti.` }); quitterLieuInvite(); pairPos = null; majBadge(); }
+    // l'invité se connecte sous un nom provisoire : on l'annonce quand son vrai prénom arrive (« bonjour »)
+    if (present) { const n = (m && m.nom) || net.nomPair(); if (n && n !== NOM_PROVISOIRE) majNomPair(n); arriveeAnnoncee = false; envoyerMonde(); }
+    else { emit('toast', { texte: `${nomPair || 'Ton coéquipier'} est parti.` }); annulerInvitations(); fermerSpectateur(); quitterLieuInvite(); pairPos = null; majBadge(); }
   });
   net.on('message', (m) => { try { recuHote(m); } catch (e) { console.error('[coop] hôte', m && m.t, e); } });
   // la sauvegarde de l'hôte range AUSSI l'état des lieux où il n'est pas (celui où joue l'invité)
@@ -223,7 +295,9 @@ function quitterLieuInvite() {
 async function recuHote(m) {
   if (recuCommun(m)) return;
   switch (m.t) {
-    case 'bonjour': majNomPair(m.nom); envoyerMonde(); break;
+    case 'bonjour':
+      if (m.nom && m.nom !== NOM_PROVISOIRE) { majNomPair(m.nom); if (!arriveeAnnoncee) { arriveeAnnoncee = true; emit('toast', { texte: `${m.nom} arrive.` }); } }
+      envoyerMonde(); break;
     case 'x:entrer': {
       quitterLieuInvite();
       const { chargerNiveau } = await import('../game/donnees.js');
@@ -245,11 +319,19 @@ async function recuHote(m) {
     case 'x:act': if (invite.canal && invite.lieu === m.lieu) invite.canal.action(m.a); break;
     case 'x:rpc': {
       let r = null;
+      const tr = m.transfert && METHODES_TRANSFERT.has(m.m) && /^[a-z0-9-]{12,80}$/i.test(m.transfert) ? m.transfert : null;
+      const recus = G && (G.world.transferts || (G.world.transferts = {}));
+      if (tr && Object.hasOwn(recus, tr)) { envoyer({ t: 'x:rep', id: m.id, r: recus[tr].r }); break; }
+      if (tr && transfertsEnCours.has(tr)) { r = await transfertsEnCours.get(tr); envoyer({ t: 'x:rep', id: m.id, r }); break; }
+      let finir;
+      if (tr) transfertsEnCours.set(tr, new Promise(ok => { finir = ok; }));
       try { if (invite.canal && invite.lieu === m.lieu && typeof invite.canal[m.m] === 'function') r = await invite.canal[m.m](...(m.a || [])); }
       catch (e) { r = null; }
+      if (tr) { recus[tr] = { r: r ?? null }; sauver(); finir(r); transfertsEnCours.delete(tr); }
       envoyer({ t: 'x:rep', id: m.id, r: r === undefined ? null : r });
       break;
     }
+    case 'x:transfert_recu': if (G.world.transferts && typeof m.id === 'string') delete G.world.transferts[m.id]; break;
     default: break;
   }
 }
@@ -261,22 +343,24 @@ async function rejoindre(url, code) {
   const statut = $('#co-statut');
   if (statut) statut.textContent = 'Connexion…';
   let entre = false;
-  const r = await net.connecter({ url, code, role: 'guest', nom: 'Invité' });
+  const r = await net.connecter({ url, code, role: 'guest', nom: NOM_PROVISOIRE });
   if (!r.ok) { if (statut) statut.textContent = 'Échec : ' + (r.raison || 'connexion impossible.'); return; }
   net.on('message', (m) => {
     if (m.t === 'monde') { if (!entre) { entre = true; adopterMonde(m); } return; }
     try { recuInvite(m); } catch (e) { console.error('[coop] invité', m && m.t, e); }
   });
   net.on('pair', (present) => {
-    if (present || !actif) return;
+    if (present || !actif || finie) return;
+    finie = true;
     // une fin ou un écran de mort à l'écran : on ne l'arrache pas pour l'écran titre
     if (G && (G._fin || G._mortTraitee)) { emit('toast', { texte: 'L\'hôte a quitté la partie.' }); return; }
+    sauverInvite();
     emit('toast', { texte: 'L\'hôte a quitté la partie. Ton personnage est gardé : tu le retrouveras dans sa partie.' });
     setTimeout(() => { if (actif) ctx.ecranTitre(); }, 2500);
   });
-  role = 'invite'; actif = true;
+  role = 'invite'; actif = true; finie = false;
   if (statut) statut.textContent = 'Connecté — en attente du monde de l\'hôte…';
-  envoyer({ t: 'bonjour', nom: 'Invité' });
+  envoyer({ t: 'bonjour', nom: NOM_PROVISOIRE });
 }
 function adopterMonde({ monde, hote }) {
   majNomPair((hote && hote.nom) || 'l\'hôte');
@@ -289,13 +373,14 @@ function adopterMonde({ monde, hote }) {
     G.pairNom = nomPair;
     utiliserCleSauvegarde('invite');
     G.player.id = ID_INVITE;
+    recupererTransferts();
     brancherInvite();
     brancherCommun();
     envoyer({ t: 'bonjour', nom: G.player.nom });
     // on arrive AUPRÈS de l'hôte (pas à l'autre bout de la carte)
     const hp = hote && hote.position;
     let pos;
-    if (hp && hp.mode === 'lieu' && hp.lieu && hp.x != null) pos = { mode: 'lieu', lieu: hp.lieu, etage: hp.etage, x: hp.x + 0.8, y: hp.y + 0.3 };
+    if (hp && hp.mode === 'lieu' && hp.lieu && hp.x != null) pos = { mode: 'lieu', lieu: hp.lieu, etage: hp.etage, x: hp.x + 0.8, y: hp.y + 0.3, abords: hp.abords };
     else if (!neuf && player.position && player.position.lieu) pos = player.position;
     else pos = { mode: 'lieu', lieu: (hp && hp.lieu) || 'cimetiere' };
     G.player.position = pos;
@@ -321,12 +406,15 @@ async function positionHote(ms) {
     await new Promise(r => setTimeout(r, 250));
   }
   const p = pairPos;
-  return p && p.mode === 'lieu' && p.lieu && p.x != null ? { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3 } : null;
+  return p && p.mode === 'lieu' && p.lieu && p.x != null ? { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3, abords: p.abords } : null;
 }
 function brancherInvite() {
   vueExplore.definirCrochets({ obtenirCanal: (lieuId, niveau) => canalDistant(lieuId, niveau), coop: crochetCoop });
-  const s = setInterval(() => { if (G && !G.player.mort && !G._mortTraitee) try { localStorage.setItem('omd_v3_invite', JSON.stringify({ seed: G.world.seed, player: G.player })); } catch (e) {} }, 10000);
+  const s = setInterval(sauverInvite, 10000);
   offs.push(() => clearInterval(s));
+}
+function sauverInvite() {
+  if (role === 'invite' && G && !G.player.mort && !G._mortTraitee) try { localStorage.setItem('omd_v3_invite', JSON.stringify({ seed: G.world.seed, player: G.player })); } catch (e) {}
 }
 let lieuDistant = null;
 function recuInvite(m) {
@@ -335,19 +423,67 @@ function recuInvite(m) {
     case 'horloge': clock.setMinutesDistantes(m.m); break;
     case 'x:snap': if (lieuDistant && lieuDistant.lieu === m.lieu) lieuDistant._snap(m.s); break;
     case 'x:evt': if (lieuDistant && lieuDistant.lieu === m.lieu) lieuDistant._evt(m.e); break;
-    case 'x:rep': { const f = rpcAttente.get(m.id); if (f) { rpcAttente.delete(m.id); f(m.r); } break; }
+    case 'x:rep': { const f = rpcAttente.get(m.id); if (f) { rpcAttente.delete(m.id); majTransferts(); f(m.r); } break; }
     case 'mission_livre': recevoirLivraison(m.l); break;     // la récompense d'une mission que j'ai faite
     case 'radio': recevoirRadio(m.texte, m.journal); break;   // la radio a parlé : je l'entends si j'en ai une
     default: break;
   }
 }
+function majTransferts() {
+  afficherEtatTransferts([...rpcAttente.values()].filter(f => f.abandonner).length);
+}
 function rpc(msg) {
   return new Promise((ok) => {
     const id = rpcSeq++;
+    // Une prise/dépose n'expire pas au bout de quatre secondes : une réponse perdue ne dit pas si le monde a changé.
+    // L'intention est sauvée avec le personnage ; au retour, le reçu de l'hôte permet de retrouver l'objet une seule fois.
+    const tr = METHODES_TRANSFERT.has(msg.m) && G && role === 'invite' ? 'tr-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) : null;
+    if (tr) {
+      const g = G, p = g.player;
+      p.transferts = p.transferts || [];
+      p.transferts.push({ id: tr, m: msg.m, a: msg.a });
+      sauverInvite();
+      const reponse = (r) => {
+        p.transferts = p.transferts.filter(x => x.id !== tr);
+        if (msg.m === 'deposer' && !r) rendreTransfert(msg.a[1]);
+        ok(r);
+        // Les continuations du ramassage/repas ont eu lieu avant la sauvegarde et l'accusé de réception.
+        setTimeout(() => { if (G === g) { sauverInvite(); envoyer({ t: 'x:transfert_recu', id: tr }); } }, 0);
+      };
+      reponse.abandonner = () => ok(msg.m === 'construire' || msg.m === 'ranger' ? { ok: false, attente: true } : null); // la prochaine connexion tranche grâce au reçu
+      rpcAttente.set(id, reponse);
+      majTransferts();
+      if (net.connecte()) envoyer({ ...msg, id, rid: id, transfert: tr });
+      else { rpcAttente.delete(id); majTransferts(); reponse(null); }
+      return;
+    }
     rpcAttente.set(id, ok);
     envoyer({ ...msg, id, rid: id });
     setTimeout(() => { if (rpcAttente.has(id)) { rpcAttente.delete(id); ok(null); } }, 4000);
   });
+}
+function rendreTransfert(it) {
+  if (!it || !G) return;
+  if (it.doc) { if (!G.documents.includes(it.doc)) G.documents.push(it.doc); return; }
+  const { id, qty, ...etat } = it;
+  addItem(id, qty || 1, etat, G.player, { siPlein: 'tri' });
+}
+function recupererTransferts() {
+  const p = G.player, recus = G.world.transferts || {};
+  for (const tr of p.transferts || []) {
+    const r = recus[tr.id] && recus[tr.id].r;
+    if (tr.m === 'deposer') { if (!r) rendreTransfert(tr.a[1]); }
+    else if (tr.m === 'ranger') { if (!r || !r.ok) rendreTransfert(tr.a[1]); }
+    else if (tr.m === 'construire') {
+      if (!r || !r.ok) { for (const it of tr.a[1] || []) rendreTransfert(it); }
+      else confirmerConstruction(tr.a[0].type);
+    }
+    else if (tr.m === 'prendreLot') { for (const it of r || []) rendreTransfert(it); }
+    else rendreTransfert(r);
+    envoyer({ t: 'x:transfert_recu', id: tr.id });
+  }
+  p.transferts = [];
+  sauverInvite();
 }
 // ---------- Canal DISTANT d'exploration (même interface que canal_local) ----------
 function canalDistant(lieuId, niveau) {
@@ -391,8 +527,9 @@ function canalDistant(lieuId, niveau) {
     fouiller: (cle) => appel('fouiller', [cle]).then(r => r || { items: [], dureeMs: 0 }),
     arreterFouille: (p) => { appel('arreterFouille', [p]); },
     prendre: (cle, i, qty, id) => appel('prendre', [cle, i, qty, id]),
+    prendreLot: (pris) => appel('prendreLot', [pris]),
     contenu: (cle) => appel('contenu', [cle]).then(r => r || []),
-    construire: (o) => appel('construire', [o]).then(r => r || { ok: false, raison: 'réseau' }),
+    construire: (o, materiaux) => appel('construire', [o, materiaux]).then(r => r || { ok: false, raison: 'réseau' }),
     agirConstruction: (uid, a, patch) => appel('agirConstruction', [uid, a, patch]).then(r => r || { ok: false, raison: 'réseau' }),
     ranger: (cle, item) => appel('ranger', [cle, item]).then(r => r || { ok: false, raison: 'réseau' }),
     demonterMeuble: (cle) => appel('demonterMeuble', [cle]).then(r => r || { ok: false, raison: 'réseau' }),
@@ -437,7 +574,7 @@ function brancherCommun() {
   offs.push(on('scene:noeud', (n) => envoyer({ t: 'scene', etat: 'noeud', ...n })));
   offs.push(on('scene:choix', (n) => envoyer({ t: 'scene', etat: 'choix', ...n })));
   offs.push(on('scene:fin', ({ id }) => envoyer({ t: 'scene', etat: 'fin', id })));
-  offs.push(on('temps', () => envoyerPos()));
+  offs.push(on('temps', () => { envoyerPos(); majBadge(); }));   // badge recalculé en entrant dans un lieu ou en le quittant
   offs.push(on('lieu:entre', () => envoyerPos()));
   // un saut de temps raconté chez l'invité : l'hôte, qui tient l'heure, saute aussi
   offs.push(on('horloge:sauter', ({ n }) => { if (role === 'invite') envoyer({ t: 'sauter', n }); }));
@@ -459,10 +596,51 @@ function brancherCommun() {
   // à 0 PV : « à terre » au lieu de mourir, tant que le coéquipier est là
   intercepterMort(aTerre);
   // dormir à deux : l'un propose, l'autre accepte, l'horloge file pour les deux
-  brancherCoopSommeil({ proposer: (h) => envoyer({ t: 'sommeil', h, nom: G && G.player.nom }), accepter: (h) => envoyer({ t: 'sommeil_go', h }), pairNom: () => nomPair || 'ton coéquipier' });
+  brancherCoopSommeil({ proposer: (h, id) => envoyer({ t: 'sommeil', h, id, nom: G && G.player.nom }), accepter: (h, id) => envoyer({ t: 'sommeil_go', h, id }),
+    refuser: (raison, id) => envoyer({ t: 'sommeil_non', raison, id }), envoyer, hote: () => role === 'hote', pairNom: () => nomPair || 'ton coéquipier' });
   offs.push(() => brancherCoopSommeil(null));
   offs.push(() => intercepterMort(null));
+  // la liaison : coupée (connexion fermée) ou muette (Wi-Fi perdu, rien ne se ferme) — on le dit, au lieu de laisser
+  // jouer avec un coéquipier figé. Un écran revenu de veille repart de zéro (les messages en attente arrivent d'abord).
+  net.on('etat', (e) => { if (e === 'ferme') liaisonCoupee(); });
+  let visibleDepuis = performance.now();
+  const vis = () => { if (!document.hidden) visibleDepuis = performance.now(); };
+  document.addEventListener('visibilitychange', vis);
+  offs.push(() => document.removeEventListener('visibilitychange', vis));
+  const w = setInterval(() => {
+    const m = actif && net.pairPresent() && Math.min(net.silenceMs(), performance.now() - visibleDepuis) > RC.SILENCE_MS;
+    if (m === muet) return;
+    muet = m;
+    majBadge();
+    if (role === 'invite') bandeauLiaison(m);
+  }, 1000);
+  offs.push(() => clearInterval(w));
   badge();
+}
+// L'invité sans nouvelles de l'hôte : le monde est figé chez lui. Il peut attendre (le bandeau s'efface quand la
+// liaison revient) ou partir ; son personnage est gardé.
+let bandeauMuet = null;
+function bandeauLiaison(on) {
+  if (!on) { if (bandeauMuet) { bandeauMuet.remove(); bandeauMuet = null; } return; }
+  if (bandeauMuet) return;
+  bandeauMuet = el('div', { class: 'som-invite coop-liaison', role: 'status' },
+    el('span', {}, `Plus de nouvelles de ${nomPair || 'l’hôte'} : tout reste figé tant que la liaison ne revient pas.`),
+    el('button', { class: 'btn', type: 'button', onclick: () => { sauverInvite(); ctx.ecranTitre(); } }, 'Quitter la partie'));
+  document.body.append(bandeauMuet);
+}
+function liaisonCoupee() {
+  if (!actif || finie) return;
+  finie = true; muet = false; bandeauLiaison(false);
+  if (role === 'invite') {
+    if (G && (G._fin || G._mortTraitee)) { emit('toast', { texte: 'La liaison avec l’hôte est coupée.' }); return; }
+    sauverInvite();
+    emit('toast', { texte: `La liaison avec ${nomPair || 'l’hôte'} est coupée. Ton personnage est gardé : rejoins sa partie depuis « Jouer à deux ».`, type: 'alerte', duree: 6000 });
+    setTimeout(() => { if (actif) ctx.ecranTitre(); }, 2500);
+    return;
+  }
+  // l'hôte garde son monde : il continue seul, et sait comment faire revenir l'autre
+  annulerInvitations(); fermerSpectateur(); quitterLieuInvite(); pairPos = null; majBadge();
+  emit('toast', { texte: 'La liaison est coupée : ton coéquipier ne te voit plus. Ta partie continue ; pour qu’il revienne, rouvre-la depuis « Jouer à deux ».', type: 'alerte', duree: 7000 });
 }
 // Messages reçus par les deux machines. true = traité.
 function recuCommun(m) {
@@ -485,8 +663,11 @@ function recuCommun(m) {
     case 'relever': releve(m.id); return true;
     case 'releve_nouveau': emit('toast', { texte: `${m.ancien || nomPair || 'Ton coéquipier'} est mort. ${m.nom} prend sa place à tes côtés.`, duree: 6000 }); majNomPair(m.nom); return true;
     case 'mort_pair': emit('toast', { texte: `${m.nom || nomPair || 'Ton coéquipier'} est mort. Ses affaires sont restées là où il est tombé.`, type: 'alerte', duree: 7000 }); return true;
-    case 'sommeil': inviterSommeil(m.nom || nomPair || 'Ton coéquipier', m.h); return true;
-    case 'sommeil_go': lancerApresAccord(m.h); return true;
+    case 'sommeil': inviterSommeil(m.nom || nomPair || 'Ton coéquipier', m.h, m.id); return true;
+    case 'sommeil_go': accordRecu(m.h, m.id); return true;
+    case 'sommeil_non': refusRecu(nomPair || 'Ton coéquipier', m.raison, m.id); return true;
+    case 'sommeil_attente': attenteRecue(nomPair || 'Ton coéquipier', m.id); return true;   // il lit une scène : ma proposition l'attend
+    case 'sommeil_bloc': case 'sommeil_ack': case 'sommeil_fin': recuSommeil(m); return true;   // sommeil à deux, bloc par bloc
     default: return false;
   }
 }
@@ -495,7 +676,11 @@ function recuCommun(m) {
 function positionPrecise() {
   const j = vueExplore.joueurLocal();
   const p = G.player.position || {};
-  if (j && j.lieu && !String(j.lieu).startsWith('__')) return { mode: 'lieu', lieu: j.lieu, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2) };
+  if (j && j.lieu && !String(j.lieu).startsWith('__')) {
+    // Les coordonnées incluent déjà les abords : l'arrivée ne doit pas les décaler une seconde fois.
+    const ab = vueExplore.etatDebug().niveau.abords;
+    return { mode: 'lieu', lieu: j.lieu, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2), abords: ab ? { dx: ab.dx, dy: ab.dy } : null };
+  }
   const tc = flow.tempsCourant();
   return { mode: tc === 'voyage' ? 'voyage' : tc === 'carte' ? 'carte' : (p.mode === 'lieu' ? 'ailleurs' : p.mode), lieu: p.lieu || (p.voyage && p.voyage.vers) || null };
 }
@@ -565,18 +750,19 @@ function proposerCine(id) {
     flow.cinematique(id, { distant: true });
     return;
   }
-  if (bandeauCine) bandeauCine.remove();
+  // une seule invitation « Regarder » (la plus récente) ; pendant une scène, elle attend la fin (js/ui/invitations.js)
+  let h = null;
+  const fin = () => { if (h) h.retirer(); if (bandeauCine === h) bandeauCine = null; };
   const b = el('div', { class: 'som-invite coop-cine' },
     el('span', {}, `${nomPair || 'Ton coéquipier'} vit un moment de l'histoire.`),
     el('button', { class: 'btn', type: 'button', onclick: () => {
       if (!libre()) { emit('toast', { texte: 'Pas maintenant : termine d\'abord ce que tu fais.' }); return; }
       if (vueExplore.menaceProche(9)) { emit('toast', { texte: 'Un mort est trop près.', type: 'alerte' }); return; }
-      b.remove(); bandeauCine = null; flow.cinematique(id, { distant: true });
+      fin(); flow.cinematique(id, { distant: true });
     } }, 'Regarder'),
-    el('button', { class: 'btn', type: 'button', onclick: () => { b.remove(); bandeauCine = null; } }, 'Plus tard'));
-  bandeauCine = b;
-  document.body.append(b);
-  setTimeout(() => { if (bandeauCine === b) { b.remove(); bandeauCine = null; } }, 45000);
+    el('button', { class: 'btn', type: 'button', onclick: fin }, 'Plus tard'));
+  h = inviter('cine', { element: b, dureeMs: 45000, expire: fin, abandon: fin, annule: () => { if (bandeauCine === h) bandeauCine = null; } });
+  bandeauCine = h;
 }
 // Une scène emmène l'autre ailleurs : côte à côte et au calme, on part avec lui ; sinon on le sait, et « Rejoindre » suffit.
 function proposerSuivre(m) {
@@ -626,7 +812,7 @@ export async function nouveauSurvivant({ nom, genre }, lieuMort = null) {
   if (role === 'invite') { try { localStorage.setItem('omd_v3_invite', JSON.stringify({ seed: G.world.seed, player: G.player })); } catch (e) {} }
   const p = pairPos;
   let pos;
-  if (p && p.mode === 'lieu' && p.lieu && p.x != null) pos = { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3 };
+  if (p && p.mode === 'lieu' && p.lieu && p.x != null) pos = { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3, abords: p.abords };
   else pos = { mode: 'lieu', lieu: lieuMort || (ancien.position && ancien.position.lieu) || 'cimetiere', entree: null };
   G.player.position = pos;
   noteJournal(`${ancien.nom} est {mort|morte}. ${nom} a pris la suite.`.replace('{mort|morte}', ancien.genre === 'f' ? 'morte' : 'mort'), 'recit');
@@ -640,17 +826,47 @@ export function abandonnerApresMort() {
 }
 
 // ---------- Suivre la scène de l'autre (panneau non bloquant) ----------
-let spect = null, sceneAutre = null;
+let spect = null, sceneAutre = null, finSpect = null;
+function fermerSpectateur() {
+  clearTimeout(finSpect); finSpect = null; sceneAutre = null;
+  if (spect) { spect.remove(); spect = null; }
+}
+function majCommandesSpectateur() {
+  if (!spect) return;
+  const replie = spect.classList.contains('replie'), grand = !replie && spect.classList.contains('grand');
+  const taille = spect.querySelector('.coop-spect-taille'), repli = spect.querySelector('.coop-spect-repli');
+  taille.textContent = grand ? 'Réduire' : 'Agrandir';
+  taille.setAttribute('aria-expanded', String(grand));
+  repli.textContent = replie ? '+' : '−';
+  repli.setAttribute('aria-label', replie ? 'Afficher le récit' : 'Masquer le récit');
+  repli.setAttribute('aria-expanded', String(!replie));
+}
 function spectateur(m) {
+  clearTimeout(finSpect); finSpect = null;
   if (m.etat === 'debut') sceneAutre = m.id || null;
   if (m.etat === 'fin') sceneAutre = null;
-  if (m.etat === 'fin') { if (spect) { spect.classList.add('fin'); setTimeout(() => { if (spect) { spect.remove(); spect = null; } }, 2500); } return; }
+  if (m.etat === 'fin') {
+    if (spect) {
+      const termine = spect;
+      termine.classList.add('fin');
+      finSpect = setTimeout(() => { finSpect = null; if (spect === termine) fermerSpectateur(); }, 2500);
+    }
+    return;
+  }
   if (!spect) {
-    spect = el('aside', { class: 'coop-spect' }, el('header'), el('div', { class: 'coop-spect-t' }), el('footer'));
-    spect.querySelector('header').append(el('b', {}, `${nomPair || 'Ton coéquipier'} vit une scène`), el('button', { type: 'button', 'aria-label': 'Masquer', onclick: () => spect.classList.toggle('replie') }, '–'));
+    spect = el('aside', { class: 'coop-spect', 'aria-label': 'Récit du partenaire' }, el('header'), el('div', { class: 'coop-spect-t', id: 'coop-spect-texte', tabindex: '0', 'aria-label': 'Texte du récit' }), el('footer'));
+    spect.querySelector('header').append(el('b', {}, `${nomPair || 'Ton coéquipier'} vit une scène`),
+      el('button', { class: 'coop-spect-taille', type: 'button', 'aria-controls': 'coop-spect-texte', onclick: () => {
+        if (spect.classList.contains('replie')) { spect.classList.remove('replie'); spect.classList.add('grand'); }
+        else spect.classList.toggle('grand');
+        majCommandesSpectateur();
+      } }),
+      el('button', { class: 'coop-spect-repli', type: 'button', 'aria-controls': 'coop-spect-texte', onclick: () => { spect.classList.toggle('replie'); majCommandesSpectateur(); } }));
     document.body.append(spect);
   }
   spect.classList.remove('fin');
+  if (m.etat === 'debut') spect.classList.remove('grand', 'replie');
+  majCommandesSpectateur();
   const t = spect.querySelector('.coop-spect-t'), f = spect.querySelector('footer');
   if (m.etat === 'noeud') {
     t.textContent = '';
@@ -681,7 +897,14 @@ function peutRejoindre() {
 }
 function majBadge() {
   if (!badgeEl) return;
-  if (!actif || !net.pairPresent()) { badgeEl.textContent = actif ? 'En attente d’un coéquipier…' : ''; badgeEl.style.display = actif ? '' : 'none'; badgeEl.classList.remove('rejoindre'); return; }
+  if (!actif || !net.pairPresent()) {
+    const horsLigne = actif && !net.connecte();
+    badgeEl.textContent = horsLigne ? 'Hors ligne' : actif ? 'En attente d’un coéquipier…' : '';
+    badgeEl.style.display = actif ? '' : 'none'; badgeEl.classList.remove('rejoindre'); badgeEl.classList.toggle('alerte', horsLigne);
+    badgeEl.classList.toggle('discret', !!vueExplore.joueurLocal());   // dans un lieu, l'encart d'exploration le dit déjà
+    return;
+  }
+  if (muet) { badgeEl.style.display = ''; badgeEl.classList.remove('rejoindre'); badgeEl.classList.add('alerte'); badgeEl.classList.toggle('discret', !!vueExplore.joueurLocal()); badgeEl.textContent = `${nomPair || 'Coéquipier'} ne répond plus…`; return; }
   const L = pairPos && pairPos.lieu ? lieuDe(pairPos.lieu) : null;
   badgeEl.style.display = '';
   const loin = peutRejoindre();
@@ -695,7 +918,7 @@ function majBadge() {
 async function rejoindrePair() {
   if (!peutRejoindre()) return;
   const p = pairPos;
-  G.player.position = { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3 };
+  G.player.position = { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3, abords: p.abords };
   emit('toast', { texte: `Tu retrouves ${nomPair || 'ton coéquipier'}.` });
   await flow.explorer(p.lieu);
 }
@@ -703,15 +926,18 @@ async function rejoindrePair() {
 // Prévenir l'autre qu'on vient de mourir (avant l'écran de mort).
 export function annoncerMort() { if (actif) envoyer({ t: 'mort_pair', nom: G && G.player.nom }); }
 export function arreter() {
-  if (bandeauCine) { bandeauCine.remove(); bandeauCine = null; }
+  for (const [id, reponse] of rpcAttente) if (reponse.abandonner) { reponse.abandonner(); rpcAttente.delete(id); }
+  majTransferts();
+  annulerInvitations(); bandeauCine = null;
   offs.forEach(f => { try { f(); } catch (e) {} }); offs = [];
   quitterLieuInvite();
   autorite.toutFermer();
   vueExplore.definirCrochets({ obtenirCanal: null, coop: null });
   net.deconnecter();
-  actif = false; role = null; nomPair = null; pairPos = null;
+  actif = false; role = null; nomPair = null; pairPos = null; muet = false;
+  bandeauLiaison(false);
   clearInterval(agonieTimer);
   if (badgeEl) { badgeEl.remove(); badgeEl = null; }
-  if (spect) { spect.remove(); spect = null; }
+  fermerSpectateur();
 }
 void genrer;

@@ -171,13 +171,18 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null, po
   V.off.push(on('construction:placer', ({ type }) => { if (V) demarrerPlacement(type); }));
   // Manger depuis le sac, le sol ou un meuble : le repas se joue ici, dans le monde (barre, mastication, interruption).
   // d = { prendre: () → exemplaire | null, rendre(e), forcer, fermer?() } ; d.pris = true si l'exploration s'en charge.
-  V.off.push(on('repas:demande', (d) => {
+  V.off.push(on('repas:demande', async (d) => {
     if (!V || V.arene || V.occupe || G.player.agonie || !d) return;
     d.pris = true;
+    if (V.repasEnAttente) return;
     if (d.fermer) try { d.fermer(); } catch (e) {}
     else import('../ui/panels/index.js').then(m => { if (m.panneauOuvert()) m.fermerPanneau(); }).catch(() => {});
     if (V.action) couperAction();
-    const entree = d.prendre(); if (!entree) return;
+    const v = V; v.repasEnAttente = true;
+    let entree;
+    try { entree = await d.prendre(); } finally { v.repasEnAttente = false; }
+    if (!entree) return;
+    if (V !== v || v.action || v.occupe) { d.rendre(entree); return; }
     mangerEnAction(entree, { forcer: !!d.forcer, rendre: d.rendre });
   }));
 

@@ -20,6 +20,7 @@ import { mod, sfx, sfxA, message, niv, compter } from './commun.js';
 import { ouvrirSommeil } from '../game/sommeil.js';
 import { lancerAction } from './interactions.js';
 import { commencerFouille } from './butin.js';
+import { transfertEnCours } from '../ui/transferts.js';
 
 let V = null;
 export function lierConstruction(v) { V = v; pointEau = null; if (v) { v.placement = null; v.retiresVus = ''; } }
@@ -114,6 +115,7 @@ function majPlacement() {
 // Clic / bouton Poser.
 export function poserPlacement() {
   const P = V && V.placement; if (!P || V.action) return false;
+  if (transfertEnCours()) return true; // le chantier attend encore la confirmation de ses matériaux ou de sa pose
   majPlacement();
   if (!P.ok) { message(`Impossible : ${P.raison}.`, 1800); sfx('clic'); return true; }
   const d = CONSTRUCTIONS[P.type], o = { type: P.type, etage: V.E.id, x: P.x, y: P.y, rot: P.rot };
@@ -121,9 +123,14 @@ export function poserPlacement() {
   P.cible = null;
   lancerAction(`Construire : ${d.nom.toLowerCase()}…`, cons.dureeConstructionMs(P.type), P.x + P.w / 2, P.y + P.h / 2, async () => {
     if (!cons.etatConstruction(o.type).faisable) { message('Il te manque des matériaux.'); return; }
-    const r = await V.canal.construire({ ...o, minutes: minutes() });
-    if (!r || !r.ok) { message(`Impossible : ${{ occupe: 'la place est prise', quelqu_un: 'quelqu\'un est dessus', fenetre: 'il faut une fenêtre', hors: 'hors de la carte' }[r && r.raison] || 'ça ne tient pas là'}.`); return; }
-    cons.payerConstruction(o.type);
+    const v = V, paiement = await cons.payerConstruction(o.type);
+    if (!paiement.ok) { message('Ces matériaux ne sont plus disponibles.'); return; }
+    const r = V === v && await v.canal.construire({ ...o, minutes: minutes() }, paiement.pris);
+    if (!r || !r.ok) {
+      if (r && r.attente) return; // le reçu de l'hôte décidera au retour : rembourser maintenant pourrait dupliquer les matériaux
+      cons.rendreMateriaux(paiement.pris); message(`Impossible : ${{ occupe: 'la place est prise', quelqu_un: 'quelqu\'un est dessus', fenetre: 'il faut une fenêtre', hors: 'hors de la carte' }[r && r.raison] || 'ça ne tient pas là'}.`); return;
+    }
+    cons.confirmerConstruction(o.type);
     sfx('porte_coup', { volume: 0.5 });
     message(`${d.nom} : fait.`, 1600);
     if (V && V.placement && !cons.etatConstruction(o.type).faisable) { V.placement = null; message(`${d.nom} : fait. Plus assez de matériaux pour un autre.`, 2600); }

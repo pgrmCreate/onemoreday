@@ -230,7 +230,8 @@
 /* Courir (souvent) : un peu plus grand, au bord droit ; Accroupi (rarement) : petit, tout en bas à gauche des boutons de combat */
 .ex-btn-courir { width: 54px; height: 54px; min-width: 54px; min-height: 54px; opacity: .9; }
 .ex-btn-courir svg { width: 27px; height: 27px; }
-.ex-btn-accr { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+.ex-btn-accr { position: relative; width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+.ex-btn-accr::after { content: ''; position: absolute; inset: -3px; } /* 44 px, avec 2 px libres entre deux cibles */
 .ex-pad-bas { display: flex; gap: 6px; align-self: flex-end; margin-right: -4px; }
 .ex-btn-accr svg { width: 20px; height: 20px; }
 /* Objets au sol : grisé (et sans effet) quand il n'y a rien autour ; un petit nombre quand il y en a plusieurs */
@@ -292,7 +293,14 @@
 .explore.ex-tactile .ex-msg { bottom: 160px; }
 .explore.ex-tactile .ex-etat { bottom: auto; top: 96px; left: 16px; }
 .explore.ex-tactile .ex-choix { left: auto; right: 14px; bottom: 180px; transform: none; animation: none; }
+/* Étendre vers le haut : les mains restent collées en bas, sans couvrir le zoom voisin. */
+.explore.ex-tactile .ex-zoom::after { top: -6px; bottom: -10px; } /* séparer les marges du plan et du zoom */
+.explore.ex-tactile .ex-main, .explore.ex-tactile .ex-main.dos.vide { min-width: 44px; }
+.explore.ex-tactile .ex-main::after { content: ''; position: absolute; left: -1px; right: -1px; bottom: -1px; height: 44px; }
 @media (pointer: coarse) {
+  .explore .ex-zoom::after { top: -6px; bottom: -10px; }
+  .explore .ex-main, .explore .ex-main.dos.vide { min-width: 44px; }
+  .explore .ex-main::after { content: ''; position: absolute; left: -1px; right: -1px; bottom: -1px; height: 44px; }
   .explore .ex-choix { left: auto; right: 14px; bottom: 180px; transform: none; animation: none; }
   .explore .ex-choix-b { min-height: 44px; }
   .explore .ex-choix-b kbd { display: none; }
