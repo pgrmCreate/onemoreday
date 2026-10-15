@@ -195,6 +195,7 @@ function secondaireVoiture(m) {
   if (!mod.inv || !mod.inv.hasTag || !mod.inv.hasTag(VV.FORCER.OUTIL)) return null;
   return { libelle: `Forcer la portière (${m.nom})`, f: () => ouvrirVoiture(m, 'forcer') };
 }
+const emprise = (m) => ({ x0: m.x0, y0: m.y0, x1: m.x1 + 1, y1: m.y1 + 1 });
 function ouvrirVoiture(m, mode) {
   const VV = RX.VOITURES, cx = (m.x0 + m.x1 + 1) / 2, cy = (m.y0 + m.y1 + 1) / 2;
   const forcer = mode === 'forcer';
@@ -202,7 +203,7 @@ function ouvrirVoiture(m, mode) {
   lancerAction(forcer ? 'Forcer la portière…' : 'Casser la vitre…', ms, cx, cy, async () => {
     const r = await V.canal.ouvrirVoiture(m.cle, mode);
     if (!r || !r.ok) { message('Impossible de l’ouvrir.'); return; }
-    if (r.deja) { commencerFouille(m.cle, m.nom, cx, cy); return; }
+    if (r.deja) { commencerFouille(m.cle, m.nom, cx, cy, emprise(m)); return; }
     if (forcer) sfx('porte_casse', { volume: 0.5 }); else sfx('vitre');
     // à mains nues, le coude dans la manche : le verre peut entailler la main
     const mainVide = !G.player.equip || !G.player.equip.arme;
@@ -213,7 +214,7 @@ function ouvrirVoiture(m, mode) {
     // pas de message : le verre qui éclate, l'alarme qui hurle et les phares qui clignotent disent tout (vue.js) ;
     // seule une coupure se signale (c'est une blessure)
     if (coupe) message('Un éclat de verre t’entaille la main.', 2200);
-    commencerFouille(m.cle, m.nom, cx, cy);
+    commencerFouille(m.cle, m.nom, cx, cy, emprise(m));
   }, forcer ? VV.FORCER.BRUIT_S : 0);
 }
 // Identité stable d'une cible (le menu des actions reste ouvert tant qu'elle ne change pas).
@@ -343,7 +344,7 @@ export function agirSur(c) {
       if (!c.m.conteneur && c.m.rendu && c.m.rendu.message) { message(c.m.rendu.message, 4200); return; }
       if (!c.m.conteneur) { const s = secondaireMeuble(c.m); if (s) s.f(); return; }
       if (voitureFermee(c.m)) return ouvrirVoiture(c.m, 'vitre');
-      return commencerFouille(c.m.cle, c.m.nom, (c.m.x0 + c.m.x1 + 1) / 2, (c.m.y0 + c.m.y1 + 1) / 2);
+      return commencerFouille(c.m.cle, c.m.nom, (c.m.x0 + c.m.x1 + 1) / 2, (c.m.y0 + c.m.y1 + 1) / 2, emprise(c.m));
     case 'escalier': return prendreEscalier(c.s);
     case 'sortie': return sortirDuLieu(c.s);
     case 'marqueur': return jouerDeclencheur(c.decl);

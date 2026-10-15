@@ -159,13 +159,14 @@ export const OBJETS = {
   classeur:   { cat: 'bureau', bloque: 1, t: [1, 1], nom: 'le classeur' },
   // — extérieur, ville —
   voiture:    { c: 'v', cat: 'voiture', bloque: 1, t: [3, 2], nom: 'la voiture' },
-  // modèles de voitures (js/data/voitures.js : serrure, alarme, butin propre) — même empreinte que la berline
+  // modèles de voitures (js/data/voitures.js : serrure, alarme, butin propre) — même empreinte que la berline, sauf les
+  // plus longs (pick-up 4 × 2, camping-car 5 × 2) : un véhicule plus grand prend plus de place, on ne tasse pas son dessin
   citadine:   { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'la citadine' },
   break:      { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'le break' },
   suv:        { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'le 4 × 4' },
-  pickup:     { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'le pick-up' },
+  pickup:     { cat: 'voiture', bloque: 1, t: [4, 2], nom: 'le pick-up' },        // plus long qu'une voiture : la benne derrière la cabine
   voiture_police: { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'la voiture de gendarmerie' },
-  camping_car:{ cat: 'voiture', bloque: 1, opaque: 1, t: [4, 2], nom: 'le camping-car' },
+  camping_car:{ cat: 'voiture', bloque: 1, opaque: 1, t: [5, 2], nom: 'le camping-car' },
   bus:        { cat: 'voiture', bloque: 1, opaque: 1, t: [9, 2], nom: 'le bus' },
   taxi:       { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'le taxi' },
   voiture_pompiers: { cat: 'voiture', bloque: 1, t: [3, 2], nom: 'la voiture des pompiers' },

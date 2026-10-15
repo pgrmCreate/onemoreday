@@ -29,7 +29,7 @@ import { creerCombatVue } from './combat_vue.js';
 import { genererEmbuscade } from './embuscade.js';
 import { creerHud } from './hud_explore.js';
 import { mod, chargerOptionnels, lierCommun, vib, sfx, sfxA, posPorte, verifierCondition, compter, niv, message, afficherLieu, caseLibrePres } from './commun.js';
-import { lierButin, avancerFouille, interrompreFouille, fermerButin, fournisseurSol, fournisseurProximite, majProximite, ouvrirSol, nombreAuSol } from './butin.js';
+import { lierButin, distanceButin, avancerFouille, interrompreFouille, fermerButin, fournisseurSol, fournisseurProximite, majProximite, ouvrirSol, nombreAuSol } from './butin.js';
 import { lierInteractions, chercherCible, majInvite, interagir, basculerChoix, fermerChoix, choisir, avancerAction, couperAction, mangerEnAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
 import { lierCombatLieu, combatIci as combatIci_, embuscade as embuscade_, suivreCombat, finArene } from './combat_lieu.js';
 import { lierNature, majRecherche, basculerRecherche, vitesseRecherche, enRecherche } from './nature.js';
@@ -550,7 +550,7 @@ function image(t, dt) {
   majConstruction(dt);
   majRecherche(dt);
   if (V._placeVu !== enPlacement()) { V._placeVu = enPlacement(); V.entrees.setPlacement && V.entrees.setPlacement(V._placeVu); }
-  if (V.butin && Math.hypot(V.butin.x - j.x, V.butin.y - j.y) > 1.9) fermerButin();
+  if (V.butin && distanceButin(V.butin, j) > 1.9) { interrompreFouille(); fermerButin(); }   // trop loin : la fouille s'arrête aussi (sinon elle finit « vide », fenêtre fermée)
   V.tPnj -= dt; if (V.tPnj <= 0) { V.tPnj = 800; majPnj(); V.reperesMission = reperesMissions(); }
   V.tPos -= dt; if (V.tPos <= 0) { V.tPos = 2000; if (!V.arene) G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2), abords: abordsDe(V) }; tension(); }
   V.tGuide -= dt; if (V.tGuide <= 0) { V.tGuide = 700; majObjectif(); majCoopHud(pairs); }

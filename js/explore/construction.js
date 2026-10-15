@@ -307,7 +307,7 @@ function demonterConstruction(c) {
 export async function agirConstruction(c) {
   const d = defDe(c); if (!d) return;
   const C = V.canal;
-  if (d.contenance) return commencerFouille('#c:' + c.uid, le(c), c.x + 0.5, c.y + 0.5);
+  if (d.contenance) { const [w, h] = tailleConstruction(c.type, c.rot); return commencerFouille('#c:' + c.uid, le(c), c.x + w / 2, c.y + h / 2, { x0: c.x, y0: c.y, x1: c.x + w, y1: c.y + h }); }
   if (d.porte) { const r = await C.agirConstruction(c.uid, c.ouverte ? 'fermer' : 'ouvrir'); if (r && r.ok) sfx('porte'); else if (r && r.raison === 'occupee') message('Quelque chose bloque le passage.'); return; }
   if (d.lit) return ouvrirSommeil({ couchage: { type: c.type, nom: le(c) } });
   if (d.poste === 'etabli') { try { (await import('../ui/panels/index.js')).ouvrirPanneau('fabrication'); } catch (e) {} return; }

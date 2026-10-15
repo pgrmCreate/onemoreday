@@ -354,23 +354,23 @@ suv.n = 5
 
 COUL_PICKUP = ['#c8c4b8', '#8a2a1a', '#2a3a4a', '#4a5a3a']
 def pickup(v, rnd):
-    """Pick-up : cabine et longue benne ouverte (des affaires dedans, parfois)."""
+    """Pick-up : cabine simple, capot court et longue benne ouverte (des affaires dedans, parfois)."""
     c = COUL_PICKUP[v % len(COUL_PICKUP)]
-    L, l = 5.2, 1.86
-    pts = [(-0.45, 0.34), (-0.45, 1.66), (0.6, 1.68), (1.25, 1.14), (2.48, 0.98), (2.6, 0.68), (2.6, 0.34)]
+    L, l = 5.4, 1.86
+    pts = [(-0.3, 0.34), (-0.3, 1.66), (0.75, 1.68), (1.3, 1.14), (2.58, 0.98), (2.7, 0.68), (2.7, 0.34)]
     o = [profil_extrude(pts, l, [peinture(c, 0.4), vitre()], 1.1, tumble=0.92, galbe=0.04)]
     tole = peinture(c, 0.4)
-    o.append(boite(-1.55, 0, 0.34, 2.15, l, 0.1, mat_uni(lin(hexc('#2a2a2a')), 0.8, 0.3), 0.01))   # plancher
-    for sy in (-1, 1): o.append(boite(-1.55, sy * (l / 2 - 0.04), 0.34, 2.15, 0.08, 0.66, tole, 0.02))
-    o.append(boite(-2.6, 0, 0.34, 0.08, l, 0.66, tole, 0.02))                                       # hayon
-    o.append(boite(-0.5, 0, 0.34, 0.08, l, 0.66, tole, 0.02))
-    o += roues(L, l, (-1.7, 1.7), 0.37, 0.25) + phares(L, l * 0.86, 0.85)
-    o += retros(c, l, 0.95, 1.12)
+    o.append(boite(-1.5, 0, 0.34, 2.4, l, 0.1, mat_uni(lin(hexc('#2a2a2a')), 0.8, 0.3), 0.01))     # plancher
+    for sy in (-1, 1): o.append(boite(-1.5, sy * (l / 2 - 0.04), 0.34, 2.4, 0.08, 0.66, tole, 0.02))
+    o.append(boite(-2.66, 0, 0.34, 0.08, l, 0.66, tole, 0.02))                                       # hayon
+    o.append(boite(-0.34, 0, 0.34, 0.08, l, 0.66, tole, 0.02))
+    o += roues(L, l, (-1.75, 1.75), 0.37, 0.25) + phares(L, l * 0.86, 0.85)
+    o += retros(c, l, 1.0, 1.12)
     if v % 2 == 0:   # dans la benne : une bâche, un bidon, des planches
-        o.append(coussin(-1.9, 0.25, 0.44, 0.9, 0.8, 0.28, mat_tex('hessian_230', 0.6, teinte=lin(hexc('#6a6a50'))), 0.4))
-        o.append(cylindre(-1.1, -0.45, 0.44, 0.17, 0.42, mat_uni(lin(hexc('#b02a1a')), 0.4, 0.3), 16))
+        o.append(coussin(-2.0, 0.25, 0.44, 0.9, 0.8, 0.28, mat_tex('hessian_230', 0.6, teinte=lin(hexc('#6a6a50'))), 0.4))
+        o.append(cylindre(-1.0, -0.45, 0.44, 0.17, 0.42, mat_uni(lin(hexc('#b02a1a')), 0.4, 0.3), 16))
     else:
-        for k in range(3): o.append(boite(-1.5, -0.4 + k * 0.28, 0.44 + 0.04 * k, 1.9, 0.22, 0.04, mat_uni(lin(hexc('#8a6a42')), 0.85), 0.005))
+        for k in range(3): o.append(boite(-1.5, -0.4 + k * 0.28, 0.44 + 0.04 * k, 2.1, 0.22, 0.04, mat_uni(lin(hexc('#8a6a42')), 0.85), 0.005))
     return o
 pickup.n = 4
 
@@ -1186,9 +1186,9 @@ CATALOGUE = {
     'citadine':     E([3, 2], citadine, remplir=0.9, etirer=True),
     'break':        E([3, 2], break_, remplir=0.98, etirer=True),
     'suv':          E([3, 2], suv, remplir=0.98, etirer=True),
-    'pickup':       E([3, 2], pickup, remplir=0.98, etirer=True),
+    'pickup':       E([4, 2], pickup, remplir=0.98, etirer=True),
     'voiture_police': E([3, 2], voiture_police, remplir=0.98, etirer=True),
-    'camping_car':  E([4, 2], camping_car, remplir=0.98, etirer=True),
+    'camping_car':  E([5, 2], camping_car, remplir=0.98, etirer=True),
     'bus':          E([9, 2], bus, remplir=0.98, etirer=True),
     'taxi':         E([3, 2], taxi, remplir=0.98, etirer=True),
     'voiture_pompiers': E([3, 2], voiture_pompiers, remplir=0.98, etirer=True),

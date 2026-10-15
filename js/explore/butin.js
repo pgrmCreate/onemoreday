@@ -14,11 +14,13 @@ const boutonTransfert = (attrs, ...contenu) => commandeTransfert(el('button', at
 let V = null;
 export function lierButin(v) { V = v; }
 
-export async function commencerFouille(cle, nom, x, y) {
+// rect { x0, y0, x1, y1 } : l'emprise du meuble — la fenêtre reste ouverte tant qu'on est à portée de son bord (une
+// tente 3×3 se fouille depuis son flanc, loin de son centre)
+export async function commencerFouille(cle, nom, x, y, rect) {
   const r = await V.canal.fouiller(cle);
   if (!V || r.erreur) return;
   if (r.verrouillee) { message(`${capitaliser(r.nom || nom)} est fermée à clé : il faut casser une vitre.`); return; }
-  V.fouille = { cle, nom: r.nom || nom, items: r.items, duree: Math.max(400, r.dureeMs), p: r.progres || 0, x, y, reveles: -1, tb: 0, tSon: 0, son: null };
+  V.fouille = { cle, nom: r.nom || nom, items: r.items, duree: Math.max(400, r.dureeMs), p: r.progres || 0, x, y, rect, reveles: -1, tb: 0, tSon: 0, son: null };
   ouvrirButin(V.fouille);
   majRevele();
 }
@@ -52,7 +54,7 @@ export function interrompreFouille() {
   else if (V.butin) { V.butin.fini = true; rendreButin(); }
 }
 function ouvrirButin(F) {
-  V.butin = { cle: F.cle, nom: F.nom, items: F.items, visibles: 0, fini: false, x: F.x, y: F.y };
+  V.butin = { cle: F.cle, nom: F.nom, items: F.items, visibles: 0, fini: false, x: F.x, y: F.y, rect: F.rect };
   V.hud.butin.classList.remove('cache');
   rendreButin();
 }
@@ -226,6 +228,12 @@ export async function prendreTout() {
   if (laisses.length) message(`Sac plein : ${laisses.slice(0, 3).join(', ')}${laisses.length > 3 ? '…' : ''} reste${laisses.length > 1 ? 'nt' : ''} ici.`, 3200);
   else if (pris) message(`Tu prends ${pris} objet${pris > 1 ? 's' : ''}.`, 1400);
   if (B.fini && !B.items.length) fermerButin(); else rendreButin();
+}
+// Distance du joueur à ce qu'il fouille : au bord de l'emprise s'il y en a une, sinon au point.
+export function distanceButin(B, j) {
+  const R = B.rect;
+  if (!R) return Math.hypot(B.x - j.x, B.y - j.y);
+  return Math.hypot(Math.max(R.x0 - j.x, 0, j.x - R.x1), Math.max(R.y0 - j.y, 0, j.y - R.y1));
 }
 export function fermerButin() { if (!V) return; V.butin = null; V.hud.butin.classList.add('cache'); V.hud.butin.textContent = ''; }
 

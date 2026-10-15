@@ -691,24 +691,38 @@ export function agrandirDef(def) {
   // camping-car. Hasard par voiture (coin haut-gauche), indépendant du tirage : les sauvegardes restent valables.
   {
     const MV = MODELES_VOITURES[milieu] || MODELES_VOITURES.ville, tot = MV.reduce((s, m) => s + m[2], 0);
+    // Un véhicule plus long que sa place de base s'allonge d'une colonne (x, sur ses deux rangs y et y + 1) : chaussée
+    // ou parking nus, pas devant une porte, et un vide au-delà (côté d) pour ne pas se coller au véhicule voisin.
+    const VEH = new Set([...'vϛξϢϣϤϥϦϧϨϩϪϫϬϮϯͰͱͲͳ']);
+    const nu = (x, y) => (oc(x, y) === 2 && get(x, y) === M.route) || (oc(x, y) === 5 && get(x, y) === ',');
+    const allonger = (x, y, d = 1) => [0, 1].every(a => nu(x, y + a) && !VEH.has(get(x + d, y + a))) && ![-1, 0, 1, 2].some(a => devantPorte(x, y + a));
     for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
       if (oc(x, y) === 1) continue;
       const c = G[y][x];
       if (c === 'ξ') {
         if (get(x - 1, y) === 'ξ' || get(x, y - 1) === 'ξ') continue;
         const u = hc(x, y, 11), pc = CAMPING_CAR[milieu] ?? 0.2, pp = FOURGON_POSTAL[milieu] ?? 0.15;
-        const nc = u < pc ? 'Ϭ' : u < pc + pp ? 'ͳ' : null;
+        let nc = u < pc ? 'Ϭ' : u < pc + pp ? 'ͳ' : null;
+        // le camping-car est plus long (5 × 2) : il lui faut la case suivante libre, sinon il reste une camionnette
+        if (nc === 'Ϭ' && !(get(x + 3, y) === 'ξ' && allonger(x + 4, y))) nc = null;
         if (!nc) continue;
         for (let a = 0; a < 2; a++) for (let b = 0; b < 4; b++) if (get(x + b, y + a) === 'ξ') G[y + a][x + b] = nc;
+        if (nc === 'Ϭ') { G[y][x + 4] = nc; G[y + 1][x + 4] = nc; }
         continue;
       }
       if ((c !== 'v' && c !== 'ϛ') || get(x - 1, y) === c || get(x, y - 1) === c) continue;
       let u = hc(x, y, 13) * tot, k = 0;
       while (k < MV.length - 1 && u >= MV[k][2]) { u -= MV[k][2]; k++; }
       // une voiture déjà vidée a parfois brûlé (pillée, puis incendiée)
-      const nc = c === 'v' ? MV[k][0] : hc(x, y, 17) < (CALCINEES[milieu] ?? 0.1) ? 'Ͳ' : MV[k][1];
+      let nc = c === 'v' ? MV[k][0] : hc(x, y, 17) < (CALCINEES[milieu] ?? 0.1) ? 'Ͳ' : MV[k][1];
+      // le pick-up est plus long qu'une voiture (4 × 2) : il prend la case suivante, ou devient un 4 × 4 s'il n'a pas la place
+      // (en avant, sinon en arrière : sur un parking, la place voisine est souvent libre)
+      const pick = nc === 'Ϩ' || nc === 'ϩ';
+      const xp = !pick ? null : allonger(x + 3, y) ? x + 3 : allonger(x - 1, y, -1) ? x - 1 : null;
+      if (pick && xp == null) nc = nc === 'Ϩ' ? 'Ϧ' : 'ϧ';
       if (nc === c) continue;
       for (let a = 0; a < 2; a++) for (let b = 0; b < 3; b++) if (get(x + b, y + a) === c) G[y + a][x + b] = nc;
+      if (pick && xp != null) { G[y][xp] = nc; G[y + 1][xp] = nc; }
     }
   }
 
