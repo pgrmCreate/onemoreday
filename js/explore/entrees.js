@@ -89,16 +89,16 @@ export function creerEntrees({ racine, canvas, actions }) {
   const joyBase = el('div', { class: 'ex-joy' }, el('div', { class: 'ex-joy-knob' }));
   zoneJoy.append(joyBase);
   const bInter = el('button', { class: 'ex-btn ex-btn-inter', type: 'button' }, el('span', { class: 'ex-btn-l' }, 'Interagir'));
-  // Les postures gardent un libellé visible ; les pictogrammes viennent du même jeu que les menus.
+  // Courir et se baisser : des ronds sans texte (le libellé est dans l'aide) ; pictogrammes du même jeu que les menus.
   const SVG = {
     loupe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="9" r="5.2"/><path d="m14 13 5.5 5.5"/><path d="M3 21.2h9" opacity=".45"/></svg>',
     sol: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20.5h18" opacity=".45"/><rect x="4" y="13" width="7" height="6" rx="1"/><path d="M14 19l2.2-6.5h3.2L21 19"/><path d="M7.5 13v-2.5M12 6.5l2 2 3.5-4" opacity=".75"/></svg>',
     lampe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="10" width="8" height="4.5" rx="1.2"/><path d="M10.5 9.2 13.5 8v8.5l-3-1.2z"/><path d="M15.5 9.5 21 7.5M15.5 12.2H21.5M15.5 15l5.5 2" opacity=".7"/></svg>',
   };
   const icone = (nom, label) => el('button', { class: 'ex-btn ex-btn-ico', type: 'button', 'aria-label': label, title: label, html: SVG[nom] });
-  const posture = (nom, texte, aide) => el('button', { class: 'ex-btn ex-btn-ico ex-btn-posture', type: 'button', 'aria-label': aide, title: aide, 'aria-pressed': 'false' }, el('span', { html: ICONS[nom] }), el('span', { class: 'ex-posture-l' }, texte));
-  const bCourse = posture('courir', 'Courir', 'Courir (maintenir · Maj)'); bCourse.classList.add('ex-btn-courir');
-  const bAccr = posture('se_baisser', 'Se baisser', 'Se baisser (C ou Ctrl)');
+  const posture = (nom, aide) => el('button', { class: 'ex-btn ex-btn-ico', type: 'button', 'aria-label': aide, title: aide, 'aria-pressed': 'false', html: ICONS[nom] });
+  const bCourse = posture('courir', 'Courir (maintenir · Maj)'); bCourse.classList.add('ex-btn-courir');  // on court souvent : un peu plus grand
+  const bAccr = posture('se_baisser', 'Se baisser (C ou Ctrl)'); bAccr.classList.add('ex-btn-accr');  // un toucher de temps en temps : petit, collé en bas
   const bLampe = icone('lampe', 'Lampe');
   const bLoupe = icone('loupe', 'Chercher par terre (O)');
   // les objets par terre autour de soi (P) : grisé quand il n'y a rien, un petit nombre sinon

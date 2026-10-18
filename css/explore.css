@@ -234,10 +234,6 @@
 .ex-btn-accr::after { content: ''; position: absolute; inset: -3px; } /* 44 px, avec 2 px libres entre deux cibles */
 .ex-pad-bas { display: flex; gap: 6px; align-self: flex-end; margin-right: -4px; }
 .ex-btn-accr svg { width: 20px; height: 20px; }
-.ex-btn-posture { width: 66px; min-width: 66px; height: 54px; min-height: 54px; border-radius: 12px; gap: 1px; align-content: center; opacity: 1; background: rgba(11,11,12,.82); }
-.ex-btn-posture > span:first-child { display: grid; place-items: center; }
-.ex-btn-posture svg { width: 25px; height: 25px; }
-.ex-posture-l { font-size: 10px; line-height: 13px; letter-spacing: 0; text-transform: none; white-space: nowrap; }
 .ex-btn:focus-visible { outline: 2px solid var(--ex-ambre-c); outline-offset: 3px; }
 /* Objets au sol : grisé (et sans effet) quand il n'y a rien autour ; un petit nombre quand il y en a plusieurs */
 .ex-btn-sol { position: relative; }
@@ -323,7 +319,7 @@
   .ex-msg { font-size: 15px; }
   .ex-btn-frapper { width: 78px; height: 78px; min-width: 78px; }
   .ex-btn-pousser { width: 54px; height: 54px; min-width: 54px; margin-bottom: 16px; }
-  .ex-btn-posture { height: 48px; min-height: 48px; }
+  .ex-btn-courir { width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
   .ex-pad { gap: 6px; }
   .ex-btn-inter { min-height: 48px; }
   .ex-main { min-width: 0; }
