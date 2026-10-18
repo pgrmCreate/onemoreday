@@ -175,28 +175,47 @@ Un refuge qu'on garde barricadé reste propre ; **les grands lieux publics se re
 
 ## 3. Temps 2 — La carte et le voyage
 
-### 3.0 Sans carte : marcher rue après rue (`js/travel/errance.js`, `js/data/troncons.js`)
+### 3.0 Sans carte : le côté de la carte décide (`js/travel/errance.js`, `js/data/reseau.js`, `js/data/troncons.js`)
 
 On ne choisit une destination sur la feuille que si l'on a **en ce moment** la carte qui la couvre : le plan de Salon
 (ou une carte routière) pour la ville, la carte routière pour le pays. L'avoir eue un jour ne suffit plus (le brouillard
-garde seulement ce qu'on a vu). Une partie commencée avant le brouillard garde l'ancienne carte entière.
+garde seulement ce qu'on a vu). Une partie commencée avant le brouillard garde l'ancienne carte entière. **Avec une carte,
+le côté par lequel on sort n'a pas d'importance** : on choisit n'importe quelle destination (sauf passage imposé par
+l'histoire ; aucun n'existe pour l'instant).
 
-Sans carte, la sortie d'un lieu ouvre **« Sans carte »** :
-- **Partir à pied** par l'un des tronçons qui partent du lieu. Le réseau est fini : chaque lieu de Salon est relié à ses
-  deux voisins les plus proches, chaque village au plus proche, et les villages à moins de 5,2 km du centre de Salon y
-  sont reliés par la route (61 tronçons, 94 rues jouables et 61 culs-de-sac en tout, générés seulement quand on y passe ;
-  leur état — morts, butin pris, objets posés — se sauve comme celui d'un lieu). Un libellé dit le cap (« vers le
-  nord-est »), le lieu s'il est déjà connu, ou ce qu'on en voit de loin, de jour et par temps clair.
-- **Suivre les indications** jusqu'à un lieu que l'histoire a désigné (effet `decouvrir`) et où l'on n'est pas encore allé :
-  le voyage habituel, mais la feuille reste floue (on avance de mémoire).
-- **Rester ici**.
+**Sans carte, c'est le côté de la carte par lequel on sort qui décide où l'on va.**
+- **Un voisin par côté.** Chaque côté (nord, est, sud, ouest) mène au plus à **un** voisin, situé dans cette direction, et
+  ce voisin est relié par le côté opposé. Par exemple, sortir de la Tour par le nord mène à la place Crousillat, où l'on
+  arrive par le bord sud.
+- **Ce que dit la sortie.** Une sortie l'annonce : « Partir vers le nord ». Un côté sans voisin affiche « Route inconnue
+  vers … » : sans carte, on n'y part pas.
+- **Le réseau.** Il est écrit dans `js/data/reseau.js`, généré par `tools/generer_reseau.mjs` d'après les vraies sorties
+  des cartes : un côté n'est relié que si la carte y a une sortie. Une recherche locale limite les détours entre lieux de
+  Salon (61 liaisons, détour moyen ×1,12).
+- **Les cartes à couches** ont reçu les sorties qui leur manquaient :
+  - la Tour : une ruelle au nord, vers Crousillat ;
+  - Saint-Laurent : une sortie au nord et une au sud.
 
-Chaque rue a trois sorties : celle d'où l'on vient, la suite, et une mauvaise rue qui finit en **cul-de-sac** (rue barrée
-par l'armée, chantier, canal ; voie ferrée, canal EDF, maquis à la campagne). De jour et par temps clair, en arrivant, on
-reconnaît au loin le repère du lieu visé et le côté par où continuer ; de nuit, sous la pluie ou dans la brume, on devine.
-Chaque passage compte le temps de la marche condensée (75 m/min, 2 min déjà comptées par la traversée de la rue). On
-revient toujours sur ses pas en marchant, jamais en sautant. Des inscriptions laissées par d'autres survivants (près de
-l'Empéri, de la Tour, de la gare, de l'hôpital, sur la route de Pélissanne) racontent la ville et orientent.
+  L'enceinte du cimetière et la cour du lycée de l'Empéri restent fermées.
+
+**Entre deux lieux, des rues jouables.**
+- **Le tronçon.** Il compte de 1 à 3 rues, générées seulement quand on y passe. Leur état (morts, butin pris, objets
+  posés) se sauve comme celui d'un lieu.
+- **Tout droit.** La rue est **alignée sur la marche** : on entre d'un côté, et la suite est **tout droit** en face.
+- **Le cul-de-sac.** Une rue latérale finit en **cul-de-sac**, de quoi fouiller sans risque de se perdre. En ville, c'est
+  une rue barrée par l'armée, un chantier ou un canal ; à la campagne, une voie ferrée, le canal EDF ou le maquis.
+- **Le repère.** De jour et par temps clair, on reconnaît droit devant le repère du lieu visé.
+- **Le temps.** Chaque passage compte le temps de la marche condensée : 75 m/min, dont 2 min déjà comptées par la
+  traversée de la rue. On revient toujours sur ses pas en marchant.
+- **Les inscriptions.** D'autres survivants en ont laissé près de l'Empéri, de la Tour, de la gare et de l'hôpital, et
+  sur la route de Pélissanne. Elles racontent la ville.
+
+**Reprise des anciennes parties.** Les rues sont versionnées. À leur premier chargement, les positions, les objets
+posés, les morts, les cadavres et les constructions de l'ancien plan sont adaptés au nouveau. Les meubles déjà
+fouillés ou démontés sont associés à leurs équivalents ; si un conteneur n'a plus d'équivalent, son contenu est posé
+au sol. Une reprise suivante ne refait pas cette migration. La provenance d'un nouveau trajet est mémorisée : si
+sa rue disparaît, le joueur revient à ce lieu. Pour une ancienne partie sans provenance, il rejoint l'extrémité la
+plus proche estimée dans l'ancien tronçon, avec un message explicite de repli (solo, hôte et invité).
 
 ### 3.1 La vitesse de marche (`voyage.ALLURES`, `MALUS_VITESSE`)
 

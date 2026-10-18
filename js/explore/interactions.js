@@ -27,7 +27,7 @@ import { ciblesConstruction, libelleConstruction, agirConstruction, construction
 import { DEMONTABLES } from '../data/construction.js';
 import { recoltable, propositionNature, libelleNature, secondaireNature, agirNature } from './nature.js';
 import { pnjsMissions, ciblesMissions } from './missions_vue.js';
-import { estCellule, carteEnMain } from '../travel/errance.js';
+import { estCellule, carteEnMain, departPar, NOM_COTE } from '../travel/errance.js';
 
 const RX = REGLAGES.exploration;
 let V = null, api = null;
@@ -296,7 +296,7 @@ function libelle(c) {
     }
     case 'escalier': { const n = V.niveau, E2 = c.s.vers && n.etageIdx[c.s.vers] != null ? n.etages[n.etageIdx[c.s.vers]] : null;
       return `${c.s.sens === 'monte' ? 'Monter' : 'Descendre'}${E2 && E2.nom ? ' : ' + E2.nom : ''}`; }
-    case 'sortie': return estCellule(V.lieuId) ? 'Prendre cette rue' : carteEnMain((c.s && c.s.echelle) || V.L.echelle || 'salon') ? 'Sortir (carte)' : 'Partir à pied';
+    case 'sortie': return libelleSortie(c.s);
     case 'marqueur': return (c.decl && c.decl.libelle) || (c.m && c.m.def && c.m.def.nom ? `Examiner ${c.m.def.nom}` : 'Examiner');
     case 'doc': return `${(G.documents || []).includes(c.doc) ? 'Relire' : 'Lire'} : ${(DOCUMENTS[c.doc] || {}).titre || 'document'}`;
     case 'pnj': return `Parler à ${c.q.nom}`;
@@ -560,7 +560,7 @@ export function prendreEscalier(s) {
   afficherLieu(V.E.nom);
 }
 async function sortirDuLieu(s) {
-  if (V.occupe) return;
+  if (!V || V.occupe) return;
   if (V.arene) { api.finArene('sortie'); return; }
   const echelle = (s && s.echelle) || V.L.echelle || 'salon';
   const id = V.lieuId;
@@ -571,17 +571,27 @@ async function sortirDuLieu(s) {
     if (!(await er.traverser(id, coteSortie(s)))) V.occupe = false;
     return;
   }
-  // Sans carte en poche : on ne choisit pas sur la feuille, on part à pied (ou l'on suit une indication reçue).
+  // Sans carte en poche : le côté de la carte par lequel on sort décide où l'on va (le voisin dans cette direction).
   if (!carteEnMain(echelle)) {
-    V.occupe = true; V.entrees.actif(false);
-    const v = V, er = await import('../travel/errance_ui.js');
-    er.ouvrirDepart(id, echelle, () => {
-      const ab = v.niveau.abords;
-      const pos = { mode: 'lieu', lieu: id, sorti: true, etage: v.j.etage, x: +v.j.x.toFixed(2), y: +v.j.y.toFixed(2), abords: ab ? { dx: ab.dx, dy: ab.dy } : null };
-      api.sortir();
-      G.player.position = pos;
-      try { sauverPartie(); } catch (e) {}
-    }, () => { if (V === v) { v.occupe = false; if (!v.enPause) v.entrees.actif(true); } });
+    const v = V, cote = coteSortie(s), a = api;
+    v.occupe = true; v.entrees.actif(false);
+    try {
+      const er = await import('../travel/errance_ui.js');
+      if (V !== v) return;     // le joueur a fermé l'écran pendant le chargement
+      await er.partirPar(id, cote, () => {
+        const ab = v.niveau.abords;
+        const pos = { mode: 'lieu', lieu: id, sorti: true, etage: v.j.etage, x: +v.j.x.toFixed(2), y: +v.j.y.toFixed(2), abords: ab ? { dx: ab.dx, dy: ab.dy } : null };
+        a.sortir();
+        G.player.position = pos;
+        try { sauverPartie(); } catch (e) {}
+      });
+    } catch (e) {
+      console.warn('[explore] départ à pied', e);
+      if (!V) await flow.explorer(id);  // un chargement de rue échoué laisse un lieu jouable
+      flow.toast('Le départ a échoué. Tu peux réessayer.');
+    } finally {
+      if (V === v) { v.occupe = false; if (!v.enPause) v.entrees.actif(true); }
+    }
     return;
   }
   V.occupe = true;
@@ -593,7 +603,14 @@ async function sortirDuLieu(s) {
   try { sauverPartie(); } catch (e) {}
   await flow.ouvrirCarte({ echelle, depuis: id });
 }
-// Le bord par lequel on sort d'une cellule de tronçon : o (ouest), e (est), n (nord), s (sud).
+// Ce que propose une sortie : avec une carte, on choisit sur la feuille ; sans carte, on part vers le côté où elle est.
+function libelleSortie(s) {
+  const cote = coteSortie(s);
+  if (estCellule(V.lieuId)) return `Aller vers ${NOM_COTE[cote]}`;
+  if (carteEnMain((s && s.echelle) || V.L.echelle || 'salon')) return 'Sortir (carte)';
+  return departPar(V.lieuId, cote) ? `Partir vers ${NOM_COTE[cote]}` : `Route inconnue vers ${NOM_COTE[cote]}`;
+}
+// Le bord de la carte par lequel on sort : o (ouest), e (est), n (nord), s (sud).
 function coteSortie(s) {
   const E = V.niveau.etages[V.niveau.etageIdx[s.etage]] || V.E, w = E.w / FIN, h = E.h / FIN;
   const d = [['o', s.cx], ['e', w - s.cx], ['n', s.cy], ['s', h - s.cy]];

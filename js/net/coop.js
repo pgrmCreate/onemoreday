@@ -380,7 +380,7 @@ function adopterMonde({ monde, hote }) {
     // on arrive AUPRÈS de l'hôte (pas à l'autre bout de la carte)
     const hp = hote && hote.position;
     let pos;
-    if (hp && hp.mode === 'lieu' && hp.lieu && hp.x != null) pos = { mode: 'lieu', lieu: hp.lieu, etage: hp.etage, x: hp.x + 0.8, y: hp.y + 0.3, abords: hp.abords };
+    if (hp && hp.mode === 'lieu' && hp.lieu && hp.x != null) pos = { mode: 'lieu', lieu: hp.lieu, etage: hp.etage, x: hp.x + 0.8, y: hp.y + 0.3, planV: hp.planV, abords: hp.abords };
     else if (!neuf && player.position && player.position.lieu) pos = player.position;
     else pos = { mode: 'lieu', lieu: (hp && hp.lieu) || 'cimetiere' };
     G.player.position = pos;
@@ -406,7 +406,7 @@ async function positionHote(ms) {
     await new Promise(r => setTimeout(r, 250));
   }
   const p = pairPos;
-  return p && p.mode === 'lieu' && p.lieu && p.x != null ? { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3, abords: p.abords } : null;
+  return p && p.mode === 'lieu' && p.lieu && p.x != null ? { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3, planV: p.planV, abords: p.abords } : null;
 }
 function brancherInvite() {
   vueExplore.definirCrochets({ obtenirCanal: (lieuId, niveau) => canalDistant(lieuId, niveau), coop: crochetCoop });
@@ -679,7 +679,7 @@ function positionPrecise() {
   if (j && j.lieu && !String(j.lieu).startsWith('__')) {
     // Les coordonnées incluent déjà les abords : l'arrivée ne doit pas les décaler une seconde fois.
     const ab = vueExplore.etatDebug().niveau.abords;
-    return { mode: 'lieu', lieu: j.lieu, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2), abords: ab ? { dx: ab.dx, dy: ab.dy } : null };
+    return { mode: 'lieu', lieu: j.lieu, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2), planV: vueExplore.etatDebug().niveau.planVersion || 0, abords: ab ? { dx: ab.dx, dy: ab.dy } : null };
   }
   const tc = flow.tempsCourant();
   return { mode: tc === 'voyage' ? 'voyage' : tc === 'carte' ? 'carte' : (p.mode === 'lieu' ? 'ailleurs' : p.mode), lieu: p.lieu || (p.voyage && p.voyage.vers) || null };
@@ -812,7 +812,7 @@ export async function nouveauSurvivant({ nom, genre }, lieuMort = null) {
   if (role === 'invite') { try { localStorage.setItem('omd_v3_invite', JSON.stringify({ seed: G.world.seed, player: G.player })); } catch (e) {} }
   const p = pairPos;
   let pos;
-  if (p && p.mode === 'lieu' && p.lieu && p.x != null) pos = { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3, abords: p.abords };
+  if (p && p.mode === 'lieu' && p.lieu && p.x != null) pos = { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3, planV: p.planV, abords: p.abords };
   else pos = { mode: 'lieu', lieu: lieuMort || (ancien.position && ancien.position.lieu) || 'cimetiere', entree: null };
   G.player.position = pos;
   noteJournal(`${ancien.nom} est {mort|morte}. ${nom} a pris la suite.`.replace('{mort|morte}', ancien.genre === 'f' ? 'morte' : 'mort'), 'recit');
@@ -918,7 +918,7 @@ function majBadge() {
 async function rejoindrePair() {
   if (!peutRejoindre()) return;
   const p = pairPos;
-  G.player.position = { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3, abords: p.abords };
+  G.player.position = { mode: 'lieu', lieu: p.lieu, etage: p.etage, x: p.x + 0.8, y: p.y + 0.3, planV: p.planV, abords: p.abords };
   emit('toast', { texte: `Tu retrouves ${nomPair || 'ton coéquipier'}.` });
   await flow.explorer(p.lieu);
 }

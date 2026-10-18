@@ -30,7 +30,7 @@ export async function explorer(lieuId, opts = {}) {
     const P = G.player.position || {};
     // on garde la position précise (reprise de partie, rejoindre son coéquipier) si rien n'impose une entrée
     // revenir dans le lieu qu'on vient de quitter (« Rester ici ») : on se retrouve à la sortie qu'on avait prise
-    if (P.sorti && P.lieu === lieuId && P.x != null && !opts.entree) G.player.position = { mode: 'lieu', lieu: lieuId, etage: P.etage, x: P.x, y: P.y, abords: P.abords };
+    if (P.sorti && P.lieu === lieuId && P.x != null && !opts.entree) G.player.position = { mode: 'lieu', lieu: lieuId, etage: P.etage, x: P.x, y: P.y, planV: P.planV, abords: P.abords };
     else if (!(P.mode === 'lieu' && P.lieu === lieuId && P.x != null && !opts.entree && !P.sorti)) G.player.position = { mode: 'lieu', lieu: lieuId, entree: opts.entree || null };
     const L = G.world.lieux[lieuId] || (G.world.lieux[lieuId] = {});
     L.decouvert = true; L.visite = true;
@@ -52,7 +52,7 @@ export async function ouvrirCarte(opts = {}) {
   await basculer('carte', '../travel/carte.js', opts);
 }
 export async function voyager(opts) {
-  // Un trajet se choisit sur une carte qu'on a EN CE MOMENT, sauf quand on suit une indication reçue (js/travel/errance.js).
+  // Un trajet se choisit sur une carte qu'on a EN CE MOMENT (indication : un trajet sans carte d'une ancienne sauvegarde).
   const { peutPlanifier } = await import('../travel/errance.js');
   const de = (opts && (opts.de || (opts.preparation && opts.preparation.params.de))) || (G && G.player.position && G.player.position.lieu);
   if (opts && !opts.indication && opts.vers && de && !peutPlanifier(de, opts.vers)) {

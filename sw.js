@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v77';
+const CACHE = 'onemoreday-v80';
 const FICHIERS = [
   './',
   './index.html',
@@ -151,6 +151,7 @@ const FICHIERS = [
   './js/data/reglages.js',
   './js/data/rencontres.js',
   './js/data/rencontres_scenes.js',
+  './js/data/reseau.js',
   './js/data/serveur.js',
   './js/data/soundscapes.js',
   './js/data/troncons.js',
@@ -215,7 +216,9 @@ const FICHIERS = [
   './js/travel/art_carte.js',
   './js/travel/carte.js',
   './js/travel/errance.js',
+  './js/travel/errance_migration.js',
   './js/travel/errance_ui.js',
+  './js/travel/errance_v0.js',
   './js/travel/geo.js',
   './js/travel/preparer_voyage.js',
   './js/travel/rencontres_voyage.js',

@@ -36,6 +36,7 @@ export default plan({
   e.semer('feuilles', 0, 10, 14, 22, 10);
   e.entree('defaut', 3, 20);
   e.sortie(0, 12, 1, 18);
+  e.sortie(3, 0, 5, 1);                                     // le haut du square, vers les Canourgues (nord)
 
   // --- la nef (36 × 12) : 46 morts debout entre les bancs, tournés vers l'autel ---
   const nef = e.piece(14, 11, 38, 14, { nom: 'La nef', sol: 'marbre', mur: 'pierre', sombre: 1, sansMorts: true, toit: 'tuiles',
@@ -98,6 +99,7 @@ export default plan({
   e.solRect('paves', 14, 32, 56, 4);
   e.nommer(40, 33, 'La ruelle', { sol: 'paves', exterieur: true });
   e.sortie(W - 1, 32, 1, 4);
+  e.sortie(28, H - 1, 4, 1);                                // une traverse qui descend vers le centre (sud)
   e.objet('poubelle', 46, 33); e.semer('papiers', 20, 32, 40, 4, 6);
 
   // ======================= LE CLOCHER : la chambre des cloches (7 × 7) =======================

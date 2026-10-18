@@ -48,7 +48,7 @@ function resoudre(ch, legende, avert) {
 export function asciiVersPlan(def, avert = () => {}) {
   const ext = !!def.exterieur;
   const p = new Plan({
-    id: def.id, nom: def.nom || def.id, exterieur: ext, typeButin: def.typeButin, pool: def.pool, morts: def.morts,
+    id: def.id, nom: def.nom || def.id, version: def.version || 0, exterieur: ext, typeButin: def.typeButin, pool: def.pool, morts: def.morts,
     murInterieur: def.murInterieur || 'platre',
   });
   const murExt = def.murExterieur || (MUR_EXT_PIERRE.has(def.id) ? 'pierre' : 'crepi');

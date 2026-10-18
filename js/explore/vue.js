@@ -279,7 +279,7 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null, po
     if (!V || !V.canal.sauver || V.arene) return;
     const etat = V.canal.sauver(G.world.minutes);
     if (etat) G.world.lieux[V.lieuId] = { ...(G.world.lieux[V.lieuId] || {}), etat };
-    G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: V.j.etage, x: +V.j.x.toFixed(2), y: +V.j.y.toFixed(2), abords: abordsDe(V) };
+    G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: V.j.etage, x: +V.j.x.toFixed(2), y: +V.j.y.toFixed(2), planV: V.niveau.planVersion || 0, abords: abordsDe(V) };
   }));
   // météo : la pluie se voit dehors (et s'entend étouffée sous un toit), le mistral pousse les feuilles
   import('../game/meteo.js').then(m => { if (V) { V.pluie = m.pluie(); V.vent = m.vent ? m.vent() : 0.3; V.meteo = m.meteo ? m.meteo() : 'clair'; } }).catch(() => {});
@@ -351,7 +351,7 @@ export function sortir() {
     sauverMemoire(v);
     const etat = v.canal.sauver ? v.canal.sauver(G.world.minutes) : null;
     if (etat) G.world.lieux[v.lieuId] = { ...(G.world.lieux[v.lieuId] || {}), etat };
-    G.player.position = { mode: 'lieu', lieu: v.lieuId, etage: v.j.etage, x: +v.j.x.toFixed(2), y: +v.j.y.toFixed(2), abords: abordsDe(v) };
+    G.player.position = { mode: 'lieu', lieu: v.lieuId, etage: v.j.etage, x: +v.j.x.toFixed(2), y: +v.j.y.toFixed(2), planV: v.niveau.planVersion || 0, abords: abordsDe(v) };
   } catch (e) { console.error(e); }
   for (const f of v.off) { try { f(); } catch (e) {} }
   try { v.entrees && v.entrees.fermer(); } catch (e) {}
@@ -567,7 +567,7 @@ function image(t, dt) {
   if (V._placeVu !== enPlacement()) { V._placeVu = enPlacement(); V.entrees.setPlacement && V.entrees.setPlacement(V._placeVu); }
   if (V.butin && distanceButin(V.butin, j) > 1.9) { interrompreFouille(); fermerButin(); }   // trop loin : la fouille s'arrête aussi (sinon elle finit « vide », fenêtre fermée)
   V.tPnj -= dt; if (V.tPnj <= 0) { V.tPnj = 800; majPnj(); V.reperesMission = reperesMissions(); }
-  V.tPos -= dt; if (V.tPos <= 0) { V.tPos = 2000; if (!V.arene) G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2), abords: abordsDe(V) }; tension(); }
+  V.tPos -= dt; if (V.tPos <= 0) { V.tPos = 2000; if (!V.arene) G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2), planV: V.niveau.planVersion || 0, abords: abordsDe(V) }; tension(); }
   V.tGuide -= dt; if (V.tGuide <= 0) { V.tGuide = 700; majObjectif(); majCoopHud(pairs); }
   // --- HUD ---
   let menace = false;

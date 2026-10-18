@@ -23,14 +23,15 @@ export default plan({
   // ================= REZ-DE-CHAUSSÉE : place, café, tour, rue =================
   const e = p.etage('rdc', 'Rez-de-chaussée', W, H, { sol: 'paves', monte: 'e1' });
 
-  // --- le cadre : façades closes au nord et à l'est, la rue d'arrivée à l'ouest ---
+  // --- le cadre : façades closes au nord et à l'est, percées d'une ruelle vers la place Crousillat ; la rue d'arrivée à l'ouest ---
   // une maison close : on n'en voit que le toit (volets fermés, portes murées)
   const close = (et, x, y, w, h) => { et.murRect('crepi', x, y, w, h); et.toit(x, y, w, h, 'tuiles'); };
-  for (const [x, w] of [[0, 4], [18, 10], [28, 12]]) close(e, x, 0, w, 7);
+  for (const [x, w] of [[0, 4], [22, 6], [28, 12]]) close(e, x, 0, w, 7);
   close(e, 40, 0, 8, 10); close(e, 40, 10, 8, 10); close(e, 4, 0, 14, 1);
   close(e, 0, 7, 4, 4); close(e, 0, 16, 4, 4);
   e.solRect('trottoir', 4, 7, 36, 1);
   e.sortie(0, 11, 1, 5);                                   // vers la carte (rue Moussue, à l'ouest)
+  e.sortie(18, 0, 4, 1);                                   // la ruelle du nord, vers la place Crousillat
 
   // --- le Café de la Fontaine : salle 8 × 4 + arrière-cuisine 3 × 4 ---
   const cafe = e.batiment(4, 1, 14, 6, { nom: 'Le Café de la Fontaine', sol: 'carrelage', sombre: 1,

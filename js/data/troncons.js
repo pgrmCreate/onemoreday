@@ -1,17 +1,13 @@
 // ============ Marcher sans carte — les tronçons (données) ============
-// Sans carte en poche, on ne choisit pas une destination sur une feuille : on part à pied, rue après rue, en se fiant à
-// ce qu'on voit (js/travel/errance.js). Ce fichier donne ce que le personnage peut RECONNAÎTRE en chemin.
+// Sans carte en poche, on ne choisit pas une destination sur une feuille : on part à pied par un côté de la carte, rue
+// après rue (js/travel/errance.js). Ce fichier donne ce que le personnage peut RECONNAÎTRE en chemin.
 //
-//   REPERES   ce qu'on aperçoit d'un lieu de loin, de jour et par temps clair (clocher, rocher, enseigne…) ; un lieu
-//             sans repère ne se devine pas : on y arrive, ou l'on se trompe de rue.
-//   IMPASSES  les culs-de-sac où mène une mauvaise rue : de vraies barrières (armée, chantier, canal, voie ferrée, maquis).
+//   REPERES   ce qu'on aperçoit d'un lieu de loin, droit devant, de jour et par temps clair (clocher, rocher, enseigne…).
+//   IMPASSES  les culs-de-sac des rues latérales : de vraies barrières (armée, chantier, canal, voie ferrée, maquis).
 //   TRACES    ce que d'autres survivants ont laissé sur les murs, près d'un lieu : des indications et un peu d'histoire.
 //   ERRANCE   les réglages : longueur des tronçons, temps compté à chaque rue, danger.
 
 export const ERRANCE = {
-  VOISINS: { salon: 2, region: 1 }, // chaque lieu de Salon est relié à ses deux voisins les plus proches, chaque village au plus proche
-  REGION_MAX_M: 8000,            // au-delà, deux villages ne sont pas reliés à pied (sauf le plus proche, s'il n'y en a pas d'autre)
-  PONT_SALON_M: 5200,            // les villages à moins de 5,2 km du centre de Salon y sont reliés par la route (panneaux)
   M_PAR_CELLULE: { salon: 400, region: 2500 },
   CELLULES: { salon: [1, 3], region: [2, 3] },
   M_PAR_MIN: 75,                 // marche prudente, sans carte : 4,5 km/h
@@ -21,7 +17,7 @@ export const ERRANCE = {
   POOL: ['errant', 'errant', 'errant', 'rampant'],
 };
 
-// Ce qu'on reconnaît de loin (sujet d'une phrase : « Au loin, tu reconnais … »).
+// Ce qu'on reconnaît de loin (sujet d’une phrase : « Droit devant, au loin, tu reconnais … »).
 export const REPERES = {
   tour_horloge: 'le campanile de fer de la Tour de l’Horloge',
   place_crousillat: 'le gros champignon de mousse de la Fontaine Moussue',
@@ -48,16 +44,6 @@ export const REPERES = {
   la_barben: 'le château de la Barben, accroché à son rocher',
   cornillon: 'le village perché de Cornillon',
   miramas_le_vieux: 'le village fortifié de Miramas-le-Vieux',
-};
-
-// Le nom du lieu, avec son article, pour un libellé de choix (« Marcher vers la Fontaine Moussue »).
-export const VERS = {
-  tour_horloge: 'la Tour de l’Horloge', place_crousillat: 'la Fontaine Moussue', emperi: 'l’Empéri', saint_michel: 'Saint-Michel',
-  saint_laurent: 'la collégiale Saint-Laurent', hotel_de_ville: 'l’hôtel de ville', nostradamus: 'la vieille ville',
-  cimetiere: 'le cimetière Saint-Roch', gare: 'la gare', hopital: 'l’hôpital', canourgues: 'les Canourgues', leclerc: 'le Leclerc',
-  intermarche: 'l’Intermarché', cineplanet: 'le cinéma', ba701: 'la base aérienne', chaine_cotes: 'la chaîne des Côtes',
-  pelissanne: 'Pélissanne', grans: 'Grans', lancon: 'Lançon', touloubre: 'la Touloubre', crau_coussouls: 'la Crau',
-  aerodrome: 'l’aérodrome', la_barben: 'la Barben', cornillon: 'Cornillon', miramas_le_vieux: 'Miramas-le-Vieux',
 };
 
 // Les culs-de-sac : nom du lieu, ce qui barre la route (dessin), et la phrase qu'on lit en arrivant.

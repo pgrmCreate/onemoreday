@@ -24,6 +24,7 @@ import { FINS } from './data/histoire/fins.js';
 import { BUILD_VERSION } from './version_build.js';
 import * as audio from './audio.js';
 import * as coop from './net/coop.js';
+import { preparerRepriseErrance } from './travel/errance.js';
 
 const ecran = $('#ecran');
 let partieEnCours = false;
@@ -209,6 +210,7 @@ export async function continuer(mode = 'solo', avant = null) {
   await reprendrePosition();
 }
 async function reprendrePosition() {
+  const repli = preparerRepriseErrance(G.player);
   const pos = G.player.position || {};
   if (pos.mode === 'lieu' && pos.lieu) {
     if (pos.sorti) await flow.ouvrirCarte({ echelle: lieuEchelle(pos.lieu), depuis: pos.lieu });
@@ -221,6 +223,10 @@ async function reprendrePosition() {
   } else {
     await flow.explorer('cimetiere', { entree: 'caveau' });
   }
+  annoncerRepli(repli);
+}
+function annoncerRepli(repli) {
+  if (repli) flow.toast(`Cette ancienne rue a changé. ${repli.provenance ? 'Tu retrouves ton lieu de départ' : 'Ta partie reprend à un point de repli'} : ${flow.lieuDe(repli.lieu)?.nom || repli.lieu}.`);
 }
 function lieuEchelle(id) { try { return (flow.lieuDe && flow.lieuDe(id) || {}).echelle || 'salon'; } catch (e) { return 'salon'; } }
 
@@ -229,8 +235,12 @@ export async function demarrerInvite({ position, neuf, avant } = {}) {
   cacherEcran();
   demarrerSystemes({ invite: true });
   if (avant) { try { position = (await avant()) || position; } catch (e) { console.warn('[coop] arrivée', e); } }
+  if (position) G.player.position = position;
+  const repli = preparerRepriseErrance(G.player);
+  position = G.player.position;
   if (position && position.lieu) await flow.explorer(position.lieu, { entree: position.entree || undefined });
   else await flow.explorer('cimetiere', { entree: 'caveau' });
+  annoncerRepli(repli);
   // premier soir à deux : on se réveille l'un près de l'autre
   if (neuf && G && !G.world.flags.prologue_fini) setTimeout(() => flow.scene('coop_reveil').catch(() => {}), 600);
 }

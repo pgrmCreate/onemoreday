@@ -1,0 +1,66 @@
+// ============ Le réseau à pied (marcher sans carte) — GÉNÉRÉ par tools/generer_reseau.mjs, à ne pas éditer à la main ============
+// Chaque côté d'une carte mène à un voisin au plus, dans cette direction : [lieu A, côté de A, lieu B] (B est relié par
+// le côté opposé). Un côté sans liaison n'a pas de route connue : sans carte, on n'y part pas.
+export const LIENS = [
+  ['aerodrome', 's', 'crau_coussouls'],   // 5064 m
+  ['aerodrome', 'n', 'eyguieres'],   // 4505 m
+  ['aerodrome', 'e', 'touloubre'],   // 6926 m
+  ['aurons', 'o', 'chaine_cotes'],   // 2790 m
+  ['aurons', 's', 'pelissanne'],   // 3857 m
+  ['aurons', 'n', 'vernegues'],   // 2940 m
+  ['ba701', 'n', 'hopital'],   // 3813 m
+  ['ba701', 's', 'lancon'],   // 2142 m
+  ['ba701', 'o', 'touloubre'],   // 2916 m
+  ['berre', 'n', 'lancon'],   // 13303 m
+  ['cales', 's', 'chaine_cotes'],   // 4805 m
+  ['cales', 'o', 'eyguieres'],   // 4324 m
+  ['cales', 'n', 'senas'],   // 4523 m
+  ['cales', 'e', 'vernegues'],   // 7050 m
+  ['canourgues', 'n', 'commissariat'],   // 311 m
+  ['canourgues', 's', 'saint_laurent'],   // 981 m
+  ['carrefour_morgan', 'o', 'cineplanet'],   // 184 m
+  ['carrefour_morgan', 'n', 'emperi'],   // 286 m
+  ['carrefour_morgan', 'e', 'gendarmerie'],   // 2056 m
+  ['casino_shop', 's', 'hotel_poste'],   // 49 m
+  ['casino_shop', 'e', 'place_crousillat'],   // 61 m
+  ['casino_shop', 'n', 'saint_laurent'],   // 182 m
+  ['chaine_cotes', 'o', 'jean_moulin'],   // 2550 m
+  ['cimetiere', 'e', 'lycee'],   // 307 m
+  ['cimetiere', 'o', 'mediatheque'],   // 246 m
+  ['cineplanet', 's', 'mediatheque'],   // 165 m
+  ['cineplanet', 'n', 'pharmacie_carnot'],   // 277 m
+  ['commissariat', 'n', 'jean_moulin'],   // 1244 m
+  ['cornillon', 'n', 'grans'],   // 5044 m
+  ['cornillon', 'o', 'saint_chamas'],   // 3467 m
+  ['crau_coussouls', 'e', 'grans'],   // 2672 m
+  ['emperi', 'e', 'saint_michel'],   // 105 m
+  ['gare', 'o', 'intermarche'],   // 950 m
+  ['gare', 's', 'marius_fabre'],   // 217 m
+  ['gare', 'e', 'pharmacie_carnot'],   // 654 m
+  ['gendarmerie', 'n', 'leclerc'],   // 82 m
+  ['grans', 'e', 'lancon'],   // 5322 m
+  ['grans', 'n', 'marius_fabre'],   // 4062 m
+  ['hopital', 'o', 'hotel_de_ville'],   // 346 m
+  ['hotel_de_ville', 's', 'pompiers'],   // 1757 m
+  ['hotel_de_ville', 'o', 'saint_michel'],   // 66 m
+  ['hotel_poste', 's', 'pharmacie_carnot'],   // 82 m
+  ['hotel_poste', 'o', 'place_de_gaulle'],   // 127 m
+  ['hotel_poste', 'e', 'tour_horloge'],   // 30 m
+  ['intermarche', 's', 'touloubre'],   // 2067 m
+  ['istres', 'n', 'saint_chamas'],   // 5528 m
+  ['la_barben', 'o', 'pelissanne'],   // 4760 m
+  ['leclerc', 'o', 'pompiers'],   // 175 m
+  ['lycee', 'e', 'pompiers'],   // 1479 m
+  ['lycee', 'n', 'saint_michel'],   // 586 m
+  ['lycee', 's', 'weldom'],   // 430 m
+  ['mallemort', 'o', 'senas'],   // 8309 m
+  ['mallemort', 's', 'vernegues'],   // 4709 m
+  ['marius_fabre', 'e', 'mediatheque'],   // 170 m
+  ['miramas_le_vieux', 's', 'saint_chamas'],   // 1301 m
+  ['miramas', 'e', 'miramas_le_vieux'],   // 2825 m
+  ['nostradamus', 'o', 'pharmacie_carnot'],   // 124 m
+  ['nostradamus', 's', 'saint_michel'],   // 64 m
+  ['nostradamus', 'n', 'tour_horloge'],   // 72 m
+  ['pelissanne', 'o', 'weldom'],   // 4237 m
+  ['place_crousillat', 's', 'tour_horloge'],   // 31 m
+];

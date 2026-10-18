@@ -1,22 +1,18 @@
-// ============ Marcher sans carte — partir à pied, passer d'une rue à l'autre (DOM) ============
-// ouvrirDepart(lieuId, echelle, partir) : la fenêtre « Sans carte » à la sortie d'un lieu (rues qui en partent, indications
-// reçues de l'histoire, rester) ; partir() est appelé juste avant de quitter le lieu (il range la position).
+// ============ Marcher sans carte — partir par un côté, passer d'une rue à l'autre (DOM) ============
+// partirPar(lieuId, cote, partir) : sans carte, la sortie d'un lieu par un côté de sa carte mène au voisin situé dans
+// cette direction (js/travel/errance.js, departPar) ; partir() est appelé juste avant de quitter le lieu (il range la
+// position). Un côté sans voisin n'a pas de route connue : on reste.
 // traverser(cellule, cote) : on sort d'une cellule par un bord → la cellule suivante, le cul-de-sac ou le lieu au bout.
 // Le temps compté à chaque passage est celui de la marche condensée (js/data/troncons.js, ERRANCE).
 import { G, genrer } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import * as clock from '../core/clock.js';
-import { el } from '../core/util.js';
 import * as flow from '../game/flow.js';
-import { lieu } from '../game/donnees.js';
-import { ERRANCE, VERS } from '../data/troncons.js';
+import { ERRANCE } from '../data/troncons.js';
 import { meteoCourante } from './rencontres_voyage.js';
 import { projeter, reveler, RAYONS } from './geo.js';
-import { departs, voisin, decoder, cap, repere, indications, direction, genreImpasse, pas, pointCellule } from './errance.js';
+import { departPar, voisin, decoder, cap, repere, genreImpasse, pas, pointCellule, NOM_COTE } from './errance.js';
 
-const COTE = { e: 'vers l’est', o: 'vers l’ouest', n: 'vers le nord', s: 'vers le sud' };
-const nomLieu = (id) => { const l = lieu(id); return l ? (l.court || l.nom) : id; };
-const connu = (id) => !!(G && G.world.lieux[id] && G.world.lieux[id].visite);
 // Voit-on loin ? De jour, sans brume ni pluie battante.
 function voitLoin() {
   const m = meteoCourante();
@@ -33,41 +29,21 @@ function memoriser(e, k) {
 }
 const memo = () => (G.player.errance || (G.player.errance = {}));
 
-// ---------------------------------------------------------------- la fenêtre de départ
-let fen = null;
-export function ouvrirDepart(lieuId, echelle, partir, rester) {
-  if (fen || !G) return;
-  const fermer = () => { if (fen) { fen.remove(); fen = null; } };
-  const annuler = () => { fermer(); if (rester) rester(); };
-  fen = el('div', { class: 'som-fond', onclick: (ev) => { if (ev.target === fen) annuler(); } });
-  const boite = el('div', { class: 'som-boite err-boite', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Partir sans carte' });
-  fen.append(boite);
-  boite.append(el('h3', {}, 'Sans carte'),
-    el('p', {}, echelle === 'region'
-      ? 'Tu n’as pas de carte routière sur toi. Tu peux suivre la route à pied, en te fiant aux panneaux et à ce que tu reconnais, mais une mauvaise route peut finir en cul-de-sac.'
-      : 'Tu n’as pas de plan sur toi. Tu peux partir à pied, rue après rue, en te fiant à ce que tu reconnais, mais une mauvaise rue peut finir en cul-de-sac.'));
-  const liste = el('div', { class: 'som-choix som-naturel' });
-  const loin = voitLoin();
-  for (const d of departs(lieuId)) {
-    const dir = direction(lieuId, d.vers), court = dir.replace(/^l(e |’)/, ''), vu = loin && repere(d.vers) && VERS[d.vers];
-    const texte = connu(d.vers) ? `Retourner à pied : ${nomLieu(d.vers)} (${court})`
-      : vu ? `Marcher vers ${vu} (${court})` : `Partir à pied vers ${dir}`;
-    liste.append(el('button', { class: 'btn', type: 'button', onclick: () => {
-      fermer(); partir();
-      memo().retour = null;
-      compterMarche(d.e); memoriser(d.e, d.cellule.endsWith(':0') ? 0 : d.e.n - 1);
-      flow.explorer(d.cellule, { entree: d.entree }).then(() => arrivee(d.cellule, d.entree));
-    } }, texte));
+// ---------------------------------------------------------------- partir par un côté de la carte
+export const routeConnue = (lieuId, cote) => !!departPar(lieuId, cote);
+export async function partirPar(lieuId, cote, partir) {
+  const d = departPar(lieuId, cote);
+  if (!d) {
+    emit('toast', { texte: `Sans carte, tu ne sais pas où mène la route vers ${NOM_COTE[cote]}. Mieux vaut ne pas s’y risquer.`, type: 'info' });
+    return false;
   }
-  for (const id of indications(lieuId)) {
-    liste.append(el('button', { class: 'btn', type: 'button', onclick: () => {
-      fermer(); partir();
-      flow.voyager({ de: lieuId, vers: id, allure: 'normale', indication: true });
-    } }, VERS[id] ? `Suivre les indications jusqu’à ${VERS[id]}` : `Suivre les indications : ${nomLieu(id)}`));
-  }
-  if (!liste.childNodes.length) liste.append(el('p', { class: 'som-etat' }, 'Aucune rue ne part d’ici que tu saurais suivre.'));
-  boite.append(liste, el('button', { class: 'btn som-annuler', type: 'button', onclick: annuler }, 'Rester ici'));
-  document.body.append(fen);
+  partir();
+  memo().retour = null;
+  memo().depart = { lieu: lieuId, arete: d.e.id };
+  compterMarche(d.e); memoriser(d.e, d.cellule.endsWith(':0') ? 0 : d.e.n - 1);
+  await flow.explorer(d.cellule, { entree: d.entree });
+  arrivee(d.cellule, d.entree);
+  return true;
 }
 
 // ---------------------------------------------------------------- d'une cellule à l'autre
@@ -77,7 +53,7 @@ export async function traverser(cellule, cote) {
   if (!v) return false;
   compterMarche(c.e);
   if (v.lieu) {
-    M.retour = null;
+    M.retour = null; M.depart = null;
     await flow.explorer(v.lieu, { venantDe: v.venantDe });
     return true;
   }
@@ -88,20 +64,14 @@ export async function traverser(cellule, cote) {
   return true;
 }
 
-// Ce qu'on voit en arrivant dans une rue : le repère du lieu visé (de jour, par temps clair), ou rien pour s'orienter.
+// Ce qu'on voit en arrivant dans une rue : droit devant, le repère du lieu visé (de jour, par temps clair).
 export function arrivee(cellule, entree) {
   const c = decoder(cellule); if (!c) return;
-  let texte;
+  let texte = null;
   if (c.impasse) texte = genreImpasse(c.e).texte;
   else {
-    const k = cap(cellule, entree), rp = k && repere(k.vers), dehors = c.e.echelle === 'region';
-    if (!k) return;
-    if (!voitLoin()) texte = clock.estNuit()
-      ? 'Il fait trop sombre pour reconnaître quoi que ce soit : il faudra deviner par où continuer.'
-      : 'La pluie et la brume cachent tout au bout de la rue : impossible de savoir par où continuer.';
-    else if (rp) texte = `Au loin, tu reconnais ${rp}, ${COTE[k.sortie]}.`;
-    else texte = dehors ? 'Rien, à l’horizon, ne te dit par où continuer.' : 'Rien, au-dessus des toits, ne te dit par où continuer.';
+    const k = cap(cellule, entree), rp = k && repere(k.vers);
+    if (rp && voitLoin()) texte = `Droit devant, au loin, tu reconnais ${rp}.`;
   }
-  emit('toast', { texte: genrer(texte), type: 'info' });
+  if (texte) emit('toast', { texte: genrer(texte), type: 'info' });
 }
-
