@@ -40,7 +40,10 @@ export const DECLENCHEURS = [
   { quand: 'marqueur', lieu: 'nostradamus', marqueur: 'cave_patiente', si: { pasFlag: 'confrontation_faite' }, scene: 'nos_cave', unique: true },
 
   // ─────────── CHAPITRE 1 : l'Empéri ───────────
-  { quand: 'entree_lieu', lieu: 'emperi', si: { quete: ['q_protocole', 'emperi'], pasFlag: 'emp_arrivee_faite' }, scene: 'emp_arrivee' },
+  // en arrivant : on voit les morts devant la grille ; l'accueil se joue À LA GRILLE, une fois le parvis dégagé (parvis = rayon)
+  { quand: 'entree_lieu', lieu: 'emperi', si: { quete: ['q_protocole', 'emperi'], pasFlag: 'emp_arrivee_faite' }, scene: 'emp_approche', unique: true },
+  { quand: 'marqueur', lieu: 'emperi', marqueur: 'grille_emperi', si: { quete: ['q_protocole', 'emperi'], pasFlag: 'emp_arrivee_faite' }, scene: 'emp_arrivee', libelle: 'Appeler les guetteurs', parvis: 8,
+    refus: 'Du haut du rempart, Mehdi te fait signe de reculer : « On n’ouvre pas avec des morts devant la grille ! Débarrasse-toi d’abord de ceux-là. »' },
   { quand: 'entree_lieu', lieu: 'emperi', si: { flag: 'lou_sauvee', pasFlag: 'emp_retour_fait' }, scene: 'emp_retour_lou', unique: true },
   { quand: 'entree_lieu', lieu: 'emperi', si: { quete: ['q_protocole', 'vidal_maud'] }, scene: 'emp_denonciation', unique: true },
   { quand: 'entree_lieu', lieu: 'emperi', si: { quete: ['q_protocole', 'sonnailles'] }, scene: 'ch1_siege_1', unique: true },

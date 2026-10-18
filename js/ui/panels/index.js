@@ -19,7 +19,7 @@ const PANNEAUX = {
   inventaire: { titre: 'Sac', icone: 'sac', m: inventaire },
   corps: { titre: 'Corps', icone: 'corps', m: corps },
   fabrication: { titre: 'Fabriquer', icone: 'fabrication', m: fabrication },
-  construction: { titre: 'Construire', icone: 'marteau', m: construction },
+  construction: { titre: 'Construire', icone: 'construire', m: construction },
   journal: { titre: 'Journal', icone: 'journal', m: journal },
   options: { titre: 'Menu', icone: 'menu', m: options },
 };

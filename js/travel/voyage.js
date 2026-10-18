@@ -23,30 +23,34 @@ import { evaluerRisque, tirerRencontres } from './rencontres_voyage.js';
 import { lieuCourant } from './carte.js';
 import { preparerVoyage } from './preparer_voyage.js';
 import { panneauOuvert } from '../ui/panels/index.js';
+import { peutPlanifier } from './errance.js';
 
 let V = null;
 
 const TITRES = { combat: 'Mauvaise rencontre', butin: 'Au bord de la route', ambiance: 'En chemin', choix: 'Sur ta route', pnj: 'Quelqu’un' };
 
 // ---------------------------------------------------------------- entrée / sortie
-export async function entrer({ de, vers, allure = 'normale', groupe = null, minutesDepart, contourner = false, guetteur = false, preparation = null } = {}) {
+export async function entrer({ de, vers, allure = 'normale', groupe = null, minutesDepart, contourner = false, guetteur = false, preparation = null, indication = false } = {}) {
   sortir();
   de = de || lieuCourant();
   const plan = preparation || preparerVoyage({ de, vers, allure, groupe, minutesDepart, contourner, guetteur });
   const { iti, ctx, rencontres } = plan;
   guetteur = plan.guetteur;
-  const racine = el('div', { class: 'carte-ecran voyage-ecran' });
+  // Sans carte en poche (on suit une indication reçue, js/travel/errance_ui.js) : la feuille reste floue, on avance de mémoire.
+  const aveugle = !!indication || !peutPlanifier(de, vers);
+  const racine = el('div', { class: 'carte-ecran voyage-ecran' + (aveugle ? ' voyage-sans-carte' : '') });
   const vueHote = el('div', { class: 'carte-vue' });
   racine.append(vueHote);
+  if (aveugle) racine.append(el('p', { class: 'v-aveugle' }, 'Tu n’as pas de carte : tu suis de mémoire le chemin qu’on t’a indiqué.'));
   flow.stage().appendChild(racine);
-  V = { de, vers, allure, groupe, ctx, iti, rencontres, guetteur, d: 0, total: 0, racine, vueHote, offs: [], pauses: new Set(), accel: false, fini: false, raf: 0, dernierTexte: '' };
+  V = { de, vers, allure, groupe, ctx, iti, rencontres, guetteur, aveugle, indication: !!indication, d: 0, total: 0, racine, vueHote, offs: [], pauses: new Set(), accel: false, fini: false, raf: 0, dernierTexte: '' };
   V.v = plan.v.mParMin;
   V.risque = plan.risque;
   V.F = monterFeuille(vueHote, iti.echelle, { zones: true, nuit: ctx.nuit, brouillard: zonesVues(iti.echelle) });
   construireUI();
   dessinerRoute();
   cadrer(false);
-  if (G) G.player.position = { mode: 'voyage', voyage: { ...plan.params, d: 0, metres: iti.metres } };
+  if (G) G.player.position = { mode: 'voyage', voyage: { ...plan.params, ...(indication ? { indication: true } : {}), d: 0, metres: iti.metres } };
   clock.setVitesse(vitesseBase());
   emit('voyage:debut', { de, vers, allure, guetteur, metres: iti.metres, duree: plan.duree, risque: plan.risque });
   V.offs.push(on('mort', () => { if (V) { V.fini = true; V.pauses.add('mort'); } }));
@@ -123,7 +127,10 @@ function majJauge() {
 }
 function majBandeau(force) {
   const reste = Math.max(0, V.iti.metres - V.d);
-  const txt = `il te reste ${fmtDistance(reste)} — ~${fmtDuree(Math.max(1, reste / V.v))}`;
+  // sans carte, on ne mesure rien : on sent seulement qu'on avance
+  const f = V.iti.metres ? V.d / V.iti.metres : 1;
+  const txt = V.aveugle ? (f < 0.25 ? 'tu viens de partir' : f < 0.75 ? 'tu es en chemin' : 'tu dois approcher')
+    : `il te reste ${fmtDistance(reste)} — ~${fmtDuree(Math.max(1, reste / V.v))}`;
   if (force || txt !== V.dernierTexte) { V.reste.textContent = txt; V.dernierTexte = txt; }
   V.barre.style.width = (100 * V.d / Math.max(1, V.iti.metres)).toFixed(1) + '%';
 }

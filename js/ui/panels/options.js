@@ -79,7 +79,7 @@ function dessiner(racine) {
   } else {
     const T = [
       ['Se déplacer', 'Z Q S D · W A S D · flèches', 'Joystick à gauche'],
-      ['Courir / s\'accroupir', 'Maj · Ctrl ou C', 'Boutons à droite'],
+      ['Courir / Se baisser', 'Maj · Ctrl ou C', 'Boutons à droite'],
       ['Interagir', 'E', 'Bouton « Interagir »'],
       ['Lampe', 'F', 'Bouton « Lampe »'],
       ['Sac · Corps · Journal', 'I · C (hors exploration) · J', 'Boutons ronds en haut à droite'],

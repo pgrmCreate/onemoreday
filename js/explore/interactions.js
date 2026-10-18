@@ -27,6 +27,7 @@ import { ciblesConstruction, libelleConstruction, agirConstruction, construction
 import { DEMONTABLES } from '../data/construction.js';
 import { recoltable, propositionNature, libelleNature, secondaireNature, agirNature } from './nature.js';
 import { pnjsMissions, ciblesMissions } from './missions_vue.js';
+import { estCellule, carteEnMain } from '../travel/errance.js';
 
 const RX = REGLAGES.exploration;
 let V = null, api = null;
@@ -295,7 +296,7 @@ function libelle(c) {
     }
     case 'escalier': { const n = V.niveau, E2 = c.s.vers && n.etageIdx[c.s.vers] != null ? n.etages[n.etageIdx[c.s.vers]] : null;
       return `${c.s.sens === 'monte' ? 'Monter' : 'Descendre'}${E2 && E2.nom ? ' : ' + E2.nom : ''}`; }
-    case 'sortie': return 'Sortir (carte)';
+    case 'sortie': return estCellule(V.lieuId) ? 'Prendre cette rue' : carteEnMain((c.s && c.s.echelle) || V.L.echelle || 'salon') ? 'Sortir (carte)' : 'Partir à pied';
     case 'marqueur': return (c.decl && c.decl.libelle) || (c.m && c.m.def && c.m.def.nom ? `Examiner ${c.m.def.nom}` : 'Examiner');
     case 'doc': return `${(G.documents || []).includes(c.doc) ? 'Relire' : 'Lire'} : ${(DOCUMENTS[c.doc] || {}).titre || 'document'}`;
     case 'pnj': return `Parler à ${c.q.nom}`;
@@ -392,6 +393,7 @@ async function actionPorte(c) {
   if (r.ok) sfx('porte');
   else if (r.raison === 'occupee') message('Quelque chose bloque le passage.');
   else if (r.raison === 'flag') message('Fermée. Ça ne s\'ouvre pas de ce côté.');
+  else if (r.raison === 'parvis') message(r.message || 'On ne t’ouvre pas tant que des morts rôdent devant.', 3600);
   else if (r.raison === 'verrouillee') { sfx('porte_verrouillee'); message('Verrouillée.'); }
   // une serrure qui ouvre une étape de l'histoire (la grille du cimetière : verrou.effets, comme le choix de la scène)
   if (r.ok && action === 'deverrouiller' && p.verrou && p.verrou.effets && !(p.verrou.flag && getFlag(p.verrou.flag))) appliquerEffets(p.verrou.effets);
@@ -525,6 +527,11 @@ export async function jouerDeclencheur(d) {
     if (d.quand === 'marqueur') message(`${G.pairNom || 'Ton coéquipier'} vit déjà ce moment.`, 2400);
     return;
   }
+  // le portail d'un refuge : on ne t'ouvre pas tant qu'un mort rôde devant (d.parvis = rayon autour du marqueur)
+  if (d.parvis && d.marqueur && V.niveau.marqueurs[d.marqueur]) {
+    const m = V.niveau.marqueurs[d.marqueur];
+    if (V.zListe.some(z => z.etage === m.etage && Math.hypot(z.x - m.x - 0.5, z.y - m.y - 0.5) < d.parvis)) { message(d.refus || 'On ne t’ouvre pas tant que des morts rôdent devant.', 3600); return; }
+  }
   if (d.unique) { G.world.declencheurs = G.world.declencheurs || {}; G.world.declencheurs[cleDecl(d)] = true; emit('declencheur', { cle: cleDecl(d) }); }
   if (d.cinematique) { V.occupe = true; V.entrees.actif(false); try { await flow.cinematique(d.cinematique); } finally { if (V) { V.occupe = false; if (!V.enPause) V.entrees.actif(true); } } }
   if (d.scene) await jouerScene(d.scene);
@@ -555,9 +562,29 @@ export function prendreEscalier(s) {
 async function sortirDuLieu(s) {
   if (V.occupe) return;
   if (V.arene) { api.finArene('sortie'); return; }
-  V.occupe = true;
   const echelle = (s && s.echelle) || V.L.echelle || 'salon';
   const id = V.lieuId;
+  // Une rue d'un tronçon (marcher sans carte) : son bord mène à la rue suivante, au cul-de-sac ou au lieu au bout.
+  if (estCellule(id)) {
+    V.occupe = true;
+    const er = await import('../travel/errance_ui.js');
+    if (!(await er.traverser(id, coteSortie(s)))) V.occupe = false;
+    return;
+  }
+  // Sans carte en poche : on ne choisit pas sur la feuille, on part à pied (ou l'on suit une indication reçue).
+  if (!carteEnMain(echelle)) {
+    V.occupe = true; V.entrees.actif(false);
+    const v = V, er = await import('../travel/errance_ui.js');
+    er.ouvrirDepart(id, echelle, () => {
+      const ab = v.niveau.abords;
+      const pos = { mode: 'lieu', lieu: id, sorti: true, etage: v.j.etage, x: +v.j.x.toFixed(2), y: +v.j.y.toFixed(2), abords: ab ? { dx: ab.dx, dy: ab.dy } : null };
+      api.sortir();
+      G.player.position = pos;
+      try { sauverPartie(); } catch (e) {}
+    }, () => { if (V === v) { v.occupe = false; if (!v.enPause) v.entrees.actif(true); } });
+    return;
+  }
+  V.occupe = true;
   // on garde la sortie prise : si l'on revient sans voyager (« Rester ici »), on réapparaît là
   const ab = V.niveau.abords;
   const pos = { mode: 'lieu', lieu: id, sorti: true, etage: V.j.etage, x: +V.j.x.toFixed(2), y: +V.j.y.toFixed(2), abords: ab ? { dx: ab.dx, dy: ab.dy } : null };
@@ -565,6 +592,12 @@ async function sortirDuLieu(s) {
   G.player.position = pos;
   try { sauverPartie(); } catch (e) {}
   await flow.ouvrirCarte({ echelle, depuis: id });
+}
+// Le bord par lequel on sort d'une cellule de tronçon : o (ouest), e (est), n (nord), s (sud).
+function coteSortie(s) {
+  const E = V.niveau.etages[V.niveau.etageIdx[s.etage]] || V.E, w = E.w / FIN, h = E.h / FIN;
+  const d = [['o', s.cx], ['e', w - s.cx], ['n', s.cy], ['s', h - s.cy]];
+  return d.sort((a, b) => a[1] - b[1])[0][0];
 }
 export function piece() {
   const i = icase(V.E, V.j.x, V.j.y);

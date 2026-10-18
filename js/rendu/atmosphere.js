@@ -10,6 +10,7 @@
 //   poussieres    grains de poussière dans le faisceau de la lampe
 // Biome : 'ville' | 'sec' | 'vert', d'après les sols autour du joueur (biomeAutour).
 import { TS, canvas, bruit, clamp } from './outils.js';
+import { spriteHaut, generationSprites } from './objets.js';
 import { K, FIN, SOLS_IDS, MURS, MURS_IDS, OBJETS, disposition, FAMILLES } from '../carte/catalogue.js';
 
 // ---------- Le soleil ----------
@@ -67,7 +68,8 @@ function lanceurs(niveau, E) {
     if (d.haut && H_ARBRE[R.haut || d.haut] != null) {
       const ht = H_ARBRE[R.haut || d.haut];
       const col = (R.haut || d.haut) === 'cypres';
-      cercles.push({ x: R.x + R.w / 2, y: R.y + R.h / 2, r: col ? 0.55 : (R.haut || d.haut) === 'olivier' ? 1.3 : 1.7, ht, colonne: col, objet: R });
+      cercles.push({ x: R.x + R.w / 2, y: R.y + R.h / 2, r: col ? 0.55 : (R.haut || d.haut) === 'olivier' ? 1.3 : 1.7, ht, colonne: col, objet: R,
+        haut: { haut: R.haut || d.haut, variante: R.variante || 0 } });
     } else if (H_OBJET[R.type]) {
       // l'ombre suit ce qui est dessiné (un véhicule plus petit que son empreinte : catalogue, disposition)
       const q = (R.rot || 0) % 2 === 1, dp = disposition(R.type, q ? R.h : R.w, q ? R.w : R.h);
@@ -115,8 +117,9 @@ export function creerAtmosphere() {
     for (const r of L.rects) if (r.objet && r.objet.retire) retires++;
     for (const a of L.cercles) if (a.objet && a.objet.retire) retires++;
     const ex0 = ecranX(0), ey0 = ecranY(0);
-    if (cle.L !== L || cle.pxc !== pxc || cle.ex0 !== ex0 || cle.ey0 !== ey0 || cle.dx !== sol.dx || cle.dy !== sol.dy || cle.retires !== retires) {
-      Object.assign(cle, { L, pxc, ex0, ey0, dx: sol.dx, dy: sol.dy, retires });
+    const gen = generationSprites();
+    if (cle.L !== L || cle.pxc !== pxc || cle.ex0 !== ex0 || cle.ey0 !== ey0 || cle.dx !== sol.dx || cle.dy !== sol.dy || cle.retires !== retires || cle.gen !== gen) {
+      Object.assign(cle, { L, pxc, ex0, ey0, dx: sol.dx, dy: sol.dy, retires, gen });
       tracerOmbres(sol, L, pxc, ex0, ey0, vue, lw, lh, k);
     }
     ctx.save();
@@ -127,10 +130,28 @@ export function creerAtmosphere() {
     ctx.restore();
   }
   const cle = { L: null };
+  // La silhouette d'un houppier (son alpha en noir, adoucie), faite une fois par sprite : l'ombre d'un arbre a la forme et
+  // les jours de son feuillage au lieu d'une ellipse pleine. Au tiers de la taille du sprite (le calque d'ombre est flou).
+  const silhouettes = new WeakMap();
+  function silhouette(sp) {
+    let s = silhouettes.get(sp); if (s) return s;
+    const n = Math.max(16, Math.round(sp.S / 3)), cv = canvas(n, n), g = cv.getContext('2d');   // petite : le calque est flou
+    try { g.filter = 'blur(0.8px)'; } catch (e) {}
+    g.drawImage(sp.cv, 0, 0, n, n);
+    try { g.filter = 'none'; } catch (e) {}
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = '#000'; g.fillRect(0, 0, n, n);
+    // un feuillage clairsemé (semi-transparent) donnerait une ombre presque invisible : on la densifie (deux recopies sur soi : alpha 1 − (1 − a)⁴),
+    // les jours (alpha nul) restent des jours
+    g.globalCompositeOperation = 'source-over'; g.drawImage(cv, 0, 0); g.drawImage(cv, 0, 0);
+    s = { cv, demi: sp.S / 2 / TS };
+    silhouettes.set(sp, s);
+    return s;
+  }
   function tracerOmbres(sol, L, pxc, ex0, ey0, vue, lw, lh, k) {
     const c = cctx;
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, lw, lh);
-    c.setTransform(k * pxc, 0, 0, k * pxc, k * ex0, k * ey0);
+    const B = k * pxc, BX = k * ex0, BY = k * ey0;
+    c.setTransform(B, 0, 0, B, BX, BY);
     const [vx0, vy0, vx1, vy1] = vue;
     c.fillStyle = '#000';
     c.beginPath();
@@ -155,6 +176,7 @@ export function creerAtmosphere() {
       if (Math.max(a.x, a.x + ox) + a.r < vx0 - 1 || Math.min(a.x, a.x + ox) - a.r > vx1 + 1 || Math.max(a.y, a.y + oy) + a.r < vy0 - 1 || Math.min(a.y, a.y + oy) - a.r > vy1 + 1) continue;
       const ang = Math.atan2(oy, ox), long = Math.hypot(ox, oy);
       if (a.colonne) {
+        c.setTransform(B, 0, 0, B, BX, BY);       // le chemin du fuseau se pose dans le repère du calque (pas celui du dernier houppier)
         // fuseau : de la base (étroite) au sommet (pointu), large au premier tiers
         const ca = Math.cos(ang), sa = Math.sin(ang), nx = -sa, ny = ca, R = a.r;
         c.moveTo(a.x + nx * R * 0.5, a.y + ny * R * 0.5);
@@ -162,10 +184,17 @@ export function creerAtmosphere() {
         c.quadraticCurveTo(a.x + ca * long * 0.35 - nx * R * 1.3, a.y + sa * long * 0.35 - ny * R * 1.3, a.x - nx * R * 0.5, a.y - ny * R * 0.5);
         c.closePath();
       } else {
-        const cx = a.x + ox * 0.78, cy = a.y + oy * 0.78;
-        c.moveTo(cx + a.r, cy); c.ellipse(cx, cy, a.r * (1 + Math.min(0.6, long / 30)), a.r * 0.85, ang, 0, Math.PI * 2);
+        // la silhouette du houppier, posée au bout de l'ombre et allongée dans l'axe du soleil (sans tourner sa forme)
+        // une seule transformation calculée (rotation · étirement · rotation inverse, puis la base du calque), sans save/restore
+        const sil = silhouette(spriteHaut(a.haut));
+        const cx = a.x + ox * 0.78, cy = a.y + oy * 0.78, D = sil.demi;
+        const co = Math.cos(ang), si = Math.sin(ang), sx = 1 + Math.min(0.6, long / 30), sy = 0.85;
+        const m00 = co * co * sx + si * si * sy, m01 = co * si * (sx - sy), m11 = si * si * sx + co * co * sy;
+        c.setTransform(B * m00, B * m01, B * m01, B * m11, B * cx + BX, B * cy + BY);
+        c.drawImage(sil.cv, -D, -D, 2 * D, 2 * D);
       }
     }
+    c.setTransform(B, 0, 0, B, BX, BY);
     c.fill();
     c.lineCap = 'round'; c.lineWidth = 0.2; c.strokeStyle = '#000'; c.beginPath();
     for (const a of L.cercles) { if (a.colonne || (a.objet && a.objet.retire)) continue; c.moveTo(a.x, a.y); c.lineTo(a.x + sol.dx * a.ht * 0.6, a.y + sol.dy * a.ht * 0.6); }

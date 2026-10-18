@@ -969,4 +969,8 @@ export function spriteHaut(R) {
   sprites.set(cle, s);
   return s;
 }
-export function viderSprites() { sprites.clear(); }
+// Génération des houppiers : elle change quand le cache est vidé (photos arrivées) — l'ombre des arbres (atmosphere.js)
+// se retrace alors avec les nouvelles silhouettes.
+let generation = 0;
+export const generationSprites = () => generation;
+export function viderSprites() { sprites.clear(); generation++; }

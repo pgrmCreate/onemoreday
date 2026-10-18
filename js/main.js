@@ -215,7 +215,9 @@ async function reprendrePosition() {
     else await flow.explorer(pos.lieu, { entree: pos.entree || undefined });
   } else if (pos.mode === 'voyage' && pos.voyage) {
     const v = pos.voyage;
-    await flow.ouvrirCarte({ echelle: lieuEchelle(v.vers), depuis: v.de, reprise: v });
+    // un trajet suivi sur indication (sans carte) reprend tel quel : il n'y a pas de feuille où le rechoisir
+    if (v.indication) await flow.voyager({ de: v.de, vers: v.vers, allure: v.allure || 'normale', indication: true });
+    else await flow.ouvrirCarte({ echelle: lieuEchelle(v.vers), depuis: v.de, reprise: v });
   } else {
     await flow.explorer('cimetiere', { entree: 'caveau' });
   }

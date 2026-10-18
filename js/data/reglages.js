@@ -601,6 +601,10 @@ export const REGLAGES = {
       FATIGUE_PAR_MIN: 0.22,    // 8 h de sommeil ≈ +105 fatigue.
       FATIGUE_MAX_POUR_DORMIR: 80, // on ne peut dormir que si fatigue < 80.
       DUREES: [2, 4, 6, 8, 10], // heures proposées.
+      NATUREL_MAX_MIN: 960,     // garde-fou : sommeil haché, réveil après au plus 16 h.
+      ALARME_MIN: 15,
+      BRUIT: { RAYON: 12, PAR_MORT: 0.08, MORTS_MAX: 0.4, ALARME: 0.6, RUEE: 0.65,
+        METEO: { orage: 0.45, mistral: 0.2 }, ABRI_METEO: 0.4, PERTE_GAIN: 0.55, GAIN_MIN: 0.45 },
       RISQUE_H: { base: 0.04, parDanger: 0.1 }, // lieu NON sûr avec des morts vivants dans le niveau : risque/h d'intrusion.
       PIEGE_SONORE: 'reveil',   // piège sonore posé : l'intrusion te réveille (combat « normal », pas « surpris »).
       SUR: ['barricade', 'refuge'], // pièce barricadée / refuge : risque 0.

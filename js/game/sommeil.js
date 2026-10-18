@@ -1,5 +1,5 @@
-// ============ Dormir — choisir combien de temps, où, et à deux ============
-// ouvrirSommeil({ couchage: { type, nom, force } }) : fenêtre de choix (2 h, 4 h, 8 h, jusqu'à l'aube), avec l'état du lieu
+// ============ Dormir — réveil naturel ou alarme de montre digitale, seul ou à deux ============
+// ouvrirSommeil({ couchage: { type, nom, force } }) : réveil naturel et alarme si équipée, avec l'état du lieu
 // (sûr ou non) et le COUCHAGE (par terre, mauvais, moyen, vrai lit : docs/GAMEPLAY.md §5.7) — sans couchage : par terre.
 // Règles (REGLAGES.survie.SOMMEIL) : on ne dort que si la fatigue est < 80 ; impossible si des morts te cherchent ;
 // lieu non sûr (porte ouverte, morts dans le lieu) = risque d'intrusion à chaque heure → réveil en sursaut, combat.
@@ -8,24 +8,30 @@
 // tant que les DEUX dorment (REGLAGES.coop.SOMMEIL_COMMUN) : l'hôte, qui tient l'heure, dort heure par heure et envoie
 // chaque bloc dormi ; l'invité le dort à son tour et répond. Le premier réveillé (plafond du couchage, intrusion, mort,
 // liaison perdue) arrête le sommeil des deux : personne ne compte d'heures que l'autre n'a pas vécues.
-import { G, genrer } from '../core/state.js';
+import { G, genrer, getFlag } from '../core/state.js';
+import { refugeHabite, pieceProtegee } from '../explore/refuge.js';
 import { emit, on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
-import { texteHorloge } from './temps_connu.js';
+import { texteHorloge, heureConnue, momentVague } from './temps_connu.js';
 import { el, fmtDuree } from '../core/util.js';
 import { REGLAGES } from '../data/reglages.js';
 import { dormir, categorieCouchage, commencerRepos, finirRepos } from './survival.js';
 import { icase } from '../carte/catalogue.js';
 import * as flow from './flow.js';
 import { inviter } from '../ui/invitations.js';
+import { aUneAlarme, planNaturel, planSommeil, premierReveil, prochaineAlarme, minutesRepos, bruitSommeil, mortAudible, PHRASES_REVEIL } from './sommeil_regles.js';
+import { meteoCourante } from '../travel/rencontres_voyage.js';
+import { intensiteRuee } from './ruees.js';
+import { ligneLibre, obstaclesSon } from '../explore/physique.js';
+import { CONSTRUCTIONS, tailleConstruction } from '../data/construction.js';
 
 const SO = () => REGLAGES.survie.SOMMEIL;
-// { proposer(h, id), accepter(h, id), refuser(raison, id), envoyer(msg), hote(), pairNom() } branché par js/net/coop.js ;
+// { proposer(plan, id), accepter(plan, id), refuser(raison, id), envoyer(msg), hote(), pairNom() } branché par js/net/coop.js ;
 // débranché (null) quand la partie à deux s'arrête : ce qui était en cours est abandonné
 let coop = null;
 export function brancherCoopSommeil(c) { if (!c) abandonnerCommun(); coop = c; }
 let enCours = false;
-let propose = null;        // ma proposition en attente : { id, heures, couchage, t }
+let propose = null;        // ma proposition en attente : { id, plan: { alarme, regleePar }, couchage, t }
 let invitee = null;        // le bandeau d'invitation affiché : { id, repondu, b }
 const ATTENTE_ACCORD_MS = 5000, ATTENTE_BLOC_MS = 8000;   // au-delà, l'autre ne répond plus : on se réveille
 let suivi = null;          // sommeil à deux en cours : { file, attente, fin, annule, sid }
@@ -47,11 +53,13 @@ async function situation() {
   const V = vue.etatDebug();
   if (!V || V.arene) return { ok: false, raison: flow.tempsCourant() === 'exploration' ? 'Pas ici.' : 'Il faut être à l’abri, dans un lieu, pour dormir.' };
   const j = V.j, E = V.E;
+  if (alarmeProche(V)) return { ok: false, raison: 'Impossible de dormir avec cette alarme qui hurle tout près.', V };
   const chasse = V.zListe.some(z => z.etage === j.etage && (z.etat === 'chasse' || (z.etat === 'alerte' && z.alerte > 0.4)));
   if (chasse) return { ok: false, raison: 'Impossible : des morts te cherchent.' };
   const ij = icase(E, j.x, j.y), pid = ij >= 0 ? E.piece[ij] : -1;
   const P = pid >= 0 ? V.niveau.pieces[pid] : null;
-  let sur = !!(V.L && V.L.refuge);
+  // un refuge habité (js/explore/refuge.js) protège ses pièces sansMorts — pas la montée dehors ; au siège, il ne protège plus
+  let sur = !!(V.L && V.L.refuge) || (refugeHabite(V.niveau, getFlag) && pieceProtegee(V.niveau, { etage: j.etage, x: j.x, y: j.y }));
   let raisonRisque = '';
   if (!sur && P && !P.exterieur) {
     // toutes les portes qui donnent sur la pièce sont fermées ?
@@ -81,113 +89,180 @@ function texteCouchage(C, avecSac) {
 }
 const ICI = { sol: 'par terre', mauvais: 'sur un mauvais couchage', moyen: '', correct: 'dans un vrai lit' };
 
+// L'invité n'a pas ouvert la fenêtre : chercher le couchage réellement à sa portée, sans traverser un mur.
+function couchageIci(V) {
+  const p = G.player;
+  if (!V) return { categorie: categorieCouchage(null, null, p), nom: null };
+  const j = V.j, E = V.E, opaque = V.canal.grilles?.(E.id).opaque || E.opaque;
+  const candidats = [];
+  for (const m of V.niveau.meubles) {
+    if (m.etage !== j.etage || V.retires?.has(m.cle)) continue;
+    if (!SO().COUCHAGES[m.type] && !m.rendu?.couchage) continue;
+    candidats.push({ type: m.type, force: m.rendu?.couchage, nom: m.nom, x: m.x0, y: m.y0, w: m.x1 + 1 - m.x0, h: m.y1 + 1 - m.y0 });
+  }
+  for (const c of V.snap?.constructions || []) {
+    if (c.etage !== j.etage || c.pv <= 0 || !SO().COUCHAGES[c.type]) continue;
+    const [w, h] = tailleConstruction(c.type, c.rot);
+    candidats.push({ ...c, w, h, nom: CONSTRUCTIONS[c.type]?.nom });
+  }
+  let meilleur = null, distance = 1.5;
+  for (const m of candidats) {
+    const x = Math.max(m.x + 0.05, Math.min(j.x, m.x + m.w - 0.05));
+    const y = Math.max(m.y + 0.05, Math.min(j.y, m.y + m.h - 0.05));
+    const d = Math.hypot(j.x - x, j.y - y);
+    if (d <= distance && ligneLibre(E.w, E.h, opaque, j.x, j.y, x, y)) { meilleur = m; distance = d; }
+  }
+  return { categorie: categorieCouchage(meilleur?.type, meilleur?.force, p), nom: meilleur?.nom || null };
+}
+
+function alarmeProche(V) {
+  return !!V && (V.snap?.alarmes || []).some(a => a.reste > 0 && a.etage === V.j.etage && Math.hypot(a.x - V.j.x, a.y - V.j.y) <= SO().BRUIT.RAYON * 2);
+}
+
+// ---------- Ambiance réellement audible depuis le couchage ----------
+function ambianceSommeil(sit) {
+  const V = sit.V;
+  if (!V) return bruitSommeil();
+  const j = V.j, R = SO().BRUIT.RAYON;
+  const i = icase(V.E, j.x, j.y), piece = i >= 0 ? V.niveau.pieces[V.E.piece[i]] : null;
+  const abrite = !!piece && !piece.exterieur;
+  const bloque = V.canal.grilles?.(V.E.id).bloque || V.E.bloque;
+  const morts = (V.zListe || []).filter(z => z.etage === j.etage && mortAudible(z) && Math.hypot(z.x-j.x, z.y-j.y) <= R)
+    .reduce((n, z) => { const o = obstaclesSon(V.E, bloque, j.x, j.y, z.x, z.y, {}); return n + Math.pow(0.25, o.murs) * Math.pow(0.5, o.portes); }, 0);
+  return bruitSommeil({ morts: morts >= 0.1 ? morts : 0, alarme: alarmeProche(V),
+    ruee: intensiteRuee(V.lieuId) > 0, meteo: meteoCourante(), abrite });
+}
+const heureAlarme = t => `${String(Math.floor(t % 1440 / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+function texteProjet(plan) {
+  if (plan.alarme == null) return 'jusqu’au réveil naturel';
+  return heureConnue() ? `avec une alarme à ${heureAlarme(plan.alarme)}` : 'jusqu’à ce que la montre de ton coéquipier sonne';
+}
+
 // ---------- La fenêtre ----------
 let fen = null;
 export async function ouvrirSommeil({ couchage = null } = {}) {
   if (enCours || fen || !G) return;
-  const p = G.player;
-  const sit = await situation();
-  const type = couchage && couchage.type, force = couchage && couchage.force;
-  const sansSac = force || (type && REGLAGES.survie.SOMMEIL.COUCHAGES[type]) || 'sol';
-  const C = { categorie: categorieCouchage(type, force), nom: (couchage && couchage.nom) || null };
+  const g = G, sit = await situation();
+  if (G !== g || fen || enCours) return;
+  const p = g.player, type = couchage?.type, force = couchage?.force;
+  const sansSac = force || (type && SO().COUCHAGES[type]) || 'sol';
+  const C = couchage ? { categorie: categorieCouchage(type, force), nom: couchage.nom || null } : couchageIci(sit.V);
   const avecSac = C.categorie === 'moyen' && (sansSac === 'sol' || sansSac === 'mauvais');
   const fermer = () => { if (fen) { fen.remove(); fen = null; } };
-  fen = el('div', { class: 'som-fond', onclick: (e) => { if (e.target === fen) fermer(); } });
-  const boite = el('div', { class: 'som-boite', role: 'dialog', 'aria-label': 'Dormir' });
+  fen = el('div', { class: 'som-fond', onclick: e => { if (e.target === fen) fermer(); } });
+  const boite = el('div', { class: 'som-boite', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Dormir' });
   fen.append(boite);
-  boite.append(el('h3', {}, C.nom ? `Dormir : ${C.nom}` : 'Dormir'));
-  const fat = Math.round(p.fatigue ?? 100);
-  boite.append(el('p', { class: 'som-etat' }, `Fatigue : ${fat}/100 ${fat >= 80 ? '— tu n’as pas sommeil' : fat < 25 ? '— tu tombes de sommeil' : ''}`));
-  boite.append(el('p', { class: 'som-couchage som-' + C.categorie }, genrer(texteCouchage(C, avecSac))));
-  if (!sit.ok) boite.append(el('p', { class: 'som-alerte' }, sit.raison));
-  else boite.append(el('p', { class: sit.sur ? 'som-sur' : 'som-alerte' }, sit.sur ? 'Lieu sûr : portes fermées, rien ici.' : `Lieu exposé (${sit.raisonRisque || 'des morts rôdent'}) : tu risques d’être {surpris|surprise}. Ferme les portes, ou barricade-toi.`.replace('{surpris|surprise}', p.genre === 'f' ? 'surprise' : 'surpris')));
-  if (G.mode !== 'solo') boite.append(el('p', { class: 'som-coop' }, `À deux, vous dormez ensemble : ${coop ? coop.pairNom() : 'ton coéquipier'} doit accepter.`));
-  // Jusqu'au prochain lever du jour, à la minute près (pile à l'heure du jour : le lendemain, jamais une durée nulle).
-  const minAube = ((REGLAGES.temps.HEURES.JOUR * 60 - clock.minutes() % 1440) % 1440 + 1440) % 1440 || 1440;
-  const choix = el('div', { class: 'som-choix' });
+  const fat = Math.round(p.fatigue ?? 100), ambiance = ambianceSommeil(sit);
+  boite.append(el('h3', {}, C.nom ? `Dormir : ${C.nom}` : 'Dormir'),
+    el('p', { class: 'som-etat' }, fat >= SO().FATIGUE_MAX_POUR_DORMIR ? 'Tu n’as pas sommeil.' : fat < 25 ? 'Tu tombes de sommeil.' : 'Tu as besoin de dormir.'),
+    el('p', { class: 'som-couchage som-' + C.categorie }, genrer(texteCouchage(C, avecSac))));
+  boite.append(el('p', { class: !sit.ok || !sit.sur ? 'som-alerte' : 'som-sur' }, !sit.ok ? sit.raison : sit.sur
+    ? 'Tu es à l’abri.' : `Le lieu est exposé (${sit.raisonRisque || 'des morts rôdent'}). Ferme les portes ou barricade-toi.`));
+  boite.append(el('p', {}, ambiance.sources.length ? `Tu entends ${ambiance.sources.join(' et ')}. Ton sommeil risque d’être haché.` : 'Les alentours sont calmes.'));
+  boite.append(el('p', {}, 'Sans alarme, tu dors jusqu’à ne plus pouvoir récupérer sur ce couchage.'));
+  if (G.mode !== 'solo') boite.append(el('p', { class: 'som-coop' }, 'Vous devez accepter de dormir ensemble. Le premier réveillé réveille l’autre.'));
   const peut = sit.ok && fat < SO().FATIGUE_MAX_POUR_DORMIR;
-  for (const [lab, hh] of [['2 h', 2], ['4 h', 4], ['8 h', 8], [`Jusqu’au jour (${fmtDuree(minAube)})`, minAube / 60]]) {
-    choix.append(el('button', { class: 'btn', type: 'button', disabled: peut ? null : true, onclick: () => { fermer(); demander(hh, sit, C.categorie); } }, lab));
-  }
-  boite.append(choix, el('button', { class: 'btn som-annuler', type: 'button', onclick: fermer }, 'Annuler'));
+  const lancer = async plan => {
+    if (G !== g) { fermer(); return; }
+    if (plan.alarme != null && !aUneAlarme(p)) { erreur.textContent = 'Enfile ta montre digitale pour régler une alarme.'; return; }
+    const frais = await situation();
+    if (G !== g || enCours) return;
+    if (!frais.ok) { erreur.textContent = frais.raison; return; }
+    if (p.fatigue >= SO().FATIGUE_MAX_POUR_DORMIR) { erreur.textContent = 'Tu n’as plus sommeil.'; return; }
+    fermer(); demander(plan, frais, C.categorie);
+  };
+  const erreur = el('p', { class: 'som-alerte', role: 'status' });
+  const choix = el('div', { class: 'som-choix som-naturel' }, el('button', { class: 'btn', type: 'button', disabled: peut ? null : true,
+    onclick: () => lancer(planNaturel()) }, 'Dormir jusqu’au réveil'));
+  boite.append(choix);
+  if (aUneAlarme(p)) {
+    const saisie = el('select', { id: 'som-alarme', 'aria-label': 'Heure de l’alarme' });
+    for (let t = 0; t < 1440; t += 15) saisie.append(el('option', { value: heureAlarme(t) }, heureAlarme(t)));
+    saisie.value = '07:00';
+    const apercu = el('p', { class: 'som-etat' });
+    const maj = () => { const t = prochaineAlarme(saisie.value, clock.minutes()); apercu.textContent = t == null ? 'Choisis une alarme dans au moins 15 minutes.' : `La montre sonnera à ${saisie.value}, dans ${fmtDuree(t - clock.minutes())}.`; };
+    saisie.addEventListener('change', maj); maj();
+    const bouton = el('button', { class: 'btn', type: 'button', disabled: peut ? null : true, onclick: () => {
+      const t = prochaineAlarme(saisie.value, clock.minutes());
+      if (t == null) { erreur.textContent = 'Choisis une alarme dans au moins 15 minutes.'; return; }
+      lancer({ alarme: t, regleePar: nouvelId() });
+    } }, 'Dormir avec l’alarme');
+    boite.append(el('div', { class: 'som-reglage' }, el('label', { for: 'som-alarme' }, 'Alarme de ta montre'), saisie, apercu, bouton));
+  } else boite.append(el('p', { class: 'som-etat' }, 'Seule une montre digitale portée permet de régler une alarme.'));
+  boite.append(erreur, el('button', { class: 'btn som-annuler', type: 'button', onclick: fermer }, 'Annuler'));
   document.body.append(fen);
 }
 
-// ---------- Solo : on dort. Co-op : on propose. ----------
-function demander(heures, sit, couchage) {
+// Le plan commun transporte une minute absolue (ou null), jamais Infinity ni une durée libre sans montre.
+function demander(plan, sit, couchage) {
+  plan = planSommeil(plan);
+  if (plan.alarme != null && !aUneAlarme(G.player)) return;
+  const pl = auPlafond(couchage);
+  if (pl) { emit('toast', { texte: genrer(pl.raison), type: 'info' }); return; }
   if (G.mode !== 'solo' && coop) {
-    const pl = auPlafond(couchage);
-    if (pl) { emit('toast', { texte: genrer(pl.raison), type: 'info' }); return; }
-    propose = { id: nouvelId(), heures, couchage, t: performance.now() };
-    coop.proposer(heures, propose.id);
-    emit('toast', { texte: `Tu proposes de dormir ${fmtDuree(heures * 60)}. On attend ${coop.pairNom()}.` });
-    return;
-  }
-  executer(heures, sit, couchage);
+    propose = { id: nouvelId(), plan, couchage, t: performance.now() };
+    coop.proposer(plan, propose.id);
+    emit('toast', { texte: `Tu proposes de dormir ${texteProjet(plan)}. On attend ${coop.pairNom()}.` });
+  } else executer(plan, sit, couchage, plan.alarme != null);
 }
-// Le coéquipier propose : bandeau « Dormir aussi ». Sans « oui », il le sait (refus, impossible, pas sommeil, pas de réponse).
-// Une proposition plus récente remplace l'ancienne ; chaque réponse porte l'identifiant de SA proposition.
-export function invitation(nom, heures, id) {
-  const non = (raison) => coop && coop.refuser(raison, id);
+export function invitation(nom, offre, id) {
+  const plan = planSommeil(offre), non = raison => coop && coop.refuser(raison, id);
   if (enCours) { non('impossible'); return; }
-  if (propose && performance.now() - propose.t < 120000) { const h = Math.min(heures, propose.heures); coop && coop.accepter(h, id); lancerApresAccord(h); return; }
+  if (propose && performance.now() - propose.t < 120000) {
+    const commun = premierReveil(plan, propose.plan);
+    coop && coop.accepter(commun, id); lancerApresAccord(commun); return;
+  }
   if (invitee) { invitee.repondu = true; invitee.h.retirer(); }
-  const inv = { id, repondu: false, b: null, h: null };
+  const inv = { id, repondu: false, h: null };
   const repondre = () => { if (inv.repondu) return false; inv.repondu = true; inv.h.retirer(); if (invitee === inv) invitee = null; return true; };
-  inv.b = el('div', { class: 'som-invite' }, el('span', {}, `${nom} veut dormir ${fmtDuree(heures * 60)}.`),
+  const b = el('div', { class: 'som-invite' }, el('span', {}, `${nom} propose de dormir ${texteProjet(plan)}.`),
     el('button', { class: 'btn', type: 'button', onclick: async () => {
       if (!repondre()) return;
-      const sit = await situation();
+      const g = G, c = coop, sit = await situation();
+      if (G !== g || coop !== c || !c) return;
       if (!sit.ok) { emit('toast', { texte: sit.raison, type: 'alerte' }); non('impossible'); return; }
-      const pl = auPlafond('sol');
-      if (pl) { emit('toast', { texte: genrer(pl.raison), type: 'info' }); non('repose'); return; }
-      coop && coop.accepter(heures, id); lancerApresAccord(heures);
-    } }, 'Dormir aussi'),
-    el('button', { class: 'btn', type: 'button', onclick: () => { if (repondre()) non('refus'); } }, 'Pas maintenant'));
+      const couchage = couchageIci(sit.V);
+      const pl = auPlafond(couchage.categorie);
+      if (pl || G.player.fatigue >= SO().FATIGUE_MAX_POUR_DORMIR) { non('repose'); return; }
+      c.accepter(plan, id); lancerApresAccord(plan, couchage.categorie);
+    } }, 'Dormir aussi'), el('button', { class: 'btn', type: 'button', onclick: () => { if (repondre()) non('refus'); } }, 'Pas maintenant'));
   invitee = inv;
-  // affichée quand on peut répondre (pas sous une scène) ; 30 s comptées à l'écran seulement (js/ui/invitations.js)
-  inv.h = inviter('sommeil', { element: inv.b, dureeMs: 30000,
-    expire: () => { if (repondre()) non('sans_reponse'); },
-    abandon: () => { if (repondre()) non('sans_reponse'); },
+  inv.h = inviter('sommeil', { element: b, dureeMs: 30000,
+    expire: () => { if (repondre()) non('sans_reponse'); }, abandon: () => { if (repondre()) non('sans_reponse'); },
     masquee: () => coop && coop.envoyer({ t: 'sommeil_attente', id }),
     annule: () => { inv.repondu = true; if (invitee === inv) invitee = null; } });
 }
-// Mon coéquipier lit une scène : ma proposition l'attend (il la verra à la fin).
 export function attenteRecue(nom, id) {
   if (!propose || (id && propose.id !== id)) return;
-  propose.t = performance.now();      // l'attente n'est pas un silence : la proposition reste valable
-  emit('toast', { texte: `${nom} lit une scène : ta proposition l’attend.` });
+  propose.t = performance.now(); emit('toast', { texte: `${nom} lit une scène : ta proposition l’attend.` });
 }
-// Ma proposition n'est pas suivie : on ne dort pas, et on le dit (sinon on attendrait pour rien). Une réponse à une
-// ancienne proposition ne touche pas la nouvelle.
 export function refusRecu(nom, raison, id) {
   if (!propose || (id && propose.id !== id)) return;
   propose = null;
-  const t = raison === 'impossible' ? `${nom} ne peut pas dormir pour l’instant : vous restez éveillés.`
-    : raison === 'repose' ? `${nom} n’a pas sommeil : vous restez éveillés.`
-    : raison === 'sans_reponse' ? `${nom} n’a pas répondu : vous restez éveillés.`
-    : `${nom} ne veut pas dormir maintenant.`;
-  emit('toast', { texte: t });
+  emit('toast', { texte: raison === 'impossible' ? `${nom} ne peut pas dormir pour l’instant.` : raison === 'repose' ? `${nom} n’a pas sommeil.`
+    : raison === 'sans_reponse' ? `${nom} n’a pas répondu : vous restez éveillés.` : `${nom} ne veut pas dormir maintenant.` });
 }
-// « Dormir aussi » reçu : seulement pour MA proposition en cours (pas une ancienne, pas si l'on dort déjà).
-export function accordRecu(heures, id) {
+export function accordRecu(plan, id) {
   if (enCours || !propose || (id && propose.id !== id)) return;
-  lancerApresAccord(heures);
+  lancerApresAccord(plan);
 }
-export async function lancerApresAccord(heures) {
-  const couchage = (propose && propose.couchage) || 'sol';   // chacun récupère selon son propre couchage
+export async function lancerApresAccord(offre, couchageInvite = null) {
+  if (invitee) { invitee.repondu = true; invitee.h.retirer(); invitee = null; }
+  const plan = planSommeil(offre);
+  let couchage = propose?.couchage || couchageInvite;
+  const locale = plan.alarme != null && propose?.plan.regleePar === plan.regleePar;
   propose = null;
-  // à deux, on écoute l'autre dès l'accord (sa fin ou son premier bloc peuvent arriver avant la fin de ce qui suit) ;
-  // l'invité ne suit plus l'heure diffusée : il n'avancera que des blocs que l'hôte a dormis
   if (G && G.mode !== 'solo' && coop && !enCours && !suivi) { suivi = nouveauSuivi(); if (!coop.hote()) clock.suspendreDistant(true); }
-  const s = suivi;
-  const sit = await situation();
-  if (s && (s.annule || s !== suivi)) return;       // la partie à deux s'est arrêtée entre-temps
-  executer(heures, sit.ok ? sit : { sur: false, mortsPresents: true, danger: 0.3 }, couchage);
+  const s = suivi, g = G, sit = await situation();
+  if (G !== g || (s && (s.annule || s !== suivi))) return;
+  couchage ||= couchageIci(sit.V).categorie;
+  if (!sit.ok || (locale && !aUneAlarme(G.player))) {
+    coop?.envoyer({ t: 'sommeil_fin' }); abandonnerCommun();
+    emit('toast', { texte: !sit.ok ? sit.raison : 'Ta montre digitale n’est plus au poignet : le sommeil est annulé.' }); return;
+  }
+  executer(plan, sit, couchage, locale);
 }
 const nouveauSuivi = () => ({ file: [], attente: null, fin: false, annule: false, sid: null });
-// Messages du sommeil à deux (routés par js/net/coop.js) : bloc dormi par l'hôte, réponse de l'invité, fin.
-// Chaque sommeil porte l'identifiant donné par l'hôte (sid) : un message d'un sommeil précédent est ignoré.
 export function recuSommeil(m) {
   const s = suivi; if (!s) return;
   if (m.t === 'sommeil_ack') { if (!s.sid || m.sid !== s.sid) return; }
@@ -196,103 +271,118 @@ export function recuSommeil(m) {
   if (m.t === 'sommeil_fin' || (m.t === 'sommeil_ack' && m.fin)) s.fin = true;
   if (s.attente) { const f = s.attente; s.attente = null; f(); }
 }
-// Le prochain message de ce sommeil (ou null au-delà de ms, ou s'il est abandonné).
 function prochain(s, ms) {
   if (!s || s.annule) return Promise.resolve(null);
   if (s.file.length) return Promise.resolve(s.file.shift());
-  return new Promise((ok) => {
+  return new Promise(ok => {
     const t = setTimeout(() => { s.attente = null; ok(null); }, ms);
     s.attente = () => { clearTimeout(t); ok(!s.annule && s.file.length ? s.file.shift() : null); };
   });
 }
 
-// Le sommeil, heure par heure, écran noir qui laisse filer l'horloge.
-async function executer(heures, sit, couchage = 'sol') {
+async function executer(plan, sit, couchage = 'sol', alarmeLocale = false) {
   if (enCours || !G) return;
-  // la partie et la liaison de CE sommeil : si l'une change (on quitte, on rejoint une autre partie), il s'arrête sans rien toucher
   const g = G, c = coop, aDeux = g.mode !== 'solo' && !!c, hote = aDeux && c.hote();
   if (aDeux && !suivi) { suivi = nouveauSuivi(); if (!hote) clock.suspendreDistant(true); }
-  const s = aDeux ? suivi : null;
-  const vivant = () => G === g && !(s && s.annule);
-  const env = (m) => { if (vivant()) c.envoyer(m); };
+  const s = aDeux ? suivi : null, vivant = () => G === g && !(s && s.annule);
+  const env = m => { if (vivant() && c) c.envoyer(m); };
   const liberer = () => { if (s && suivi === s) { suivi = null; if (!hote) clock.suspendreDistant(false); } };
-  // déjà assez reposé pour ce couchage : on ne s'endort pas (l'horloge ne tourne pas pour rien), et l'autre se réveille
   const pl = auPlafond(couchage);
-  if (pl) { emit('toast', { texte: genrer(pl.raison), type: 'info' }); if (aDeux) env({ t: 'sommeil_fin' }); liberer(); return; }
+  if (pl || (alarmeLocale && !aUneAlarme(g.player))) { if (aDeux) env({ t: 'sommeil_fin' }); liberer(); return; }
   enCours = true;
   if (hote) s.sid = nouvelId();
-  const V = sit.V || null;
+  const V = sit.V || null, vitesse = clock.getVitesse();
+  clock.setVitesse(0); // chaque minute du sommeil vient des blocs, pas du timer entre deux réponses réseau.
   if (V) { V.occupe = true; V.entrees.actif(false); V.canal.majJoueur({ allure: 'immobile' }); }
   const voile = el('div', { class: 'som-voile' }, el('div', { class: 'som-t' }, 'Tu dors…'), el('div', { class: 'som-h' }));
-  document.body.append(voile);
-  requestAnimationFrame(() => voile.classList.add('on'));
-  const majH = () => { voile.lastChild.textContent = texteHorloge(); };
-  let interrompu = false, dormi = 0, plafond = false, autre = null, abandon = false;   // autre : 'debout' (l'autre s'est levé) | 'muet'
-  const opts = { force: true, silencieux: true, sur: sit.sur, danger: sit.danger, mortsPresents: sit.mortsPresents, couchage, sansCourbatures: true };
+  document.body.append(voile); requestAnimationFrame(() => voile.classList.add('on'));
+  let dormi = 0, interrompu = false, plafond = false, autre = null, abandon = false, alarme = false, bruitReveil = false;
+  const sources = new Set();
+  const restant = () => {
+    if (alarmeProche(V)) { bruitReveil = true; return 0; }
+    return Math.max(0, Math.min(SO().NATUREL_MAX_MIN - dormi, minutesRepos(g.player, couchage, ambianceSommeil(sit).niveau),
+      plan.alarme == null ? Infinity : plan.alarme - clock.minutes()));
+  };
+  const dormirBloc = n => {
+    const b = ambianceSommeil(sit); b.sources.forEach(x => sources.add(x));
+    const r = dormir(n / 60, { force: true, silencieux: true, sur: sit.sur, danger: sit.danger,
+      mortsPresents: sit.mortsPresents, couchage, sansCourbatures: true, bruit: b.niveau, respecterBloc: true });
+    dormi += r.dormi || 0; interrompu = !!r.interrompu; plafond = !!r.plafond;
+    alarme = plan.alarme != null && clock.minutes() >= plan.alarme;
+    voile.lastChild.textContent = texteHorloge();
+    return r;
+  };
   try {
     if (aDeux && !hote) {
-      // INVITÉ : il dort les blocs que l'hôte a dormis, et répond après chacun (fin = il se réveille)
+      // Prêt envoyé après avoir reçu l'identifiant hôte : aucun message d'un ancien sommeil n'est accepté.
       for (;;) {
         const m = await prochain(s, ATTENTE_BLOC_MS);
         if (!vivant()) { abandon = true; break; }
         if (!m) { autre = 'muet'; break; }
-        if (m.t === 'sommeil_fin') { if (dormi < Math.round(heures * 60)) autre = 'debout'; break; }   // avant la fin convenue : l'autre s'est levé
-        if (m.t !== 'sommeil_bloc' || g.player.mort) continue;
-        const r = dormir((m.n || 0) / 60, opts);
-        if (!r.ok) { plafond = !!r.plafond; env({ t: 'sommeil_ack', fin: true, sid: s.sid }); break; }
-        dormi += r.dormi || 0;
-        majH();
-        env({ t: 'sommeil_ack', fin: !!(r.interrompu || r.plafond || g.player.mort), sid: s.sid });
-        if (r.interrompu) { interrompu = true; break; }
-        if (r.plafond) { plafond = true; break; }
+        if (m.t === 'sommeil_fin') { autre = 'debout'; break; }
+        if (m.t === 'sommeil_debut') {
+          // L'accord peut arriver entre deux diffusions d'horloge. Rattraper ce temps éveillé avant le premier bloc.
+          if (Number.isFinite(m.minutes) && m.minutes > clock.minutes()) clock.avancer(m.minutes - clock.minutes());
+          env({ t: 'sommeil_ack', sid: s.sid, reste: restant(), fin: !restant() }); continue;
+        }
+        if (m.t !== 'sommeil_bloc' || !Number.isFinite(m.n) || m.n <= 0 || m.n > 60) continue;
+        dormirBloc(m.n);
+        const fin = interrompu || plafond || g.player.mort || !restant();
+        env({ t: 'sommeil_ack', sid: s.sid, fin: !!fin, reste: restant() });
+        if (fin) break;
       }
     } else {
-      await new Promise(r => setTimeout(r, 700));
-      // SOLO / HÔTE : heure par heure, le dernier bloc seulement ce qui reste (jusqu'au jour : 7 h 15 = 7 blocs + 15 min)
-      for (let reste = Math.round(heures * 60); reste > 0; reste -= 60) {
-        if (!vivant()) { abandon = true; break; }
-        if (g.player.mort) break;
+      let restePair = Infinity;
+      if (hote) {
+        env({ t: 'sommeil_debut', sid: s.sid, minutes: clock.minutes() });
+        const m = await prochain(s, ATTENTE_ACCORD_MS);
+        if (!vivant()) abandon = true;
+        else if (!m) autre = 'muet';
+        else if (s.fin || !Number.isFinite(m.reste)) autre = 'debout';
+        else restePair = Math.max(0, m.reste);
+      }
+      while (vivant() && !abandon && !autre && !g.player.mort && restant() > 0) {
         if (hote && s.fin) { autre = 'debout'; break; }
-        const r = dormir(Math.min(60, reste) / 60, opts);
-        if (!r.ok) { plafond = !!r.plafond; break; }
-        dormi += r.dormi || 0;
-        majH();
-        if (hote) env({ t: 'sommeil_bloc', n: r.dormi || 0, sid: s.sid });
-        if (r.interrompu) { interrompu = true; break; }
-        if (r.plafond) { plafond = true; break; }
+        const n = Math.min(60, restant(), restePair);
+        if (n <= 0) { autre = 'debout'; break; }
+        const r = dormirBloc(n);
+        if (!r.ok) break;
         if (hote) {
-          // l'invité a-t-il dormi ce bloc, et dort-il encore ?
+          env({ t: 'sommeil_bloc', n: r.dormi, sid: s.sid });
           const m = await prochain(s, ATTENTE_ACCORD_MS);
           if (!vivant()) { abandon = true; break; }
           if (!m) { autre = 'muet'; break; }
           if (s.fin) { autre = 'debout'; break; }
+          if (!Number.isFinite(m.reste)) { autre = 'muet'; break; }
+          restePair = Math.max(0, m.reste);
         }
-        await new Promise(r2 => setTimeout(r2, 420));
+        if (interrompu || plafond || !restant()) break;
+        await new Promise(r => setTimeout(r, 280));
       }
+      if (!vivant()) abandon = true;
     }
   } finally {
     if (hote) env({ t: 'sommeil_fin', sid: s.sid });
-    liberer();
+    liberer(); enCours = false; voile.classList.remove('on'); setTimeout(() => voile.remove(), 500);
+    if (G === g) clock.setVitesse(vitesse);
   }
-  voile.classList.remove('on');
-  setTimeout(() => voile.remove(), 500);
-  enCours = false;
-  if (abandon || G !== g) return;      // partie quittée pendant le sommeil : rien d'autre à faire ni à dire
+  if (G === g && V && flow.tempsCourant() === 'exploration') { V.occupe = false; if (!V.enPause) V.entrees.actif(true); }
+  if (abandon || G !== g) return;
   const cb = finSommeil(couchage, dormi);
-  if (V && flow.tempsCourant() === 'exploration') { V.occupe = false; if (!V.enPause) V.entrees.actif(true); }
-  const duree = fmtDuree(dormi), f = g.player.fatigue, SE = REGLAGES.survie.SEUILS.fatigue;
-  const etat = f < SE.grave ? 'épuisé{|e}' : f < SE.gene ? 'fatigué{|e}' : f < SE.gene + 20 ? 'las{|se}' : null;
-  const nom = aDeux ? c.pairNom() : '';
-  let texte;
-  if (interrompu) texte = 'Tu te réveilles en sursaut.';
-  else if (autre === 'muet' && !dormi) texte = `Plus de nouvelles de ${nom} : vous restez éveillés.`;
-  else if (autre === 'debout' && !dormi) texte = `${nom} ne dort pas : vous restez éveillés.`;
-  else if (plafond && couchage === 'sol' && dormi < 60) texte = 'Le sol est trop dur : impossible de te rendormir.';
-  else if (!dormi) texte = 'Tu n’arrives pas à trouver le sommeil.';
-  else if (etat) texte = `Tu as dormi ${duree}${ICI[couchage] ? ' ' + ICI[couchage] : ''}. Tu te réveilles encore ${etat}${cb ? ', et {courbaturé|courbaturée}' : ''}.`;
-  else texte = `Tu as dormi ${duree}${ICI[couchage] ? ' ' + ICI[couchage] : ''}. ${f < 80 ? 'Tu te sens un peu mieux' : 'Tu te sens {reposé|reposée}'}${cb ? ', mais {courbaturé|courbaturée}' : ''}.`;
-  if (dormi && autre === 'debout') texte += ` ${nom} est debout : tu te lèves aussi.`;
-  else if (dormi && autre === 'muet') texte += ` Plus de nouvelles de ${nom} : tu te lèves.`;
+  const duree = heureConnue() ? fmtDuree(dormi) : dormi < 60 ? 'un peu' : dormi < 240 ? 'quelques heures' : 'longtemps';
+  let texte = !dormi ? 'Tu n’arrives pas à trouver le sommeil.' : `Tu as dormi ${duree}${ICI[couchage] ? ' ' + ICI[couchage] : ''}.`;
+  if (bruitReveil) texte += ' Une alarme hurle tout près et t’empêche de dormir.';
+  else if (interrompu) texte += ' Tu te réveilles en sursaut.';
+  else if (alarme) texte += alarmeLocale ? ' Ta montre sonne.' : ' La montre de ton coéquipier sonne.';
+  else if (dormi && g.player.fatigue < 80) texte += plafond ? ' Ce couchage ne te permet pas de récupérer davantage : tu te réveilles encore las{|se}.' : ' Tu te réveilles encore {fatigué|fatiguée}.';
+  else if (dormi) texte += ' Tu te sens {reposé|reposée}.';
+  if (cb) texte += ' Tu as des courbatures.';
+  if (sources.size && dormi) texte += ` Tu entendais ${[...sources].join(' et ')} : il t’a fallu plus longtemps pour récupérer.`;
+  if (autre === 'muet') texte += ` Plus de nouvelles de ${c.pairNom()} : tu te lèves.`;
+  else if (autre === 'debout' && !alarme && !plafond) texte += ` ${c.pairNom()} est debout : tu te lèves aussi.`;
+  if (!heureConnue() && dormi) texte += ` ${PHRASES_REVEIL[momentVague()]}`;
+  // Un bip local discret, seulement si l'alarme a effectivement atteint son heure.
+  if (alarme && alarmeLocale && V) V.canal.bruit?.({ etage: V.j.etage, x: V.j.x, y: V.j.y, rayon: 3 });
   emit('toast', { texte: genrer(texte), type: interrompu ? 'mauvais' : 'info' });
 }
 

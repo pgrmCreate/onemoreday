@@ -42,8 +42,8 @@ function dessiner(racine) {
   };
   cats.append(catBtn(null, 'Tout', 'tout', totF));
   for (const [id, nom] of Object.entries(craft.CATEGORIES_RECETTES)) cats.append(catBtn(id, nom, ICONE_CATEGORIE_RECETTE[id] || 'fabrication', comptes[id] && comptes[id].faisables));
-  // la construction a son propre menu (rail, ou bouton marteau du HUD) : ce raccourci y mène
-  cats.append(el('button', { type: 'button', class: 'fa-cat fa-cat-lien', title: 'Construire', onclick: () => apiPanneau && apiPanneau.ouvrir('construction') }, icoEl('marteau'), el('span', {}, 'Construire'), icoEl('chevron')));
+  // la construction a son propre menu : ce raccourci reprend les briques du HUD
+  cats.append(el('button', { type: 'button', class: 'fa-cat fa-cat-lien', title: 'Construire', onclick: () => apiPanneau && apiPanneau.ouvrir('construction') }, icoEl('construire'), el('span', {}, 'Construire'), icoEl('chevron')));
   if (etat.cat === 'construire') etat.cat = null;
   // Postes disponibles
   const po = craft.postesDisponibles(p);

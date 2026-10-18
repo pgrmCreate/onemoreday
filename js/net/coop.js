@@ -286,7 +286,7 @@ function envoyerMonde() {
 
 const invite = { lieu: null, canal: null, offs: [] };
 const EVTS_RELAIS = ['porte', 'construction', 'meuble', 'bruit', 'hurlement', 'sol', 'conteneur', 'charge', 'zombie', 'voiture', 'ruee',
-  'telegraphe', 'fente', 'attaque', 'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule'];
+  'telegraphe', 'fente', 'attaque', 'blessure', 'saisie', 'martele', 'degage', 'coup', 'rate', 'coup_vide', 'mort_zombie', 'poussee', 'tir', 'bouscule', 'recale'];
 function quitterLieuInvite() {
   invite.offs.forEach(f => f()); invite.offs = [];
   if (invite.canal) { try { invite.canal.fermer(); } catch (e) {} }
@@ -667,7 +667,7 @@ function recuCommun(m) {
     case 'sommeil_go': accordRecu(m.h, m.id); return true;
     case 'sommeil_non': refusRecu(nomPair || 'Ton coéquipier', m.raison, m.id); return true;
     case 'sommeil_attente': attenteRecue(nomPair || 'Ton coéquipier', m.id); return true;   // il lit une scène : ma proposition l'attend
-    case 'sommeil_bloc': case 'sommeil_ack': case 'sommeil_fin': recuSommeil(m); return true;   // sommeil à deux, bloc par bloc
+    case 'sommeil_debut': case 'sommeil_bloc': case 'sommeil_ack': case 'sommeil_fin': recuSommeil(m); return true;   // sommeil à deux, bloc par bloc
     default: return false;
   }
 }

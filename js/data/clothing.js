@@ -387,7 +387,7 @@ export const CLOTHES = {
   },
   montre_digitale: {
     nom: 'Montre digitale', slot: 'poignet', poids: 0.04, volume: 0.05, espace: 0, protection: 0, chaleur: 0, heure: true, date: true,
-    desc: 'Une montre de sport en plastique noir, dont l\'écran gris affiche l\'heure et, en petit, le jour et le mois. Sa pile tiendra des années.',
+    desc: 'Une montre de sport en plastique noir. Elle donne l’heure et la date, et son alarme permet de choisir quand se réveiller. Sa pile tiendra des années.',
   },
 };
 

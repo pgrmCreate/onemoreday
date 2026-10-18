@@ -98,6 +98,7 @@ export function compilerPlan(plan, def = {}) {
   const niv = {
     id: meta.id, nom: meta.nom || meta.id, exterieur: !!meta.exterieur, fin: F,
     typeButin: meta.typeButin || null, pool: meta.pool || null, morts: meta.morts || null, mortsDehorsSeulement: !!meta.mortsDehorsSeulement, planVersion: meta.version || 0, def,
+    refuge: meta.refuge || null,     // refuge habité tant que la condition tient (js/explore/sim.js : tenirRefuge)
     etages: [], etageIdx: {}, pieces: [], meubles: [], meubleParCle: {}, portes: [], porteParCle: {},
     escaliers: [], entrees: {}, sorties: [], marqueurs: {}, spawns: [], pnj: [], sol: [], declencheurs: [],
     avertissements, format: 'couches',
@@ -335,6 +336,9 @@ export function compilerPlan(plan, def = {}) {
         orient: g.orient, marqueur: pd.marqueur || null, nom: pd.nom || null, style: pd.style || null,
         deux: !!(pd.deux || (verrou && verrou.deux)),
         message: pd.message || null,   // dit à l'essai tant qu'elle ne s'ouvre pas (« barrée de l'intérieur… »)
+        // porte d'un refuge habité : { si } — les morts ne la passent pas ; parvis (unités) : on n'ouvre pas du dehors
+        // tant qu'un mort rôde à cette distance ; refus = ce qu'on te répond alors
+        gardee: pd.gardee || null, parvis: pd.parvis || null, refus: pd.refus || null,
       };
       if (p.etat === 'verrouillee' && !p.verrou) p.verrou = { forcer: 'pied_de_biche' };
       niv.portes.push(p); niv.porteParCle[p.cle] = p;

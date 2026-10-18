@@ -5,14 +5,23 @@
 // feu, dans une cour fermée. On y vient pour la radio ; on y reste parce qu'on y est accueilli.
 // Pourquoi ils sont vivants : le rocher, des murs de huit mètres, UNE porte barrée (grille de chantier, palettes), une
 // poterne cadenassée, des guetteurs sur le rempart, des règles (l'ardoise). Tout cela se voit.
-// Taille : 72 × 50, deux étages seulement. La montée (dehors) au sud ; l'enceinte (60 × 33) au-dessus.
+// Taille : 72 × 44, deux étages seulement. La montée (dehors) au sud, courte ; l'enceinte (60 × 33) au-dessus.
+// Version 3 (F03, 17 oct. 2026) : refuge habité tant que le siège n'a pas commencé — grille et poterne GARDÉES (aucun
+// mort ne les passe, même ouvertes ; elles se referment derrière toi), on ne t'ouvre pas tant qu'un mort rôde devant la
+// grille ; camp resserré autour du feu ; montée raccourcie, la cour du lycée derrière sa grille (décor). Les anciennes
+// sauvegardes (version 2) sont migrées : meubles déplacés, objets posés et constructions gardés (js/carte/migrer.js).
 // Boucle : cour → porche → chemin de ronde (Lou) → tour d'angle (radio) → salle des uniformes → salle des armes →
 // salle des gardes (Vidal) → cour.
-// Peuplement : JAMAIS de mort dans le château avant la chute (siege_fait) ; morts du lieu dans la montée seulement.
+// Peuplement : JAMAIS de mort dans le château tant qu'il est habité (avant les sonnailles) ; morts du lieu dans la montée.
+// Au siège (sonnailles_commencees), chacun est à son poste : plus de figurants dans la cour, le château n'est plus un
+// refuge ; après la chute (siege_fait), il est abandonné (scène ch1_depart) et les morts y entrent.
 import { plan } from '../../carte/plan.js';
+import { migrerEtat } from '../../carte/migrer.js';
+import { tailleConstruction } from '../construction.js';
 
-const W = 72, H = 50;
-const VIVANTS = { pasFlag: 'siege_fait' };                        // le camp, tant que le château tient
+const W = 72, H = 44;
+const HABITE = { pasFlag: 'sonnailles_commencees' };
+const VIVANTS = HABITE;                                           // le camp, tant que le château est habité
 const SIEGE = { flag: 'sonnailles_commencees', pasFlag: 'siege_fait' };
 const TOMBE = { flag: 'siege_fait' };
 // quelques silhouettes d'adolescents et d'adultes (couleurs, coiffures)
@@ -27,7 +36,8 @@ const S = {
 };
 
 export default plan({
-  id: 'emperi', nom: 'Château de l’Empéri', exterieur: true, version: 2, typeButin: 'chateau',
+  id: 'emperi', nom: 'Château de l’Empéri', exterieur: true, version: 3, typeButin: 'chateau', refuge: HABITE,
+  migrer: { 2: migrerV2 },
   sansSanitaires: ['La chapelle Sainte-Catherine', 'Le porche', 'La tour d’angle', 'Le dortoir', 'Le réfectoire', 'L’infirmerie'],   // pas de toilettes, et c'est normal : la chapelle, le porche, la tour ; le campement (dortoir, réfectoire, infirmerie) se sert des toilettes du musée, à l'étage (tools/verifier_realisme.mjs)
   pool: ['errant', 'errant', 'rampant', 'hurleur'], morts: { n: [0, 2] }, mortsDehorsSeulement: false,
 }, (p) => {
@@ -45,29 +55,31 @@ export default plan({
   e.objet('feu_camp', 31, 19, { nom: 'le feu de camp' }); e.lumiere('feu', 31.5, 19.5);
   e.objet('fut', 32, 18, { nom: 'la marmite' });
   e.marqueur('vidal', 29, 19);
-  e.objet('table', 22, 15, { w: 3, h: 1, nom: 'la table sur tréteaux' }); e.objet('banc', 22, 16, { w: 3, h: 1 });
-  e.objet('table', 22, 19, { w: 3, h: 1, nom: 'la table sur tréteaux' }); e.objet('banc', 22, 20, { w: 3, h: 1 });
+  e.objet('table', 25, 15, { w: 3, h: 1, nom: 'la table sur tréteaux' }); e.objet('banc', 25, 16, { w: 3, h: 1 });
+  e.objet('table', 25, 20, { w: 3, h: 1, nom: 'la table sur tréteaux' }); e.objet('banc', 25, 21, { w: 3, h: 1 });
   for (const x of [22, 26, 30, 34, 38, 42]) e.objet('pilier', x, cour.y0, { nom: 'une colonne de la galerie' });   // la galerie Renaissance
-  for (const x of [21, 22, 23]) e.objet('barriere', x, 24, { w: 1, h: 1, nom: 'le linge qui sèche', conteneur: false });
-  e.objet('fut', 42, 23, { nom: 'le tonneau d’eau', eau: true }); e.objet('fut', 43, 23, { nom: 'le tonneau d’eau', eau: true });
-  e.marqueur('panneau_regles', 36, 25, { nom: 'l’ardoise des règles' });
+  for (const x of [24, 25, 26]) e.objet('barriere', x, 24, { w: 1, h: 1, nom: 'le linge qui sèche', conteneur: false });
+  e.objet('fut', 36, 24, { nom: 'le tonneau d’eau', eau: true }); e.objet('fut', 37, 24, { nom: 'le tonneau d’eau', eau: true });
+  e.marqueur('panneau_regles', 33, 25, { nom: 'l’ardoise des règles' });
   e.entree('cour', 31, 22);
   e.semer('cendres', 30, 18, 3, 3, 3); e.semer('papiers', 20, 13, 23, 12, 4);
   // le camp : huit figurants
   e.pnj('emp_feu_1', 33, 20, { nom: 'Inès', style: S.doudoune, dir: Math.PI, si: VIVANTS, repliques: ['On fait tourner le feu toute la nuit. Deux heures chacun.', 'Si tu as des piles, Vidal te dira merci. Il ne le dit jamais.'] });
   e.pnj('emp_feu_2', 30, 21, { nom: 'Théo', style: S.sweat_rouge, dir: -Math.PI / 2, si: VIVANTS, repliques: ['Pois chiches ce soir. Et demain. Et après-demain.', 'Le réchaud ? Plus de gaz depuis lundi.'] });
   e.pnj('emp_feu_3', 33, 18, { nom: 'Sami', style: S.parka, dir: Math.PI * 0.8, si: VIVANTS, repliques: ['Tu viens d’où, toi ? Personne ne monte jusqu’ici.', 'Mon frère est en bas, au lycée. Enfin, il était.'] });
-  e.pnj('emp_table_1', 23, 14, { nom: 'Chloé', style: S.sweat_gris, dir: Math.PI / 2, si: VIVANTS, repliques: ['On épluche ce qu’on trouve. Même les orties.', 'Règle numéro trois : on fait bouillir l’eau. Toujours.'] });
-  e.pnj('emp_table_2', 25, 18, { nom: 'Yanis', style: S.pull, dir: Math.PI / 2, si: VIVANTS, repliques: ['Le couteau, tu le rends quand tu as fini.', 'Vidal note tout, même les patates.'] });
-  e.pnj('emp_lecteur', 40, 22, { nom: 'Mathis', style: S.parka, dir: Math.PI, si: VIVANTS, repliques: ['« Le Comte de Monte-Cristo ». J’en suis au tome deux. On a le temps.', 'Chut. Je lis.'] });
-  e.pnj('emp_seau', 37, 14, { nom: 'Léa', style: S.sweat_rouge, dir: -Math.PI / 2, si: VIVANTS, repliques: ['Le puits est dans le jardin, derrière la galerie.', 'Vingt seaux par jour. Je les compte.'] });
-  e.pnj('emp_petit', 21, 23, { nom: 'Enzo', style: S.doudoune, dir: 0, si: VIVANTS, repliques: ['Je suis en sixième. Enfin, j’étais.', 'Tu as vu des chiens, dehors ? J’avais un chien.'] });
+  e.pnj('emp_table_1', 26, 14, { nom: 'Chloé', style: S.sweat_gris, dir: Math.PI / 2, si: VIVANTS, repliques: ['On épluche ce qu’on trouve. Même les orties.', 'Règle numéro trois : on fait bouillir l’eau. Toujours.'] });
+  e.pnj('emp_table_2', 27, 19, { nom: 'Yanis', style: S.pull, dir: Math.PI / 2, si: VIVANTS, repliques: ['Le couteau, tu le rends quand tu as fini.', 'Vidal note tout, même les patates.'] });
+  e.pnj('emp_lecteur', 35, 22, { nom: 'Mathis', style: S.parka, dir: Math.PI, si: VIVANTS, repliques: ['« Le Comte de Monte-Cristo ». J’en suis au tome deux. On a le temps.', 'Chut. Je lis.'] });
+  e.pnj('emp_seau', 34, 15, { nom: 'Léa', style: S.sweat_rouge, dir: -Math.PI / 2, si: VIVANTS, repliques: ['Le puits est dans le jardin, derrière la galerie.', 'Vingt seaux par jour. Je les compte.'] });
+  e.pnj('emp_petit', 28, 23, { nom: 'Enzo', style: S.doudoune, dir: 0, si: VIVANTS, repliques: ['Je suis en sixième. Enfin, j’étais.', 'Tu as vu des chiens, dehors ? J’avais un chien.'] });
 
   // --- le porche (8 × 9) : la porte barrée, Hugo et Mehdi ---
   const po = e.piece(27, 26, 10, 11, { nom: 'Le porche', sol: 'paves', mur: 'pierre', sombre: 1, sansMorts: true });
   e.porte(31, 26, { etat: 'ouverte', nom: 'le passage voûté' }); e.porte(32, 26, { etat: 'ouverte', nom: 'le passage voûté' });
-  e.porte(31, 36, { verrou: { flag: 'emp_entree_ok' }, exterieure: true, style: 'grille', nom: 'la porte du château',
+  e.porte(31, 36, { verrou: { flag: 'emp_entree_ok' }, exterieure: true, style: 'grille', nom: 'la porte du château', gardee: HABITE, parvis: 8,
+    refus: 'Du haut du rempart, Mehdi te fait signe de reculer : « On n’ouvre pas avec des morts devant la grille ! Débarrasse-toi d’abord de ceux-là. »',
     message: 'Une grille de chantier et des palettes. Derrière, deux adolescents armés te regardent. On ne passe pas sans leur accord.' });
+  e.marqueur('grille_emperi', 31, 37, { nom: 'la grille du château' });           // dehors, devant la grille : on appelle les guetteurs
   e.escalier('monte', po.x0, po.y0 + 1, 2, 4);
   e.objet('barriere', 33, 35, { w: 2, h: 1, nom: 'la grille de chantier', conteneur: false });
   e.objet('palette', 34, 33, { w: 2, h: 1, nom: 'les palettes', conteneur: false });
@@ -102,7 +114,7 @@ export default plan({
 
   // --- le réfectoire et la salle de classe ---
   const ref = e.piece(6, 21, 14, 8, { nom: 'Le réfectoire', sol: 'tomettes', mur: 'pierre', sombre: 1, sansMorts: true, toit: 'tuiles',
-    portes: [{ cote: 'e', a: 2, nom: 'la porte du réfectoire' }, { cote: 'o', a: 3, verrou: { flag: 'emp_entree_ok' }, exterieure: true, nom: 'la poterne', style: 'metal',
+    portes: [{ cote: 'e', a: 2, nom: 'la porte du réfectoire' }, { cote: 'o', a: 3, verrou: { flag: 'emp_entree_ok' }, exterieure: true, nom: 'la poterne', style: 'metal', gardee: HABITE,
       message: 'La poterne est cadenassée de l’intérieur.' }] });
   e.objet('table', ref.x0 + 3, ref.y0 + 2, { w: 6, h: 1, nom: 'la longue table' });
   e.objet('banc', ref.x0 + 3, ref.y0 + 1, { w: 6, h: 1 }); e.objet('banc', ref.x0 + 3, ref.y0 + 3, { w: 6, h: 1 });
@@ -131,28 +143,29 @@ export default plan({
   e.pnj('emp_infirmiere', inf.x0 + 4, inf.y0 + 3, { nom: 'Jade', style: S.sweat_gris, dir: -Math.PI / 2, si: VIVANTS, repliques: ['Ils ont de la fièvre depuis trois jours. Il faudrait des antibiotiques.', 'Si tu trouves de l’amoxicilline, c’est ici qu’il faut l’apporter.'] });
 
   // --- la montée du Puech (dehors, au sud) ---
-  e.solRect('terre', 0, 37, W, 13);
-  e.chemin('paves', [[18, 47], [44, 44], [44, 40], [31, 38]], 4);           // la rampe en lacet, jusqu'à la porte
-  e.taches('herbe_seche', 0, 37, W, 13, 0.25, 1.6);
+  e.solRect('terre', 0, 37, W, H - 37);
+  e.chemin('paves', [[16, 42], [42, 41], [31, 38]], 3);                      // la rampe, jusqu'à la porte
+  e.taches('herbe_seche', 0, 37, W, H - 37, 0.25, 1.6);
   e.solRect('terre', 1, 24, 5, 13);                                          // le sentier de la poterne
   // le lycée de l'Empéri (à l'ouest) : sa cour vide derrière la grille
-  e.solRect('bitume', 0, 38, 10, 12);
-  e.murRect('grille', 10, 38, 1, 12);
-  e.porte(10, 44, { etat: 'ouverte', style: 'grille', nom: 'le portail du lycée' });
+  e.solRect('bitume', 0, 38, 10, H - 38);
+  e.murRect('grille', 10, 38, 1, H - 38);                                   // la cour du lycée reste derrière sa grille (décor)
   e.objet('barriere', 3, 39, { w: 4, h: 1, nom: 'la banderole « BIENVENUE AUX SECONDES »', conteneur: false });
-  e.objet('banc', 4, 44, { w: 2, h: 1, nom: 'le banc renversé' });
+  e.objet('banc', 4, 41, { w: 2, h: 1, nom: 'le banc renversé' });
   // les ronces au pied du rempart, et le sac rouge
   for (const x of [12, 14, 17, 19, 21, 37, 40, 43]) e.objet('roncier', x, 37);
   e.objet('roncier', 24, 37, { nom: 'le sac rouge dans les ronces', marqueur: 'sac_rouge', conteneur: false });
-  for (const x of [15, 33, 52, 60]) e.objet('pin', x, 46);
-  e.entree('defaut', 16, 46);
-  e.sortie(14, H - 1, 16, 1); e.sortie(W - 1, 40, 1, 7);
+  for (const x of [15, 52, 60]) e.objet('pin', x, 42);
+  e.entree('defaut', 16, 41);
+  e.sortie(14, H - 1, 16, 1); e.sortie(W - 1, 38, 1, 5);
   // les morts de la montée
-  e.zombie('errant', 12, 41, { etat: 'erre' }); e.zombie('errant', 8, 46, { etat: 'erre' });
+  e.zombie('errant', 12, 41, { etat: 'erre' }); e.zombie('errant', 22, 42, { etat: 'erre' });
+  // devant la grille, tant qu'on ne t'a pas accueilli : il faut les abattre pour qu'on t'ouvre
+  for (const [x, y] of [[29, 38], [32, 39], [34, 38]]) e.zombie('errant', x, y, { etat: 'immobile', dir: -Math.PI / 2, si: { pasFlag: ['emp_entree_ok', 'sonnailles_commencees'] } });
   // le siège : la foule contre la porte
-  for (let k = 0; k < 22; k++) e.zombie(k % 6 === 0 ? 'hurleur' : 'errant', 22 + (k * 7) % 20, 38 + (k * 3) % 8, { etat: k < 8 ? 'cogne' : 'erre', si: SIEGE });
+  for (let k = 0; k < 22; k++) e.zombie(k % 6 === 0 ? 'hurleur' : 'errant', 22 + (k * 7) % 20, 38 + (k * 3) % 5, { etat: k < 8 ? 'cogne' : 'erre', si: SIEGE });
   // après la chute : quelques morts dans la montée…
-  for (const [x, y] of [[20, 42], [36, 44], [50, 41], [58, 46]]) e.zombie('errant', x, y, { etat: 'erre', si: TOMBE });
+  for (const [x, y] of [[20, 42], [36, 41], [50, 41], [58, 42]]) e.zombie('errant', x, y, { etat: 'erre', si: TOMBE });
   // …et dans le château
   for (const [x, y, et] of [[25, 17, 'erre'], [35, 22, 'erre'], [40, 15, 'dort'], [10, 15, 'dort'], [15, 18, 'erre'], [10, 8, 'dort'], [12, 26, 'erre'], [30, 8, 'erre'], [50, 15, 'erre'], [31, 30, 'erre']]) {
     e.zombie('errant', x, y, { etat: et, si: TOMBE });
@@ -195,3 +208,16 @@ export default plan({
   e1.nommer(un.x0 + 1, un.y1 - 1, 'Les toilettes du musée', { sol: 'carrelage', sombre: 2, sansMorts: true });
   e1.decal('papiers', un.x0 + 6, un.y0 + 5, { n: 3 });
 });
+
+// Version 2 → 3 : le camp s'est resserré (tables, bancs, linge, tonneaux) et la montée est plus courte. Les clés des
+// meubles déplacés suivent (fouille, eau, démontage) ; ce qui se retrouve dans la roche ou hors du plan (objets posés,
+// cadavres, morts, constructions avec leur emprise) va à la case libre la plus proche, sans tout empiler.
+function migrerV2(etat, niveau) {
+  const remap = {
+    'rdc:22,15': 'rdc:25,15', 'rdc:22,16': 'rdc:25,16', 'rdc:22,19': 'rdc:25,20', 'rdc:22,20': 'rdc:25,21',
+    'rdc:21,24': 'rdc:24,24', 'rdc:22,24': 'rdc:25,24', 'rdc:23,24': 'rdc:26,24',
+    'rdc:42,23': 'rdc:36,24', 'rdc:43,23': 'rdc:37,24',
+    'rdc:4,44': 'rdc:4,41', 'rdc:15,46': 'rdc:15,42', 'rdc:52,46': 'rdc:52,42', 'rdc:60,46': 'rdc:60,42',
+  };
+  return migrerEtat(etat, niveau, { remap, tailles: (c) => tailleConstruction(c.type, c.rot) });
+}

@@ -11,6 +11,7 @@
 //        E = interagir, R = recharger, X = échanger les mains, B = dos ↔ main, 1-4 = accès rapide.
 //   Tactile : joystick n'importe où ; gros bouton Frapper et Pousser à droite (visée assistée).
 import { el } from '../core/util.js';
+import { ICONS } from '../ui/icons.js';
 
 const TOUCHES = {
   haut: ['KeyW', 'KeyZ', 'ArrowUp'], bas: ['KeyS', 'ArrowDown'],
@@ -33,6 +34,7 @@ export function creerEntrees({ racine, canvas, actions }) {
     for (const c of TOUCHES.droite) if (bas.has(c)) x = 1;
     if (joy.id == null) { const n = Math.hypot(x, y) || 1; etat.mx = x / n; etat.my = y / n; }
     etat.course = bas.has('ShiftLeft') || bas.has('ShiftRight') || boutonCourse;
+    majBoutons();
   }
   ecoute(window, 'keydown', (e) => {
     if (!actif || tape(e)) return;
@@ -87,24 +89,23 @@ export function creerEntrees({ racine, canvas, actions }) {
   const joyBase = el('div', { class: 'ex-joy' }, el('div', { class: 'ex-joy-knob' }));
   zoneJoy.append(joyBase);
   const bInter = el('button', { class: 'ex-btn ex-btn-inter', type: 'button' }, el('span', { class: 'ex-btn-l' }, 'Interagir'));
-  // Petites icônes discrètes (pas de texte) : courir, accroupi, lampe (cachée sans lampe).
+  // Les postures gardent un libellé visible ; les pictogrammes viennent du même jeu que les menus.
   const SVG = {
-    courir: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="4.2" r="1.9" fill="currentColor" stroke="none"/><path d="M8.5 9.5 12 7.6l3 1.6 1.4 3 2.6.8"/><path d="M12 7.6 10.6 13l3.4 2.6-1 5.2"/><path d="M10.6 13 7.4 15.4 4.4 15"/></svg>',
-    accroupi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="6.2" r="1.9" fill="currentColor" stroke="none"/><path d="M12.4 8.8 9 12.2l4.4 2.4-1.6 5"/><path d="M9 12.2 7.6 16.4 4.6 17"/><path d="M12 10.6l4 1.4"/><path d="M3 20.5h18" opacity=".45"/></svg>',
     loupe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="9" r="5.2"/><path d="m14 13 5.5 5.5"/><path d="M3 21.2h9" opacity=".45"/></svg>',
     sol: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20.5h18" opacity=".45"/><rect x="4" y="13" width="7" height="6" rx="1"/><path d="M14 19l2.2-6.5h3.2L21 19"/><path d="M7.5 13v-2.5M12 6.5l2 2 3.5-4" opacity=".75"/></svg>',
     lampe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="10" width="8" height="4.5" rx="1.2"/><path d="M10.5 9.2 13.5 8v8.5l-3-1.2z"/><path d="M15.5 9.5 21 7.5M15.5 12.2H21.5M15.5 15l5.5 2" opacity=".7"/></svg>',
   };
   const icone = (nom, label) => el('button', { class: 'ex-btn ex-btn-ico', type: 'button', 'aria-label': label, title: label, html: SVG[nom] });
-  const bCourse = icone('courir', 'Courir (maintenir)'); bCourse.classList.add('ex-btn-courir');  // on court souvent : un peu plus grand
-  const bAccr = icone('accroupi', 'S\'accroupir'); bAccr.classList.add('ex-btn-accr');          // un toucher de temps en temps : petit, collé en bas
+  const posture = (nom, texte, aide) => el('button', { class: 'ex-btn ex-btn-ico ex-btn-posture', type: 'button', 'aria-label': aide, title: aide, 'aria-pressed': 'false' }, el('span', { html: ICONS[nom] }), el('span', { class: 'ex-posture-l' }, texte));
+  const bCourse = posture('courir', 'Courir', 'Courir (maintenir · Maj)'); bCourse.classList.add('ex-btn-courir');
+  const bAccr = posture('se_baisser', 'Se baisser', 'Se baisser (C ou Ctrl)');
   const bLampe = icone('lampe', 'Lampe');
   const bLoupe = icone('loupe', 'Chercher par terre (O)');
   // les objets par terre autour de soi (P) : grisé quand il n'y a rien, un petit nombre sinon
   const bSol = icone('sol', 'Objets au sol (P)'); bSol.classList.add('ex-btn-accr', 'ex-btn-sol', 'inactif'); bSol.append(el('em', {}, ''));
   const bInv = el('button', { class: 'cache', type: 'button' });
   // Combat : gros bouton Frapper (maintenir = charger), Pousser à côté.
-  const SVG_F = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 15 9"/><path d="m13 7 4-4 4 4-4 4"/><path d="M6 15l3 3"/></svg>';
+  const SVG_F = ICONS.frapper;
   const SVG_P = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h9"/><path d="M12 6v12"/><path d="M15 7l5 5-5 5"/></svg>';
   const bFrapper = el('button', { class: 'ex-btn ex-btn-frapper', type: 'button', 'aria-label': 'Frapper (maintenir : coup chargé)' },
     el('span', { class: 'ex-frap-anneau' }), el('span', { class: 'ex-frap-ico', html: SVG_F }), el('span', { class: 'ex-frap-l' }, 'Frapper'));
@@ -199,7 +200,17 @@ export function creerEntrees({ racine, canvas, actions }) {
 
   function majBoutons() {
     bAccr.classList.toggle('on', etat.accroupi);
-    bCourse.classList.toggle('on', boutonCourse);
+    bAccr.setAttribute('aria-pressed', String(etat.accroupi));
+    bCourse.classList.toggle('on', etat.course);
+    bCourse.setAttribute('aria-pressed', String(etat.course));
+  }
+  let dernierCombat = 'Frapper';
+  function majAttaque() {
+    const label = enPlacement ? 'Poser' : dernierCombat;
+    const nom = enPlacement ? 'poser' : label === 'Tirer' ? 'pistolet' : 'frapper';
+    if (bFrapper.dataset.icone !== nom) { bFrapper.querySelector('.ex-frap-ico').innerHTML = ICONS[nom] || SVG_F; bFrapper.dataset.icone = nom; }
+    bFrapper.lastChild.textContent = label;
+    bFrapper.setAttribute('aria-label', label === 'Frapper' ? 'Frapper (maintenir : coup chargé)' : label);
   }
   return {
     etat,
@@ -212,7 +223,7 @@ export function creerEntrees({ racine, canvas, actions }) {
     setPlacement(on) {
       enPlacement = !!on;
       bTourner.classList.toggle('cache', !on); bAnnuler.classList.toggle('cache', !on);
-      const l = bFrapper.lastChild; if (on && l.textContent !== 'Poser') l.textContent = 'Poser';
+      majAttaque();
       bFrapper.classList.toggle('placement', !!on);
     },
     setInteragir(libelle) {
@@ -228,7 +239,7 @@ export function creerEntrees({ racine, canvas, actions }) {
     setVisible(nom, v) { const b = { lampe: bLampe, course: bCourse, accroupi: bAccr, recharger: bRecharger, crosse: bCrosse }[nom]; if (b && b.classList.contains('cache') === !!v) b.classList.toggle('cache', !v); },
     // État du bouton Frapper : libellé (Frapper / Tirer / Dégage-toi), charge 0..1, menace proche, poussée en recharge.
     setCombat({ libelle, charge = 0, proche = false, pousseeCd = 0, empoigne = false, combo = -1 } = {}) {
-      const l = bFrapper.lastChild; if (libelle && l.textContent !== libelle && !bFrapper.classList.contains('placement')) l.textContent = libelle;
+      if (libelle && libelle !== dernierCombat) { dernierCombat = libelle; majAttaque(); }
       bFrapper.style.setProperty('--charge', charge.toFixed(3));
       bFrapper.classList.toggle('charge', charge > 0);
       bFrapper.classList.toggle('proche', !!proche);
@@ -249,6 +260,7 @@ export function creerEntrees({ racine, canvas, actions }) {
       actif = !!v;
       if (!actif) {
         bas.clear(); etat.mx = etat.my = 0; etat.course = false; boutonCourse = false; joy.id = null; joyBase.classList.remove('on');
+        majBoutons();
         if (sourisFrappe || doigtFrappe) { sourisFrappe = doigtFrappe = false; actions.frapper && actions.frapper(false, true); }
         if (doigtCrosse) { doigtCrosse = false; actions.crosse && actions.crosse(false, true); }
         if (sourisVise) { sourisVise = false; actions.clicDroit && actions.clicDroit(false); }

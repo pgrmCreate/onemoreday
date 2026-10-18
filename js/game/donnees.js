@@ -9,6 +9,7 @@ import { CLOTHES } from '../data/clothing.js';
 import { SCENES as SCENES_HISTOIRE } from '../data/histoire/scenes.js';
 import { SCENES_RENCONTRES } from '../data/rencontres_scenes.js';
 import { ZOMBIES } from '../data/zombies.js';
+import { estCellule, lieuCellule, planCellule } from '../travel/errance.js';
 
 export { SALON_SUR_REGION, ZOMBIES, CLOTHES };
 
@@ -22,7 +23,9 @@ for (const [id, geo] of Object.entries(LIEUX_GEO)) {
 export const ITEMS = { ...ITEMS_BASE, ...OBJETS_QUETE };
 export const SCENES = { ...SCENES_RENCONTRES, ...SCENES_HISTOIRE };
 
-export function lieu(id) { return LIEUX[id] || null; }
+// Les cellules des tronçons (marcher sans carte, js/travel/errance.js) sont des lieux générés : pas dans LIEUX (ni
+// carte ni marqueur), mais lisibles et chargeables comme les autres.
+export function lieu(id) { return LIEUX[id] || (estCellule(id) ? lieuCellule(id) : null); }
 export function objet(id) { return ITEMS[id] || CLOTHES[id] || null; }
 export function scene(id) { return SCENES[id] || null; }
 export function mort(id) { return ZOMBIES[id] || null; }
@@ -31,6 +34,7 @@ export function mort(id) { return ZOMBIES[id] || null; }
 const cacheNiveaux = {};
 export async function chargerNiveau(id) {
   if (cacheNiveaux[id]) return cacheNiveaux[id];
+  if (estCellule(id)) return (cacheNiveaux[id] = planCellule(id));
   try {
     const m = await import(`../data/niveaux/${id}.js`);
     return (cacheNiveaux[id] = m.default);

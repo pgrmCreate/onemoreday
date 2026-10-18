@@ -15,6 +15,7 @@ import { ITEMS } from '../data/items.js';
 import { ZOMBIES } from '../data/zombies.js';
 import { niveau, gagnerXps, normaliserJoueur } from './player.js';
 import * as inv from './inventory.js';
+import { facteurBruit, minutesRepos } from './sommeil_regles.js';
 
 const S = () => REGLAGES.survie;
 const joueur = (p) => p || (G && G.player);
@@ -37,7 +38,7 @@ let activiteCourante = 'normal';
 export function setActivite(a) { activiteCourante = a || 'normal'; }
 export function activite() { return activiteCourante; }
 // Repos sans saut d'heure (évanoui à deux, js/game/sommeil.js) : les minutes qui passent comptent comme du sommeil sur ce couchage.
-export function commencerRepos(couchage = 'sol') { couchageEnCours = couchage; setActivite('sommeil'); }
+export function commencerRepos(couchage = 'sol') { couchageEnCours = couchage; bruitEnCours = 0; setActivite('sommeil'); }
 export function finirRepos() { setActivite('normal'); }
 
 // ---------- Douleur, froid ----------
@@ -104,6 +105,7 @@ export function categorieCouchage(type, force, p) {
 }
 export const parametresCouchage = (c) => S().SOMMEIL.COUCHAGE[c] || S().SOMMEIL.COUCHAGE.sol;
 let couchageEnCours = 'sol';
+let bruitEnCours = 0;
 
 // ---------- Blessures ----------
 // b = { type, zone, gravite?, saigne?, mal? (points déjà calculés), zombie? (id du mort : points calculés ici),
@@ -186,7 +188,7 @@ function uneMinute(p, act) {
   p.soif -= SV.SOIF_PAR_MIN * besoins * mAct * (fievre ? SV.MALADIES.fievre.soif : 1) * (mal >= CT.SEUILS.fievre_noire ? 1.5 : 1)
     + (p.maladies.intoxication ? SV.MALADIES.intoxication.soifParMin : 0);
   const CO = dort ? parametresCouchage(couchageEnCours) : null;
-  if (dort) { if (p.fatigue < CO.plafond) p.fatigue = Math.min(CO.plafond, p.fatigue + SV.SOMMEIL.FATIGUE_PAR_MIN * CO.fatigue); }
+  if (dort) { if (p.fatigue < CO.plafond) p.fatigue = Math.min(CO.plafond, p.fatigue + SV.SOMMEIL.FATIGUE_PAR_MIN * CO.fatigue * facteurBruit(bruitEnCours)); }
   else p.fatigue -= SV.FATIGUE_PAR_MIN * besoins * mAct * (fievre ? SV.MALADIES.fievre.fatigue : 1) * (1 + REGLAGES.inventaire.SURPOIDS.fatigue * f) + SV.FROID.FATIGUE_PAR_POINT * d + SV.MOUILLE.FATIGUE_PAR_MIN[sm];
   p.faim = clamp(p.faim); p.soif = clamp(p.soif); p.fatigue = clamp(p.fatigue);
   // L'estomac se vide en digérant ; le poids suit la faim (bien nourri·e : on en prend, affamé·e : on en perd)
@@ -691,6 +693,7 @@ export function dormir(heures, opts = {}) {
   const cat = opts.couchage || 'sol', CO = parametresCouchage(cat);
   if (p.fatigue >= CO.plafond - 0.5) return { ok: false, plafond: true, raison: cat === 'sol' ? 'Tu n’arrives pas à dormir ici : tu n’es pas assez {fatigué|fatiguée} pour un sol aussi dur.' : 'Tu n’arrives pas à dormir ici : tu n’es pas assez {fatigué|fatiguée}.' };
   couchageEnCours = cat;
+  bruitEnCours = opts.bruit || 0;
   const sur = opts.sur ?? contexte.lieuSur;
   const risque = sur || opts.mortsPresents === false ? 0 : SO.RISQUE_H.base + SO.RISQUE_H.parDanger * (opts.danger || 0);
   const total = Math.round(heures * 60);
@@ -698,12 +701,12 @@ export function dormir(heures, opts = {}) {
   setActivite('sommeil');
   try {
     for (let h = 0; h < heures && !p.mort; h++) {
-      const bloc = Math.min(60, total - dormi); if (bloc <= 0) break;
+        const bloc = Math.min(60, total - dormi, opts.respecterBloc ? Infinity : minutesRepos(p, cat, bruitEnCours)); if (bloc <= 0) break;
       clock.avancer(bloc); dormi += bloc;
       if (p.fatigue >= CO.plafond - 0.01) break;
-      if (risque && Math.random() < risque) { interrompu = true; break; }
+        if (risque && Math.random() < 1 - Math.pow(1 - risque, bloc / 60)) { interrompu = true; break; }
     }
-  } finally { setActivite('normal'); }
+  } finally { setActivite('normal'); bruitEnCours = 0; }
   // mal dormi : courbatures au réveil
   const cb = CO.courbatures;
   if (cb && !opts.sansCourbatures && dormi >= cb.apresH * 60) { douleurAigue(p, cb.douleur, cb.min); p.effets.courbatures = cb.min; p.effets.courbaturesSta = cb.regenSta; }

@@ -48,7 +48,8 @@ export function appliquerEffets(effets, ctx = {}) {
         case 'infection': if (v) survival.ajouterMal(p, 15); break;
         case 'tempsMin': clock.sauter(v); break;   // co-op : l'invité demande le saut à l'hôte
         case 'xp': player.gagnerXps(v); break;
-        case 'decouvrir': for (const id of (Array.isArray(v) ? v : [v])) { const L = G.world.lieux[id] || (G.world.lieux[id] = {}); if (!L.decouvert) { L.decouvert = true; emit('lieu:decouvert', { id }); } } break;
+        // l'histoire désigne un lieu : quelqu'un a dit comment y aller (indication suivie sans carte, js/travel/errance.js)
+        case 'decouvrir': for (const id of (Array.isArray(v) ? v : [v])) { const L = G.world.lieux[id] || (G.world.lieux[id] = {}); L.indique = true; if (!L.decouvert) { L.decouvert = true; emit('lieu:decouvert', { id }); } } break;
         case 'quete': quetes.avancer(v[0], v[1]); break;
         case 'journal': noteJournal(v); break;
         case 'document': if (!G.documents.includes(v)) { G.documents.push(v); emit('toast', { texte: `Document : ${(DOCUMENTS[v] || {}).titre || v}`, type: 'document' }); } emit('document', { id: v, silencieux: true }); break;

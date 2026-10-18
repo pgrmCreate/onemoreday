@@ -314,4 +314,26 @@ export const DOCUMENTS = {
     titre: 'Page quatorze', style: 'manuscrit',
     texte: 'p. 14 — DONNEUR POUR P4\n\nARNAUD Luc, 51 ans, électricien, Lamanon.\nFracture ouverte du tibia droit depuis 2 jours, plaie infectée, 38,2 °C de fièvre.\nAntibiotiques : de l’amoxicilline, sa propre boîte. Il s’en serait probablement sorti.\n\nP4 a été transformé il y a 5 jours. La fenêtre des 48 heures est dépassée pour P3, et à la limite pour P4. Il n’y aura pas d’autre donneur avant deux jours au moins.\n\nDÉCISION : je choisis M. Arnaud. Sédation profonde (morphine, 40 mg). Il n’a pas eu mal. Je me le répète : il n’a pas eu mal.\n\nIl s’est quand même réveillé au son de la cloche. Il a regardé P4 et il a dit « Jo ». Je ne sais pas qui est Jo.\n\nNourrissage : le 11/09, à 3 h 10.\n\nJ’arrache cette page. Si P4 se réveille, P4 n’a pas besoin de savoir ça, et personne d’autre non plus. Moi, je la garde : c’est à moi de la porter.\n\n— M. S.',
   },
+  // ═══════════════ TRACES SUR LES MURS (marcher sans carte : js/data/troncons.js, TRACES) ═══════════════
+  // Écrites par d’autres survivants dans la première rue qui part du lieu (lieu = ce lieu, pour le contrôle).
+  doc_trace_emperi: {
+    titre: 'Une inscription au pied du Puech', style: 'manuscrit', lieu: 'emperi',
+    texte: 'Quelqu’un a écrit à la bombe rouge, sur le mur d’une maison, au pied de la montée du Puech : « CHÂTEAU → ON VOUS OUVRE SI VOUS N’ÊTES PAS MORDUS. MONTREZ VOS BRAS À LA PORTE. »\n\nEn dessous, une autre main a ajouté au marqueur : « Ils ont refusé ma sœur pour une griffure de chat. »\n\nEt plus bas encore, à la craie, en lettres qui penchent : « N’y montez pas après la tombée de la nuit, parce qu’ils lancent des pierres sur tout ce qui bouge. »',
+  },
+  doc_trace_horloge: {
+    titre: 'Une inscription sur un rideau de fer', style: 'manuscrit', lieu: 'tour_horloge',
+    texte: 'Sur le rideau de fer d’une boutique, quelqu’un a écrit à la craie, en grosses lettres : « N’ALLEZ PAS VERS LES CLOCHES. ELLES APPELLENT LES MORTS. »\n\nUne autre personne a rayé la phrase d’un trait et a écrit en dessous, plus petit et plus soigneusement : « Il y a une femme là-haut, dans la tour, et elle soigne les gens. Allumez une lumière au pied de la tour, le soir, et elle descendra vous ouvrir. »',
+  },
+  doc_trace_gare: {
+    titre: 'Un mot sur le panneau des horaires', style: 'manuscrit', lieu: 'gare',
+    texte: 'Sur le panneau des horaires de la gare, entre les trains annulés, quelqu’un a écrit au feutre noir :\n\n« Il n’y a plus de train depuis le 4. L’armée a coupé la voie à Lamanon. Ne suivez pas les rails vers le nord, parce qu’ils mènent tout droit à la Durance, et là-bas les soldats tirent sur tout ce qui approche du pont, vivant ou pas. — Kevin, cheminot »',
+  },
+  doc_trace_hopital: {
+    titre: 'Un drap tendu devant les urgences', style: 'manuscrit', lieu: 'hopital',
+    texte: 'Quelqu’un a tendu un drap entre deux lampadaires, devant l’entrée des urgences, et l’a peint en lettres noires : « IL N’Y A PLUS DE MÉDECINS NI DE MÉDICAMENTS. L’ARMÉE A TOUT EMPORTÉ LE 12. »\n\nTout en bas, au feutre, une petite écriture serrée a ajouté : « Le docteur Sérane était encore là le 11 au soir. Si quelqu’un sait où elle est partie, écrivez-le ici, s’il vous plaît. »\n\nPersonne n’a rien écrit.',
+  },
+  doc_trace_route: {
+    titre: 'Un panneau routier repeint', style: 'manuscrit', lieu: 'pelissanne',
+    texte: 'Sous le panneau de Pélissanne, quelqu’un a cloué une planche et y a peint en blanc :\n\n« Toute la nuit du 16, on a entendu des cloches de troupeau du côté de la Crau, des centaines, et des hommes qui marchaient avec les bêtes sans se cacher. Les morts ne les attaquaient pas. Nous partons vers Lambesc. — La famille Roux »',
+  },
 };

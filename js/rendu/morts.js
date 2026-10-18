@@ -723,10 +723,12 @@ function dessinerCouche(c, x, y, dir, ap, t, { bouge, frais, flaque, s }) {
 }
 
 // Cadavre : flaque qui s'étend les premières secondes (frais = ms depuis la mort, ou null).
+const CADAVRE_ECH = 0.9; // Corps et flaque à −10 % ; les morts encore vivants au sol gardent leur taille.
 export function dessinerCadavre(c, cd, t, frais, def) {
   const ap = apparenceMort(cd.uid, cd.type, cd.sexe, def && def.allure);
   if (cd.type === 'rampant') {
     c.save(); c.translate(cd.x * TS, cd.y * TS); c.rotate((cd.dir || 0));
+    c.scale(CADAVRE_ECH, CADAVRE_ECH);
     const k = frais == null ? 1 : clamp(frais / 2500, 0, 1);
     flaqueSang(c, ap, 9 + 7 * k, k);
     const R = sprite(`r:${ap.seed}`, 24, 13, (cc) => peindreRampant(cc, ap)); if (R) poser(c, R);
@@ -734,5 +736,5 @@ export function dessinerCadavre(c, cd, t, frais, def) {
     c.restore();
     return;
   }
-  dessinerCouche(c, cd.x * TS, cd.y * TS, cd.dir || 0, ap, t, { bouge: false, frais, flaque: 1, s: ap.taille });
+  dessinerCouche(c, cd.x * TS, cd.y * TS, cd.dir || 0, ap, t, { bouge: false, frais, flaque: 1, s: ap.taille * CADAVRE_ECH });
 }

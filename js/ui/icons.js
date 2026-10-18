@@ -7,12 +7,13 @@ import { CLOTHES } from '../data/clothing.js';
 const svg = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${inner}</svg>`;
 const P = (d, extra = '') => svg(`${extra}<path d="${d}"/>`);
 const C = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}"/>`;
+const OUTILLAGE = P('M14 4a4.5 4.5 0 0 0-5.2 5.8L3.5 15a2.5 2.5 0 0 0 3.5 3.5l5.2-5.3A4.5 4.5 0 0 0 18 8l-3 2-3-3 2-3zM15 15l5 5M17 13l4 4-4 4-4-4');
 
 export const ICONS = {
   // ---------- Navigation, panneaux ----------
   sac: P('M9 6.5V5a3 3 0 0 1 6 0v1.5M8 6.5h8c1 0 1.6.7 1.5 1.7L17 19a2.3 2.3 0 0 1-2.3 2H9.3A2.3 2.3 0 0 1 7 19L6.5 8.2c-.1-1 .5-1.7 1.5-1.7zM6.7 11H5v5.5h1.9M17.3 11H19v5.5h-1.9M9.5 21v-4.2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V21M8 10.5h8'),
   corps: P('M12 7v6.5m0 0-2.6 7.5m2.6-7.5 2.6 7.5M6.5 9.5 12 8l5.5 1.5', C(12, 4.4, 2.1)),
-  fabrication: P('M14.5 6.5a4 4 0 0 0-5.4 5L4 16.6 7.4 20l5.1-5.1a4 4 0 0 0 5-5.4l-2.6 2.6-2.5-2.5 2.1-3.1z'),
+  fabrication: OUTILLAGE,
   journal: P('M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4zM5 17a3 3 0 0 1 3-3h11M9 8h6'),
   menu: P('M4 7h16M4 12h16M4 17h16'),
   options: P('M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm8 3-1.8.9.2 2-1.7 1.2-1.9-.7L13.5 17h-3l-1.3-1.6-1.9.7-1.7-1.2.2-2L4 12l1.8-.9-.2-2 1.7-1.2 1.9.7L10.5 7h3l1.3 1.6 1.9-.7 1.7 1.2-.2 2L20 12z'),
@@ -79,7 +80,11 @@ export const ICONS = {
   suturer: P('M4 20C9 15 11 9 19 5m0 0-2.8 0M19 5v2.8M7 12l3 3m0-6 3 3m0-6 3 3'),
   attelle: P('M8 3v18M16 3v18M6 7h12M6 12h12M6 17h12'),
   cauteriser: P('M4 20 14 10m2-2 4-4M12 5c1.5 1.5 1.5 3 0 4.5C10.5 11 10.5 12.5 12 14', ''),
-  fabriquer: P('M4 20l7-7M9.5 4.5l6 6 2-2-6-6zM13 8l-2 2m6 3 3 3-4 4-3-3'),
+  fabriquer: OUTILLAGE,
+  construire: P('M3 20V10h6V4h12v16H3zm0-5h18M9 10h12M15 4v6M9 15v5M15 10v5'),
+  frapper: P('M3 10h4l2-3h6l3 3v5l-3 3H9l-2-3H3M3 10v5M9 7v4m3-4v4m3-4v4M18 5l2-2m0 8h3m-5 7 2 2'),
+  courir: P('M8 9l4-3 4 5h4M12 6l-3 7 5 3 1 5M9 13l-4 5H2M3 5h4M2 9h3', C(16, 3.5, 1.8)),
+  se_baisser: P('M11 9.6 10 15l5-.6v5.6M10 15l-1.4 5M10.6 11.4 14.4 13M3 20.5h18M4.5 3.5v5M2.8 6.8l1.7 1.7 1.7-1.7', C(11, 7.5, 1.9)),
   reparer: P('M14.7 6.3a4 4 0 0 0-5.2 5.1L4 17l3 3 5.6-5.5a4 4 0 0 0 5.1-5.2L15.2 11.8l-2.6-.4-.4-2.6 2.5-2.5z'),
   dormir: P('M3 18V8m0 7h18v3M3 13h9.5a4 4 0 0 1 4 4M14 4h4l-4 4.5h4', C(7, 10.5, 1.4)),
   attendre: P('M12 7v5l3 2', C(12, 12, 8.5)),

@@ -21,6 +21,7 @@ import { seedRng } from '../core/rng.js';
 import { K, parserNiveau, cleCase, MATIERES } from './niveau.js';
 import { FIN, icase, cxCase, cyCase } from '../carte/catalogue.js';
 import { deplacer, ligneLibre, obstaclesSon } from './physique.js';
+import { entreeRefusee } from './refuge.js';
 import { profilMelee, geometrie, resoudreCoup, resoudreAttaque, tapsEmpoignade, bruitCoup } from './combat.js';
 import { CONSTRUCTIONS, DEMONTABLES, RECOLTES, casesConstruction, casesFinesConstruction, appliquerConstructions, cassableC } from '../data/construction.js';
 
@@ -100,7 +101,11 @@ export function creerSimLieu(opts) {
 
   // ---------- Création / restauration ----------
   // un plan refait (version différente) : l'ancien état du lieu (morts, meubles fouillés) ne lui correspond plus
-  const etat = opts.etat && opts.etat.v && (opts.etat.planV || 0) === (niveau.planVersion || 0) ? opts.etat : null;
+  // … sauf si le plan sait migrer l'état d'une version précédente (def.migrer[version](etat, niveau) → etat) : les
+  // possessions (objets posés, constructions, butin pris, portes) suivent alors le nouveau plan
+  const migrer = opts.etat && opts.etat.v && (opts.etat.planV || 0) !== (niveau.planVersion || 0) && niveau.def && niveau.def.migrer && niveau.def.migrer[opts.etat.planV || 0];
+  const etat = opts.etat && opts.etat.v && (opts.etat.planV || 0) === (niveau.planVersion || 0) ? opts.etat
+    : migrer ? migrer(JSON.parse(JSON.stringify(opts.etat)), niveau) : null;
   if (etat) migrerAbords(etat, niveau.abords);
   if (etat) {
     uidSeq = etat.uid || 1;
@@ -230,6 +235,46 @@ export function creerSimLieu(opts) {
     const op = ferme && !(p.style === 'grille' || p.style === 'vitree') ? 1 : 0;
     for (const i of p.cases) { dyn[E.idx].bloque[i] = ferme ? 1 : 0; dyn[E.idx].opaque[i] = op; }
     evts.push({ type: 'porte', cle, etat: etatN, pv: s.pv, pvMax: s.pvMax, action, source: source || null }); vm++;
+  }
+  // ---------- Refuges : seuils gardés, intérieur habité ----------
+  // Une porte « gardee: { si } » (plan) : tant que la condition tient, les morts ne la ciblent pas, ne la cognent pas, ne
+  // l'enfoncent pas et ne FRANCHISSENT pas son seuil, même ouverte ; elle se referme d'elle-même dès qu'aucun joueur ne
+  // se tient dans l'embrasure, et une porte cassée est remise en état (les gardes, Maud).
+  // Un niveau « refuge: { si } » est habité tant que la condition tient : aucun mort ne reste dans une pièce sansMorts.
+  let gardees = new Set();
+  function majGardees() { gardees = new Set(niveau.portes.filter(p => p.gardee && condOk(p.gardee)).map(p => p.idx)); }
+  const refugeHabite = () => !!niveau.refuge && condOk(niveau.refuge);
+  function seuilGarde(E, x, y) { const i = icase(E, x, y); return i >= 0 && E.code[i] === K.PORTE && gardees.has(E.porte[i]); }
+  // tout déplacement d'un mort passe par ici (marche, recul, charge, séparation, poussée) : par petits pas de 0,25 unité
+  // (moins que la demi-unité d'une case de porte), un seuil gardé l'arrête net même au milieu d'un long déplacement
+  function deplacerMort(E, D, pos, dx, dy) {
+    if (!gardees.size) { deplacer(E.w, E.h, D.bloque, pos, dx, dy, RAYON_MORT); return; }
+    const n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 0.25));
+    for (let k = 0; k < n; k++) {
+      const ox = pos.x, oy = pos.y;
+      deplacer(E.w, E.h, D.bloque, pos, dx / n, dy / n, RAYON_MORT);
+      if (seuilGarde(E, pos.x, pos.y)) { pos.x = ox; pos.y = oy; return; }
+    }
+  }
+  function dansPieceSure(o) {
+    const E = niveau.etages[EI(o.etage)]; if (!E) return false;
+    const i = icase(E, o.x, o.y), P = i >= 0 && E.piece[i] >= 0 ? niveau.pieces[E.piece[i]] : null;
+    return !!(P && P.sansMorts);
+  }
+  function tenirRefuge() {
+    majGardees();
+    for (const p of niveau.portes) {
+      if (!gardees.has(p.idx)) continue;
+      const s = portes[p.cle];
+      if (s.etat === 'cassee') { s.pv = s.pvMax; setPorte(p.cle, 'fermee', 'garde', null); continue; }
+      const quelquun = [...joueurs.values()].some(j => j.etage === p.etage && Math.hypot(j.x - p.x - 0.5, j.y - p.y - 0.5) < 1.6);
+      if (s.etat === 'ouverte' && !quelquun && !caseOccupee(p.etage, p.x, p.y)) setPorte(p.cle, 'fermee', 'garde', null);
+    }
+    if (refugeHabite()) {
+      const avant = zombies.length;
+      zombies = zombies.filter(z => z.enCombat || !dansPieceSure(z));
+      if (zombies.length !== avant) vm++;
+    }
   }
   // (x + 0,5, y + 0,5) : centre de la porte ou de la case de construction (unités)
   function caseOccupee(etage, x, y) {
@@ -467,6 +512,7 @@ export function creerSimLieu(opts) {
   const bfsBuf = niveau.etages.map(E => ({ vu: new Uint32Array(E.w * E.h), prev: new Int32Array(E.w * E.h), file: new Int32Array(E.w * E.h), stamp: 0 }));
   const D8X = [1, -1, 0, 0, 1, 1, -1, -1], D8Y = [0, 0, 1, -1, 1, -1, 1, -1];
   function passable(E, D, i) {
+    if (gardees.size && E.code[i] === K.PORTE && gardees.has(E.porte[i])) return false;   // seuil gardé
     if (!D.bloque[i]) return true;
     if (E.code[i] === K.PORTE && portes[niveau.portes[E.porte[i]].cle].etat !== 'ouverte') return true;
     const c = consCase[E.idx].get(i); return !!(c && cassableC(c));
@@ -520,7 +566,7 @@ export function creerSimLieu(opts) {
     const pas = Math.min(d, v * dt / 1000);
     tourner(z, Math.atan2(dy, dx), dt, 6);
     posTmp.x = z.x; posTmp.y = z.y;
-    deplacer(E.w, E.h, D.bloque, posTmp, dx / d * pas, dy / d * pas, RAYON_MORT);
+    deplacerMort(E, D, posTmp, dx / d * pas, dy / d * pas);
     z.x = posTmp.x; z.y = posTmp.y;
     return d - pas < 0.12;
   }
@@ -553,6 +599,7 @@ export function creerSimLieu(opts) {
   function cogner(z, dt, degats) {
     if (z.cons) return cognerConstruction(z, dt, degats);
     const s = portes[z.porte]; if (!s) return;
+    if (gardees.has(niveau.porteParCle[z.porte].idx)) { z.porte = null; z.chemin = []; return; }   // les gardes tiennent la porte
     z.tCogne += dt;
     if (z.tCogne < RX.PORTES.COGNE_PERIODE_MS) return;
     z.tCogne = 0;
@@ -598,7 +645,7 @@ export function creerSimLieu(opts) {
       const E = niveau.etages[z.ei], D = dyn[z.ei];
       const f = Math.min(dt, z.kb.t) / RC.RECUL_MS;
       posTmp.x = z.x; posTmp.y = z.y;
-      deplacer(E.w, E.h, D.bloque, posTmp, z.kb.dx * f, z.kb.dy * f, RAYON_MORT);
+      deplacerMort(E, D, posTmp, z.kb.dx * f, z.kb.dy * f);
       z.x = posTmp.x; z.y = posTmp.y;
       z.kb.t -= dt; if (z.kb.t <= 0) z.kb = null;
     }
@@ -620,7 +667,7 @@ export function creerSimLieu(opts) {
       case 'cogne': {
         if (!z.porte) { // cherche la porte la plus proche (≤ 2 cases)
           let best = null, bd = 2.2;
-          for (const p of niveau.portes) if (p.etage === z.etage) { const d = Math.hypot(p.x + 0.5 - z.x, p.y + 0.5 - z.y); if (d < bd && portes[p.cle].etat !== 'ouverte' && portes[p.cle].etat !== 'cassee') { bd = d; best = p; } }
+          for (const p of niveau.portes) if (p.etage === z.etage) { const d = Math.hypot(p.x + 0.5 - z.x, p.y + 0.5 - z.y); if (d < bd && portes[p.cle].etat !== 'ouverte' && portes[p.cle].etat !== 'cassee' && !gardees.has(p.idx)) { bd = d; best = p; } }
           if (best) z.porte = best.cle; else { z.etat = 'immobile'; z.base = 'immobile'; return; }
         }
         const s = portes[z.porte];
@@ -672,12 +719,12 @@ export function creerSimLieu(opts) {
             const pas = P.vitesse * dt / 1000;
             const nx = z.x + Math.cos(z.dir) * pas, ny = z.y + Math.sin(z.dir) * pas;
             const ci = icase(E, nx, ny);
-            if (P.porte === 'enfonce' && ci >= 0 && E.code[ci] === K.PORTE && D.bloque[ci]) {
+            if (P.porte === 'enfonce' && ci >= 0 && E.code[ci] === K.PORTE && D.bloque[ci] && !gardees.has(E.porte[ci])) {
               const p = niveau.portes[E.porte[ci]]; portes[p.cle].pv = 0; setPorte(p.cle, 'cassee', 'enfoncee', z.uid);
               bruit({ etage: z.etage, x: nx, y: ny, rayon: RX.BRUIT.porte_forcee, source: z.uid });
             }
             posTmp.x = z.x; posTmp.y = z.y;
-            deplacer(E.w, E.h, D.bloque, posTmp, Math.cos(z.dir) * pas, Math.sin(z.dir) * pas, RAYON_MORT);
+            deplacerMort(E, D, posTmp, Math.cos(z.dir) * pas, Math.sin(z.dir) * pas);
             z.x = posTmp.x; z.y = posTmp.y; z.vitesse = P.vitesse;
             // la charge percute un joueur : coup + il est projeté
             for (const o of joueurs.values()) {
@@ -756,7 +803,7 @@ export function creerSimLieu(opts) {
         if (d >= m || d < 1e-4) continue;
         const E = niveau.etages[z.ei], D = dyn[z.ei];
         posTmp.x = z.x; posTmp.y = z.y;
-        deplacer(E.w, E.h, D.bloque, posTmp, dx / d * (m - d), dy / d * (m - d), RAYON_MORT);
+        deplacerMort(E, D, posTmp, dx / d * (m - d), dy / d * (m - d));
         z.x = posTmp.x; z.y = posTmp.y;
       }
     }
@@ -771,8 +818,8 @@ export function creerSimLieu(opts) {
         if (d2 >= 0.36 || d2 < 1e-6) continue;
         const d = Math.sqrt(d2), p = (0.6 - d) * 0.5;
         const E = niveau.etages[A.ei], D = dyn[A.ei];
-        if (A.etat !== 'dort') { posTmp.x = A.x; posTmp.y = A.y; deplacer(E.w, E.h, D.bloque, posTmp, -dx / d * p, -dy / d * p, RAYON_MORT); A.x = posTmp.x; A.y = posTmp.y; }
-        if (B.etat !== 'dort') { posTmp.x = B.x; posTmp.y = B.y; deplacer(E.w, E.h, D.bloque, posTmp, dx / d * p, dy / d * p, RAYON_MORT); B.x = posTmp.x; B.y = posTmp.y; }
+        if (A.etat !== 'dort') { posTmp.x = A.x; posTmp.y = A.y; deplacerMort(E, D, posTmp, -dx / d * p, -dy / d * p); A.x = posTmp.x; A.y = posTmp.y; }
+        if (B.etat !== 'dort') { posTmp.x = B.x; posTmp.y = B.y; deplacerMort(E, D, posTmp, dx / d * p, dy / d * p); B.x = posTmp.x; B.y = posTmp.y; }
       }
     }
   }
@@ -808,7 +855,7 @@ export function creerSimLieu(opts) {
       const pas = F.CASES * Math.min(dt, f.fin - (T - dt)) / F.MS;
       if (pas > 0) {
         posTmp.x = z.x; posTmp.y = z.y;
-        deplacer(E.w, E.h, D.bloque, posTmp, Math.cos(f.dir) * pas, Math.sin(f.dir) * pas, RAYON_MORT);
+        deplacerMort(E, D, posTmp, Math.cos(f.dir) * pas, Math.sin(f.dir) * pas);
         // il ne traverse pas sa cible : arrêt au contact
         const dj = Math.hypot(j.x - posTmp.x, j.y - posTmp.y);
         if (dj > RC.ARRET_CASES * 0.75) { z.x = posTmp.x; z.y = posTmp.y; }
@@ -1200,6 +1247,12 @@ export function creerSimLieu(opts) {
   }
   function majJoueur(id, p) {
     const j = joueurs.get(id); if (!j || !p) return;
+    // le portail d'un refuge : un joueur du dehors ne passe pas le seuil tant qu'un mort rôde devant (même si quelqu'un
+    // a ouvert du dedans) ; sa position est refusée et on le recale chez lui (sortir reste toujours possible)
+    if (gardees.size && p.x != null && p.y != null && !j.mort) {
+      const refus = entreeRefusee(niveau, (q) => gardees.has(q.idx), zombies, { etage: j.etage, x: j.x, y: j.y }, { etage: p.etage ?? j.etage, x: p.x, y: p.y });
+      if (refus) { evts.push({ type: 'recale', joueur: id, etage: j.etage, x: j.x, y: j.y, message: refus.refus || null }); p = { ...p, x: null, y: null, etage: null }; }
+    }
     if (p.etage != null && p.etage !== j.etage && EI(p.etage) != null) { j.etage = p.etage; j.ei = EI(p.etage); j.px = p.x ?? j.x; j.py = p.y ?? j.y; if (j.fouille) j.fouille = null; }
     if (p.x != null) j.x = p.x; if (p.y != null) j.y = p.y;
     if (p.dir != null) j.dir = p.dir;
@@ -1255,6 +1308,9 @@ export function creerSimLieu(opts) {
           return { ok: false, raison: v.flag && !v.cle && !v.forcer ? 'flag' : 'verrouillee', verrou: v };
         }
         if (s.etat === 'ouverte') return { ok: true };
+        // le portail d'un refuge : du dehors, on ne t'ouvre pas tant que des morts rôdent devant
+        if (p.parvis && j && gardees.has(p.idx) && !dansPieceSure(j) && zombies.some(z => z.etage === p.etage && Math.hypot(z.x - bx, z.y - by) < p.parvis))
+          return { ok: false, raison: 'parvis', message: p.refus || null };
         setPorte(cle, 'ouverte', 'ouvre', joueurId);
         bruit({ etage: p.etage, x: bx, y: by, rayon: RX.BRUIT.porte * (s.barricadee ? 1.5 : 1), source: joueurId });
         return { ok: true };
@@ -1489,7 +1545,7 @@ export function creerSimLieu(opts) {
       let a = Math.atan2(z.y - oy, z.x - ox);
       if (!isFinite(a)) a = rngSim() * Math.PI * 2;
       posTmp.x = z.x; posTmp.y = z.y;
-      deplacer(E.w, E.h, D.bloque, posTmp, Math.cos(a) * (RF2.REPOUSSE_CASES || 4), Math.sin(a) * (RF2.REPOUSSE_CASES || 4), RAYON_MORT);
+      deplacerMort(E, D, posTmp, Math.cos(a) * (RF2.REPOUSSE_CASES || 4), Math.sin(a) * (RF2.REPOUSSE_CASES || 4));
       z.x = posTmp.x; z.y = posTmp.y;
       z.etourdi = (RC.FUITE && RC.FUITE.ETOURDI_MS) || 3000; z.chemin = []; z.alerte = 1; z.atk = null; lacher(z);
       if (z.etat !== 'chasse') changerEtat(z, 'chasse');
@@ -1668,6 +1724,7 @@ export function creerSimLieu(opts) {
           if (s.etat === 'verrouillee' && p.verrou && p.verrou.flag && flagOk(p.verrou)) { s.etat = 'fermee'; setPorte(p.cle, 'fermee', 'flag', null); }
         }
         majConditionnels();
+        tenirRefuge();
         tickArrivees();
       }
       T += dt;
@@ -1685,6 +1742,7 @@ export function creerSimLieu(opts) {
   // Événements produits hors du pas (actions) : livrés tout de suite par le canal.
   function viderEvenements() { const out = evts; evts = []; return out; }
 
+  tenirRefuge();   // dès la création : une ancienne sauvegarde perd l'intrus, une porte gardée cassée est refaite
   return {
     lieuId, niveau, seed,
     ajouterJoueur, majJoueur, retirerJoueur, bruit, porte, fouiller, arreterFouille, prendre, prendreLot, contenu, deposer,

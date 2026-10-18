@@ -16,7 +16,7 @@ const FOULE = { flag: 'pro_signal', pasFlag: 'prologue_fini' };
 const APRES = { flag: 'prologue_fini' };
 
 export default plan({
-  id: 'tour_horloge', nom: 'Tour de l’Horloge', exterieur: true, version: 2, typeButin: 'monument',
+  id: 'tour_horloge', nom: 'Tour de l’Horloge', exterieur: true, version: 2, typeButin: 'monument', refuge: {},
   sansSanitaires: ['La salle de l’horloge'],   // pas de toilettes, et c'est normal : la tour (le campement de Maud) (tools/verifier_realisme.mjs)
   pool: ['errant', 'rampant'], morts: { n: [0, 0] }, mortsDehorsSeulement: true,
 }, (p) => {
@@ -72,7 +72,8 @@ export default plan({
   e.solRect('paves', 21, 19, 4, 12);
   // (le porche est ouvert sur la place et sur la rue : c'est le même « dehors », nommé Place Crousillat)
   e.toit(17, 19, 14, 12, 'tuiles');
-  e.porte(25, 22, { verrou: { flag: 'pro_signal' }, nom: 'la petite porte de la tour', style: 'bois',
+  // gardée : aucun mort ne passe le seuil, même ouverte, et Maud la referme derrière toi (js/explore/sim.js, tenirRefuge)
+  e.porte(25, 22, { verrou: { flag: 'pro_signal' }, nom: 'la petite porte de la tour', style: 'bois', gardee: { flag: 'pro_signal' },
     message: 'Une petite porte en chêne, barrée de l’intérieur. Quelqu’un, là-haut, peut t’ouvrir.' });
   // le pied de l'escalier (4 × 5)
   e.solRect('paves', 26, 20, 4, 5);

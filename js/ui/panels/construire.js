@@ -12,7 +12,7 @@ export const ICONE_CONSTRUCTION = {
   mur_planches: 'materiau', mur_renforce: 'materiau', palissade: 'materiau', porte_planches: 'verrou', barricade_fenetre: 'verrou',
   pieux: 'lance', caisse_bois: 'sac', etabli: 'etabli', lit_fortune: 'dormir', feu_camp: 'feu', recuperateur: 'remplir', potager: 'nourriture',
 };
-const ic = (type) => ICONE_CONSTRUCTION[type] || 'fabriquer';
+const ic = (type) => ICONE_CONSTRUCTION[type] || 'construire';
 
 // liste + fiche dans la grille du panneau ; etat = { sel, cat? } (cat : filtre de catégorie), redessiner()
 export function dessinerConstruire(liste, fiche, etat, redessiner, api) {
@@ -37,7 +37,7 @@ export function dessinerConstruire(liste, fiche, etat, redessiner, api) {
   section('Tu peux construire', faisables, 'faisable');
   section('Il manque quelque chose', autres, 'incomplete');
   // fiche
-  if (!etat.sel || !cons.CONSTRUCTIONS[etat.sel]) { fiche.append(vide('Choisis ce que tu veux bâtir, puis « Placer » : tu choisis l\'endroit en vert clair et tu poses. Démonter un meuble (près de lui, avec un marteau ou un pied-de-biche) donne des planches.', 'marteau')); return; }
+  if (!etat.sel || !cons.CONSTRUCTIONS[etat.sel]) { fiche.append(vide('Choisis ce que tu veux bâtir, puis « Placer » : tu choisis l\'endroit en vert clair et tu poses. Démonter un meuble (près de lui, avec un marteau ou un pied-de-biche) donne des planches.', 'construire')); return; }
   const type = etat.sel, e = cons.etatConstruction(type, p), d = e.d;
   fiche.append(el('button', { type: 'button', class: 'fi-fermer', 'aria-label': 'Fermer la fiche', onclick: () => { etat.sel = null; redessiner(); } }, icoEl('fermer')));
   fiche.append(el('div', { class: `fi-tete${e.faisable ? ' faisable' : ''}` }, el('span', { class: 'fi-ic' }, icoEl(ic(type))),

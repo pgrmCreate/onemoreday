@@ -113,6 +113,7 @@ tours ; en contrebas la montée du Puech et le lycée de l’Empéri.
 | id | où | déclenche |
 |---|---|---|
 | `porte_emperi` | devant la grille (côté montée) | PNJ Vidal à travers la grille si statut « rejeté » |
+| `grille_emperi` | dehors, juste devant la grille | scène `emp_arrivee` (« Appeler les guetteurs »), seulement parvis dégagé : aucun mort à moins de 8 unités |
 | `vidal` | cour d’honneur | menu `vidal_parler` |
 | `lou_rempart` | chemin de ronde (Lou après son retour) | menu `lou_parler` |
 | `radio_emperi` | sommet de la tour d’angle | `emp_radio` (si `radio_ok`) |

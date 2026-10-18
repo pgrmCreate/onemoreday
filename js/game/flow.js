@@ -52,6 +52,13 @@ export async function ouvrirCarte(opts = {}) {
   await basculer('carte', '../travel/carte.js', opts);
 }
 export async function voyager(opts) {
+  // Un trajet se choisit sur une carte qu'on a EN CE MOMENT, sauf quand on suit une indication reçue (js/travel/errance.js).
+  const { peutPlanifier } = await import('../travel/errance.js');
+  const de = (opts && (opts.de || (opts.preparation && opts.preparation.params.de))) || (G && G.player.position && G.player.position.lieu);
+  if (opts && !opts.indication && opts.vers && de && !peutPlanifier(de, opts.vers)) {
+    toast('Tu n’as pas de carte qui couvre ce trajet : sans carte, on part à pied depuis la sortie d’un lieu.');
+    return explorer(de);
+  }
   clock.setVitesse(vitesseSolo('voyage'));
   await basculer('voyage', '../travel/voyage.js', opts);
   sauver();

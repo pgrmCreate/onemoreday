@@ -28,7 +28,7 @@ function dessiner(racine, api) {
     return b;
   };
   cats.append(catBtn(null, 'Tout', 'tout'));
-  for (const [id, nom] of Object.entries(cons.CATS_CONSTRUCTION)) cats.append(catBtn(id, nom, ICONE_CAT[id] || 'marteau'));
+  for (const [id, nom] of Object.entries(cons.CATS_CONSTRUCTION)) cats.append(catBtn(id, nom, ICONE_CAT[id] || 'construire'));
   const liste = el('div', { class: 'fa-liste', 'data-scroll': 'liste-' + (etat.cat || 'tout') });
   const fiche = el('aside', { class: 'pn-fiche fa-fiche', 'data-scroll': 'fiche' });
   dessinerConstruire(liste, fiche, etat, () => dessiner(racine, api), api);

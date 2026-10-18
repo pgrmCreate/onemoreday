@@ -128,7 +128,14 @@ export const SCENES_CH1 = {
   },
 
   // ─────────────────────────── L’EMPÉRI ───────────────────────────
-  // Déclencheur : entrée dans 'emperi' si quête q_protocole à 'emperi' et pas 'emp_arrivee_faite'.
+  // Déclencheur : entrée dans 'emperi' (une fois) si quête q_protocole à 'emperi' et pas 'emp_arrivee_faite'.
+  emp_approche: {
+    illu: 'montee_puech', musique: 'tension',
+    texte: 'En haut de la montée du Puech, devant la grille du château, trois morts se pressent contre les barreaux et les grattent avec leurs ongles.\n\nSur le rempart, des silhouettes te regardent sans faire un geste. Tant que ces morts seront là, personne ne descendra t’ouvrir.',
+    choix: [{ label: 'Te préparer', suivant: '#fin' }],
+  },
+
+  // Déclencheur : marqueur 'grille_emperi' (devant la grille, parvis dégagé) si quête q_protocole à 'emperi' et pas 'emp_arrivee_faite'.
   emp_arrivee: {
     illu: 'montee_puech', musique: 'tension',
     texte: 'La montée du Puech grimpe raide entre deux murs, sur des pavés polis par les siècles. Sur la gauche, tu passes devant les grilles du lycée, un banc renversé et une banderole de rentrée, BIENVENUE AUX SECONDES, qui ne tient plus que par un coin. Au-dessus se dresse le château de l’Empéri, avec ses murs de huit mètres, ses tours carrées et sa pierre couleur de pain brûlé.\n\nLa porte est barrée par une grille de chantier renforcée de palettes. Derrière, deux adolescents de quinze ou seize ans montent la garde, l’un avec un casque de vélo, l’autre avec un vieux casque de soldat à crinière noire pris au musée. Ils tiennent chacun un sabre du musée, et leurs lames tremblent un peu.\n\n« Stop. Pas un pas de plus. » La voix de l’adolescent est encore en train de muer. « Montre tes bras, les deux. Remonte tes manches jusqu’aux épaules. »',

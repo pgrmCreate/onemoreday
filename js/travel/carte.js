@@ -16,6 +16,7 @@ import { projeter, lieuxAffiches, estDecouvert, echelleDe, zonesVues } from './g
 import { monterFeuille, creerMarqueur, desencombrer, SVGNS, pictoPath } from './art_carte.js';
 import { estHostile } from './rencontres_voyage.js';
 import { preparerVoyage } from './preparer_voyage.js';
+import { peutPlanifier, carteEnMain } from './errance.js';
 
 let E = null;                 // état de l'écran courant
 let allure = 'normale';       // mémorisée d'une ouverture à l'autre
@@ -73,15 +74,19 @@ export async function entrer({ echelle, depuis, reprise = null } = {}) {
   montrer(echelle, { premier: true });
   const onKey = (e) => {
     if (e.key === 'Escape') { if (E.sel) fermerFiche(); }
-    else if (e.key === '+' || e.key === '=') E.F.vue.zoomer(0.7);
-    else if (e.key === '-') E.F.vue.zoomer(1.4);
+    else if ((e.key === '+' || e.key === '=') && E.F) E.F.vue.zoomer(0.7);
+    else if (e.key === '-' && E.F) E.F.vue.zoomer(1.4);
   };
   window.addEventListener('keydown', onKey);
   E.offs.push(() => window.removeEventListener('keydown', onKey));
   E.offs.push(on('minute', () => majHorloge()));
-  E.offs.push(on('inventaire', () => { if (E?.sel && E.sel !== E.depuis) majFiche(); }));
+  // la carte qu'on lâche (ou qu'on ramasse) pendant que la fiche est ouverte : Partir disparaît (ou revient)
+  E.offs.push(on('inventaire', () => {
+    // la carte de cette feuille perdue (ou trouvée) pendant qu'on la regarde : la feuille se retire (ou se monte)
+    if (E && carteEnMain(E.echelle) !== !!E.F) { montrer(E.echelle, { premier: true }); return; }
+    if (E?.sel && E.sel !== E.depuis) { if (peutPlanifier(E.depuis, E.sel) !== !!E.fPartir) ouvrirFiche(E.sel); else if (E.fPartir) majFiche(); } }));
   E.offs.push(on('mission:maj', () => { if (E?.sel && E.sel !== E.depuis) majFiche(); }));
-  if (reprise && LIEUX[reprise.vers]) { allure = reprise.allure || 'normale'; ouvrirFiche(reprise.vers); }
+  if (reprise && LIEUX[reprise.vers] && E.F) { allure = reprise.allure || 'normale'; ouvrirFiche(reprise.vers); }
 }
 export function sortir() {
   if (!E) return;
@@ -105,8 +110,8 @@ function construireBarre() {
   );
   E.ici.textContent = l ? 'Tu es à : ' + (l.court || l.nom) : '';
   const zoom = el('div', { class: 'carte-zoom' },
-    el('button', { class: 'carte-btn rond', 'aria-label': 'Zoomer', onclick: () => E.F.vue.zoomer(0.6) }, '+'),
-    el('button', { class: 'carte-btn rond', 'aria-label': 'Dézoomer', onclick: () => E.F.vue.zoomer(1.6) }, '−'),
+    el('button', { class: 'carte-btn rond', 'aria-label': 'Zoomer', onclick: () => E.F && E.F.vue.zoomer(0.6) }, '+'),
+    el('button', { class: 'carte-btn rond', 'aria-label': 'Dézoomer', onclick: () => E.F && E.F.vue.zoomer(1.6) }, '−'),
     el('button', { class: 'carte-btn rond', 'aria-label': 'Recentrer sur ta position', onclick: () => recentrer(true) }, el('span', { class: 'ico-cible' })),
   );
   E.racine.append(barre, zoom);
@@ -116,17 +121,34 @@ function majHorloge() { if (E && E.horloge) E.horloge.textContent = texteHorloge
 
 // ---------------------------------------------------------------- une feuille
 function montrer(echelle, { premier = false, centrerSur = null } = {}) {
-  if (!premier && echelle === E.echelle && E.F) return;
+  if (!premier && echelle === E.echelle && (E.F || E.sansCarte)) return;
   fermerFiche();
-  if (E.F) E.F.detruire();
+  if (E.F) { E.F.detruire(); E.F = null; }
+  if (E.sansCarte) { E.sansCarte.remove(); E.sansCarte = null; }
+  E.marqueurs = [];
   E.echelle = echelle;
   for (const b of E.racine.querySelectorAll('.carte-onglet')) b.classList.toggle('actif', b.dataset.ech === echelle);
+  // Sans la carte de cette feuille : ni fond routier, ni positions, ni pan/zoom — seulement ce qu'on sait (les lieux
+  // où l'on est déjà allé, sans leur place) et le retour au lieu, d'où l'on part à pied.
+  E.racine.classList.toggle('carte-absente', !carteEnMain(echelle));
+  if (!carteEnMain(echelle)) {
+    const connus = Object.values(LIEUX).filter(l => l.echelle === echelle && G && G.world.lieux[l.id] && G.world.lieux[l.id].visite).map(l => l.court || l.nom);
+    const ici = LIEUX[E.depuis];
+    E.sansCarte = el('div', { class: 'carte-absente-panneau', role: 'note' },
+      el('h2', {}, echelle === 'region' ? 'Tu n’as pas de carte routière' : 'Tu n’as pas de plan de Salon'),
+      el('p', {}, 'Sans carte, tu ne vois ni les routes ni la place des lieux, et tu ne peux pas choisir de trajet. Reviens sur tes pas : depuis la sortie d’un lieu, tu peux partir à pied en te fiant à ce que tu reconnais.'),
+      connus.length ? el('p', { class: 'c-connus' }, `Les lieux où tu es déjà allé{|e} : ${connus.join(', ')}.`.replace('{|e}', G && G.player.genre === 'f' ? 'e' : '')) : null,
+      el('button', { class: 'carte-btn principal', type: 'button', onclick: () => flow.explorer(E.depuis) }, ici ? `Revenir : ${ici.court || ici.nom}` : 'Revenir'));
+    E.racine.append(E.sansCarte);
+    return;
+  }
   E.F = monterFeuille(E.vueHote, echelle, { onTap, onChange: planifierDesencombrement, estDecouvert, nuit: clock.estNuit(), brouillard: zonesVues(echelle) });
   poserMarqueurs();
   if (centrerSur) E.F.vue.centrer(centrerSur.x, centrerSur.y, echelle === 'region' ? 16000 : 2200);
   else recentrer(false);
 }
 function recentrer(anime) {
+  if (!E || !E.F) return;
   const ech = E.echelle; const l = LIEUX[E.depuis];
   let p;
   if (l && l.echelle === ech) p = projeter(l.lat, l.lon, ech);
@@ -211,6 +233,7 @@ function fermerFiche() {
   if (!E) return;
   E.sel = null;
   if (E.fiche) { E.fiche.remove(); E.fiche = null; }
+  E.fInfos = E.fChemins = E.fJumelles = E.fPartir = E.fAttendre = null;   // plus de mise à jour d'une fiche détachée
   if (E.barrePartir) { E.barrePartir.remove(); E.barrePartir = null; }
   if (E.F) E.F.couches.route.innerHTML = '';
   E.racine.classList.remove('avec-fiche');
@@ -232,7 +255,12 @@ function ouvrirFiche(id) {
       el('div', { class: 'f-type' }, TYPES[l.type] || '', el('span', { class: 'f-etat e-' + st.code }, st.texte), l.role === 'cle' ? el('span', { class: 'f-etat e-cle' }, 'important') : null)),
     el('button', { class: 'f-fermer', 'aria-label': 'Fermer', onclick: fermerFiche }, '×'));
   fiche.append(entete, el('p', { class: 'f-desc' }, l.desc || ''));
-  if (ici) {
+  const planifiable = ici || peutPlanifier(E.depuis, id);
+  E.fInfos = E.fChemins = E.fJumelles = E.fPartir = E.fAttendre = null;
+  if (!planifiable) {
+    // sans la carte qui couvre ce trajet, la feuille n'est qu'un souvenir : on ne choisit pas sa route dessus
+    fiche.append(el('p', { class: 'f-ici' }, 'Tu n’as pas sur toi de carte qui couvre ce trajet : tu ne sais pas comment y aller d’ici. Sans carte, on part à pied depuis la sortie d’un lieu.'));
+  } else if (ici) {
     fiche.append(el('p', { class: 'f-ici' }, 'Tu es ici.'),
       el('div', { class: 'f-actions' }, el('button', { class: 'carte-btn principal', onclick: () => flow.explorer(id) }, 'Rester ici')));
   } else {
@@ -256,11 +284,11 @@ function ouvrirFiche(id) {
   E.minutesDepart = reprise?.minutesDepart ?? G?.world.minutes;
   E.racine.append(fiche); E.racine.classList.add('avec-fiche');
   if (E.barrePartir) E.racine.append(E.barrePartir);
-  if (!ici) majFiche(true);
-  else E.F.couches.route.innerHTML = '';
+  if (!ici && planifiable) majFiche(true);
+  else if (E.F) E.F.couches.route.innerHTML = '';
 }
 function majFiche(cadrer = false) {
-  const id = E.sel; if (!id) return;
+  const id = E && E.sel; if (!id || !E.F || !E.fInfos || !E.fiche) return;   // fiche fermée, ou bloquée faute de carte
   for (const b of E.fiche.querySelectorAll('.f-allure')) { b.classList.toggle('actif', b.dataset.a === allure); b.setAttribute('aria-checked', String(b.dataset.a === allure)); }
   const plan = preparerVoyage({ de: E.depuis, vers: id, allure, minutesDepart: E.minutesDepart,
     guetteur: E.guetteur, contourner: E.contourner && aJumelles() });
@@ -310,6 +338,7 @@ function majFiche(cadrer = false) {
   dessinerTrajet(cadrer);
 }
 function dessinerTrajet(cadrer = false) {
+  if (!E.F) return;
   const g = E.F.couches.route; const iti = E.iti; if (!iti || !iti.points.length) { g.innerHTML = ''; return; }
   const pts = iti.points.map(p => projeter(p.lat, p.lon, E.echelle));
   let d = ''; pts.forEach((p, i) => { d += (i ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1); });
@@ -357,6 +386,7 @@ function attendreFenetre() {
 }
 function partir() {
   const vers = E.sel; if (!vers) return;
+  if (!peutPlanifier(E.depuis, vers)) { ouvrirFiche(vers); return; }
   { const fen = fenetreHoraire(vers); if (fen && !fen.ok) return; }
   // Transmettre l'aperçu lui-même : aucun nouveau tirage après le clic sur Partir.
   const plan = E.preparation;

@@ -250,3 +250,14 @@ b.r1 { color: #4e6a30; } b.r2 { color: #7a6a10; } b.r3 { color: #a55a10; } b.r4 
 /* Sur un écran étroit en paysage, Partir recouvre le bord gauche de la fiche : garder les cases au-dessus. */
 @media (min-width: 561px) and (max-width: 900px) { .carte-fiche { bottom: 72px; } }
 .carte-hote.nuit::after { background: radial-gradient(ellipse at 50% 50%, rgba(20, 28, 60, .30) 40%, rgba(6, 8, 20, .72) 100%); }
+
+/* Voyage sans carte (on suit une indication) : la feuille reste floue, on ne lit ni les rues ni leurs noms. */
+.voyage-sans-carte .carte-vue { filter: blur(9px) brightness(.45) saturate(.5); pointer-events: none; }
+.v-aveugle { position: absolute; left: 50%; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px); transform: translateX(-50%); width: min(520px, calc(100% - 32px)); margin: 0; padding: 10px 14px; text-align: center; color: #e8dcc0; background: rgba(12,10,8,.78); border: 1px solid rgba(232,220,192,.25); border-radius: 8px; font-family: var(--ui-f-recit, serif); font-size: 15px; }
+/* Carte absente (on n'a pas le document de cette feuille) : un panneau, pas de fond routier ni de zoom. */
+.carte-absente .carte-zoom { display: none; }
+.carte-absente .carte-vue { background: #15120f; }
+.carte-absente-panneau { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(540px, calc(100% - 32px)); max-height: calc(100% - 120px); overflow: auto; padding: 18px 20px; background: #efe4c8; color: #2a2016; border: 1px solid rgba(60,40,20,.35); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.45); font-family: var(--ui-f-recit, serif); font-size: 16px; }
+.carte-absente-panneau h2 { margin: 0 0 8px; font-size: 20px; }
+.carte-absente-panneau p { margin: 0 0 10px; line-height: 1.4; }
+.carte-absente-panneau .carte-btn { min-height: 44px; margin-top: 6px; }

@@ -29,6 +29,7 @@ import { creerCombatVue } from './combat_vue.js';
 import { genererEmbuscade } from './embuscade.js';
 import { creerHud } from './hud_explore.js';
 import { mod, chargerOptionnels, lierCommun, vib, sfx, sfxA, posPorte, verifierCondition, compter, niv, message, afficherLieu, caseLibrePres } from './commun.js';
+import { entreeRefusee, condition as condRefuge } from './refuge.js';
 import { lierButin, distanceButin, avancerFouille, interrompreFouille, fermerButin, fournisseurSol, fournisseurProximite, majProximite, ouvrirSol, nombreAuSol } from './butin.js';
 import { lierInteractions, chercherCible, majInvite, interagir, basculerChoix, fermerChoix, choisir, avancerAction, couperAction, mangerEnAction, majPnj, declencheursEntree, zones, piece } from './interactions.js';
 import { lierCombatLieu, combatIci as combatIci_, embuscade as embuscade_, suivreCombat, finArene } from './combat_lieu.js';
@@ -135,6 +136,7 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null, po
     tVis: 0, tSnapVis: 0, ralenti: null, tGuide: 0,
   };
   lierTout(V);
+  V.parvis = niveau.portes.some(p => p.parvis && p.gardee);
   if (!arene) chargerMemoire(V);   // le plan du lieu : ce qu'on en avait déjà vu
   if (arene) {
     const W = G.world;
@@ -151,6 +153,9 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null, po
     const ab = niveau.abords, avant = P.abords || { dx: 0, dy: 0 };     // position sauvée avant les abords : décalée
     const dx = ab ? ab.dx - (avant.dx || 0) : 0, dy = ab ? ab.dy - (avant.dy || 0) : 0;
     pos = { etage: P.etage, x: P.x + dx, y: P.y + dy };
+    // un plan refait (une montée raccourcie…) : une position sauvée dans la roche ou hors du plan va à la case libre la plus proche
+    const Ep = niveau.etages[niveau.etageIdx[P.etage]], ip = icase(Ep, pos.x, pos.y);
+    if (ip < 0 || Ep.bloque[ip]) { const c = caseLibrePres(niveau, { etage: P.etage, x: Math.max(0, Math.min(Ep.w / FIN - 1, Math.floor(pos.x))), y: Math.max(0, Math.min(Ep.h / FIN - 1, Math.floor(pos.y))) }); pos = c ? { etage: c.etage, x: c.x + 0.5, y: c.y + 0.5 } : null; }
   }
   // on arrive de la route : par la sortie du côté d'où l'on vient, pas au milieu du lieu
   if (!pos && !entree && venantDe && !arene) pos = arriveeParSortie(niveau, L, venantDe);
@@ -265,6 +270,8 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null, po
   }));
   V.off.push(C.on('zombie', (e) => { if (e.etat === 'chasse') { const z = V.zInterp.get(e.uid); if (z && z._vu) sfx('alerte'); else if (z) sfxA('zombie_loin', z.x, z.y, z.etage, 14); } }));
   // les sirènes arrivent ici (simulation : réveil + renforts) : on le voit et on l'entend tout de suite
+  // l'hôte a refusé une position (le portail d'un refuge, mort devant) : on revient où il nous voit
+  V.off.push(C.on('recale', (e) => { if (!V || !e || e.joueur !== V.canal.joueurId) return; if (e.etage === V.j.etage) { V.j.x = e.x; V.j.y = e.y; V.j.vx = V.j.vy = 0; } if (e.message) message(e.message, 3600); }));
   V.off.push(C.on('ruee', () => { V.tSirene = 0; message(typeActif() === 'horde' ? 'La horde arrive. Ils sont des dizaines, et ils viennent par ici.' : 'Les sirènes ! Partout, les morts se lèvent et courent vers le bruit.', 3800); }));
   V.off.push(C.on('hurlement', (e) => { const z = e && V.zInterp.get(e.uid); if (z) sfxA('hurlement', z.x, z.y, z.etage, 40); else sfx('hurlement', { volume: 0.5 }); }));
   V.off.push(avantSauvegarde(() => {
@@ -459,6 +466,12 @@ function image(t, dt) {
   if (Math.abs(j.vx) + Math.abs(j.vy) > 1e-3) {
     tmpPos.x = j.x; tmpPos.y = j.y;
     deplacer(E.w, E.h, bloque, tmpPos, j.vx * dtv / 1000, j.vy * dtv / 1000, RAYON);
+    // le portail d'un refuge : du dehors, on ne passe pas le seuil tant qu'un mort rôde devant (js/explore/refuge.js)
+    const refus = V.parvis && entreeRefusee(V.niveau, (q) => q.gardee && condRefuge(q.gardee, getFlag), V.zListe, { etage: j.etage, x: j.x, y: j.y }, { etage: j.etage, x: tmpPos.x, y: tmpPos.y });
+    if (refus) {
+      tmpPos.x = j.x; tmpPos.y = j.y; j.vx = j.vy = 0;
+      const t = performance.now(); if (!(t - (V.tRefus || 0) < 3500)) { V.tRefus = t; message(refus.refus || 'On ne t’ouvre pas tant que des morts rôdent devant.', 3600); }
+    }
     j.x = tmpPos.x; j.y = tmpPos.y;
   }
   const vReelle = Math.hypot(j.vx, j.vy);

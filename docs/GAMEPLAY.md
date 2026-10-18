@@ -175,6 +175,29 @@ Un refuge qu'on garde barricadé reste propre ; **les grands lieux publics se re
 
 ## 3. Temps 2 — La carte et le voyage
 
+### 3.0 Sans carte : marcher rue après rue (`js/travel/errance.js`, `js/data/troncons.js`)
+
+On ne choisit une destination sur la feuille que si l'on a **en ce moment** la carte qui la couvre : le plan de Salon
+(ou une carte routière) pour la ville, la carte routière pour le pays. L'avoir eue un jour ne suffit plus (le brouillard
+garde seulement ce qu'on a vu). Une partie commencée avant le brouillard garde l'ancienne carte entière.
+
+Sans carte, la sortie d'un lieu ouvre **« Sans carte »** :
+- **Partir à pied** par l'un des tronçons qui partent du lieu. Le réseau est fini : chaque lieu de Salon est relié à ses
+  deux voisins les plus proches, chaque village au plus proche, et les villages à moins de 5,2 km du centre de Salon y
+  sont reliés par la route (61 tronçons, 94 rues jouables et 61 culs-de-sac en tout, générés seulement quand on y passe ;
+  leur état — morts, butin pris, objets posés — se sauve comme celui d'un lieu). Un libellé dit le cap (« vers le
+  nord-est »), le lieu s'il est déjà connu, ou ce qu'on en voit de loin, de jour et par temps clair.
+- **Suivre les indications** jusqu'à un lieu que l'histoire a désigné (effet `decouvrir`) et où l'on n'est pas encore allé :
+  le voyage habituel, mais la feuille reste floue (on avance de mémoire).
+- **Rester ici**.
+
+Chaque rue a trois sorties : celle d'où l'on vient, la suite, et une mauvaise rue qui finit en **cul-de-sac** (rue barrée
+par l'armée, chantier, canal ; voie ferrée, canal EDF, maquis à la campagne). De jour et par temps clair, en arrivant, on
+reconnaît au loin le repère du lieu visé et le côté par où continuer ; de nuit, sous la pluie ou dans la brume, on devine.
+Chaque passage compte le temps de la marche condensée (75 m/min, 2 min déjà comptées par la traversée de la rue). On
+revient toujours sur ses pas en marchant, jamais en sautant. Des inscriptions laissées par d'autres survivants (près de
+l'Empéri, de la Tour, de la gare, de l'hôpital, sur la route de Pélissanne) racontent la ville et orientent.
+
 ### 3.1 La vitesse de marche (`voyage.ALLURES`, `MALUS_VITESSE`)
 
 | Allure | km/h | m/min | Rencontres | Fatigue | Endurance | Spécial |
@@ -584,7 +607,14 @@ rechute** : on redevient l'un d'eux.
   pas. Un pull ou un sweat règle la question. **Déficit ≥ 3 : −0,015 PV/min par point au-delà de 2.**
 - **Douleur** (somme des plaies, moins les calmants) : > 30 toucher −3 %, > 60 −5 % et récup. sta ×0,75, > 80 −10 %
   et vue tremblée. Antidouleurs −40 pendant 4 h ; alcool −15 pendant 1 h (toucher −5 %).
-- **Sommeil** : possible si fatigue < 80 ; 2 à 10 h ; +0,22 fatigue/min (8 h ≈ +105). Lieu **non sûr** avec des morts
+- **Sommeil** : possible si fatigue < 80 ; réveil naturel au plafond du couchage, selon la fatigue initiale et le bruit.
+  Seule une **montre digitale portée** permet de régler une alarme (par pas de 15 min). Une montre à aiguilles donne
+  l'heure, mais ne réveille pas. Sans montre, ni l'invitation ni le réveil n'annoncent de durée exacte.
+  Base : +0,22 fatigue/min, multipliée par la qualité du couchage et ralentie par les bruits réellement présents
+  (morts audibles proches, ruée, orage ou mistral), atténués par les murs et portes. Les morts silencieux ne se révèlent pas.
+  Une alarme de voiture à proximité empêche de s'endormir ou interrompt le sommeil. Un garde-fou réveille après 16 h.
+  À deux, le premier réveil naturel ou l'alarme de l'un des joueurs réveille les deux ; chaque bloc a la même durée.
+  Lieu **non sûr** avec des morts
   vivants dans le niveau : intrusion à (4 % + 10 % × danger) par heure. Un **piège sonore** te réveille avant (combat
   « normal » au lieu de « surpris »). Pièce barricadée ou refuge : aucun risque. **Ce qu'on récupère dépend du
   couchage : voir §5.7.**
@@ -649,7 +679,7 @@ Pourquoi ces nombres :
 - Le plafond remplace l'ancien bonus du lit (`+4 fatigue/h` codé en dur dans `js/game/sommeil.js`, à **retirer**).
 - Si la fatigue est déjà au plafond du couchage, on ne s'endort pas : « Tu n'arrives pas à dormir ici : tu n'es pas
   assez fatigué{|e} pour un sol aussi dur. » (Pas de sommeil inutile qui ferait tourner l'horloge pour rien.)
-- Le sommeil s'arrête tout seul quand la fatigue atteint le plafond (aujourd'hui : à 99,5).
+- Le sommeil s'arrête tout seul au plafond du couchage (à 0,01 près), ou plus tôt si l'alarme sonne ou si un danger l'interrompt.
 - Les courbatures utilisent ce qui existe déjà : `douleurAigue(p, v, min)` de `js/game/survival.js`
   (`p.effets.douleurAigue` = minutes, `douleurAigueV` = valeur), plus un effet `courbatures` (minutes) qui multiplie la
   récupération d'endurance. Une douleur de 20 seule affiche « Douleur légère » sans malus au toucher (seuil 30) ; avec

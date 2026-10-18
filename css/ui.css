@@ -642,6 +642,11 @@ kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border: 1px soli
 .som-choix { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 8px; }
 .som-choix .btn:disabled { opacity: .35; }
 .som-annuler { width: 100%; }
+.som-choix.som-naturel { grid-template-columns: 1fr; }
+.som-reglage { display: grid; gap: 8px; margin: 16px 0; }
+.som-reglage label { color: var(--ui-texte); }
+.som-reglage select { min-height: 44px; padding: 8px 12px; font: inherit; color: var(--ui-texte); background: var(--ui-fond, #171619); border: 1px solid var(--ui-bord-fort); border-radius: 6px; color-scheme: dark; }
+.som-boite .btn { min-height: 44px; }
 .som-invite { position: fixed; left: 50%; bottom: 56px; transform: translateX(-50%); z-index: 110; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
   padding: 10px 14px; background: rgba(16,34,52,.95); border: 1px solid #7cc8ff; border-radius: 10px; color: #cfe8ff; font-family: var(--ui-f-recit); font-size: 16px; }
 .som-voile { position: fixed; inset: 0; z-index: 130; display: grid; place-content: center; gap: 10px; text-align: center; background: #000; opacity: 0; transition: opacity .6s; pointer-events: all; }
