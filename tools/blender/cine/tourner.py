@@ -21,6 +21,7 @@ except Exception as e: print('[mpfb]', e)
 T.reglages_rendu('brouillon' if brouillon else 'film')
 f0, f1 = P.PLANS[nom](T)
 print(f'[tournage] {nom} construit en {time.time() - t0:.0f} s ; frames {f0}-{f1}')
+bpy.context.scene.frame_start, bpy.context.scene.frame_end = f0, f1   # la scène gardée sait quelles images tourner
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(r'D:\projects 3D\OneMoreDay\cine', nom + '.blend'))
 T.tourner_plan(nom, f0, f1, image=image)
 print(f'[tournage] {nom} terminé en {time.time() - t0:.0f} s')

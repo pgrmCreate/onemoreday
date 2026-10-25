@@ -4,6 +4,7 @@
 # Un plan « attrape-ombres » au sol pose les ombres portées sur la photo.
 #   blender -b --python tools/blender/cine/composites.py -- triage_horde [--brouillon] [--fond]
 #   → D:\projects 3D\OneMoreDay\apercus\calque_<décor>.png  (--fond : avec le panorama derrière, pour vérifier le calage)
+#     et la scène gardée : D:\projects 3D\OneMoreDay\cine\composites\<décor>.blend  (--sans-rendu : seulement elle)
 # Puis : python tools/blender/cine/plaques_photo.py <décor>
 import sys, os, math, random, time, urllib.request
 ICI = os.path.dirname(os.path.abspath(__file__))
@@ -14,6 +15,7 @@ args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 decor = args[0]
 brouillon = '--brouillon' in args
 fond = '--fond' in args
+sans_rendu = '--sans-rendu' in args          # seulement construire et garder la scène (.blend), sans rendre
 from vignettes_photo import VIGNETTES
 CACHE = r'D:\projects 3D\OneMoreDay\ph_cache'
 APERCUS = r'D:\projects 3D\OneMoreDay\apercus'
@@ -132,5 +134,9 @@ attrape_ombres()
 CONTENU[decor]()
 print(f'[composite] {decor} construit en {time.time() - t0:.0f} s')
 bpy.context.scene.render.filepath = os.path.join(APERCUS, ('fond_' if fond else 'calque_') + decor + '.png')
+# la scène est gardée, comme celles des plans (D:\projects 3D\OneMoreDay\cine\composites\<décor>.blend)
+os.makedirs(os.path.join(os.path.dirname(APERCUS), 'cine', 'composites'), exist_ok=True)
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(os.path.dirname(APERCUS), 'cine', 'composites', decor + '.blend'))
+if sans_rendu: raise SystemExit(0)
 bpy.ops.render.render(write_still=True)
 print(f'[composite] {decor} rendu en {time.time() - t0:.0f} s')
