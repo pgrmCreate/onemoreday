@@ -16,6 +16,9 @@ export function condition(si, getFlag) {
   if (liste(si.flag).some(k => !getFlag(k))) return false;
   if (liste(si.pasFlag).some(k => !!getFlag(k))) return false;
   if (si.flagEgal && getFlag(si.flagEgal[0]) !== si.flagEgal[1]) return false;
+  if (si.ou && !si.ou.some(c => condition(c, getFlag))) return false;
+  if (si.et && !si.et.every(c => condition(c, getFlag))) return false;
+  if (si.non && condition(si.non, getFlag)) return false;
   return true;
 }
 export const refugeHabite = (niveau, getFlag) => !!(niveau && niveau.refuge) && condition(niveau.refuge, getFlag);

@@ -11,6 +11,7 @@ import { demarrerSurvie, arreterSurvie } from './game/survival.js';
 import { demarrerDeclencheurs, arreterDeclencheurs } from './game/declencheurs.js';
 import { demarrerMeteo, arreterMeteo } from './game/meteo.js';
 import { demarrerRuees, arreterRuees } from './game/ruees.js';
+import { demarrerBrume, arreterBrume } from './game/brume.js';
 import { demarrerRadio, arreterRadio } from './game/radio.js';
 import { demarrerMissions, arreterMissions } from './game/missions.js';
 import { demarrerNotifs } from './ui/notif.js';
@@ -70,13 +71,13 @@ export function ecranTitre() {
   const peutContinuer = aSauvegarde('solo');
   const c = afficher(`
     <h1 class="titre-jeu">One More<br><b>Day</b></h1>
-    <p class="sous-titre">Salon-de-Provence. Trois semaines après le Mercredi.</p>
+    <p class="sous-titre">Pays salonais. Trois semaines après le Mercredi.</p>
     <div class="menu">
       ${peutContinuer ? btn({ cls: 'primaire', data: 'data-a="continuer"' }, 'Continuer', 'reprendre la partie en cours') : ''}
       ${btn({ cls: peutContinuer ? '' : 'primaire', data: 'data-a="nouvelle"' }, 'Nouvelle partie', resumeSauvegarde('solo') ? 'remplace la partie solo en cours' : 'seul')}
       ${btn({ data: 'data-a="coop"' }, 'Jouer à deux', 'en ligne ou sur le même Wi-Fi')}
     </div>
-    <p class="aide">Jeu pour adultes : violence et gore explicites.</p>`, 'salon_mistral_vide');
+    <p class="aide">Jeu pour adultes : violence et gore explicites.</p>`, 'refuge_place');
   c.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
     try { audio.sfx('clic'); } catch (e) {}
     pleinEcran();
@@ -95,7 +96,7 @@ export function ecranCreation({ mode = 'solo', apres } = {}) {
   // Tout tient sur un écran de téléphone (paysage comme portrait) : une carte, deux colonnes, les boutons en bas.
   const c = afficher(`
     <div class="creation">
-      <header class="cr-tete"><small>${mode === 'hote' ? 'Héberger une partie' : mode === 'invite' ? 'Rejoindre la partie' : mode === 'releve' ? 'Un autre survivant' : 'Nouvelle partie'}</small><h2>Qui se réveille ?</h2></header>
+      <header class="cr-tete"><small>${mode === 'hote' ? 'Héberger une partie' : mode === 'invite' ? 'Rejoindre la partie' : mode === 'releve' ? 'Un autre survivant' : 'Nouvelle partie'}</small><h2>Qui arrive à la porte ?</h2></header>
       <div class="cr-grille">
         <section>
           <label class="champ" for="c-nom">Ton prénom</label>
@@ -120,7 +121,7 @@ export function ecranCreation({ mode = 'solo', apres } = {}) {
           <button type="button" class="btn cr-go" data-a="remplacer">Remplacer la partie</button>
         </div>
       </section>
-    </div>`, 'cimetiere_caveau');
+    </div>`, 'refuge_porte');
   c.classList.add('ec-creation');
   c.querySelectorAll('#c-genre button').forEach(b => b.onclick = () => { genre = b.dataset.g; c.querySelectorAll('#c-genre button').forEach(x => x.classList.toggle('on', x === b)); });
   c.querySelectorAll('#c-diff button').forEach(b => b.onclick = () => { diff = b.dataset.d; setPref('difficulte', diff); c.querySelectorAll('#c-diff button').forEach(x => x.classList.toggle('on', x === b)); });
@@ -174,7 +175,7 @@ function demarrerSystemes({ invite = false } = {}) {
   clock.viderPauses();
   clock.demarrer({ invite });
   demarrerSurvie();
-  demarrerMeteo();
+  demarrerMeteo(); demarrerBrume();
   if (!invite) { demarrerDeclencheurs(); demarrerRuees(); demarrerRadio(); }
   demarrerMissions(); demarrerNotifs();
   montrerHUD(true); majHUD();
@@ -183,7 +184,7 @@ function arreterPartie() {
   if (!partieEnCours) return;
   partieEnCours = false;
   try { fermerPanneau(); } catch (e) {}
-  clock.arreter(); arreterSurvie(); arreterDeclencheurs(); arreterRuees(); arreterRadio(); arreterMeteo(); arreterMissions();
+  clock.arreter(); arreterSurvie(); arreterDeclencheurs(); arreterRuees(); arreterRadio(); arreterMeteo(); arreterBrume(); arreterMissions();
   montrerHUD(false);
   flow.quitter && flow.quitter();
   try { coop.arreter(); } catch (e) {}
@@ -196,10 +197,10 @@ export async function nouvelleAventure({ nom, genre, difficulte, mode = 'solo', 
   if (avant) avant();
   cacherEcran();
   demarrerSystemes();
-  quetes.avancer('q_prologue', 'debut');
+  quetes.avancer('q_refuge', 'arrivee');
   sauver();
   await flow.cinematique('intro');
-  await flow.explorer('cimetiere', { entree: 'caveau' });
+  await flow.explorer('miramas_le_vieux', { entree: 'porte' });
 }
 
 export async function continuer(mode = 'solo', avant = null) {
@@ -221,7 +222,7 @@ async function reprendrePosition() {
     if (v.indication) await flow.voyager({ de: v.de, vers: v.vers, allure: v.allure || 'normale', indication: true });
     else await flow.ouvrirCarte({ echelle: lieuEchelle(v.vers), depuis: v.de, reprise: v });
   } else {
-    await flow.explorer('cimetiere', { entree: 'caveau' });
+    await flow.explorer('miramas_le_vieux', { entree: 'porte' });
   }
   annoncerRepli(repli);
 }
@@ -239,10 +240,10 @@ export async function demarrerInvite({ position, neuf, avant } = {}) {
   const repli = preparerRepriseErrance(G.player);
   position = G.player.position;
   if (position && position.lieu) await flow.explorer(position.lieu, { entree: position.entree || undefined });
-  else await flow.explorer('cimetiere', { entree: 'caveau' });
+  else await flow.explorer('miramas_le_vieux', { entree: 'porte' });
   annoncerRepli(repli);
-  // premier soir à deux : on se réveille l'un près de l'autre
-  if (neuf && G && !G.world.flags.prologue_fini) setTimeout(() => flow.scene('coop_reveil').catch(() => {}), 600);
+  // premier soir à deux : vous êtes arrivés ensemble à la porte du Refuge
+  if (neuf && G && !G.world.flags.quarantaine_faite) setTimeout(() => flow.scene('ref_porte_coop').catch(() => {}), 600);
 }
 
 // ---------- Mort ----------
@@ -321,6 +322,10 @@ function ecranFin(fin) {
   const st = G.player.stats || {};
   const jours = clock.jour();
   noteJournal(`Fin — ${fin.titre} : ${fin.sousTitre}`, 'fin');
+  // une fin « continuer » (on reste sur la rive sud) : la partie peut reprendre, sans quête, comme un bac à sable
+  const mode = G.mode === 'solo' ? 'solo' : G.mode === 'hote' ? 'hote' : null;
+  const suite = !!(fin.continuer && mode);
+  if (suite) delete G._fin;
   sauver();
   arreterPartie();
   try { audio.playAmbiance('refuge'); } catch (e) {}
@@ -329,8 +334,8 @@ function ecranFin(fin) {
     <h2 class="gros-titre">${escapeHtml(fin.titre)}</h2>
     <div class="recit">${texteHtml(genrer(fin.resume || ''))}</div>
     <div class="bilan"><span><b>${jours}</b> jours</span><span><b>${st.morts || 0}</b> morts abattus</span><span><b>${(G.documents || []).length}</b> documents</span></div>
-    <div class="menu">${btn({ cls: 'primaire', data: 'data-a="titre"' }, 'Écran titre')}</div>`, fin.decor || 'emperi_remparts_aube');
-  c.querySelector('[data-a]').onclick = () => ecranTitre();
+    <div class="menu">${suite ? btn({ cls: 'primaire', data: 'data-a="suite"' }, 'Continuer à survivre', 'la partie reprend, sans quête') : ''}${btn({ cls: suite ? '' : 'primaire', data: 'data-a="titre"' }, 'Écran titre')}</div>`, fin.decor || 'mallemort_camp');
+  c.querySelectorAll('[data-a]').forEach(b => { b.onclick = () => (b.dataset.a === 'suite' ? continuer(mode) : ecranTitre()); });
 }
 
 // ---------- Menu → titre ----------

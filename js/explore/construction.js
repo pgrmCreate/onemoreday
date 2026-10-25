@@ -7,7 +7,7 @@
 // Interactions : caisse (ouvrir, ranger), porte construite, feu (remettre du bois), récupérateur (boire, remplir),
 // potager (récolter, replanter), lit (dormir), établi (fabriquer) ; touche G = geste secondaire (démonter, barricader).
 // Contexte : établi, feu, point d'eau, dehors → fabrication et survie (2 fois par seconde).
-import { G } from '../core/state.js';
+import { G, setFlag } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { REGLAGES } from '../data/reglages.js';
 import { CONSTRUCTIONS, DEMONTABLES, COMBUSTIBLES, casesConstruction, casesFinesConstruction, tailleConstruction } from '../data/construction.js';
@@ -386,6 +386,7 @@ export function secondairePorte(p, s) {
       const r = await V.canal.porte(p.cle, 'barricader');
       if (!r || !r.ok) { message(r && r.raison === 'occupee' ? 'Quelque chose bloque la porte.' : 'Impossible.'); return; }
       mod.inv.removeItem('planche', 2); mod.inv.removeItem('clous', 4);
+      if (p.flagBarricade) setFlag(p.flagBarricade);   // une ouverture qui compte pour l'histoire (la brèche du Refuge)
       (mod.player && mod.player.gagnerXp) && mod.player.gagnerXp('construction', REGLAGES.competences.XP_ACTIONS.barricader.construction || 10);
       sfx('porte_coup'); message('Barricadée. Derrière, on peut dormir.');
     }, 7, 'clouer');

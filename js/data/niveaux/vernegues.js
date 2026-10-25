@@ -1,15 +1,16 @@
-// Vieux-Vernègues (CHAPITRE 2, les revenus) — voir docs/NIVEAUX_BESOINS.md §9.
+// Vieux-Vernègues — un lieu du monde : des ruines abandonnées, et des caves où quelqu'un a vécu.
 // Réel : village perché détruit par le séisme du 11 juin 1909 ; ruines du château et de l’église, caves voûtées sous
 // les ruines, trous où le sol s’effondre, panorama sur toute la plaine.
-// Parcours : chemin (sud-est) → ruelle principale (Nadège) → église sans toit (le Berger au chœur, feu de sarments ;
-// l’inscription UN POUR UN sur le mur nord) → sacristie effondrée (Rose et le redon) → caves (facultatif) par la
-// maison du boulanger ou par deux effondrements (> sur les trous) : dortoirs des revenus, cave des ratés (enragés
-// qui cognent derrière une grille-porte jamais ouverte). Nuit : les bougies ne sont pas représentables en tuiles.
+// Parcours : chemin (sud-est) → ruelle principale → église sans toit (un foyer froid au chœur) → sacristie effondrée →
+// caves (facultatif) par la maison du boulanger ou par deux effondrements (> sur les trous) : la cave aux paillasses (un
+// groupe a dormi là, puis il est parti), la cave à la grille (des enragés cognent derrière une grille cadenassée).
+// Traces (P3) : le foyer froid de l'église, les paillasses des caves, la grille cadenassée sur les morts, les pierres
+// tombées des voûtes. Pas de bougie, pas d'habitant : le lieu est mort.
 // Écart : la chute par le sol qui cède n’a pas de mécanique ; les trous sont des passages « descendre » vers les caves.
 export default {
   id: 'vernegues', nom: 'Vieux-Vernègues', exterieur: true,
   sansSanitaires: true,   // un village en ruine depuis le séisme de 1909 : ni eau courante ni toilettes (tools/verifier_realisme.mjs)
-  typeButin: 'ruines', pool: ['errant', 'rampant', 'putrefie'], morts: { n: [0, 0] }, solDefaut: 'terre',
+  typeButin: 'ruines', pool: ['errant', 'rampant', 'putrefie'], morts: { n: [1, 3] }, solDefaut: 'terre',
   etages: [
     { id: 'surface', nom: 'Les ruines', monte: null, descend: 'caves', plan: [
       '                                                        ',
@@ -17,12 +18,12 @@ export default {
       '  ""##########""""""""""""""""""""""""""""""""""""""""  ',
       '  ""#xx,,,,,,#""""""""""""""""""""""""""""""""""""""""  ',
       '  ""#,,,,,,xx|""""####################""##########""""  ',
-      '  ""|,,,,,x,,#""T"#,,,x,,M,,,,x,,,,,,#""#.%;..;..#""""  ',
+      '  ""|,,,,,x,,#""T"#,,,x,,,,,,,x,,,,,,#""#.%;..;..#""""  ',
       '  ""#,x,,,,,,#""""#,,,,,,,,,,Y,,Y,,,,#""#.s.;..%.#""""  ',
       '  ""#,,,,,,,,#""""#,n,nn,nn,,,,,,,,,x#""#..x.;.;.#""""  ',
       '  ""#,,,,,,,,#""""#,,,,,,,,,,,,Y,,,e,#""#;.....%.#""""  ',
       '  ""#####/####""""#,n,nn,nn,,,,,,,Fe,#""#..%...;.#""""  ',
-      '  """""""""""","""/,,,,,,,,,,,,,,B,e,#""#........#""""  ',
+      '  """""""""""","""/,,,,,,,,,,,,,,,,e,#""#........#""""  ',
       '  """""""""""","""#,,x,nn,n,,,,,,,,,,#""####/#####""""  ',
       '  ""########"","""#,,,,,,,,,,,,,,,,,,#""""""""""""""""  ',
       '  ""#;a;.;.#"","""#x,,,,,,,,,,,,,,,,,#""""""""""""""""  ',
@@ -30,10 +31,10 @@ export default {
       '  ""#.x..%.#|",;""#,,,,,,,,,,,,,x,,,,#""""""""""""""""  ',
       '  ""#..%...#"">"""########/#########/###""""""""""T"""  ',
       '  ""#....;.#"",""""""""""""""""""#xx,,,#""""""""""""""  ',
-      '  ""####/###"",""""""""""",,"""""#,,,R,##########"""""  ',
+      '  ""####/###"",""""""""""",,"""""#,,,Z,##########"""""  ',
       '  """""""""""",""""""""""",,"""""#,g,,x##b.b.b.b#"""""  ',
       '  "T"""""""""",,,,,,,,,,"",,"""""#x,,,,##b.b.b.b#"""""  ',
-      '  """""""""""",""""""""""",N"""""########.......#"""""  ',
+      '  """""""""""",""""""""""",,"""""########.......#"""""  ',
       '  ""####/####",""""""""""",,""P"""""""""/t...c..#"""""  ',
       '  ""#%....a.#",""""""""""",,""""""""""""#.......#"""""  ',
       '  ""#....;.;#",""""",,,,,,,,,,,,,,,,,,,,#..>....#,""""  ',
@@ -107,21 +108,18 @@ export default {
     { etage: 'surface', x: 37, y: 19, nom: 'La sacristie effondrée', sol: 'paves' },
     { etage: 'surface', x: 44, y: 22, nom: 'La maison du boulanger', sol: 'tomettes', sombre: 1 },
     { etage: 'caves', x: 43, y: 21, nom: 'La grande cave', sol: 'terre', sombre: 1 },
-    { etage: 'caves', x: 20, y: 32, nom: 'Les dortoirs', sol: 'terre', sombre: 1 },
+    { etage: 'caves', x: 20, y: 32, nom: 'La cave aux paillasses', sol: 'terre', sombre: 1 },
     { etage: 'caves', x: 14, y: 14, nom: 'La cave du château', sol: 'terre', sombre: 2 },
-    { etage: 'caves', x: 32, y: 13, nom: 'La cave des ratés', sol: 'terre', sombre: 2 },
+    { etage: 'caves', x: 32, y: 13, nom: 'La cave à la grille', sol: 'terre', sombre: 2 },
     { etage: 'caves', x: 25, y: 24, nom: 'Le boyau', sol: 'terre', sombre: 2 },
   ],
   legende: {
-    'M': { marqueur: 'mur_eglise', nom: 'l’inscription sur le mur' },
-    'F': { prop: 'cheminee', nom: 'le feu de sarments', conteneur: false },
-    'B': { marqueur: 'berger' },
+    'F': { prop: 'cheminee', nom: 'le foyer froid', conteneur: false },
     'e': { prop: 'autel', nom: 'l’autel brisé' },
-    'Y': { prop: 'table', nom: 'une bougie sur une pierre', conteneur: false },
-    'R': { marqueur: 'rose' },
-    'N': { marqueur: 'nadege' },
-    'P': { prop: 'table', nom: 'des bougies', conteneur: false },
-    'G': { porte: true, verrou: { flag: 'ver_rates_liberes' }, nom: 'la grille de la cave des ratés' },
+    'Y': { prop: 'gravats', nom: 'un bloc tombé de la voûte' },
+    'P': { prop: 'gravats', nom: 'les pierres éboulées' },
+    'G': { porte: true, verrou: { forcer: 'pied_de_biche' }, nom: 'la grille de la cave',
+      message: 'Une grille cadenassée, et derrière elle des morts qui cognent. Quelqu’un les a enfermés là. Un pied-de-biche ferait sauter le cadenas.' },
     'K': { zombie: 'enrage', etat: 'cogne' },
   },
   declencheurs: [

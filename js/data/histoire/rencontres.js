@@ -1,44 +1,45 @@
-// ============ RENCONTRES DE VOYAGE SCÉNARISÉES (REFONTE §4.10) ============
-// Même format que js/data/rencontres.js (game designer). Préfixe 'rh_'.
+// ============ RENCONTRES DE VOYAGE DE L'HISTOIRE (REFONTE §4.10, docs/HISTOIRE.md §6) ============
+// Même format que js/data/rencontres.js (game designer). Préfixe 'rh_'. Scènes : scenes_rencontres.js (préfixe rv_).
 // poids: 0 → jamais tirée au hasard : uniquement lancée par un déclencheur { quand: 'voyage' } (declencheurs.js).
 // poids > 0 → s'ajoute au tirage aléatoire quand `si` est vrai (couleur de l'histoire en cours).
 export const RENCONTRES_HISTOIRE = [
-  // Scénarisées
-  { id: 'rh_pro_marche',          poids: 0, type: 'choix', echelle: 'salon',  zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'cours_nuit', scene: 'rc_pro_marche' },
-  { id: 'rh_pro_premier',         poids: 0, type: 'choix', echelle: 'salon',  zones: null, nuit: null, dangerMin: 0, unique: true, hostile: true, illu: 'cours_nuit', scene: 'rc_pro_premier' },
-  { id: 'rh_ch1_hautparleur',     poids: 0, type: 'choix', echelle: 'salon',  zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'cours_nuit', scene: 'rc_ch1_hautparleur' },
-  { id: 'rh_ch1_ambulance',       poids: 0, type: 'choix', echelle: 'salon',  zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'hopital_parvis', scene: 'rc_ch1_ambulance' },
-  { id: 'rh_ch1_cours',           poids: 0, type: 'pnj',   echelle: 'salon',  zones: null, nuit: null, dangerMin: 0, unique: true, hostile: true, illu: 'cours_troupeau', scene: 'rc_ch1_cours' },
-  { id: 'rh_ch2_jean_moulin',     poids: 0, type: 'choix', echelle: null,     zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'route_jean_moulin', scene: 'rc_ch2_jean_moulin' },
-  { id: 'rh_ch2_troupeau_plaine', poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'plaine_route', scene: 'rc_ch2_troupeau_plaine' },
-  { id: 'rh_ch2_revenus',         poids: 0, type: 'pnj',   echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'nuit_campagne', scene: 'rc_ch2_revenus' },
-  { id: 'rh_ch2_lion',            poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: false, dangerMin: 0, unique: true, hostile: true, illu: 'plaine_route', scene: 'rc_ch2_lion' },
-  { id: 'rh_ch2_avions',          poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'plaine_route', scene: 'rc_ch2_avions' },
-  { id: 'rh_fin_colonne',         poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, hostile: true, illu: 'crau_mistral', scene: 'rc_fin_colonne' },
-  { id: 'rh_fin_feu',             poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'ligne_de_feu', scene: 'rc_fin_feu' },
+  // ─── Scénarisées (déclencheurs 'voyage') ───
+  // Acte II : la route de la Crau, avec Fernand
+  { id: 'rh_triage',       poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'triage_horde', scene: 'rv_triage' },
+  { id: 'rh_draille',      poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, hostile: true, illu: 'crau_mistral', scene: 'rv_draille' },
+  { id: 'rh_nuit_crau',    poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'nuit_campagne', scene: 'rv_nuit_crau' },
+  { id: 'rh_nuage',        poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'triage_feu', scene: 'rv_nuage' },
+  { id: 'rh_maree',        poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, hostile: true, illu: 'plaine_route', scene: 'rv_maree' },
+  // Actes III et IV : la fuite
+  { id: 'rh_sentier',      poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'refuge_nuit', scene: 'rv_sentier' },
+  { id: 'rh_brume_montee', poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, hostile: true, illu: 'poudrerie_brume', scene: 'rv_brume' },
+  // Acte V : la colonne vers la Durance
+  { id: 'rh_colonne',      poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'nuit_campagne', scene: 'rv_colonne' },
 
-  // Couleur de l'histoire, tirées au hasard quand la condition est vraie
-  { id: 'rh_tract', poids: 2, type: 'choix', echelle: null, zones: null, nuit: false, dangerMin: 0, unique: true, si: { flag: 'ch1_matin_fait' }, illu: 'plaine_route', scene: 'rc_tract' },
-  { id: 'rh_revenu_solitaire', poids: 2, type: 'pnj', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, si: { flag: 'revenus_rencontres' }, illu: 'plaine_route', scene: 'rc_revenu_solitaire' },
+  // ─── Couleur de l'histoire, tirées au hasard quand la condition est vraie ───
+  // La radio d'Inès appelle toujours les survivants vers le village mort (tant qu'on ne l'a pas coupée).
+  { id: 'rh_appel_refuge', poids: 2, type: 'choix', echelle: 'region', zones: null, nuit: false, dangerMin: 0, unique: true,
+    si: { flag: 'refuge_fui', pasFlag: ['radio_coupee', 'pont_fait'] }, illu: 'plaine_route', scene: 'rv_appel_refuge' },
   {
-    id: 'rh_trainards', poids: 4, type: 'combat', echelle: 'region', zones: null, nuit: null, dangerMin: 0.2,
-    si: { flag: 'troupeau_passe', pasFlag: 'mistral_leve' }, illu: 'plaine_route', combat: { zombies: ['errant', 'errant', 'rampant'] },
-    texte: 'Des traînards du troupeau. Ils ont perdu le son des cloches et tournent en rond dans un champ de foin, le nez en l’air. Ils ne tournent plus en rond : ils t’ont vu.',
+    id: 'rh_autoradio', poids: 2, type: 'ambiance', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true,
+    si: { flag: 'refuge_fui', pasFlag: 'radio_coupee' }, illu: 'plaine_route',
+    texte: 'Au bord de la route, une voiture est restée portières ouvertes, avec l’autoradio allumé sur ce qui reste de la batterie. En passant, tu entends une voix de jeune fille, faible et grésillante : « … Ici le Refuge de Miramas-le-Vieux. Nous accueillons les survivants… » La voix d’Inès appelle toujours les gens vers un village plein de morts.',
   },
+  // Après la frappe : les traces du chlore, et la règle redite (P10).
   {
-    id: 'rh_sonnailles_nuit', poids: 3, type: 'ambiance', echelle: 'region', zones: null, nuit: true, dangerMin: 0,
-    si: { flag: 'troupeau_passe', pasFlag: 'mistral_leve' }, illu: 'nuit_campagne',
-    texte: 'Loin, dans le noir, des milliers de petites cloches. Et toutes les dix secondes, plus grave, la grande. Bong. Ta bouche se remplit. Tu attends que ça passe, {accroupi|accroupie} dans le fossé, les mains sur les oreilles.',
-    effets: { tempsMin: 20 },
+    id: 'rh_oiseaux', poids: 2, type: 'ambiance', echelle: 'region', zones: null, nuit: false, dangerMin: 0, unique: true,
+    si: { flag: 'frappe_faite' }, illu: 'crau_aube',
+    texte: 'Dans le fossé, il y a des dizaines d’oiseaux morts, des étourneaux pour la plupart, tombés tous ensemble pendant la nuit. L’herbe autour est jaunie, comme brûlée, et ça sent encore un peu l’eau de Javel. La brume est passée par ce creux. Le jour, elle se dissipe ; la nuit, sans vent, elle revient dans les terres basses.',
   },
+  // Après l'annonce du pont : les tracts de l'armée.
   {
-    id: 'rh_marche_fantome', poids: 2, type: 'ambiance', echelle: 'salon', zones: null, nuit: false, dangerMin: 0,
-    si: { pasFlag: 'troupeau_passe' }, illu: 'cours_nuit',
-    texte: 'À la terrasse d’un café du cours, trois morts sont assis autour d’une table ronde, devant des tasses vides. Ils ne bougent pas. Ils attendent l’addition depuis trois semaines.',
+    id: 'rh_tracts', poids: 2, type: 'ambiance', echelle: 'region', zones: null, nuit: false, dangerMin: 0, unique: true,
+    si: { flag: 'pont_annonce', pasFlag: 'pont_fait' }, illu: 'plaine_route',
+    texte: 'Des feuilles blanches jonchent la route sur des centaines de mètres, collées au bitume par la rosée. Un drone de l’armée les a lâchées pendant la nuit. Tu en ramasses une : « PONT DE MALLEMORT — FRANCHISSEMENT DES CIVILS RECENSÉS LE MERCREDI 7 OCTOBRE, DE 6 H À 7 H. PRÉSENTEZ-VOUS À LA LIGNE DES 200 MÈTRES. LES PERSONNES MORDUES NE SERONT PAS ADMISES. »',
   },
+  // Salon : ambiance (sans condition).
   {
-    id: 'rh_salon_vide', poids: 3, type: 'ambiance', echelle: 'salon', zones: null, nuit: null, dangerMin: 0,
-    si: { flag: 'troupeau_passe' }, illu: 'salon_mistral_vide',
-    texte: 'Salon est vide. Vraiment vide. Le troupeau a emporté ses morts en passant. Dans les rues, il ne reste que des chaussures, des sacs, et le bruit de tes pas qui revient des façades.',
+    id: 'rh_marche_fantome', poids: 2, type: 'ambiance', echelle: 'salon', zones: null, nuit: false, dangerMin: 0, illu: null,
+    texte: 'À la terrasse d’un café du cours, trois morts sont assis autour d’une table ronde, devant des tasses vides. Ils ne bougent pas. On dirait qu’ils attendent l’addition depuis trois semaines.',
   },
 ];

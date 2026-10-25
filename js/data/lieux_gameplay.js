@@ -65,8 +65,9 @@ export const LIEUX_GAMEPLAY = {
   lancon:           { danger: 0.6,  pool: ['errant', 'errant', 'coureur', 'enrage', 'hurleur'], morts: { n: [4, 7] }, typeButin: 'route', repeuplement: 1, ambiance: 'region' },
   cornillon:        { danger: 0.2,  pool: ['errant', 'rampant'], morts: { n: [1, 3] }, typeButin: 'village', repeuplement: 0.3, ambiance: 'village' },
   miramas:          { danger: 0.65, pool: ['errant', 'errant', 'coureur', 'hurleur', 'putrefie', 'enrage', 'chien_infecte'], morts: { n: [4, 8] }, typeButin: 'triage', repeuplement: 1, ambiance: 'triage' },
-  miramas_le_vieux: { danger: 0.15, pool: ['errant', 'rampant'], morts: { n: [0, 2] }, typeButin: 'village', repeuplement: 0.2, ambiance: 'village' },
-  saint_chamas:     { danger: 0.5,  pool: ['errant', 'errant', 'putrefie', 'coureur', 'gonfleur'], morts: { n: [3, 6] }, typeButin: 'usine', repeuplement: 0.5, ambiance: 'interieur' },
+  miramas_le_vieux: { danger: 0.15, pool: ['errant', 'rampant'], morts: { n: [0, 0] }, typeButin: 'village', repeuplement: 0, ambiance: 'village' },
+  bergerie:         { danger: 0.2,  pool: ['errant', 'errant', 'rampant'], morts: { n: [0, 1] }, typeButin: 'nature', repeuplement: 0.15, ambiance: 'region' },
+  saint_chamas:     { danger: 0.4,  pool: ['errant', 'errant', 'putrefie', 'coureur', 'gonfleur'], morts: { n: [0, 2] }, typeButin: 'usine', repeuplement: 0.2, ambiance: 'region' },
   istres:           { danger: 0.55, pool: ['errant', 'errant', 'coureur', 'hurleur', 'militaire', 'enrage'], morts: { n: [4, 8] }, typeButin: 'village', repeuplement: 1, ambiance: 'rue' },
   berre:            { danger: 0.5,  pool: ['errant', 'errant', 'putrefie', 'gonfleur', 'coureur'], morts: { n: [3, 7] }, typeButin: 'village', repeuplement: 0.8, ambiance: 'rue' },
 };

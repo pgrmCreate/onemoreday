@@ -59,6 +59,14 @@ function bulletin(delta) {
   G.world.radioMeteo = b;
   const vient = meteoCourante(b + 70);
   const txt = METEO_RADIO[vient];
+  // le soir, après la frappe : le PC Durance dit si la nuit sera sans vent (la brume jaune, js/game/brume.js)
+  if ((b % 1440) === 17 * 60 && G.world.brumeDebut != null && aUneRadio()) {
+    import('./brume.js').then(B => {
+      if (B.nuitCalme(b + 5 * 60) > 0 && (B.joursDepuis(b) || 0) < 26)
+        capter('« … nuit sans vent sur la Crau et les bords de l’étang de Berre. Nappe toxique au ras du sol. Restez en hauteur, ou à l’étage, jusqu’au matin. »',
+          'La radio de l’armée annonce une nuit sans vent : la brume jaune va monter dans les terres basses.');
+    }).catch(() => {});
+  }
   if (!txt || vient === meteoCourante(b) || !aUneRadio()) return;
   capter(txt, `La radio annonce : ${({ pluie: 'de la pluie', orage: 'un orage', mistral: 'le mistral', brouillard: 'du brouillard' })[vient] || vient} dans l’heure.`);
 }

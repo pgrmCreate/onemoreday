@@ -129,3 +129,15 @@ Durance et pont de Mallemort, front de feu, Alpha Jets, camp, gymnase, Ventoux, 
 vêtements, peaux, cheveux, morts grisés ; poses, marche, course, foules « figées » par milliers), `omd_tournage.py`
 (lumières : matin, voile, mistral, nuit, aube, incendie ; caméra ; sortie vidéo). Cartes de feuillage :
 `D:\projects 3D\OneMoreDay\cartes`.
+
+**L'histoire du Refuge (oct. 2026)** : `plans3.py` (les 25 plans de `docs/HISTOIRE.md` §11 ; `nuee()` = fumée et
+brume en cartes bruitées, car les volumes d'Eevee s'effacent au loin ; `feu_volume()` = petit feu en volume ;
+`soleil_ciel` aligne le soleil du ciel et la lampe soleil), `omd_mains.py` (le corps MPFB à la première personne : IK
+analytique des bras, doigts et pouces posés, repère caméra x droite / y haut / z devant), `apercus.sh` (une image par
+plan), `plaques_histoire.py` (les décors des cinématiques = une image du clip tourné). Blender 5 : le Glare du compositeur
+se règle par son entrée menu « Type » (« Fog Glow » ; par défaut « Streaks » fait des étoiles sur chaque lumière).
+**Vignettes fixes des scènes** : de vraies photos 360° Poly Haven (CC0) cadrées et étalonnées par
+`plaques_photo.py` (cadrages : `vignettes_photo.py` ; panoramas en cache dans `D:\projects 3D\OneMoreDay\ph_cache`),
+avec des incrustations Cycles éclairées par le HDRI de la même photo (`composites.py` : horde, morts, bergerie ; un plan
+attrape-ombres pose les ombres sur la photo). Panoramas : stone_alley, smelting_tower_interior, old_room, freight_station,
+lonely_road_afternoon, hayloft, stone_pines, highway_bridge_sunset, industrial_wooden_attic, gear_store.

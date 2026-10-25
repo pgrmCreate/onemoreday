@@ -336,6 +336,9 @@ export function compilerPlan(plan, def = {}) {
         orient: g.orient, marqueur: pd.marqueur || null, nom: pd.nom || null, style: pd.style || null,
         deux: !!(pd.deux || (verrou && verrou.deux)),
         message: pd.message || null,   // dit à l'essai tant qu'elle ne s'ouvre pas (« barrée de l'intérieur… »)
+        // une ouverture que l'histoire barricade (la brèche du Refuge) : barricadeSi = CONDITION qui la barricade ;
+        // flagBarricade = drapeau posé quand un joueur la barricade lui-même (planches, clous, marteau)
+        barricadeSi: pd.barricadeSi || null, flagBarricade: pd.flagBarricade || null,
         // porte d'un refuge habité : { si } — les morts ne la passent pas ; parvis (unités) : on n'ouvre pas du dehors
         // tant qu'un mort rôde à cette distance ; refus = ce qu'on te répond alors
         gardee: pd.gardee || null, parvis: pd.parvis || null, refus: pd.refus || null,
@@ -356,8 +359,9 @@ export function compilerPlan(plan, def = {}) {
           cx: moy(cases, w, 0) / F, cy: moy(cases, w, 1) / F, vers: k === K.ESC_MONTE ? E.monte : E.descend, arrivee: null });
       } else if (k === K.SORTIE) {
         const cases = groupe(E, i, (j) => E.code[j] === K.SORTIE, vu);
-        let ech = null; for (const j of cases) { const s = FP.sorties.get(j); if (s && s.echelle) ech = s.echelle; }
-        niv.sorties.push({ cle: cleCase(E.id, x, y), etage: E.id, cases, cx: moy(cases, w, 0) / F, cy: moy(cases, w, 1) / F, echelle: ech });
+        let ech = null, si = null, msg = null;
+        for (const j of cases) { const s = FP.sorties.get(j); if (s && s.echelle) ech = s.echelle; if (s && s.si) si = s.si; if (s && s.message) msg = s.message; }
+        niv.sorties.push({ cle: cleCase(E.id, x, y), etage: E.id, cases, cx: moy(cases, w, 0) / F, cy: moy(cases, w, 1) / F, echelle: ech, si, message: msg });
       }
     }
     // entrées, morts, PNJ, objets au sol, marqueurs, déclencheurs (positions en unités)
@@ -365,7 +369,7 @@ export function compilerPlan(plan, def = {}) {
       if (niv.entrees[nom]) { avert(`entrée « ${nom} » définie deux fois`); continue; }
       niv.entrees[nom] = { etage: E.id, x: e.x | 0, y: e.y | 0 };
     }
-    for (const z of P.zombies) niv.spawns.push({ etage: E.id, x: z.x | 0, y: z.y | 0, type: z.type, etat: z.etat, hp: z.hp, dir: z.dir, si: z.si || null, reveil: !!z.reveil });
+    for (const z of P.zombies) niv.spawns.push({ etage: E.id, x: z.x | 0, y: z.y | 0, type: z.type, etat: z.etat, hp: z.hp, dir: z.dir, si: z.si || null, reveil: !!z.reveil, flagMort: z.flagMort || null });
     for (const q of P.pnjs) niv.pnj.push({ id: q.id, etage: E.id, x: q.x | 0, y: q.y | 0, si: q.si, marqueur: q.marqueur, nom: q.nom, dir: q.dir ?? null, style: q.style || null, repliques: q.repliques || null });
     for (const o of P.solItems) niv.sol.push(o.doc ? { etage: E.id, x: o.x | 0, y: o.y | 0, doc: o.doc, marqueur: o.marqueur || null } : { etage: E.id, x: o.x | 0, y: o.y | 0, id: o.id, qty: o.qty || 1 });
     for (const mk of P.marqueurs) {
@@ -526,7 +530,13 @@ function calculerLumiere(niv, E, R = {}) {
 // E.rendu.sources[k] = { type, x, y, coul, r, i, anim, phase, cases: Int32Array, vals: Float32Array } ; E.lumStat = max.
 function cuireSources(niv, E, P) {
   const liste = [];
-  for (const L of P.lumieres) liste.push({ ...L });
+  // une lumière à CONDITION (si : drapeaux) n'est pas cuite : l'exploration l'allume comme une lampe tant que la condition
+  // tient (le feu du Refuge tant qu'il vit, la lanterne d'Inès tant qu'elle attend à la Poudrerie)
+  E.rendu.lumieresSi = [];
+  for (const L of P.lumieres) {
+    if (L.si) { const T = LUMIERES[L.type] || LUMIERES.lanterne; E.rendu.lumieresSi.push({ type: L.type, x: L.x, y: L.y, r: L.r ?? T.r, si: L.si }); continue; }
+    liste.push({ ...L });
+  }
   for (const R of E.rendu.objets) if (R.lumiere) liste.push({ type: R.lumiere, x: R.x + R.w / 2, y: R.y + R.h / 2, objet: true });
   for (const dc of P.decals) { const D = DECALS[dc.type]; if (D && D.lumiere) liste.push({ type: D.lumiere, x: dc.x, y: dc.y, i: 0.6 }); }
   if (!liste.length) return;

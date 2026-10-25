@@ -1,109 +1,87 @@
-// ============ DÉCLENCHEURS (REFONTE §4.7) ============
+// ============ DÉCLENCHEURS (docs/HISTOIRE.md §6) ============
 // Ordre = priorité : pour un même événement, le premier déclencheur dont la condition est vraie est joué.
-// `unique: true` : joué une seule fois par partie (mémorisé par le moteur).
-// `invite: false` : jamais chez l'invité co-op (il a sa propre version : le réveil à deux, coop_reveil).
-// NB : la cinématique 'intro' est jouée par l'intégrateur à la création de la partie, AVANT explorer('cimetiere', { entree: 'caveau' }).
+// `unique: true` : joué une seule fois par partie (mémorisé par le moteur). Les déclencheurs 'heure' et 'flag' sont
+// toujours uniques ; un déclencheur 'heure' attend que sa condition soit vraie (il se joue à la première minute où
+// l'heure est passée ET la condition tient : un joueur qui arrive en retard le déclenche en arrivant).
+// `invite: false` : jamais chez l'invité co-op (il a sa propre version).
+// NB : la cinématique 'intro' est jouée par l'intégrateur à la création de la partie, AVANT
+//      explorer('miramas_le_vieux', { entree: 'porte' }).
+
+const AU_REFUGE = { lieu: 'miramas_le_vieux' };
 
 export const DECLENCHEURS = [
-  // ─────────── PROLOGUE : cimetière Saint-Roch ───────────
-  { quand: 'entree_lieu', lieu: 'cimetiere', si: { pasFlag: 'pro_reveil_fait' }, scene: 'pro_reveil', unique: true, invite: false },
-  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'scelle_effets', scene: 'pro_scelle', unique: true },
-  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'soldat_nrbc', scene: 'pro_soldat', unique: true },
-  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'robinet_fleurs', scene: 'pro_robinet', unique: true },
-  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'housse_patrick', scene: 'pro_patrick', unique: true },
-  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'conteneur_frigo', scene: 'pro_conteneur', unique: true },
-  // (rejouable tant que la clé n'est pas prise : une partie fermée en pleine scène ne bloque pas la sortie)
-  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'loge_gardien', si: { pasFlag: 'pro_cle_prise' }, scene: 'pro_loge', libelle: 'Examiner le bureau du gardien' },
-  { quand: 'marqueur', lieu: 'cimetiere', marqueur: 'grille_sortie', si: { pasFlag: 'pro_grille_ouverte' }, scene: 'pro_grille', deux: true, libelle: 'Examiner la grille' },
+  // ═══════════════════════ ACTE I — LE REFUGE ═══════════════════════
+  { quand: 'entree_lieu', lieu: 'miramas_le_vieux', si: { pasFlag: 'refuge_arrivee' }, scene: 'ref_porte', unique: true, invite: false },
+  // Bastien passe une demi-heure après qu'on t'a enfermé (on ne reste pas des heures à attendre dans le noir) ; « dormir » fait passer la nuit
+  { quand: 'heure', jourMin: 1, heure: 19, si: { quete: ['q_refuge', 'quarantaine'], ...AU_REFUGE }, scene: 'ref_nuit_bastien' },
+  { quand: 'heure', jourMin: 2, heure: 7, si: { quete: ['q_refuge', 'quarantaine'] }, scene: 'ref_matin' },
+  // les corvées (rejouables tant qu'elles ne sont pas faites : une partie fermée en pleine scène ne bloque rien)
+  { quand: 'marqueur', lieu: 'miramas_le_vieux', marqueur: 'puits', si: { flag: 'quarantaine_faite', pasFlag: 'eau_faite' }, scene: 'ref_puits', libelle: 'Remonter de l’eau' },
+  // la brèche : on parle à Rudy (PNJ `rudy_breche`, scène ref_breche), ou on la barricade soi-même (la porte « la brèche »)
+  // la garde de la deuxième nuit
+  { quand: 'heure', jourMin: 2, heure: 21, si: { quete: ['q_refuge', 'corvees'] }, scene: 'ref_garde' },
+  { quand: 'heure', jourMin: 2, heure: 23, si: { quete: ['q_refuge', 'garde'], ...AU_REFUGE }, scene: 'ref_sirenes' },
+  { quand: 'heure', jourMin: 3, heure: 1, si: { quete: ['q_refuge', 'garde'], ...AU_REFUGE }, scene: 'ref_helene_radio' },
+  // Noa, l'enveloppe, le départ (même si la garde a mal tourné)
+  { quand: 'heure', jourMin: 3, heure: 7, si: { flag: 'quarantaine_faite', pasFlag: 'depart_crau' }, scene: 'ref_noa' },
 
-  // ─────────── MISSIONS ───────────
-  // La boîte d'Aimé (m_aime) : sous le troisième frêne après la passerelle de la Touloubre, une fois qu'il l'a promise.
-  // Pas `unique` : c'est le drapeau posé en la prenant qui la vide (une partie fermée en pleine scène ne la perd pas).
-  { quand: 'marqueur', lieu: 'touloubre', marqueur: 'cache_aime', si: { flag: 'aime_cache_promise', pasFlag: 'aime_cache_prise' }, scene: 'aime_cache', libelle: 'Creuser au pied du frêne' },
+  // ═══════════════════════ ACTE II — LA BERGERIE ═══════════════════════
+  { quand: 'voyage', de: 'miramas_le_vieux', vers: 'bergerie', a: 0.3, si: { pasFlag: 'frappe_faite' }, rencontre: 'rh_triage', unique: true },
+  { quand: 'voyage', de: 'miramas_le_vieux', vers: 'bergerie', a: 0.75, si: { pasFlag: 'frappe_faite' }, rencontre: 'rh_draille', unique: true },
+  { quand: 'entree_lieu', lieu: 'bergerie', si: { quete: ['q_crau', 'route'] }, scene: 'ber_arrivee', unique: true },
+  // Gérard : la zone de la porte de la bergerie lance `ber_gerard` (déclencheur posé par le plan, js/data/niveaux/bergerie.js)
+  { quand: 'marqueur', lieu: 'bergerie', marqueur: 'armoire_veto', si: { pasFlag: 'antibio_trouves' }, scene: 'ber_armoire', libelle: 'Examiner l’armoire du vétérinaire' },
+  { quand: 'heure', jourMin: 3, heure: 19, si: { lieu: 'bergerie', pasFlag: 'frappe_faite' }, scene: 'ber_soir' },
+  // la branche de nuit : on a ouvert l'enveloppe et on rentre avant l'aube
+  { quand: 'voyage', de: 'bergerie', vers: 'miramas_le_vieux', a: 0.5, si: { flag: 'retour_nuit', pasFlag: 'frappe_faite' }, rencontre: 'rh_nuit_crau', unique: true },
+  { quand: 'entree_lieu', lieu: 'miramas_le_vieux', si: { flag: 'retour_nuit', pasFlag: 'retour_nuit_fait' }, scene: 'ref_retour_nuit', unique: true },
+  // la frappe (jour 4, 6 h) : où que l'on soit
+  { quand: 'heure', jourMin: 4, heure: 6, si: { flag: 'depart_crau', pasFlag: 'frappe_faite' }, scene: 'frappe_reveil' },
+  { quand: 'voyage', de: 'bergerie', vers: 'miramas_le_vieux', a: 0.35, si: { flag: 'frappe_faite', pasFlag: 'retour_nuit' }, rencontre: 'rh_nuage', unique: true },
+  { quand: 'voyage', de: 'bergerie', vers: 'miramas_le_vieux', a: 0.75, si: { flag: 'frappe_faite', pasFlag: 'retour_nuit' }, rencontre: 'rh_maree', unique: true },
 
-  // Voyage cimetière → Tour de l'Horloge (tutoriel de la carte, puis du combat)
-  { quand: 'voyage', de: 'cimetiere', vers: 'tour_horloge', a: 0.35, si: { pasFlag: 'prologue_fini' }, rencontre: 'rh_pro_marche', unique: true },
-  { quand: 'voyage', de: 'cimetiere', vers: 'tour_horloge', a: 0.75, si: { pasFlag: 'prologue_fini' }, rencontre: 'rh_pro_premier', unique: true },
+  // ═══════════════════════ ACTE III — LA CHUTE ═══════════════════════
+  { quand: 'entree_lieu', lieu: 'miramas_le_vieux', si: { flag: 'frappe_faite', et: [{ pasFlag: 'siege_commence' }, { pasFlag: 'retour_nuit' }] }, scene: 'siege_debut', unique: true },
+  { quand: 'heure', jourMin: 4, heure: 19, si: { flag: 'retour_nuit_fait', pasFlag: 'siege_commence', ...AU_REFUGE }, scene: 'siege_debut_nuit' },
+  { quand: 'flag', flag: 'siege_tenu', si: { pasFlag: 'refuge_tombe' }, scene: 'chute' },
+  { quand: 'heure', jourMin: 4, heure: 23, si: { flag: 'siege_commence', pasFlag: 'refuge_tombe', ...AU_REFUGE }, scene: 'chute' },
+  { quand: 'marqueur', lieu: 'miramas_le_vieux', marqueur: 'infirmerie', si: { flag: 'refuge_tombe', et: [{ pasFlag: 'noa_avec' }, { pasFlag: 'familles_parties' }] }, scene: 'chute_infirmerie', unique: true, libelle: 'Entrer dans l’infirmerie' },
+  { quand: 'marqueur', lieu: 'miramas_le_vieux', marqueur: 'radio_helene', si: { flag: 'refuge_tombe', pasFlag: 'helene_vue_chute' }, scene: 'chute_helene', unique: true, libelle: 'Appeler Hélène' },
+  { quand: 'marqueur', lieu: 'miramas_le_vieux', marqueur: 'poterne', si: { flag: 'refuge_tombe', pasFlag: 'refuge_fui' }, scene: 'chute_poterne', libelle: 'Passer la poterne' },
+  // après la chute : le Refuge mort (on peut y revenir)
+  { quand: 'entree_lieu', lieu: 'miramas_le_vieux', si: { flag: 'refuge_fui', pasFlag: 'refuge_revu' }, scene: 'ref_ruines', unique: true },
 
-  // ─────────── PROLOGUE : Tour de l'Horloge ───────────
-  { quand: 'entree_lieu', lieu: 'tour_horloge', si: { flag: 'pro_note_lue', pasFlag: 'pro_cloches_faites' }, scene: 'pro_horloge' },
-  { quand: 'marqueur', lieu: 'tour_horloge', marqueur: 'mecanisme_horloge', scene: 'pro_mecanisme', unique: true },
-  { quand: 'marqueur', lieu: 'tour_horloge', marqueur: 'sommet_maud', si: { flag: 'pro_cloches_faites', pasFlag: 'prologue_fini' }, scene: 'pro_maud' },
+  // ═══════════════════════ ACTE IV — LA BRUME ═══════════════════════
+  { quand: 'voyage', de: 'miramas_le_vieux', vers: 'saint_chamas', a: 0.5, si: { flag: 'refuge_fui', pasFlag: 'brume_vue' }, rencontre: 'rh_sentier', unique: true },
+  { quand: 'entree_lieu', lieu: 'saint_chamas', si: { quete: ['q_brume', 'poudrerie'] }, scene: 'pou_arrivee', unique: true },
+  { quand: 'heure', jourMin: 5, heure: 14, si: { quete: ['q_brume', 'attendre'], lieu: 'saint_chamas' }, scene: 'pou_jour' },
+  { quand: 'heure', jourMin: 5, heure: 20, si: { quete: ['q_brume', 'attendre'], lieu: 'saint_chamas' }, scene: 'pou_odeur' },
+  { quand: 'heure', jourMin: 5, heure: 22, si: { quete: ['q_brume', 'attendre'], lieu: 'saint_chamas' }, scene: 'pou_brume' },
+  { quand: 'voyage', de: 'saint_chamas', vers: 'cornillon', a: 0.45, si: { flag: 'brume_vue', pasFlag: 'cornillon_arrivee' }, rencontre: 'rh_brume_montee', unique: true },
+  { quand: 'entree_lieu', lieu: 'cornillon', si: { quete: ['q_brume', 'fuir'] }, scene: 'cor_arrivee', unique: true },
+  { quand: 'heure', jourMin: 6, heure: 7, si: { flag: 'cornillon_arrivee', pasFlag: 'pont_annonce' }, scene: 'cor_aube' },
+
+  // ═══════════════════════ ACTE V — LE PONT ═══════════════════════
+  // la colonne (mardi 6 octobre, 20 h) : avec toi si tu es à Cornillon, sinon sans toi
+  { quand: 'heure', jourMin: 14, heure: 20, si: { flag: 'pont_annonce', pasFlag: 'colonne_partie', lieu: 'cornillon' }, scene: 'cor_colonne' },
+  { quand: 'heure', jourMin: 14, heure: 22, si: { flag: 'pont_annonce', pasFlag: 'colonne_partie' }, scene: 'colonne_sans_toi' },
+  { quand: 'voyage', vers: 'mallemort', a: 0.5, si: { flag: 'colonne_avec_toi', pasFlag: 'pont_fait' }, rencontre: 'rh_colonne', unique: true },
+  { quand: 'entree_lieu', lieu: 'mallemort', si: { flag: 'pont_annonce', pasFlag: 'pont_fait' }, scene: 'pon_camp', unique: true },
+  // l'aube du jour 15 (5 h - 7 h), puis la dernière, le jour 22
+  { quand: 'heure', jourMin: 15, heure: 5, si: { lieu: 'mallemort', jourMax: 15, heureMax: 6, pasFlag: 'pont_fait' }, scene: 'pon_aube' },
+  { quand: 'heure', jourMin: 15, heure: 7, si: { flag: 'pont_annonce', et: [{ pasFlag: 'pont_fait' }, { pasFlag: 'pont_rate_1' }] }, scene: 'pont_rate' },
+  { quand: 'heure', jourMin: 22, heure: 5, si: { lieu: 'mallemort', jourMax: 22, heureMax: 6, flag: 'pont_rate_1', pasFlag: 'pont_fait' }, scene: 'pon_aube_dernier' },
+  { quand: 'heure', jourMin: 22, heure: 7, si: { flag: 'pont_rate_1', et: [{ pasFlag: 'pont_fait' }, { pasFlag: 'pont_rate_2' }] }, scene: 'pont_rate_2' },
 
   // ─────────── LES SIRÈNES (js/data/histoire/ruees.js, posés par js/game/ruees.js) ───────────
   { quand: 'flag', flag: 'ruee_annonce_salon_1', scene: 'ru_salon_annonce', unique: true },
   { quand: 'flag', flag: 'ruee_annonce_plaine_1', scene: 'ru_plaine_annonce', unique: true },
 
-  // ─────────── CHAPITRE 1 : maison de Nostradamus ───────────
-  { quand: 'entree_lieu', lieu: 'nostradamus', si: { flag: 'prologue_fini', pasFlag: 'ch1_matin_fait' }, scene: 'ch1_matin', unique: true },
-  { quand: 'entree_lieu', lieu: 'nostradamus', si: { quete: ['q_protocole', 'confrontation'] }, scene: 'ch1_confrontation', unique: true },
-  { quand: 'marqueur', lieu: 'nostradamus', marqueur: 'cave_patiente', si: { pasFlag: 'confrontation_faite' }, scene: 'nos_cave', unique: true },
-
-  // ─────────── CHAPITRE 1 : l'Empéri ───────────
-  // en arrivant : on voit les morts devant la grille ; l'accueil se joue À LA GRILLE, une fois le parvis dégagé (parvis = rayon)
-  { quand: 'entree_lieu', lieu: 'emperi', si: { quete: ['q_protocole', 'emperi'], pasFlag: 'emp_arrivee_faite' }, scene: 'emp_approche', unique: true },
-  { quand: 'marqueur', lieu: 'emperi', marqueur: 'grille_emperi', si: { quete: ['q_protocole', 'emperi'], pasFlag: 'emp_arrivee_faite' }, scene: 'emp_arrivee', libelle: 'Appeler les guetteurs', parvis: 8,
-    refus: 'Du haut du rempart, Mehdi te fait signe de reculer : « On n’ouvre pas avec des morts devant la grille ! Débarrasse-toi d’abord de ceux-là. »' },
-  { quand: 'entree_lieu', lieu: 'emperi', si: { flag: 'lou_sauvee', pasFlag: 'emp_retour_fait' }, scene: 'emp_retour_lou', unique: true },
-  { quand: 'entree_lieu', lieu: 'emperi', si: { quete: ['q_protocole', 'vidal_maud'] }, scene: 'emp_denonciation', unique: true },
-  { quand: 'entree_lieu', lieu: 'emperi', si: { quete: ['q_protocole', 'sonnailles'] }, scene: 'ch1_siege_1', unique: true },
-  { quand: 'marqueur', lieu: 'emperi', marqueur: 'radio_emperi', si: { flag: 'radio_ok', pasFlag: 'radio_essayee' }, scene: 'emp_radio', unique: true },
-  { quand: 'marqueur', lieu: 'emperi', marqueur: 'sac_rouge', scene: 'emp_sac_rouge', unique: true },
-
-  // Voyages du chapitre 1
-  { quand: 'voyage', vers: 'emperi', a: 0.5, si: { quete: ['q_protocole', 'emperi'] }, rencontre: 'rh_ch1_hautparleur', unique: true },
-  { quand: 'voyage', vers: 'hopital', a: 0.6, si: { quete: ['q_protocole', 'hopital'] }, rencontre: 'rh_ch1_ambulance', unique: true },
-  { quand: 'voyage', vers: 'emperi', a: 0.5, si: { quete: ['q_protocole', 'sonnailles'] }, rencontre: 'rh_ch1_cours', unique: true },
-
-  // ─────────── CHAPITRE 1 : Saint-Laurent ───────────
-  { quand: 'entree_lieu', lieu: 'saint_laurent', si: { quete: ['q_protocole', 'saint_laurent'] }, scene: 'stl_entree', unique: true },
-  { quand: 'marqueur', lieu: 'saint_laurent', marqueur: 'nef_entree', scene: 'stl_nef', unique: true },
-  { quand: 'marqueur', lieu: 'saint_laurent', marqueur: 'cure_autel', si: { pasFlag: 'lou_sauvee' }, scene: 'stl_cure' },
-  { quand: 'marqueur', lieu: 'saint_laurent', marqueur: 'tombeau_nostradamus', si: { pasFlag: 'nathan_acheve' }, scene: 'stl_nathan' },
-  { quand: 'marqueur', lieu: 'saint_laurent', marqueur: 'clocher_lou', si: { pasFlag: 'lou_trouvee' }, scene: 'stl_lou' },
-  { quand: 'marqueur', lieu: 'saint_laurent', marqueur: 'porte_sacristie', si: { flag: 'lou_trouvee', objet: 'cle_sacristie', pasFlag: 'lou_sauvee' }, scene: 'stl_sortie' },
-
-  // ─────────── CHAPITRE 1 : l'hôpital ───────────
-  { quand: 'entree_lieu', lieu: 'hopital', si: { quete: ['q_protocole', 'hopital'] }, scene: 'hop_entree', unique: true },
-  { quand: 'marqueur', lieu: 'hopital', marqueur: 'salle_4', scene: 'hop_salle4', unique: true },
-  { quand: 'marqueur', lieu: 'hopital', marqueur: 'morgue_couloir', scene: 'hop_brancardier', unique: true },
-  { quand: 'marqueur', lieu: 'hopital', marqueur: 'chambre_froide', scene: 'hop_registre', unique: true },
-  { quand: 'marqueur', lieu: 'hopital', marqueur: 'casier_luc', scene: 'hop_casier', unique: true },
-  { quand: 'marqueur', lieu: 'hopital', marqueur: 'frigo_pharmacie', scene: 'hop_frigo', unique: true },
-  { quand: 'marqueur', lieu: 'hopital', marqueur: 'bureau_maud', scene: 'hop_bureau', unique: true },
-  { quand: 'marqueur', lieu: 'hopital', marqueur: 'dossiers_urgences', scene: 'hop_dossiers', unique: true },
-
-  // ─────────── CHAPITRE 2 : Calès ───────────
-  { quand: 'voyage', vers: 'cales', a: 0.15, si: { quete: ['q_traversee', 'cales'] }, rencontre: 'rh_ch2_jean_moulin', unique: true },
-  { quand: 'voyage', vers: 'cales', a: 0.6, si: { quete: ['q_traversee', 'cales'] }, rencontre: 'rh_ch2_troupeau_plaine', unique: true },
-  { quand: 'entree_lieu', lieu: 'cales', si: { quete: ['q_traversee', 'cales'] }, scene: 'cal_arrivee', unique: true },
-  { quand: 'entree_lieu', lieu: 'cales', si: { quete: ['q_traversee', 'retour'] }, scene: 'cal_retour', unique: true },
-  { quand: 'marqueur', lieu: 'cales', marqueur: 'antenne_cales', si: { quete: ['q_traversee', 'contact'], objet: 'valise_radio' }, scene: 'cal_contact', unique: true },
-  { quand: 'marqueur', lieu: 'cales', marqueur: 'martelliere_canal', si: { flag: 'cales_arrivee', pasFlag: 'delai_canal' }, scene: 'cal_martelliere' },
-
-  // ─────────── CHAPITRE 2 : Mallemort (reconnaissance) ───────────
-  { quand: 'entree_lieu', lieu: 'mallemort', si: { quete: ['q_traversee', 'mallemort'] }, scene: 'mal_arrivee', unique: true },
-  { quand: 'marqueur', lieu: 'mallemort', marqueur: 'ligne_200m', si: { quete: ['q_traversee', 'mallemort'] }, scene: 'mal_ligne' },
-
-  // ─────────── CHAPITRE 2 : les revenus, Vernègues ───────────
-  { quand: 'voyage', a: 0.4, si: { flag: 'proces_fait', pasFlag: 'revenus_rencontres' }, rencontre: 'rh_ch2_revenus', unique: true },
-  { quand: 'entree_lieu', lieu: 'vernegues', si: { pasFlag: 'vernegues_visite' }, scene: 'ver_arrivee', unique: true },
-  { quand: 'voyage', vers: 'vernegues', a: 0.5, si: { pasFlag: 'vernegues_visite' }, rencontre: 'rh_ch2_lion', unique: true },
-
-  // ─────────── CHAPITRE 2 : BA 701 ───────────
-  { quand: 'voyage', vers: 'ba701', a: 0.5, rencontre: 'rh_ch2_avions', unique: true },
-  { quand: 'entree_lieu', lieu: 'ba701', si: { quete: ['q_traversee', 'ba701'] }, scene: 'ba_arrivee', unique: true },
-  { quand: 'marqueur', lieu: 'ba701', marqueur: 'pc_protection', si: { pasFlag: 'ba_materiel' }, scene: 'ba_pc', unique: true },
-  { quand: 'marqueur', lieu: 'ba701', marqueur: 'armoire_forte', si: { objet: 'cle_armoire_forte' }, scene: 'ba_armoire', unique: true },
-  { quand: 'marqueur', lieu: 'ba701', marqueur: 'hangar_paf', scene: 'ba_hangar', unique: true },
-
-  // ─────────── CHAPITRE 2 : Sénas ───────────
-  { quand: 'entree_lieu', lieu: 'senas', scene: 'sen_arrivee', unique: true },
-  { quand: 'marqueur', lieu: 'senas', marqueur: 'porte_chambre_froide', si: { pasFlag: 'senas_rencontres' }, scene: 'sen_station', unique: true },
-  { quand: 'marqueur', lieu: 'senas', marqueur: 'corde_clocher', si: { pasFlag: 'delai_senas' }, scene: 'sen_cloches' },
-
-  // ─────────── FINAL ───────────
-  { quand: 'voyage', de: 'cales', vers: 'mallemort', a: 0.5, si: { flag: 'mistral_leve' }, rencontre: 'rh_fin_colonne', unique: true },
-  { quand: 'voyage', de: 'cales', vers: 'mallemort', a: 0.85, si: { flag: 'mistral_leve' }, rencontre: 'rh_fin_feu', unique: true },
-  { quand: 'entree_lieu', lieu: 'mallemort', si: { flag: 'mistral_leve' }, scene: 'fin_pont_1', unique: true },
+  // ─────────── MISSIONS ───────────
+  // La boîte d'Aimé (m_aime) : sous le troisième frêne après la passerelle de la Touloubre, une fois qu'il l'a promise.
+  // Pas `unique` : c'est le drapeau posé en la prenant qui la vide (une partie fermée en pleine scène ne la perd pas).
+  { quand: 'marqueur', lieu: 'touloubre', marqueur: 'cache_aime', si: { flag: 'aime_cache_promise', pasFlag: 'aime_cache_prise' }, scene: 'aime_cache', libelle: 'Creuser au pied du frêne' },
+  // L'Empéri : le camp du professeur Vidal (un refuge habité du monde, on y entre en montrant ses bras)
+  { quand: 'marqueur', lieu: 'emperi', marqueur: 'grille_emperi', si: { pasFlag: 'emp_entree_ok' }, scene: 'emp_grille', libelle: 'Appeler les guetteurs', parvis: 8,
+    refus: 'Du haut du rempart, un garçon casqué te fait signe de reculer : « On n’ouvre pas avec des morts devant la grille ! Débarrasse-toi d’abord de ceux-là. »' },
 ];

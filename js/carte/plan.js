@@ -115,7 +115,7 @@ export class EtagePlan {
     return this;
   }
   sortie(x, y, w = 1, h = 1, o = {}) {
-    this._rect(x, y, w, h, (i) => { this.ouv[i] = K.SORTIE; this.mur[i] = 0; this.sorties.set(i, { echelle: o.echelle || null }); });
+    this._rect(x, y, w, h, (i) => { this.ouv[i] = K.SORTIE; this.mur[i] = 0; this.sorties.set(i, { echelle: o.echelle || null, si: o.si || null, message: o.message || null }); });
     return this;
   }
   eau(x, y, w = 1, h = 1) { const m = SOL_IDX.eau; this._rect(x, y, w, h, (i) => { this.ouv[i] = K.EAU; this.sol[i] = m; this.mur[i] = 0; }); return this; }
@@ -177,7 +177,7 @@ export class EtagePlan {
   // zombie(type, x, y, { etat, hp, dir, si }) — si : CONDITION (drapeaux) ; le mort apparaît quand elle devient vraie
   //   et s'en va quand elle redevient fausse (s'il ne te chasse pas). reveil (avec si) : il apparaît même sous ton nez,
   //   réveillé et sur toi, après le temps de se lever (le gardien qui se relève quand on prend sa clé).
-  zombie(type, x, y, o = {}) { this.zombies.push({ type: type || null, x, y, etat: o.etat || null, hp: o.hp || null, dir: o.dir, si: o.si || null, reveil: !!o.reveil }); return this; }
+  zombie(type, x, y, o = {}) { this.zombies.push({ type: type || null, x, y, etat: o.etat || null, hp: o.hp || null, dir: o.dir, si: o.si || null, reveil: !!o.reveil, flagMort: o.flagMort || null }); return this; }
   entree(nom, x, y) { this.entrees[nom] = { x, y }; return this; }
   marqueur(id, x, y, o = {}) { this.marqueurs.push({ id, x, y, ...o }); return this; }
   // pnj(id, x, y, { si, marqueur, nom, dir, style, repliques }) — un PNJ de l'histoire (id de PNJ) ou un FIGURANT (id libre,

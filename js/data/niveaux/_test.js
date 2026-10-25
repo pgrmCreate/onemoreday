@@ -84,13 +84,13 @@ export default {
     '2': { entree: 'cour' },
     'R': { zombie: 'rampant', etat: 'fait_le_mort' },
     'C': { zombie: 'errant', etat: 'dort' },
-    'K': { porte: true, verrou: 'cle_sacristie' },
+    'K': { porte: true, verrou: { forcer: 'pied_de_biche', crocheter: true }, message: 'Fermée à clé (porte de test : pied-de-biche ou crochets).' },
     'F': { porte: true, flag: 'test_porte' },
     'D': { document: 'doc_etiquette' },
     'O': { objet: ['bandage', 2] },
-    'P': { pnj: 'maud', si: { flag: 'test_pnj' }, nom: 'Maud' },
+    'P': { pnj: 'helene', si: { flag: 'test_pnj' }, nom: 'Hélène' },
   },
   declencheurs: [
-    { etage: 'rdc', x: 13, y: 13, w: 3, h: 2, scene: 'pro_reveil', unique: true, si: { pasFlag: 'test_zone_vue' } },
+    { etage: 'rdc', x: 13, y: 13, w: 3, h: 2, scene: 'ref_porte', unique: true, si: { pasFlag: 'test_zone_vue' } },
   ],
 };

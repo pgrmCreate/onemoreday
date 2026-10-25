@@ -12,6 +12,7 @@ import omd_assets as A
 import omd_tournage as T
 import plans as P
 import plans2  # enregistre les autres plans dans P.PLANS
+import plans3  # la nouvelle histoire (oct. 2026) : remplace les plans du même nom
 t0 = time.time()
 # scène vide
 bpy.ops.wm.read_factory_settings(use_empty=True)

@@ -20,8 +20,8 @@ export function verifier(c) {
   const W = G.world;
   for (const [k, v] of Object.entries(c)) {
     switch (k) {
-      case 'flag': if (!W.flags[v]) return false; break;
-      case 'pasFlag': if (W.flags[v]) return false; break;
+      case 'flag': if ((Array.isArray(v) ? v : [v]).some(f => !W.flags[f])) return false; break;
+      case 'pasFlag': if ((Array.isArray(v) ? v : [v]).some(f => W.flags[f])) return false; break;
       case 'flagEgal': if (W.flags[v[0]] !== v[1]) return false; break;
       case 'objet': { const [id, q] = Array.isArray(v) ? v : [v, 1]; if (compterObjet(id) < q) return false; break; }
       case 'pasObjet': if (compterObjet(v) > 0) return false; break;
@@ -32,6 +32,10 @@ export function verifier(c) {
       case 'heureMin': if (clock.heure() < v) return false; break;
       case 'heureMax': if (clock.heure() > v) return false; break;
       case 'lieuVisite': if (!(W.lieux[v] && W.lieux[v].visite)) return false; break;
+      // le lieu où l'on est en ce moment (exploration ; en voyage, aucun)
+      case 'lieu': { const P = G.player.position || {}; if (!(P.mode === 'lieu' && P.lieu === v && !P.sorti)) return false; break; }
+      // une morsure qui n'est pas guérie (le contrôle du pont, la grille d'un camp)
+      case 'mordu': if (estMordu() !== !!v) return false; break;
       case 'quete': { const q = W.quetes[v[0]]; if (!q || q.etape !== v[1]) return false; break; }
       case 'queteFaite': { const q = W.quetes[v]; if (!q || !q.faite) return false; break; }
       case 'solo': if ((G.mode === 'solo') !== !!v) return false; break;
@@ -43,6 +47,10 @@ export function verifier(c) {
     }
   }
   return true;
+}
+
+export function estMordu(p = G && G.player) {
+  return !!(p && (p.blessures || []).some(b => b.type === 'morsure' && !b.animale && (b.guerison || 0) < 1));
 }
 
 // Texte lisible d'une condition non remplie (choix grisés).

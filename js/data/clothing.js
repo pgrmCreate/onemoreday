@@ -40,6 +40,7 @@ export const ZONES_BRAS = ['à l\'épaule', 'au bras', 'à l\'avant-bras', 'à l
 
 export const COUVRE_DEFAUT = {
   tete: ['à la tête'],
+  visage: [],
   haut: ['au torse', 'au flanc', 'au ventre', 'dans le dos', 'à l\'épaule'],
   veste: ['au torse', 'au flanc', 'au ventre', 'dans le dos', 'à l\'épaule'],
   torse: ['au torse', 'au flanc', 'au ventre', 'dans le dos', 'à l\'épaule'],
@@ -81,6 +82,22 @@ export const CLOTHES = {
     nom: 'Casque de moto intégral', slot: 'tete', poids: 1.5, espace: 0, protection: 3, chaleur: 1, ouie: 0.7,
     couvre: ['à la tête', 'au visage', 'au cou'],
     desc: 'Les dents ne passent pas à travers. La visière est fendue, et tu entends le monde comme au fond d\'une piscine.',
+  },
+
+  // ---------- VISAGE : contre la brume jaune (js/game/brume.js) ----------
+  // brume : part de la brume arrêtée (1 = toute) ; filtre : il faut une cartouche (filtre_gaz) qui s'use dans la brume.
+  foulard_mouille: {
+    nom: 'Foulard mouillé', slot: 'visage', poids: 0.1, espace: 0, volume: 0.1, protection: 0, chaleur: 0, brume: 0.5,
+    desc: 'Un foulard de coton trempé, noué sur le nez et la bouche. Contre la brume jaune, il retient à peu près la moitié de ce qui brûle. Il faut le remouiller de temps en temps.',
+  },
+  masque_ffp2: {
+    nom: 'Masque de protection', slot: 'visage', poids: 0.02, espace: 0, volume: 0.05, protection: 0, chaleur: 0, brume: 0.25,
+    desc: 'Un masque blanc à bec de canard, comme ceux de l’épidémie d’avant. Contre la poussière, c’est parfait. Contre la brume jaune, presque inutile.',
+  },
+  masque_gaz: {
+    nom: 'Masque à gaz', slot: 'visage', poids: 0.7, espace: 1, volume: 1.2, protection: 1, chaleur: 0, brume: 1, filtre: true, ouie: 0.85,
+    couvre: ['au visage'],
+    desc: 'Un masque intégral de pompier, en caoutchouc noir, avec une grande vitre. Avec une cartouche filtrante vissée dessus, la brume jaune ne te fait plus rien. Sans cartouche, il ne sert à rien. On y entend sa propre respiration.',
   },
 
   // ---------- HAUT DU CORPS : trois couches (le haut, puis le pull, puis la veste) ----------
@@ -393,7 +410,7 @@ export const CLOTHES = {
 
 
 export const SLOTS = {
-  tete: 'Tête', haut: 'Haut', torse: 'Pull', veste: 'Veste', mains: 'Mains', poignet: 'Poignet',
+  tete: 'Tête', visage: 'Visage', haut: 'Haut', torse: 'Pull', veste: 'Veste', mains: 'Mains', poignet: 'Poignet',
   jambes: 'Jambes', pieds: 'Pieds', sac: 'Sac',
   ceinture: 'Ceinture', holster: 'Holster',
 };

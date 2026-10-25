@@ -224,7 +224,7 @@ function prochaineVague(id, v) {
 function vague(v, cible) {
   const [a, b] = v.n || [2, 3];
   const n = a + Math.floor(Math.random() * (b - a + 1));
-  if (V.canal.appelerMorts) V.canal.appelerMorts(n, cible, { types: v.types });
+  if (V.canal.appelerMorts) V.canal.appelerMorts(n, cible, { types: v.types, proche: !!v.proche });
 }
 // Protéger : le PNJ attire les morts (il fait du bruit en fouillant), les vagues marchent vers lui, et chaque mort
 // collé à lui le blesse. On l'entend crier quand il est touché.

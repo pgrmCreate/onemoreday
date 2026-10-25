@@ -31,6 +31,48 @@
 
 export const MISSIONS = {
 
+  // ═══════════════ LES MISSIONS DE L'HISTOIRE (sans offre : acceptées par une scène, docs/HISTOIRE.md §6) ═══════════════
+
+  // ─────────────── TENIR : la garde de la deuxième nuit (acte I, scène ref_garde) ───────────────
+  m_garde: {
+    titre: 'La garde à la brèche',
+    resume: 'Je monte la garde à la brèche du rempart nord avec Rudy, de neuf heures du soir à deux heures du matin. On ne dort pas, on n’allume pas, et on ne quitte pas son poste.',
+    etapes: [
+      { type: 'tenir', lieu: 'miramas_le_vieux', minutes: 300, quitter: 'echec', vagues: { chaqueMin: 35, n: [1, 2], proche: true },
+        texte: 'Monter la garde à la brèche jusqu’à deux heures' },
+    ],
+    fin: {
+      texte: 'À deux heures, tu entends des pas dans la ruelle, et deux silhouettes sortent du noir : Yohan, son fusil en travers des épaules, et Malik, avec un thermos de tisane qu’il te met dans les mains sans un mot.\n\nRudy se lève en faisant craquer son dos. Il passe devant toi, s’arrête, et il grogne quelque chose qui ressemble à un merci, puis il s’en va dormir sans se retourner.\n\nLa tisane est tiède et trop sucrée. C’est la meilleure chose que tu aies bue depuis trois semaines.',
+      effets: { flag: 'garde_faite',
+        journal: 'J’ai tenu la garde à la brèche jusqu’à deux heures, avec Rudy. Yohan et Malik nous ont relevés.' },
+    },
+    echec: {
+      texte: 'Le lendemain matin, tout le Refuge sait que tu as quitté ton poste pendant la nuit.\n\nUn mort est passé par la brèche pendant que tu n’y étais pas, et il est descendu dans le bas du village. Céline l’a trouvé au matin dans la ruelle du lavoir, en allant chercher du linge. Rudy l’a achevé à coups de marteau, mais il a eu le temps de griffer Céline au bras. Ce n’est qu’une griffure, et Bastien jure qu’une griffure ne transmet rien, mais Céline la regarde toutes les dix minutes, et tout le monde la regarde avec elle.\n\nPersonne ne te dit rien. C’est pire.',
+      effets: { flag: 'garde_ratee',
+        journal: 'J’ai quitté mon poste à la brèche pendant la garde. Un mort est entré dans le bas du village et a griffé Céline au bras. Tout le Refuge le sait.' },
+    },
+  },
+
+  // ─────────────── TENIR : le siège du Refuge (acte III, scènes siege_debut_2 / siege_debut_nuit) ───────────────
+  // Réussie ou ratée, la chute suit : c'est Rudy qui ouvre la porte (déclencheur 'flag' siege_tenu → scène chute).
+  m_siege: {
+    titre: 'Le siège',
+    resume: 'Les morts fuient le feu de la gare et montent à l’assaut du rocher. Je dois tenir le rempart nord, au-dessus de la brèche, pendant deux heures.',
+    etapes: [
+      { type: 'tenir', lieu: 'miramas_le_vieux', minutes: 120, quitter: 'echec', vagues: { chaqueMin: 6, n: [2, 4], proche: true },
+        texte: 'Tenir le rempart : repousser les morts qui montent' },
+    ],
+    fin: {
+      texte: 'Pendant quelques minutes, plus rien ne monte. Sur la pente, les morts tombés forment un talus noir, et ceux d’en bas tournent en rond, comme s’ils avaient oublié pourquoi ils étaient venus.\n\nTu t’assois contre le parapet, les mains tremblantes, et tu bois de l’eau tiède à même le seau. Sur la place, Hélène passe de poste en poste avec sa lampe, et elle compte ses gens à voix basse, un par un, sur les doigts. Elle arrive au bout, et elle recommence, comme si le compte ne tombait pas juste.',
+      effets: { flag: 'siege_tenu' },
+    },
+    echec: {
+      effets: { flag: 'siege_tenu' },
+    },
+  },
+
+  // ═══════════════ LES MISSIONS DU MONDE (proposées sur place, acte V) ═══════════════
+
   // ─────────────── NETTOYER : le marché du mercredi ───────────────
   m_marche: {
     titre: 'Le marché du mercredi',

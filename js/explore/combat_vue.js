@@ -8,7 +8,7 @@
 //                       maj(dt), vitesseMult(), dirForcee(), echelleTemps(), surEvt(e), rendu(), annuler(), fx, sang, etat, fermer() }
 // o = { canal, j, zombies, message, sfx, sfxA, vib, inv, player, survie, entrees, tactile, pause, effets (rendu.effets),
 //       etage () → E, mouvement () → { mx, my }, ralentir (f, ms), solo: bool }
-import { G } from '../core/state.js';
+import { G, setFlag } from '../core/state.js';
 import { pref, setPref } from '../core/prefs.js';
 import { emit } from '../core/bus.js';
 import { REGLAGES } from '../data/reglages.js';
@@ -340,6 +340,7 @@ export function creerCombatVue(o) {
       case 'coup_vide': if (e.joueur === moi) S.combo = 0; break;
       case 'mort_zombie': {
         gerbe(e.x, e.y, Math.random() * 6.28, 1.4);
+        if (e.flagMort && G.mode !== 'invite') setFlag(e.flagMort);   // un mort du plan dont la fin compte pour l'histoire
         if (e.joueur === moi) {
           const st = G.player.stats || (G.player.stats = {});
           st.morts = (st.morts || 0) + 1;

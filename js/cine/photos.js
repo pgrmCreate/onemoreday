@@ -8,16 +8,19 @@
 // marquée `naturel` (la main de l'hôpital) garde ses couleurs, simplement étalonnées.
 // Un décor absent de la liste (housse_noir…) reste entièrement dessiné.
 const NUIT = 0.26, SOIR = 0.32, JOUR = 0.36;
-export const PHOTOS = {
-  ba701_tarmac: { ombre: JOUR }, cales_falaises: { ombre: SOIR }, cales_grande_salle: { ombre: NUIT }, camp_refugies: { ombre: JOUR },
-  cimetiere_caveau: { ombre: NUIT }, collegiale_nef: { ombre: NUIT }, couloir_hopital: { ombre: SOIR }, cours_nuit: { ombre: NUIT },
-  cours_troupeau: { ombre: NUIT }, crau_mistral: { ombre: JOUR }, durance_pont: { ombre: SOIR }, emperi_cour: { ombre: JOUR },
-  emperi_remparts_aube: { ombre: SOIR }, emperi_siege: { ombre: NUIT }, estive_ventoux: { ombre: JOUR }, gymnase_froid: { ombre: SOIR },
-  hopital_parvis: { ombre: SOIR }, hopital_sous_sol: { ombre: NUIT }, horloge_sommet: { ombre: NUIT }, ligne_de_feu: { ombre: NUIT },
-  montee_puech: { ombre: JOUR }, nostradamus_cabinet: { ombre: SOIR }, nuit_campagne: { ombre: NUIT }, place_crousillat_nuit: { ombre: NUIT },
-  plaine_route: { ombre: JOUR }, route_jean_moulin: { ombre: JOUR }, saint_roch_nuit: { ombre: NUIT }, salle_quatre: { ombre: SOIR },
+export const PHOTOS = { camp_refugies: { ombre: JOUR },
+  cimetiere_caveau: { ombre: NUIT }, cours_nuit: { ombre: NUIT },
+  cours_troupeau: { ombre: NUIT }, crau_mistral: { ombre: JOUR }, durance_pont: { ombre: SOIR }, nuit_campagne: { ombre: NUIT }, place_crousillat_nuit: { ombre: NUIT },
+  plaine_route: { ombre: JOUR }, saint_roch_nuit: { ombre: NUIT },
   salon_aube_toits: { ombre: SOIR }, salon_marche: { ombre: JOUR, retirer: ['voute'] }, salon_mercredi: { ombre: JOUR, retirer: ['voute'] },
-  salon_mistral_vide: { ombre: JOUR, retirer: ['voute'] }, senas_station: { ombre: SOIR }, troupeau_feu: { ombre: NUIT }, vernegues_ruines: { ombre: NUIT },
+  salon_mistral_vide: { ombre: JOUR, retirer: ['voute'] },
+  // la nouvelle histoire (oct. 2026) : des décors faits de leur SEULE plaque, rendue dans la scène 3D du plan (tools/blender/cine/plans3.py)
+  crau_aube: { seule: true }, mains_radio: { seule: true }, voie_ferree: { seule: true }, refuge_porte: { seule: true }, mains_levees: { seule: true },
+  triage_feu: { seule: true }, mains_enveloppe: { seule: true }, refuge_nuit: { seule: true }, mains_corde: { seule: true }, etang_nuit: { seule: true },
+  poudrerie_brume: { seule: true }, mains_foulard: { seule: true }, cornillon_belvedere: { seule: true }, mains_carte: { seule: true },
+  mallemort_camp: { seule: true }, mains_liste: { seule: true }, mains_feu: { seule: true }, refuge_place: { seule: true }, refuge_cellule: { seule: true },
+  refuge_donjon: { seule: true }, triage_horde: { seule: true }, bergerie_crau: { seule: true }, bergerie_nuit: { seule: true }, poudrerie_parc: { seule: true },
+  peage_lancon: { seule: true }, grans_moulin: { seule: true }, istres_pharmacie: { seule: true },
 };
 const BASE = new URL('../../img/cine/', import.meta.url);
 export const PROFONDEUR_PHOTO = 0.15;

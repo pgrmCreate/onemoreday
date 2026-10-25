@@ -1,14 +1,15 @@
-// Maison de Nostradamus (CHAPITRE 1, hub) — voir docs/NIVEAUX_BESOINS.md §3.
+// Maison de Nostradamus — un lieu du monde, abandonné (musée municipal).
 // Réel : maison achetée en 1547, rue Nostradamus, au pied de l’Empéri ; musée municipal (« Maison des Illustres »),
 // 10 salles sur 3 niveaux, scénographies (cuisine, apothicairerie, cabinet de l’astrologue), escaliers étroits.
-// Plan : cave voûtée (Mireille/P5 sous un drap, sur le lit de camp près des piliers) ; RDC : accueil-boutique (façade),
-// cuisine à la grande cheminée (le cautère), salle « la peste et l’apothicaire » (cartel) ; 1er : cabinet de
-// l’astrologue (Maud au bureau, scanner, sphère armillaire, mannequin de cire), salle des Centuries, chambre
-// reconstituée ; 2e : combles (lit de camp du joueur, entrée « chambre »). Volets clos : pénombre partout.
-// Maison sécurisée : aucun mort placé (NB : le procédural du lieu, lieux_gameplay n [1,2], peut en ajouter).
+// Plan : cave voûtée (un lit de camp aux sangles coupées, près des piliers) ; RDC : accueil-boutique (façade), cuisine
+// à la grande cheminée, salle « la peste et l’apothicaire » (cartel) ; 1er : cabinet de l’astrologue (bureau, scanner
+// de fréquences, sphère armillaire, mannequin de cire), salle des Centuries, chambre reconstituée ; 2e : combles (une
+// chambre sous les toits où quelqu'un a dormi, entrée « chambre »). Volets clos : pénombre partout.
+// Traces (P3) : le lit de camp et ses sangles dans la cave, la trousse de soins de la cuisine, le scanner resté allumé
+// jusqu'à la fin des piles, la chambre des combles. Quelques morts : un rampant dans la cave, un errant au cabinet.
 export default {
   id: 'nostradamus', nom: 'Maison de Nostradamus', exterieur: false,
-  typeButin: 'musee', pool: ['errant', 'rampant'], morts: { n: [0, 0] }, solDefaut: 'tomettes',
+  typeButin: 'musee', pool: ['errant', 'rampant'], morts: { n: [1, 2] }, solDefaut: 'tomettes',
   etages: [
     { id: 'cave', nom: 'La cave', monte: 'rdc', descend: null, plan: [
       '                                    ',
@@ -20,7 +21,7 @@ export default {
       '    #..........55#                  ',
       '    #...I....I..;#                  ',
       '    #..<.........#                  ',
-      '    #.....;......#                  ',
+      '    #.....;...Y..#                  ',
       '    #a...ssss..gg#                  ',
       '    ##############                  ',
       '                                    ',
@@ -65,7 +66,7 @@ export default {
       '    #......#ssss....sss...ssss.#    ',
       '    #..>...#...................|    ',
       '    #......#..A.......ddd..N...#    ',
-      '    #....../..........dddM.9...#    ',
+      '    #....../..........ddd..Z...#    ',
       '    #......#.S........c........#    ',
       '    #......#......;..........P.#    ',
       '    #....<.#sss..ss..........s.#    ',
@@ -119,20 +120,19 @@ export default {
     { etage: 'e1', x: 16, y: 5, nom: 'Le cabinet de l’astrologue', sol: 'parquet', sombre: 1 },
     { etage: 'e1', x: 8, y: 13, nom: 'La salle des Centuries', sol: 'parquet', sombre: 1 },
     { etage: 'e1', x: 20, y: 14, nom: 'La chambre de Michel de Nostredame', sol: 'parquet', sombre: 1 },
-    { etage: 'e2', x: 7, y: 5, nom: 'Ta chambre sous les toits', sol: 'parquet', sombre: 1 },
+    { etage: 'e2', x: 7, y: 5, nom: 'La chambre sous les toits', sol: 'parquet', sombre: 1 },
     { etage: 'e2', x: 20, y: 5, nom: 'Le grenier', sol: 'parquet', sombre: 2 },
   ],
   legende: {
-    '5': { prop: 'lit_camp', marqueur: 'cave_patiente', nom: 'le lit de camp', conteneur: false },
+    '5': { prop: 'lit_camp', nom: 'le lit de camp aux sangles coupées', conteneur: false },
     'I': { prop: 'pilier', nom: 'le pilier' },
     'C': { marqueur: 'cartel_peste', nom: 'le cartel du musée' },
     'H': { prop: 'cheminee', nom: 'la grande cheminée', conteneur: false },
     'L': { comme: 'k', nom: 'la trousse de soins', conteneur: { nom: 'la trousse de soins', items: [{ id: 'bandage', qty: 2 }, { id: 'desinfectant', qty: 1 }, { id: 'antidouleur', qty: 1 }], table: null } },
     'S': { prop: 'statue', nom: 'le mannequin de cire' },
     'A': { prop: 'statue', nom: 'la sphère armillaire' },
-    'N': { prop: 'machine', nom: 'le scanner', conteneur: false },
-    '9': { marqueur: 'scanner_maud', nom: 'le carnet d’écoute' },
-    'M': { marqueur: 'maud' },
+    'N': { prop: 'machine', nom: 'le scanner de fréquences', conteneur: false },
+    'Y': { zombie: 'rampant', etat: 'dort' },
     'P': { objet: ['piles', 4] },
     'R': { entree: 'chambre' },
   },

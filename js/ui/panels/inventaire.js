@@ -181,9 +181,9 @@ function listeTri(col, p, racine, api) {
 }
 
 // ---------- Onglet Équipement (paper-doll) ----------
-const GAUCHE = ['tete', 'haut', 'torse', 'veste', 'mains', 'poignet', 'jambes', 'pieds'];
+const GAUCHE = ['tete', 'visage', 'haut', 'torse', 'veste', 'mains', 'poignet', 'jambes', 'pieds'];
 const DROITE = ['arme', 'mainG', 'dos', 'lampe', 'sac', 'ceinture', 'holster'];
-const ICONE_SLOT = { tete: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', poignet: 'montre', jambes: 'jambes', pieds: 'pieds', arme: 'main_arme', mainG: 'main_arme', dos: 'sac', lampe: 'lampe', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
+const ICONE_SLOT = { tete: 'tete', visage: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', poignet: 'montre', jambes: 'jambes', pieds: 'pieds', arme: 'main_arme', mainG: 'main_arme', dos: 'sac', lampe: 'lampe', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
 function caseSlot(slot, p, racine, api) {
   const m = inv.mains(p);
   let id = p.equip[slot];

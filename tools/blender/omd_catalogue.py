@@ -1141,6 +1141,49 @@ abri_branches.n = 1
 def etabli_constr(v, rnd): return etabli_meuble(v + 1, rnd)
 etabli_constr.n = 1
 
+
+# ———— Les brebis de la bergerie de Cabassole (la Crau) : laine bouclée, tête et pattes sombres ————
+def mat_laine(coul):
+    """La laine d'une brebis : un crème sali, des boucles en relief (cellules), des mèches plus sombres."""
+    import bpy
+    m = bpy.data.materials.new('laine'); m.use_nodes = True; nt = m.node_tree; p = nt.nodes.get('Principled BSDF')
+    tc = nt.nodes.new('ShaderNodeTexCoord')
+    vo = nt.nodes.new('ShaderNodeTexVoronoi'); vo.inputs['Scale'].default_value = 55.0
+    nz = nt.nodes.new('ShaderNodeTexNoise'); nz.inputs['Scale'].default_value = 6.0; nz.inputs['Detail'].default_value = 6
+    nt.links.new(tc.outputs['Object'], vo.inputs['Vector']); nt.links.new(tc.outputs['Object'], nz.inputs['Vector'])
+    rp = nt.nodes.new('ShaderNodeValToRGB')
+    rp.color_ramp.elements[0].color = (*[c * 0.62 for c in coul], 1); rp.color_ramp.elements[1].color = (*coul, 1)
+    rp.color_ramp.elements[0].position = 0.3; rp.color_ramp.elements[1].position = 0.7
+    nt.links.new(nz.outputs['Fac'], rp.inputs['Fac']); nt.links.new(rp.outputs['Color'], p.inputs['Base Color'])
+    bm = nt.nodes.new('ShaderNodeBump'); bm.inputs['Strength'].default_value = 0.8; bm.inputs['Distance'].default_value = 0.02
+    nt.links.new(vo.outputs['Distance'], bm.inputs['Height']); nt.links.new(bm.outputs['Normal'], p.inputs['Normal'])
+    p.inputs['Roughness'].default_value = 0.95
+    try: p.inputs['Sheen Weight'].default_value = 0.6
+    except Exception: pass
+    return m
+
+def _brebis(rnd, couchee=False):
+    laine = mat_laine(lin(hexc(rnd.choice(['#e2d8c2', '#d6cbb2', '#cbbfa4']))))
+    sombre = mat_uni(lin(hexc(rnd.choice(['#2a2420', '#3a3430', '#4a4038']))), 0.7)
+    o = []
+    if not couchee:
+        o.append(coussin(0, 0, 0.32, 0.42, 0.78, 0.36, laine, 0.6))                    # le corps
+        o.append(coussin(0, 0.46, 0.5, 0.17, 0.26, 0.17, sombre, 0.6))                 # la tête
+        for sx in (-0.13, 0.13):
+            o.append(coussin(sx * 1.3, 0.52, 0.6, 0.07, 0.04, 0.09, sombre, 0.6))       # les oreilles
+            for sy in (-0.24, 0.24): o.append(cylindre(sx, sy, 0, 0.03, 0.36, sombre, 8))
+    else:   # couchée sur le flanc, les pattes raides
+        o.append(coussin(0, 0, 0.18, 0.62, 0.8, 0.3, laine, 0.6))
+        o.append(coussin(0.06, 0.5, 0.1, 0.24, 0.24, 0.14, sombre, 0.6))
+        for k, sy in enumerate((-0.25, -0.12, 0.14, 0.26)):
+            c = cylindre(0.3, sy, 0.12, 0.028, 0.34, sombre, 8); c.rotation_euler.y = math.radians(80 + rnd.uniform(-15, 15)); c.location = (0.45, sy, 0.13); o.append(c)
+        # (pas de flaque : elles sont mortes de soif dans l'enclos, pas égorgées)
+    return o
+def brebis(v, rnd): return _brebis(rnd)
+brebis.n = 3
+def brebis_morte(v, rnd): return _brebis(rnd, True)
+brebis_morte.n = 3
+
 # ======================================================== LE CATALOGUE ========================================================
 def E(t, f, n=None, **kw):
     d = {'t': t, 'f': f, 'n': n or getattr(f, 'n', 1)}; d.update(kw); return d
@@ -1230,6 +1273,8 @@ CATALOGUE = {
     'caveau':       E([2, 2], caveau, remplir=0.98, etirer=True),
     'cercueil':     E([1, 2], cercueil, remplir=0.92, etirer=True),
     'housse':       E([1, 2], housse, remplir=0.92, etirer=True, plat=False),
+    'brebis':       E([1, 1], brebis, remplir=0.95),
+    'brebis_morte': E([1, 1], brebis_morte, remplir=0.95, plat=True),
     'autel':        E([3, 1], autel, remplir=0.96, etirer=True),
     'prie_dieu':    E([3, 1], prie_dieu, remplir=0.97, etirer=True),
     'cloche':       E([2, 2], cloche, remplir=0.95),

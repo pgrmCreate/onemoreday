@@ -1,10 +1,11 @@
-// Base aérienne 701 « Général Pineau » (CHAPITRE 2, donjon militaire) — voir docs/NIVEAUX_BESOINS.md §10.
+// Base aérienne 701 « Général Pineau » — un lieu du monde, abandonné par l'armée et très dangereux (donjon militaire).
 // Réel : École de l’air et de l’espace, Patrouille de France (Alphajet), escadron de protection ; à l’entrée, le
 // rond-point au Fouga Magister sur son mât. Surface très compressée (450 ha → 70 × 45).
 // Parcours : rond-point du Fouga (@) → poste de garde et barrière → parking aux rangers alignées (quatre morts qui font
 // le mort), mât aux couleurs (trois au garde-à-vous) → bâtiment de l’escadron (accueil, bureaux) → escalier vers le
-// PC enterré : salle de permanence (lieutenant assis, console, clé), couloir, cellules (colosse, munitions),
-// armoire forte (X, cle_armoire_forte) → (hangar PAF : Alphajet capot ouvert, vestiaires des pilotes) → sortie.
+// PC enterré : salle de permanence (le lieutenant de permanence, mort à son poste), couloir, cellules (colosse,
+// munitions), armoire forte (porte blindée à forcer) → (hangar PAF : Alphajet capot ouvert, vestiaires) → sortie.
+// Traces (P3) : les rangers alignées sur le parking, les morts au garde-à-vous, la permanence restée en service.
 // Écarts : le hangar PAF est dans l’étage extérieur (même niveau) ; le PC est un étage « pc » en sous-sol.
 export default {
   id: 'ba701', nom: 'Base aérienne 701', exterieur: true,
@@ -127,7 +128,7 @@ export default {
     { etage: 'pc', x: 25, y: 26, nom: 'L’armoire forte', sol: 'beton', sombre: 2 },
   ],
   legende: {
-    'A': { comme: 'v', marqueur: 'hangar_paf', nom: 'le cockpit de l’Alphajet', conteneur: false },
+    'A': { comme: 'v', nom: 'le cockpit de l’Alphajet', conteneur: false },
     'H': { prop: 'grille', nom: 'la clôture' },
     'B': { prop: 'barriere', nom: 'la barrière' },
     'F': { prop: 'statue', nom: 'le Fouga Magister sur son mât' },
@@ -135,9 +136,10 @@ export default {
     'P': { prop: 'pilier', nom: 'le mât aux couleurs' },
     'G': { zombie: 'militaire', etat: 'immobile', dir: -1.57 },
     'Z': { zombie: 'militaire', etat: 'erre' },
-    'K': { prop: 'bureau', marqueur: 'pc_protection', nom: 'la console de permanence', conteneur: false },
+    'K': { prop: 'bureau', nom: 'la console de permanence', conteneur: false },
     'L': { zombie: 'militaire', etat: 'immobile', dir: 1.57, nom: 'le lieutenant de permanence' },
-    'X': { porte: true, verrou: 'cle_armoire_forte', marqueur: 'armoire_forte', nom: 'la porte de l’armoire forte' },
+    'X': { porte: true, verrou: { forcer: 'pied_de_biche', crocheter: true, meca: 2 }, nom: 'la porte de l’armoire forte',
+      message: 'Une porte blindée, fermée à clé, et la clé n’est plus là. Il faudrait un pied-de-biche, ou des crochets et de la patience.' },
     'C': { zombie: 'colosse', etat: 'dort' },
   },
   declencheurs: [

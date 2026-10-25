@@ -161,6 +161,22 @@ sont les toilettes.
 - **Contrôle** : `node tools/verifier_realisme.mjs [id]` (bâtiment par bâtiment, ce qui manque). Les maisons des abords
   sont aménagées par `js/carte/abords.js` (`amenager`) selon ces règles.
 
+### P16. Le début tient la main, puis il la lâche
+Au début, le joueur ne doit jamais se demander où aller ni quoi faire ; ensuite, il doit pouvoir aller partout.
+- **Un acte = un lieu**, tant que le pays n'est pas ouvert : le Refuge, puis la bergerie, puis la Poudrerie. On passe de l'un
+  à l'autre par un **voyage guidé** (sur indication, sans carte), jamais par une errance.
+- **Des sorties qui disent pourquoi elles sont fermées** (« Fernand ne marche pas de nuit dans la Crau. ») plutôt que des
+  murs invisibles.
+- **Un groupe qui donne les ordres** : les quêtes du début sont imposées par des personnages, avec un lieu précis.
+- **Les sorties forcées viennent du monde** (une frappe, une brume), pas d'un bouton « continuer ».
+- **Puis le pays s'ouvre** : la carte routière, une échéance lointaine (le pont), et le joueur choisit sa route.
+
+### P17. Survivre d'abord : peu de quêtes, et longues
+Comme dans Project Zomboid, le jeu, c'est de durer. L'histoire existe, mais ses étapes se comptent en nuits et en jours
+(une quarantaine, une garde, deux jours d'attente, huit jours avant le pont) ; entre elles, on mange, on boit, on dort,
+on se soigne. **On ne gagne rien à tuer des morts** : les récompenses de l'histoire sont des objets, des renseignements,
+des gens en vie — jamais de l'expérience.
+
 ---
 
 ## 2. Journal des retours
@@ -255,6 +271,18 @@ sont les toilettes.
 |---|---|---|---|---|
 | 47 | Plein de bâtiments n'ont pas de toilettes, on ne comprend pas. Il faut une logique dans la disposition des bâtiments, plus proche de la réalité, au moins l'endroit des toilettes. | Aucun plan du jeu n'avait de WC : même les pièces nommées « Les toilettes » n'avaient qu'un lavabo. Les maisons générées autour des lieux n'avaient qu'une cuisine et un lit, en vrac. | P15. **Maisons générées** (`abords.js`, `amenager`) : pièce de vie côté rue (cuisine sous la fenêtre, frigo, table, canapé et télé), au fond une salle de bain avec WC, lavabo et baignoire, des chambres (grand lit, armoire ; chambre d'enfant), des toilettes séparées dans les grandes maisons ; dans une maison peu profonde, la salle de bain dans un coin ; un bâtiment trop petit devient une remise. Chaque pièce est nommée. Au passage, trois défauts anciens corrigés : un arbre du jardin ou une voiture garée devant une porte muraient la maison, et une parcelle de campagne pouvait en écraser une autre. **Lieux dessinés** : un WC dans chaque pièce « toilettes », un cabinet creusé dans le coin le plus logique (vestiaire, réserve, arrière-boutique, palier) de chaque bâtiment qui n'en avait pas, un WC à côté de la baignoire des chambres d'hôtel et d'hôpital, une salle d'eau dans les maisons ; églises, hangars, grottes, wagons déclarés `sansSanitaires`. Nouvel outil `tools/verifier_realisme.mjs`. | fait |
 | 48 | À la pharmacie, la personne qui a besoin d'aide est bloquée derrière une porte. Dès qu'on arrive, on l'entend crier : il faudrait s'approcher un peu avant. | L'appel de Mireille partait 1,6 s après l'arrivée sur le lieu, où qu'on soit. Elle était placée dans la réserve, fermée à clé (pied-de-biche ou crochetage), avec un mort qui cogne dedans. | L'appel ne part que quand on est à une dizaine de mètres d'elle, au même étage, et son repère n'apparaît qu'après. Mireille cherche l'insuline dans le **préparatoire** (le frigo y est, la porte est ouverte, aucun mort procédural) ; la réserve reste fermée avec ses deux morts. | fait |
+
+
+### 25 octobre 2026 — refaire toute la trame (demande du propriétaire)
+
+| # | Ce qu'il dit | Cause probable | Décision | Statut |
+|---|---|---|---|---|
+| 49 | « Au début on se perd, on ne sait pas quoi faire. » Il aime pouvoir se balader, mais pas au début. | Le prologue lâchait le joueur dans Salon avec 27 lieux connus sur la carte et une seule consigne lointaine. | P16. Nouvelle histoire (`docs/HISTOIRE.md`) : un acte = un lieu jusqu'au jour 6, voyages guidés, sorties qui disent pourquoi, carte routière seulement à Cornillon ; au départ, seul le Refuge est connu. | fait (25 oct.) |
+| 50 | Commencer dans un groupe de survivants, avec des quêtes obligatoires. | — | Le Refuge de Miramas-le-Vieux (`miramas_le_vieux.js`, refait) : quarantaine, corvées (puits, brèche à barricader), garde de nuit ; 14 survivants, 6 personnages à qui parler. | fait (25 oct.) |
+| 51 | Puis une quête nature hors du village. | — | La bergerie de Cabassole, dans la Crau (`bergerie.js`, nouveau lieu) : les antibiotiques de Noa, Gérard parmi ses brebis, la nuit au mas avec Fernand. | fait (25 oct.) |
+| 52 | Puis des sorties forcées : un bombardement, une brume étrange. | — | La frappe sur la gare de triage (jour 4, 6 h) fait tomber le Refuge ; le chlore des wagons devient la **brume jaune** (`js/game/brume.js`) qui chasse de la Poudrerie et reste un danger des nuits sans vent dans les terres basses. | fait (25 oct.) |
+| 53 | Un scénario prenant, plus survie que RPG, une quête principale mais peu de quêtes, et qui demandent du temps. | — | P17. Acte V libre : le pont de Mallemort ouvert une heure le jour 15 (dernière chance le jour 22) ; les dispersés à retrouver (facultatif) ; fins qui continuent la partie (« Continuer à survivre »). | fait (25 oct.) |
+| 54 | Refaire les vidéos dans Blender : pas d'extrême réalisme, mais des mains bien faites, pas de dessin animé. | Les anciens plans montraient des mains raides, parfois dessinées à la main. | `tools/blender/cine/omd_mains.py` : mains MPFB à la première personne (IK analytique, paume et doigts posés), peau SSS, saleté ; `plans3.py` : 25 plans tournés (fumées et brume en nuées, petit feu en volume). Les 10 vignettes des scènes sont de **vraies photos 360°** (Poly Haven) cadrées et étalonnées (nuit, bougie, brume), avec la horde, les morts du péage et la bergerie incrustés en 3D sous la lumière de la photo (`plaques_photo.py`, `composites.py`). | fait (25 oct.) |
 
 ---
 

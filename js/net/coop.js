@@ -387,7 +387,7 @@ function adopterMonde({ monde, hote }) {
     // Un nouveau venu voit d'abord l'introduction (passable) ; puis il arrive AUPRÈS de l'hôte — on attend que celui-ci
     // soit dans un lieu (il regarde peut-être encore la sienne) : sinon on jouerait son réveil à sa place.
     const avant = async () => {
-      if (neuf && !G.world.flags.prologue_fini) await flow.cinematique('intro', { distant: true });
+      if (neuf && !G.world.flags.quarantaine_faite) await flow.cinematique('intro', { distant: true });
       const p = await positionHote(neuf ? 20000 : 4000);
       if (p) G.player.position = p;
       return G.player.position;

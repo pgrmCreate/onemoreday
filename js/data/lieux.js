@@ -56,6 +56,7 @@ export const LIEUX_GEO = {
   cornillon:        { nom: 'Cornillon-Confoux', echelle: 'region', lat: 43.56191, lon: 5.07230, type: 'village' },
   miramas:          { nom: 'Miramas — gare de triage', echelle: 'region', lat: 43.58081, lon: 4.99916, type: 'triage' },
   miramas_le_vieux: { nom: 'Miramas-le-Vieux', echelle: 'region', lat: 43.56323, lon: 5.02442, type: 'village' },
+  bergerie:         { nom: 'La bergerie de Cabassole', echelle: 'region', lat: 43.59800, lon: 4.95800, type: 'nature' },
   saint_chamas:     { nom: 'Saint-Chamas — la Poudrerie', echelle: 'region', lat: 43.55265, lon: 5.03126, type: 'usine' },
   istres:           { nom: 'Istres', echelle: 'region', lat: 43.51391, lon: 4.98843, type: 'village' },
   berre:            { nom: 'Berre-l\'Étang', echelle: 'region', lat: 43.47571, lon: 5.16760, type: 'village' },

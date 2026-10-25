@@ -268,6 +268,32 @@ export function creerAtmosphere() {
     ctx.restore();
   }
 
+  // La brume jaune (le chlore, js/game/brume.js) : une nappe lourde, jaune-vert, qui roule lentement au ras du sol ;
+  // elle mange la lumière de la lampe à quelques pas. S.brumeJaune = force 0..1 autour de soi (déjà réduite à l'étage).
+  function brumeJaune(ctx, S, W, H, ecranX, ecranY, pxc, t, dpr) {
+    const f = S.brumeJaune || 0;
+    if (f < 0.02) return;
+    const p = motif(ctx, 'brumeJ', () => textureNuages(0.42, 31, [196, 204, 128]));
+    const jour = 0.35 + 0.65 * (S.jour ?? 1);          // de nuit, une nappe sale et sombre ; à l'aube, elle se teinte
+    ctx.save();
+    for (const [ech, v, a] of [[34, 0.00022, 0.7], [15, 0.00048, 0.45], [7, 0.0009, 0.25]]) {
+      const s = pxc * ech / 160, ox = (t * v) % ech, oy = (t * v * 0.35) % ech;
+      ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * ecranX(ox), dpr * ecranY(oy));
+      ctx.globalAlpha = Math.min(0.95, f * a * jour);
+      ctx.fillStyle = p;
+      const x0 = -ecranX(ox) / s, y0 = -ecranY(oy) / s;
+      ctx.fillRect(x0 - 160, y0 - 160, W / s + 320, H / s + 320);
+    }
+    // on ne voit qu'à quelques pas : tout s'efface au-delà
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const jx = ecranX(S.joueur.x), jy = ecranY(S.joueur.y);
+    const g = ctx.createRadialGradient(jx, jy, pxc * (1.5 + 2.5 * (1 - f)), jx, jy, pxc * (5 + 9 * (1 - f)));
+    const r = Math.round(70 + 110 * jour), gg = Math.round(74 + 112 * jour), b = Math.round(30 + 50 * jour);
+    g.addColorStop(0, `rgba(${r},${gg},${b},0)`); g.addColorStop(1, `rgba(${r},${gg},${b},${(0.92 * f).toFixed(3)})`);
+    ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
   // Sol mouillé sous la pluie : plus sombre, plus froid, une lueur qui luit sur le pavé.
   function mouille(ctx, S, W, H) {
     if (!(S.pluie > 0) || !S.dehors) return;
@@ -296,7 +322,7 @@ export function creerAtmosphere() {
     ctx.restore();
   }
 
-  return { ombresSoleil, nuages, brume, mouille, poussieres, oublier(E) { if (E) E._ombres = null; } };
+  return { ombresSoleil, nuages, brume, brumeJaune, mouille, poussieres, oublier(E) { if (E) E._ombres = null; } };
 }
 
 // Biome autour du joueur, d'après les sols (rayon ~7 unités) : 'ville' (bitume, pavés, béton), 'sec' (Crau, terre, gravier,

@@ -1,101 +1,77 @@
-// ============ QUÊTES (REFONTE §4.6) ============
-// Une seule quête « principale » active à la fois par chapitre (q_prologue → q_protocole → q_traversee → q_final).
+// ============ QUÊTES (docs/HISTOIRE.md §6) ============
+// Une quête « principale » par acte (q_refuge → q_crau → q_chute → q_brume → q_pont) : le HUD montre l'objectif de la
+// principale du chapitre le plus avancé. Les dispersés de l'acte V ont chacun leur petite quête secondaire.
 // Convention : la condition { quete: ['id', 'etape'] } est vraie si l'étape COURANTE de la quête est 'etape'.
-// Les étapes sont listées dans l'ordre d'affichage ; certaines sont des embranchements (ex. 'vidal_maud').
+// `heures` d'une étape : la carte n'y mène qu'à ces heures-là (générique, voir js/travel/carte.js).
 
 export const QUETES = {
-  q_prologue: {
-    titre: 'Lot 14', chapitre: 0, principale: true,
+  q_refuge: {
+    titre: 'Le Refuge', chapitre: 1, principale: true,
     etapes: {
-      // Prologue : les objectifs ne disent que ce que le personnage sait (pas de « la clé est dans la loge »).
-      debut:   { objectif: 'Sortir de la housse mortuaire', lieu: 'cimetiere' },
-      scelle:  { objectif: 'Ouvrir le sachet agrafé à ta housse, dans le caveau', lieu: 'cimetiere' },
-      sortir:  { objectif: 'Trouver une lumière, puis un moyen de sortir du cimetière Saint-Roch', lieu: 'cimetiere' },
-      // Maud ne guette que le soir (le mot : « je guette tous les soirs ») : la carte n'y mène qu'entre 19 h et 5 h
-      horloge: { objectif: 'Attendre le soir, puis rejoindre la Tour de l’Horloge, place Crousillat, et lever une lumière vers les cloches', lieu: 'tour_horloge',
-        heures: [19, 5], heuresTexte: 'Le mot de M. dit qu’elle guette tous les soirs : il faut attendre la tombée de la nuit (19 h) pour y aller.' },
-      monter:  { objectif: 'Monter en haut de la Tour de l’Horloge', lieu: 'tour_horloge' },
-      fin:     { objectif: 'Dormir dans la maison de Nostradamus' },
+      arrivee:     { objectif: 'Te présenter à la porte Notre-Dame du Refuge, à Miramas-le-Vieux', lieu: 'miramas_le_vieux' },
+      quarantaine: { objectif: 'Passer la nuit en quarantaine dans la tour-porte', lieu: 'miramas_le_vieux' },
+      corvees:     { objectif: 'Avant la nuit : remonter l’eau du puits, et fermer la brèche du rempart nord avec Rudy', lieu: 'miramas_le_vieux' },
+      garde:       { objectif: 'Monter la garde à la brèche avec Rudy jusqu’à deux heures du matin', lieu: 'miramas_le_vieux' },
+      fin:         { objectif: 'Suivre Fernand jusqu’à la bergerie de Cabassole' },
     },
   },
-  q_protocole: {
-    titre: 'Les vivants', chapitre: 1, principale: true,
+  q_crau: {
+    titre: 'La bergerie', chapitre: 2, principale: true,
     etapes: {
-      debut:         { objectif: 'Écouter ce que Maud a à dire, chez Nostradamus', lieu: 'nostradamus' },
-      emperi:        { objectif: 'Monter au château de l’Empéri et obtenir la radio de Vidal', lieu: 'emperi' },
-      saint_laurent: { objectif: 'Retrouver Lou et Nathan à la collégiale Saint-Laurent', lieu: 'saint_laurent' },
-      radio:         { objectif: 'Ramener Lou à l’Empéri, puis essayer la radio', lieu: 'emperi' },
-      hopital:       { objectif: 'Récupérer le registre de Maud, au sous-sol de l’hôpital', lieu: 'hopital' },
-      confrontation: { objectif: 'Rapporter le registre à Maud, chez Nostradamus, et exiger la vérité', lieu: 'nostradamus' },
-      vidal_maud:    { objectif: 'Dire à Vidal, à l’Empéri, ce que Maud a fait de Samir', lieu: 'emperi' },
-      sonnailles:    { objectif: 'Les morts arrivent : rentrer à l’Empéri avant eux', lieu: 'emperi' },
-      siege:         { objectif: 'Défendre l’Empéri jusqu’à l’aube', lieu: 'emperi' },
-      fin:           { objectif: 'Quitter Salon vers le nord' },
+      route:    { objectif: 'Suivre Fernand jusqu’à la bergerie de Cabassole, dans la Crau', lieu: 'bergerie' },
+      bergerie: { objectif: 'Trouver les antibiotiques de Gérard dans la bergerie de Cabassole', lieu: 'bergerie' },
+      nuit:     { objectif: 'Passer la nuit au mas avec Fernand : on rentrera à l’aube', lieu: 'bergerie' },
+      retour:   { objectif: 'Rentrer au Refuge avec Fernand', lieu: 'miramas_le_vieux' },
+      fin:      { objectif: 'Défendre le Refuge' },
     },
   },
-  q_sac_rouge: {
-    titre: 'Le mort au sac rouge', chapitre: 1, principale: false,
+  q_chute: {
+    titre: 'La chute', chapitre: 3, principale: true,
     etapes: {
-      debut: { objectif: 'Retrouver ton sac rouge dans les ronces, sous le rempart de l’Empéri', lieu: 'emperi' },
-      fin:   { objectif: 'Tu sais maintenant ce qui t’est arrivé le 6 septembre' },
+      siege: { objectif: 'Tenir le rempart avec les autres : les morts montent', lieu: 'miramas_le_vieux' },
+      fuir:  { objectif: 'Le Refuge est perdu : fuir par la poterne, au sud du village', lieu: 'miramas_le_vieux' },
+      fin:   { objectif: 'Rejoindre la Poudrerie de Saint-Chamas' },
     },
   },
-  q_sirenes: {
-    titre: 'Les sirènes', chapitre: 1, principale: false,
+  q_brume: {
+    titre: 'La brume', chapitre: 4, principale: true,
     etapes: {
-      debut: { objectif: 'Quitter Salon avant que les sirènes hurlent : la chaîne des Côtes, la Crau ou la Touloubre' },
-      tenir: { objectif: 'Les sirènes hurlent sur Salon : tenir dehors, loin de la ville, jusqu’à ce qu’elles se taisent' },
-      fin:   { objectif: 'Les sirènes se sont tues. La ville est plus pleine qu’avant' },
+      poudrerie: { objectif: 'Descendre jusqu’à la Poudrerie de Saint-Chamas, au bord de l’étang', lieu: 'saint_chamas' },
+      attendre:  { objectif: 'Attendre les autres à la Poudrerie, comme l’a demandé Hélène', lieu: 'saint_chamas' },
+      fuir:      { objectif: 'La brume monte : grimper jusqu’à Cornillon-Confoux, le village perché', lieu: 'cornillon' },
+      fin:       { objectif: 'Passer la nuit à Cornillon, au-dessus de la brume' },
     },
   },
-  q_traversee: {
-    titre: 'La transhumance', chapitre: 2, principale: true,
+  q_pont: {
+    titre: 'Le pont', chapitre: 5, principale: true,
     etapes: {
-      cales:     { objectif: 'Rejoindre les grottes de Calès, au-dessus de Lamanon', lieu: 'cales' },
-      mallemort: { objectif: 'Aller observer le pont de Mallemort et la ligne de l’armée', lieu: 'mallemort' },
-      retour:    { objectif: 'Retourner à Calès et faire ton rapport à Joëlle', lieu: 'cales' },
-      ba701:     { objectif: 'Trouver une radio militaire et le classeur des codes à la base aérienne 701', lieu: 'ba701' },
-      contact:   { objectif: 'Appeler l’armée (le PC Durance) depuis l’antenne, en haut de la falaise de Calès', lieu: 'cales' },
-      depart:    { objectif: 'Dire à Joëlle quand partir (le Berger t’attend peut-être encore à Vieux-Vernègues)', lieu: 'cales' },
-      fin:       { objectif: 'Le mistral se lève' },
+      preparer: { objectif: 'Être au pont de Mallemort le mercredi 7 octobre avant 6 h : l’armée ne l’ouvre qu’une heure. Ceux de Cornillon partiront le mardi soir.', lieu: 'mallemort' },
+      attendre: { objectif: 'Attendre l’aube au bord du pont de Mallemort', lieu: 'mallemort' },
+      dernier:  { objectif: 'Dernière chance : être au pont de Mallemort le mercredi 14 octobre avant 6 h', lieu: 'mallemort' },
+      fin:      { objectif: 'Le pont est derrière toi' },
     },
   },
-  q_berger: {
-    titre: 'Le Berger', chapitre: 2, principale: false,
+  q_bastien: {
+    titre: 'Bastien', chapitre: 5, principale: false,
     etapes: {
-      debut: { objectif: 'Retrouver le Berger à Vieux-Vernègues', lieu: 'vernegues' },
-      rose:  { objectif: 'Parler à Rose en tête-à-tête, dans la sacristie', lieu: 'vernegues' },
-      fin:   { objectif: 'Tu connais le secret du redon, la grosse cloche de Rose' },
+      debut: { objectif: 'Retrouver Bastien : il a fui vers Istres, où vit sa sœur', lieu: 'istres' },
+      fin:   { objectif: 'Tu sais ce qu’est devenu Bastien' },
     },
   },
-  q_jour_de_plus: {
-    titre: 'Un jour de plus', chapitre: 2, principale: false,
+  q_karine: {
+    titre: 'Karine et Noa', chapitre: 5, principale: false,
     etapes: {
-      debut: { objectif: 'Retarder le troupeau : ouvrir la vanne du canal (Calès) ou sonner la cloche de Sénas', lieu: 'senas' },
-      fin:   { objectif: 'Le troupeau a pris du retard' },
+      debut:  { objectif: 'Retrouver Karine et Noa : Karine parlait d’un meunier, à Grans', lieu: 'grans' },
+      soigner: { objectif: 'Rapporter des antibiotiques à Noa, au moulin de Grans', lieu: 'grans' },
+      fin:    { objectif: 'Tu sais ce que sont devenues Karine et Noa' },
     },
   },
-  q_temoignage: {
-    titre: 'La preuve', chapitre: 2, principale: false,
+  q_rudy: {
+    titre: 'Rudy', chapitre: 5, principale: false,
     etapes: {
-      debut: { objectif: 'Filmer ton témoignage avec Lou (il faut un téléphone chargé)', lieu: 'cales' },
-      fin:   { objectif: 'Ton témoignage est enregistré dans ton téléphone' },
-    },
-  },
-  q_sirenes_plaine: {
-    titre: 'Le rabattage de la plaine', chapitre: 2, principale: false,
-    etapes: {
-      debut: { objectif: 'Les sirènes vont hurler sur les villages de la plaine : rester à l’écart des bourgs et des routes' },
-      tenir: { objectif: 'Les villages hurlent : tenir dans les collines ou dans la Crau jusqu’à ce que ça se taise' },
-      fin:   { objectif: 'Les sirènes se sont tues sur la plaine' },
-    },
-  },
-  q_final: {
-    titre: 'Le mistral', chapitre: 3, principale: true,
-    etapes: {
-      depart: { objectif: 'Conduire la colonne de Calès jusqu’au pont de Mallemort', lieu: 'mallemort' },
-      pont:   { objectif: 'Traverser le pont de Mallemort', lieu: 'mallemort' },
-      fin:    { objectif: '—' },
+      debut:   { objectif: 'Retrouver Rudy et son camion : il voulait prendre l’autoroute à Lançon', lieu: 'lancon' },
+      gasoil:  { objectif: 'Rapporter vingt litres de gasoil à Rudy, au péage de Lançon', lieu: 'lancon' },
+      fin:     { objectif: 'Tu as réglé ton compte avec Rudy' },
     },
   },
 };

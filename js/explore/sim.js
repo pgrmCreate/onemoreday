@@ -125,11 +125,11 @@ export function creerSimLieu(opts) {
   } else {
     // 1re visite : morts du plan + procéduraux, objets posés
     const r = seedRng(`${seed}:peuplement:${lieuId}`);
-    for (const s of niveau.spawns) {
+    for (const [idx, s] of niveau.spawns.entries()) {
       if (s.si) continue;   // les morts conditionnels : majConditionnels()
       const type = s.type || pool[Math.floor(r() * pool.length)];
       const z = nouveauMort(type, s.etage, s.x + 0.5, s.y + 0.5, s.etat || etatDepart(type, r), { hp: s.hp, dir: s.dir != null ? s.dir : r() * Math.PI * 2, plan: true });
-      if (z) zombies.push(z);
+      if (z) { if (s.flagMort) z.planIdx = idx; zombies.push(z); }   // planIdx : sa mort pose un drapeau (flagMort du plan)
     }
     const mult = (paramsJour(jour).mortsMult || 1) * (diff.mortsLieux || 1) * (coop ? REGLAGES.coop.MORTS_MULT : 1);
     const n = Math.round((mortsN[0] + Math.floor(r() * (mortsN[1] - mortsN[0] + 1))) * mult * ((niveau.abords && niveau.abords.mortsMult) || 1));
@@ -261,8 +261,19 @@ export function creerSimLieu(opts) {
     const i = icase(E, o.x, o.y), P = i >= 0 && E.piece[i] >= 0 ? niveau.pieces[E.piece[i]] : null;
     return !!(P && P.sansMorts);
   }
+  // Les ouvertures que l'histoire barricade (barricadeSi) : dès que la condition tient, et que personne n'est sur le seuil.
+  function majBarricades() {
+    for (const p of niveau.portes) {
+      if (!p.barricadeSi) continue;
+      const s = portes[p.cle];
+      if (s.barricadee || s.etat === 'cassee' || !condOk(p.barricadeSi)) continue;
+      if (s.etat === 'ouverte') { if (caseOccupee(p.etage, p.x, p.y)) continue; setPorte(p.cle, 'fermee', 'ferme', null); }
+      s.barricadee = true; s.pv = s.pvMax = RX.PORTES.PV_BARRICADEE;
+      evts.push({ type: 'porte', cle: p.cle, etat: s.etat, pv: s.pv, pvMax: s.pvMax, action: 'barricade', source: null });
+    }
+  }
   function tenirRefuge() {
-    majGardees();
+    majGardees(); majBarricades();
     for (const p of niveau.portes) {
       if (!gardees.has(p.idx)) continue;
       const s = portes[p.cle];
@@ -284,13 +295,16 @@ export function creerSimLieu(opts) {
     return false;
   }
   function flagOk(v) { return v && v.flag && !!getFlag(v.flag); }
-  // CONDITION simple d'un mort du plan : { flag, pasFlag, flagEgal: [k, v] } (tableaux acceptés)
+  // CONDITION simple d'un mort du plan : { flag, pasFlag, flagEgal: [k, v], ou: [c…], et: [c…], non: c } (tableaux acceptés)
   function condOk(si) {
     if (!si) return true;
     const liste = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
     if (liste(si.flag).some(k => !getFlag(k))) return false;
     if (liste(si.pasFlag).some(k => !!getFlag(k))) return false;
     if (si.flagEgal && getFlag(si.flagEgal[0]) !== si.flagEgal[1]) return false;
+    if (si.ou && !si.ou.some(condOk)) return false;
+    if (si.et && !si.et.every(condOk)) return false;
+    if (si.non && condOk(si.non)) return false;
     return true;
   }
   // Les morts conditionnels du plan (foule qui apparaît après une scène, qui se disperse plus tard) :
@@ -636,7 +650,7 @@ export function creerSimLieu(opts) {
     if (P.chute) { z.aTerre = Math.max(z.aTerre || 0, P.chute); z.atk = null; }
     c.pv -= P.usure ?? 1; vm++; cache = null;
     evts.push({ type: 'construction', action: 'piege', uid: c.uid, zuid: z.uid, x: z.x, y: z.y, etage: z.etage, pv: c.pv });
-    if (z.hp <= 0) { lacher(z); zombies = zombies.filter(q => q !== z); cadavres.push({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: z.x, y: z.y, dir: z.dir }); evts.push({ type: 'mort_zombie', joueur: null, uid: z.uid, typeMort: z.type, sexe: z.sexe, x: z.x, y: z.y, etage: z.etage, piege: true }); }
+    if (z.hp <= 0) { lacher(z); zombies = zombies.filter(q => q !== z); cadavres.push({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: z.x, y: z.y, dir: z.dir }); evts.push({ type: 'mort_zombie', joueur: null, uid: z.uid, typeMort: z.type, sexe: z.sexe, x: z.x, y: z.y, etage: z.etage, piege: true, flagMort: flagMortDe(z) }); }
     if (c.pv <= 0) retirerConstruction(c, 'detruite', z.uid);
   }
   function majMort(z, dt) {
@@ -953,11 +967,13 @@ export function creerSimLieu(opts) {
     }
     return out.sort((p, q) => p.score - q.score);
   }
+  // Le drapeau que pose la mort d'un mort du plan (zombie(…, { flagMort }) : Gérard, à la bergerie).
+  const flagMortDe = (z) => (z.planIdx != null && niveau.spawns[z.planIdx] && niveau.spawns[z.planIdx].flagMort) || null;
   function tuerMort(z, j, o = {}) {
     lacher(z);
     zombies = zombies.filter(q => q !== z);
     cadavres.push({ uid: z.uid, type: z.type, sexe: z.sexe, etage: z.etage, x: z.x, y: z.y, dir: z.dir }); vm++;
-    evts.push({ type: 'mort_zombie', joueur: j.id, uid: z.uid, typeMort: z.type, sexe: z.sexe, x: z.x, y: z.y, etage: z.etage, furtif: !!o.furtif, tir: !!o.tir });
+    evts.push({ type: 'mort_zombie', joueur: j.id, uid: z.uid, typeMort: z.type, sexe: z.sexe, x: z.x, y: z.y, etage: z.etage, furtif: !!o.furtif, tir: !!o.tir, flagMort: flagMortDe(z) });
   }
   // Applique un coup résolu à un mort : PV, équilibre (à 0 il vacille), recul, interruption, mise à terre.
   function encaisser(z, j, r, prof, c, o = {}) {
@@ -1126,13 +1142,20 @@ export function creerSimLieu(opts) {
   }
   const descMort = (z) => ({ uid: z.uid, type: z.type, hp: z.hp });
 
-  // appelerMorts(n, cible, { types }) : une VAGUE (missions « tenir », « protéger ») — n morts entrent par les sorties
-  // cachées du joueur (sinon par des recoins sombres loin de lui) et marchent, alertés, vers cible = { etage, x, y }.
+  // appelerMorts(n, cible, { types, proche }) : une VAGUE (missions « tenir », « protéger ») — n morts entrent par les sorties
+  // cachées du joueur (sinon par des recoins sombres loin de lui) et marchent, alertés, vers cible = { etage, x, y } ;
+  // proche : par la sortie la plus proche de la cible (le passage qu'on tient), qu'on la voie ou non.
   function appelerMorts(n, cible, o = {}) {
     const uids = [], types = (o.types && o.types.length) ? o.types : pool;
     const r = rngArr;
     let sorties = sortiesCachees();
     if (cible) { const memes = sorties.filter(s => s.etage === cible.etage); if (memes.length) sorties = memes; }
+    if (o.proche && cible) {
+      // la vague vient par le passage qu'on garde (la brèche) : la sortie la plus proche de la cible, même si on la voit
+      const d = s => Math.hypot(s.cx - cible.x, s.cy - cible.y);
+      const pres = niveau.sorties.filter(s => s.etage === cible.etage).sort((a, b) => d(a) - d(b))[0];
+      if (pres) sorties = [pres];
+    }
     let libres = null;
     for (let k = 0; k < n; k++) {
       let x = null, y = null, etage = null;

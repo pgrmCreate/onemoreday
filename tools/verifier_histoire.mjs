@@ -32,7 +32,7 @@ const { CINEMATIQUES = {}, DECORS = [] } = await imp('js/data/cinematiques.js', 
 const { LIEUX_GEO = {} } = await imp('js/data/lieux.js', 'LIEUX_GEO');
 const { ITEMS = {} } = await imp('js/data/items.js', 'ITEMS', true);
 const { ZOMBIES = {} } = await imp('js/data/zombies.js', 'ZOMBIES', true);
-const { ZONES_CORPS = null } = await imp('js/data/clothing.js', null, true);
+const { ZONES_CORPS = null, CLOTHES = {} } = await imp('js/data/clothing.js', null, true);
 const { MISSIONS = {} } = await imp('js/data/histoire/missions.js', 'MISSIONS', true);
 
 const histoireMd = (() => { try { return readFileSync(join(RACINE, 'docs/HISTOIRE.md'), 'utf8'); } catch { err('docs/HISTOIRE.md absent'); return ''; } })();
@@ -40,15 +40,16 @@ const niveauxMd = (() => { try { return readFileSync(join(RACINE, 'docs/NIVEAUX_
 
 // ─── Tables de référence ───
 const SPECIAUX = new Set(['#fin', '#mort', '#combat']);
-const OBJETS = { ...ITEMS, ...OBJETS_QUETE };
+const OBJETS = { ...ITEMS, ...CLOTHES, ...OBJETS_QUETE };
 const DECORS_SET = new Set(DECORS);
 const SKILLS = new Set(['force', 'dexterite', 'agilite', 'mainsNues', 'visee', 'construction', 'mecanique', 'entretien', 'chasse']);
 const PLAIES = new Set(['egratignure', 'contusion', 'entaille', 'profonde', 'morsure', 'fracture', 'brulure']);
 const MUSIQUES_SCENE = new Set(['calme', 'sombre', 'tension', 'combat', 'mort', null]);
 const MUSIQUES_CINE = new Set(['titre', 'calme', 'sombre', 'tension', 'combat', 'mort', 'refuge']);
-const COND_CLES = new Set(['flag', 'pasFlag', 'flagEgal', 'objet', 'skill', 'nuit', 'jourMin', 'lieuVisite', 'quete', 'ou']);
+const COND_CLES = new Set(['flag', 'pasFlag', 'flagEgal', 'objet', 'pasObjet', 'skill', 'nuit', 'jourMin', 'jourMax', 'heureMin', 'heureMax',
+  'lieu', 'lieuVisite', 'quete', 'queteFaite', 'mordu', 'solo', 'coop', 'ou', 'et', 'non']);
 const EFFET_CLES = new Set(['flag', 'mission', 'flags', 'retirerFlag', 'objet', 'objets', 'blessure', 'pv', 'sta', 'faim', 'soif', 'fatigue',
-  'tempsMin', 'xp', 'decouvrir', 'quete', 'journal', 'document', 'combat', 'cinematique', 'teleporter', 'bruit', 'infection', 'detour']);
+  'tempsMin', 'xp', 'decouvrir', 'quete', 'journal', 'document', 'combat', 'cinematique', 'teleporter', 'voyage', 'retirer', 'bruit', 'infection', 'detour']);
 const DECL_QUAND = new Set(['entree_lieu', 'marqueur', 'flag', 'heure', 'voyage']);
 const TYPES_RENC = new Set(['combat', 'choix', 'butin', 'ambiance', 'pnj']);
 const STYLES_DOC = new Set(['manuscrit', 'tape', 'imprime', 'sms', 'carnet']);
@@ -70,7 +71,16 @@ function verifCondition(c, ctx) {
   if (typeof c !== 'object' || Array.isArray(c)) return err(`${ctx} : condition mal formée`);
   for (const [k, v] of Object.entries(c)) {
     if (!COND_CLES.has(k)) err(`${ctx} : clé de condition inconnue « ${k} »`);
-    if (k === 'flag' || k === 'pasFlag') { if (typeof v !== 'string') err(`${ctx} : ${k} doit être une chaîne`); else if (k === 'flag') (flagsTestes.get(v) || flagsTestes.set(v, []).get(v)).push(ctx); }
+    if (k === 'flag' || k === 'pasFlag') {
+      const l = Array.isArray(v) ? v : [v];
+      if (!l.length || l.some(f => typeof f !== 'string')) err(`${ctx} : ${k} doit être une chaîne ou une liste de chaînes`);
+      else if (k === 'flag') l.forEach(f => (flagsTestes.get(f) || flagsTestes.set(f, []).get(f)).push(ctx));
+    }
+    if (k === 'lieu') lieuOk(v, ctx);
+    if (k === 'pasObjet') objetOk(v, ctx);
+    if (k === 'queteFaite' && !QUETES[v]) err(`${ctx} : quête inconnue « ${v} »`);
+    if (k === 'et') { if (!Array.isArray(v) || !v.length) err(`${ctx} : et mal formé`); else v.forEach((cc, i) => verifCondition(cc, `${ctx}.et[${i}]`)); }
+    if (k === 'non') verifCondition(v, `${ctx}.non`);
     if (k === 'flagEgal') { if (!Array.isArray(v) || v.length !== 2 || typeof v[0] !== 'string' || v[1] === undefined) err(`${ctx} : flagEgal mal formé`); else (flagsTestes.get(v[0]) || flagsTestes.set(v[0], []).get(v[0])).push(ctx); }
     if (k === 'objet') objetOk(Array.isArray(v) ? v[0] : v, ctx);
     if (k === 'skill' && (!Array.isArray(v) || !SKILLS.has(v[0]))) err(`${ctx} : skill mal formé`);
@@ -95,7 +105,9 @@ function verifEffets(e, ctx) {
         if (ZONES_CORPS && v?.zone && !ZONES_CORPS.includes(v.zone)) err(`${ctx} : zone du corps inconnue « ${v.zone} »`); break;
       case 'xp': Object.keys(v || {}).forEach(s => { if (!SKILLS.has(s)) err(`${ctx} : compétence inconnue « ${s} »`); }); break;
       case 'decouvrir': (Array.isArray(v) ? v : [v]).forEach(l => lieuOk(l, ctx)); break;
-      case 'quete': if (!Array.isArray(v)) err(`${ctx} : quete mal formée`); else quetEtapeOk(v[0], v[1], ctx); break;
+      case 'quete': if (!Array.isArray(v)) err(`${ctx} : quete mal formée`); else (Array.isArray(v[0]) ? v : [v]).forEach(q => quetEtapeOk(q[0], q[1], ctx)); break;
+      case 'retirer': if (!Array.isArray(v) || v.some(o => !Array.isArray(o) || typeof o[1] !== 'number')) err(`${ctx} : retirer doit être [['id', n], …]`); else v.forEach(o => objetOk(o[0], ctx)); break;
+      case 'voyage': if (!v || typeof v !== 'object') err(`${ctx} : voyage mal formé`); else lieuOk(v.vers, ctx); break;
       case 'document': docsDonnes.add(v); if (!DOCUMENTS[v]) err(`${ctx} : document inconnu « ${v} »`); break;
       case 'combat': if (!Array.isArray(v?.zombies) || !v.zombies.length) err(`${ctx} : combat sans morts`);
         else v.zombies.forEach(z => { if (!ZOMBIES[z]) (Object.keys(ZOMBIES).length ? err : warn)(`${ctx} : mort inconnu « ${z} »`); });
@@ -127,7 +139,7 @@ function verifSuivant(s, ctx) {
 }
 
 // Menus dont les choix, tous conditionnels, couvrent tous les états possibles (vérifié à la main, voir HISTOIRE.md §9).
-const EXHAUSTIFS = new Set(['emp_retour_lou', 'emp_retour_nathan', 'ch1_depart', 'cal_arrivee', 'cal_retour', 'ver_berger_toi', 'fin_pont_2', 'stl_lou', 'ver_rose_2']);
+const EXHAUSTIFS = new Set(['frappe_apres', 'pou_arrivee', 'pou_attente', 'pon_controle', 'pon_liste', 'cor_aube_3', 'cor_colonne', 'ref_garde']);
 
 // ─── 1. Scènes ───
 const vus = new Map();
@@ -288,7 +300,7 @@ for (const [clef, ctx] of marqueursUtilises) {
 }
 
 // ─── 12. Drapeaux ───
-const FLAGS_MOTEUR = new Set([]);
+const FLAGS_MOTEUR = new Set(['gerard_acheve']);   // posés par les plans (flagMort d'un mort, flagBarricade d'une ouverture) ou par le moteur
 for (const [f, ctxs] of flagsTestes) if (!flagsPoses.has(f) && !FLAGS_MOTEUR.has(f)) err(`drapeau « ${f} » testé mais jamais posé (${ctxs[0]})`);
 
 // ─── 13. Scènes orphelines ───
@@ -308,6 +320,11 @@ for (const fichier of readdirSync(join(RACINE, dossierPlans)).filter(f => f.ends
   if (!def) continue; // l'échec d'import est déjà signalé
   try {
     const zones = def.format === 'couches' ? def.plan.etages.flatMap(e => e.declencheurs) : (def.declencheurs || []);
+    // drapeaux posés par le plan lui-même : la mort d'un mort (flagMort), une ouverture barricadée (flagBarricade)
+    if (def.format === 'couches') for (const E of def.plan.etages) {
+      for (const z of E.zombies || []) if (z.flagMort) flagsPoses.add(z.flagMort);
+      for (const pd of (E.portes ? E.portes.values() : [])) if (pd.flagBarricade) flagsPoses.add(pd.flagBarricade);
+    }
     for (const [i, d] of zones.entries()) if (d.scene) sceneExterne(d.scene, `${chemin} déclencheur[${i}]`);
   } catch (e) { err(`${chemin} : lecture des déclencheurs impossible (${e.message})`); }
 }

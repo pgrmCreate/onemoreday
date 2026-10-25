@@ -1,23 +1,20 @@
-// Tour de l'Horloge (PROLOGUE) — refaite au format à couches d'après docs/RETOURS_JOUEUR.md §4.1.
+// Tour de l'Horloge — un lieu du monde, vide (format à couches, d'après docs/RETOURS_JOUEUR.md §4.1).
 // Réel : tour-porte 1626-1664 à l'entrée nord de la vieille ville ; porche voûté, corps en retrait, campanile de fer forgé
 // et trois cloches ; au nord la place Crousillat et la Fontaine Moussue, au sud la rue de l'Horloge.
-// En une phrase : une tour-porte qui sert de refuge à UNE personne, Maud. Une seule porte (la petite porte de chêne du
-// porche), barrée de l'intérieur ; dedans, son campement ; en haut, les cloches qu'elle fait sonner.
-// Parcours : place (nuit, lune) → la porte de chêne (drapeau pro_signal : Maud l'ouvre ; entrée « porche » juste derrière)
-// → escalier à vis (colonne 2 × 4, au même endroit à chaque étage) → salle de l'horloge (mécanisme, campement de Maud)
-// → palier des meurtrières (carnet) → terrasse du campanile (Maud).
-// Peuplement : JAMAIS de mort dans la tour. Sur la place : 0 à 2 errants à l'arrivée ; la foule (immobile, tournée vers
-// la tour) n'apparaît qu'avec pro_signal et se disperse après le prologue (3 à 5 errants).
+// En une phrase : une tour-porte vide, un abri possible au cœur de la vieille ville. Une seule porte (la petite porte de
+// chêne du porche) ; dedans, le campement abandonné de quelqu'un qui a tenu là quelques jours ; en haut, les cloches.
+// Parcours : place (nuit, lune) → la porte de chêne (entrée « porche » juste derrière) → escalier à vis (colonne 2 × 4,
+// au même endroit à chaque étage) → salle de l'horloge (mécanisme, campement abandonné) → palier des meurtrières
+// → terrasse du campanile.
+// Traces (P3) : la barre de chêne posée par terre, le lit de camp et la caisse, les conserves vides, la carte couverte de croix.
+// Peuplement : aucun mort dans la tour (mortsDehorsSeulement) ; sur la place, quelques errants, et un dormeur au café.
 import { plan } from '../../carte/plan.js';
 
 const W = 48, H = 40;
-const SUD = Math.PI / 2;                     // regard vers le sud (vers la tour, depuis la place)
-const FOULE = { flag: 'pro_signal', pasFlag: 'prologue_fini' };
-const APRES = { flag: 'prologue_fini' };
 
 export default plan({
-  id: 'tour_horloge', nom: 'Tour de l’Horloge', exterieur: true, version: 2, typeButin: 'monument', refuge: {},
-  sansSanitaires: ['La salle de l’horloge'],   // pas de toilettes, et c'est normal : la tour (le campement de Maud) (tools/verifier_realisme.mjs)
+  id: 'tour_horloge', nom: 'Tour de l’Horloge', exterieur: true, version: 2, typeButin: 'monument',
+  sansSanitaires: ['La salle de l’horloge'],   // pas de toilettes, et c'est normal : la tour (un campement de fortune) (tools/verifier_realisme.mjs)
   pool: ['errant', 'rampant'], morts: { n: [0, 0] }, mortsDehorsSeulement: true,
 }, (p) => {
   // ================= REZ-DE-CHAUSSÉE : place, café, tour, rue =================
@@ -73,9 +70,8 @@ export default plan({
   e.solRect('paves', 21, 19, 4, 12);
   // (le porche est ouvert sur la place et sur la rue : c'est le même « dehors », nommé Place Crousillat)
   e.toit(17, 19, 14, 12, 'tuiles');
-  // gardée : aucun mort ne passe le seuil, même ouverte, et Maud la referme derrière toi (js/explore/sim.js, tenirRefuge)
-  e.porte(25, 22, { verrou: { flag: 'pro_signal' }, nom: 'la petite porte de la tour', style: 'bois', gardee: { flag: 'pro_signal' },
-    message: 'Une petite porte en chêne, barrée de l’intérieur. Quelqu’un, là-haut, peut t’ouvrir.' });
+  // la petite porte de chêne : plus personne ne la barre, elle s'ouvre (la barre est posée par terre, derrière)
+  e.porte(25, 22, { nom: 'la petite porte de la tour', style: 'bois' });
   // le pied de l'escalier (4 × 5)
   e.solRect('paves', 26, 20, 4, 5);
   e.nommer(26, 22, 'Le pied de l’escalier', { sol: 'paves', sombre: 2, sansMorts: true });
@@ -90,38 +86,29 @@ export default plan({
   e.sortie(21, 39, 9, 1);                                   // vers le cours (carte)
   e.objet('poubelle', 22, 33); e.semer('papiers', 21, 31, 9, 8, 6);
 
-  // --- les morts de la place ---
-  // à l'arrivée (avant le signal) : deux errants à l'est, loin de l'arrivée
-  e.zombie('errant', 36, 11, { etat: 'erre', si: { pasFlag: 'pro_signal' } });
-  e.zombie('errant', 37, 15, { etat: 'erre', si: { pasFlag: 'pro_signal' } });
-  // la foule : immobile, tournée vers la tour ; elle laisse libre le chemin le long des façades sud-ouest vers le porche
-  for (const [x, y] of [[26, 13], [28, 13], [30, 14], [32, 13], [27, 15], [29, 16], [31, 16], [33, 15], [35, 14], [36, 17],
-    [25, 17], [28, 18], [33, 18], [12, 11], [14, 13], [16, 11], [17, 14], [11, 15]]) {
-    e.zombie((x * 7 + y) % 5 === 0 ? 'putrefie' : 'errant', x, y, { etat: 'immobile', dir: SUD, si: FOULE });
-  }
-  // après le prologue : la foule s'est dispersée
-  for (const [x, y] of [[30, 11], [12, 16], [36, 16], [24, 9]]) e.zombie('errant', x, y, { etat: 'erre', si: APRES });
+  // --- les morts de la place : quelques errants, loin de l'arrivée (à l'ouest) ---
+  for (const [x, y] of [[36, 11], [37, 15], [30, 17], [24, 9]]) e.zombie('errant', x, y, { etat: 'erre' });
+  e.zombie('putrefie', 14, 17, { etat: 'erre' });
 
-  // ================= 1er ÉTAGE : la salle de l'horloge (8 × 8), le campement de Maud =================
+  // ================= 1er ÉTAGE : la salle de l'horloge (8 × 8), un campement abandonné =================
   const e1 = p.etage('e1', 'Salle de l’horloge', W, H, { sol: null, monte: 'e2', descend: 'rdc', interieur: true });
   const sa = e1.piece(21, 19, 10, 10, { nom: 'La salle de l’horloge', sol: 'parquet', mur: 'pierre', sombre: 1, sansMorts: true,
     fenetres: [{ cote: 'n', a: 3, l: 2 }] });               // le cadran, vu de dos
   e1.escalier('monte', 28, 20, 2, 2); e1.escalier('descend', 28, 22, 2, 2);
   e1.objet('machine', 23, 23, { w: 3, h: 2, nom: 'le mécanisme de l’horloge', marqueur: 'mecanisme_horloge', conteneur: false });
-  e1.objet('lit_camp', sa.x0, sa.y1 - 1, { nom: 'le lit de camp de Maud' });
-  e1.objet('caisse', sa.x0 + 1, sa.y0, { nom: 'la caisse de Maud', conteneur: { nom: 'la caisse de Maud', items: [{ id: 'bouteille_eau', qty: 1 }], table: null } });
+  e1.objet('lit_camp', sa.x0, sa.y1 - 1, { nom: 'le lit de camp abandonné' });
+  e1.objet('caisse', sa.x0 + 1, sa.y0, { nom: 'la caisse', conteneur: { nom: 'la caisse', items: [{ id: 'bouteille_eau', qty: 1 }], table: null } });
   e1.objet('fut', sa.x0, sa.y0, { nom: 'le jerrican vide' });
   e1.objet('etagere', sa.x0 + 3, sa.y1, { nom: 'le carton de conserves vides', conteneur: false });
   e1.objet('plan_mural', sa.x0 + 5, sa.y0 - 1, { nom: 'la carte de Salon couverte de croix' });
   e1.decal('cendres', sa.x0 + 2.4, sa.y1 - 0.4, { r: 0.3 }); e1.decal('papiers', sa.x0 + 1.6, sa.y1 + 0.3);
-  e1.lumiere('lanterne', sa.x0 + 1.5, sa.y1 - 0.5, { r: 4.5, i: 0.7 });
+  e1.lumiere('lune', sa.x0 + 3.5, sa.y0 + 0.5, { r: 3.5, i: 0.3 });             // la lune, à travers le cadran
 
   // ================= 2e ÉTAGE : le palier des meurtrières (6 × 6) =================
   const e2 = p.etage('e2', 'Le palier des meurtrières', W, H, { sol: null, monte: 'sommet', descend: 'e1', interieur: true });
   const pa = e2.piece(23, 19, 8, 8, { nom: 'Le palier des meurtrières', sol: 'paves', mur: 'pierre', sombre: 1, sansMorts: true,
     fenetres: [{ cote: 'o', a: 2 }, { cote: 's', a: 2 }, { cote: 'n', a: 1 }] });
   e2.escalier('monte', 28, 20, 2, 2); e2.escalier('descend', 28, 22, 2, 2);
-  e2.marqueur('carnet_tour', 27, 23, { nom: 'le carnet de Maud' });
   e2.semer('feuilles', pa.x0, pa.y0, 5, 6, 4); e2.decal('ordures', pa.x0 + 1, pa.y1, { r: 0.4 });
   e2.lumiere('lune', pa.x0 + 0.6, pa.y0 + 2.5, { r: 3, i: 0.35 });
 
@@ -135,8 +122,7 @@ export default plan({
   so.objet('cloche', 24, 23, { nom: 'le bourdon' });
   so.objet('cloche', 23, 21, { w: 1, h: 1, nom: 'la cloche des heures' });
   so.objet('cloche', 26, 26, { w: 1, h: 1, nom: 'la cloche des quarts' });
-  so.marqueur('sommet_maud', 28, 26);
-  so.lumiere('lanterne', 28.5, 26.5, { r: 3, i: 0.45 });
+  so.decal('cendres', 28.4, 26.4, { r: 0.3 });                                 // un feu de veille, éteint depuis longtemps
   so.lumiere('lune', 25, 24, { r: 9, i: 0.45 });
   so.semer('feuilles', 22, 20, 8, 8, 5);
 });

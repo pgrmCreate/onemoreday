@@ -1,164 +1,182 @@
-// ============ Scènes des rencontres de voyage SCÉNARISÉES (voir rencontres.js) ============
-// Préfixe 'rc_'. Chaque rencontre de rencontres.js pointe vers l'une de ces scènes.
+// ============ Scènes des RENCONTRES DE VOYAGE de l'histoire (préfixe rv_) ============
+// Lancées par les rencontres rh_* de js/data/histoire/rencontres.js (type 'choix'), elles-mêmes déclenchées par
+// les déclencheurs { quand: 'voyage' } de declencheurs.js, ou tirées au hasard quand leur condition est vraie.
+// Effets propres au voyage : `detour` (mètres ajoutés au trajet), `combat` (on se bat puis on reprend).
+// Format : docs/REFONTE.md §4.5. Genre : {masculin|féminin}. Apostrophe typographique ’ partout.
+
+const JOURNAL_BRUME = 'Le nuage jaune de la gare brûle les yeux et les poumons. Il est plus lourd que l’air : il reste en bas, dans les creux, au ras du sol, et la nuit, quand il n’y a pas de vent, il s’étale. Un linge mouillé sur la bouche aide un peu. En hauteur, on ne risque rien.';
 
 export const SCENES_RENCONTRES = {
 
-  // ─────────── Prologue : cimetière → Tour de l'Horloge ───────────
-  rc_pro_marche: {
-    illu: 'cours_nuit', musique: 'tension',
-    texte: 'Sur le cours Carnot, le grand marché du mercredi est toujours là.\n\nDepuis trois semaines, personne n’a replié les étals. Les bâches rayées pendent, et les cageots débordent d’une bouillie noire qui était autrefois des pêches, des tomates et des figues. Les mouches bourdonnent comme un moteur. Sur l’étal du fromager, sous la cloche en plastique, le fromage a fondu puis durci, vert et blanc, comme un poumon.\n\nEt entre les étals, des morts attendent.\n\nIls sont une dizaine, debout et immobiles, tournés vers les marchandises comme des clients qui patientent. Une femme tient encore son cabas à roulettes, et un homme a la main tendue au-dessus des melons, figé au moment de choisir.\n\nAucune tête ne s’est encore tournée vers toi.',
+  // ─────────────────────────── ACTE II : la route de la Crau ───────────────────────────
+  // rh_triage : à 30 % du trajet Refuge → bergerie.
+  rv_triage: {
+    illu: 'triage_horde', musique: 'tension', orateur: 'Fernand',
+    texte: 'La route de la Crau passe sur un pont au-dessus des voies, et Fernand s’arrête au milieu, appuyé au parapet. En dessous, la gare de triage de Miramas s’étale sur des kilomètres : des dizaines de voies parallèles, des trains de marchandises immobiles, des wagons rouillés et des entrepôts aux toits plats.\n\nEt entre les trains, partout, il y a des morts. Il y en a des milliers, serrés comme la foule d’un concert, debout entre les rails, sur les quais, et même sur le toit des wagons, où ils ont grimpé on ne sait comment. Ils regardent tous dans la même direction, vers un poteau planté au milieu des voies, où un haut-parleur répète d’une voix de femme enregistrée : « … le train à destination de… est annoncé voie… Éloignez-vous de la bordure du quai… »\n\nPersonne ne l’a éteint. La batterie d’un poste d’aiguillage le fait parler depuis trois semaines, et tous les morts de la Crau sont venus l’écouter.\n\n« Les sirènes de l’armée les poussent jusqu’ici, dit Fernand à voix basse, et le haut-parleur les garde. »',
+    choix: [
+      { label: 'Regarder longtemps', effets: { flag: 'triage_vu', tempsMin: 10 }, suivant: 'rv_triage_2' },
+      { label: 'Passer vite', suivant: '#fin' },
+    ],
+  },
+
+  rv_triage_2: {
+    illu: 'triage_horde', musique: 'sombre', orateur: 'Fernand',
+    texte: 'Tu restes au parapet jusqu’à ce que tes yeux s’habituent. Au bout de la gare, sur une voie de garage à l’écart, il y a un train qui ne ressemble pas aux autres : une douzaine de wagons-citernes blancs, propres, sans un tag, alignés comme à la parade. Les morts ne s’en approchent pas, ou peut-être qu’ils ne s’en soucient pas. Sur le flanc de chaque citerne, une plaque orange porte deux nombres que tu arrives à lire en plissant les yeux : 268 en haut, 1017 en bas.\n\nFernand a suivi ton regard.\n\n« Les blancs, dit-il. Gérard disait qu’il ne fallait jamais s’en approcher. Il avait fait son service dans le génie, il connaissait les plaques. » Il se redresse. « Viens. Ici, on est trop haut, et on se voit de trop loin. »',
     choix: [
       {
-        label: 'Traverser le marché entre les étals (plus court)',
-        test: { skill: 'agilite', difficulte: 1 },
-        reussite: {
-          texte: 'Tu passes entre deux étals, {courbé|courbée} sous les bâches, et au passage, tu ramasses ce qui se mange encore sur le stand d’un confiseur : des sachets de bonbons intacts sous leur cellophane. Aucun mort ne se retourne.',
-          effets: { objets: [['barre_cereales', 2], ['chocolat', 1]], xp: { agilite: 8 } },
-          suivant: '#fin',
-        },
-        echec: {
-          texte: 'Ton pied accroche un cageot, qui bascule, et les pêches pourries éclatent sur le bitume. D’un coup, dix têtes se tournent vers toi. Tu te mets à courir, et tu ne t’arrêtes que quand le marché est loin et que tes poumons te brûlent.',
-          effets: { sta: -25, tempsMin: 10 },
-          suivant: '#fin',
-        },
-      },
-      { label: 'Contourner par les ruelles (plus long)', effets: { tempsMin: 8, detour: 220 }, suivant: '#fin' },
-      { label: 'Les observer un moment', suivant: 'rc_pro_marche_regarder' },
-    ],
-  },
-  rc_pro_marche_regarder: {
-    illu: 'cours_nuit', musique: 'sombre',
-    texte: 'Tu restes dans l’ombre d’un platane pour les observer.\n\nIls ne mangent pas les fruits pourris, et ils ne cherchent rien. Ils attendent, chacun devant son étal, à l’endroit exact où ils se trouvaient le mercredi 2 septembre à dix heures quarante, quand tout a commencé.\n\nIls attendent qu’on les serve.\n\nTu ne le comprendras que plus tard : tous les morts font ça. Ils reviennent à un endroit qui comptait pour eux, et toi aussi, tu revenais quelque part.',
-    choix: [{ label: 'Contourner par les ruelles', effets: { tempsMin: 10, detour: 220, flag: 'vu_marche_mort' }, suivant: '#fin' }],
-  },
-
-  rc_pro_premier: {
-    illu: 'cours_nuit', musique: 'combat',
-    texte: 'Devant le Tabac du Fontenoy, il y a un serveur.\n\nIl porte un tablier noir noué deux fois autour de la taille, et il tient encore un plateau vide à la main. Il est debout au milieu de la rue, et il tourne lentement sur lui-même, comme s’il cherchait la table qui l’a appelé.\n\nPuis il te voit.\n\nLe plateau tombe et résonne sur le bitume comme un gong. Le serveur vient vers toi en traînant une jambe, la bouche grande ouverte, avec l’avidité terrible de quelqu’un qui a enfin trouvé son client.\n\nIl est mort, et il veut te mordre : il faut te défendre.',
-    choix: [
-      { label: 'Te battre', effets: { combat: { zombies: ['errant'], tutoriel: true } }, suivant: 'rc_pro_premier_apres' },
-    ],
-  },
-  rc_pro_premier_apres: {
-    illu: 'cours_nuit', musique: 'sombre',
-    texte: 'Quand tu t’arrêtes enfin, tu es à bout de souffle, avec un goût de fer dans la bouche.\n\nLe badge du serveur a roulé jusqu’au caniveau : « JÉRÉMY — À VOTRE SERVICE ».\n\nTu t’aperçois que ta bouche est pleine de salive, alors tu craches, encore et encore, en te disant que c’est la peur.',
-    choix: [{ label: 'Repartir vers la Tour de l’Horloge', effets: { flag: 'premier_combat_fait', journal: 'Premier combat, devant le Tabac du Fontenoy, contre un serveur mort. Après, j’avais la bouche pleine de salive.' }, suivant: '#fin' }],
-  },
-
-  // ─────────── Chapitre 1 ───────────
-  rc_ch1_hautparleur: {
-    illu: 'cours_nuit', musique: 'tension',
-    texte: 'Un bourdonnement d’insecte géant passe au-dessus des toits, et tu lèves la tête.\n\nC’est un drone militaire, gris et gros comme une table, qui survole lentement le cours à cinquante mètres de haut. Sous son ventre, un haut-parleur répète, avec une voix de femme enregistrée, calme et maternelle :\n\n« Zone d’exclusion sanitaire. Restez chez vous. N’essayez pas de rejoindre la Durance. Toute personne qui s’approchera de la ligne sera abattue. Zone d’exclusion sanitaire… »\n\nDans toutes les rues autour, tu vois des morts lever la tête, puis se mettre à suivre le bruit.',
-    choix: [
-      { label: 'T’abriter sous un porche et laisser passer les morts', effets: { tempsMin: 15 }, suivant: '#fin' },
-      { label: 'Filer pendant qu’ils suivent le drone', effets: { sta: -10 }, suivant: '#fin' },
-    ],
-  },
-
-  rc_ch1_ambulance: {
-    illu: 'hopital_parvis', musique: 'sombre',
-    texte: 'Avenue Julien-Fabre, une ambulance du SAMU est garée de travers sur le trottoir, les gyrophares éteints et les portes arrière ouvertes.\n\nÀ l’arrière, un ambulancier mort en tenue jaune fluo est attaché sur le brancard. Il tourne la tête vers toi et tire sur ses sangles, poliment, sans insister. Par terre, il y a une longue perche d’aluminium qui se termine par un nœud coulant en câble : une perche de fourrière, de celles qui servent à attraper les chiens.\n\nSur le tableau de bord, quelqu’un a scotché une liste écrite au feutre : P1, P2, P3, P4, P5, les patients de Maud. Quatre noms sont barrés, et en face de P4, il y a une adresse : « Montée du Puech — porte du château — 17 h tous les jours ».\n\nP4, c’était toi. Après ta mort, tu revenais chaque jour à 17 h devant la porte du château, et c’est avec cette perche que Maud t’a {attrapé|attrapée}.',
-    choix: [
-      { label: 'Prendre la perche', effets: { objet: ['perche_fourriere', 1], flag: 'ambulance_vue' }, suivant: '#fin' },
-      { label: 'Refermer les portes et continuer', effets: { flag: 'ambulance_vue' }, suivant: '#fin' },
-    ],
-  },
-
-  rc_ch1_cours: {
-    illu: 'cours_troupeau', musique: 'combat',
-    texte: 'Tu coupes par la rue de l’Horloge, mais c’est trop tard : la marée des morts est déjà au bout de la rue, et elle monte vers toi.\n\nEn tête, une silhouette s’est arrêtée au carrefour. C’est une jeune femme en tenue militaire déchirée, avec une clochette de berger en laiton pendue au cou par une lanière de cuir, une lampe torche dans une main et un bâton de berger dans l’autre. Elle balaie la rue avec sa lampe, et le faisceau passe sur toi.\n\nElle s’arrête et te regarde, pas comme les morts regardent, mais comme une personne vivante.\n\nElle pose un doigt sur ses lèvres pour te dire de te taire, et elle sourit.\n\nPuis elle fait tinter sa cloche deux fois. Derrière elle, la marée des morts tourne à gauche, vers la place des Centuries, et te laisse passer.',
-    choix: [{ label: 'Passer', effets: { flag: 'revenue_croisee', journal: 'Rue de l’Horloge, une femme en tenue militaire menait les morts avec une cloche. Elle n’était pas comme eux. Elle m’a vu et m’a laissé passer, un doigt sur les lèvres.' }, suivant: '#fin' }],
-  },
-
-  // ─────────── Chapitre 2 ───────────
-  rc_ch2_jean_moulin: {
-    illu: 'route_jean_moulin', musique: 'calme',
-    texte: 'À la sortie nord de Salon, sur le rond-point de la route d’Avignon, la statue de Jean Moulin lève les bras au ciel.\n\nC’est une statue de six mètres de bronze noir, le corps tendu vers le haut et les mains ouvertes, comme au moment où il a été parachuté dans la nuit du 1er janvier 1942, quelque part dans ces champs. Quelqu’un est monté là-haut pour nouer un drap blanc à ses poignets, et le drap claque au vent. Dessus, on a écrit au goudron : « CALÈS → PAR LES COLLINES. PAS LA ROUTE. »\n\nLa route, justement, a été piétinée sur toute sa largeur : les bas-côtés sont écrasés, les glissières tordues, et tu vois des chaussures perdues et une poussette. Le troupeau de morts est passé par là cette nuit.\n\nAu pied de la statue, sur le socle, il y a d’autres messages, écrits à la craie, au rouge à lèvres ou gravés au couteau.',
-    choix: [
-      { label: 'Lire les messages sur le socle', effets: { document: 'doc_socle_jean_moulin' }, suivant: '#fin' },
-      { label: 'Passer par les collines', effets: { tempsMin: 20, detour: 400 }, suivant: '#fin' },
-    ],
-  },
-
-  rc_ch2_troupeau_plaine: {
-    illu: 'plaine_route', musique: 'sombre',
-    texte: 'Du haut d’une terrasse de pierres sèches, entre deux oliviers, tu vois le troupeau en entier pour la première fois.\n\nIl recouvre la plaine entre la voie ferrée et le canal comme une inondation : des milliers de morts, qui avancent au pas d’un homme fatigué sans se disperser. Sur les côtés, des silhouettes droites trottent et ramènent les traînards à coups de bâton, en faisant tinter leurs cloches. Ce sont des revenus, comme toi. Il y a aussi des chiens, ou ce qui a été des chiens.\n\nEn tête, la grande cloche sonne toutes les dix secondes.\n\nLe troupeau va vers le nord, vers Lamanon et le pertuis, le seul passage entre les Alpilles et les collines. Vers les grottes de Calès.',
-    choix: [
-      { label: 'Observer le troupeau et l’estimer', effets: { tempsMin: 30, flag: 'troupeau_observe', journal: 'Le troupeau : peut-être dix mille morts, menés par des vivants — ou des revenus — qui portent des cloches. Il monte vers Lamanon et les grottes de Calès. Il y sera dans deux jours, trois au plus.' }, suivant: '#fin' },
-      { label: 'Te dépêcher de repartir', suivant: '#fin' },
-    ],
-  },
-
-  rc_ch2_revenus: {
-    illu: 'nuit_campagne', musique: 'sombre', orateur: 'Nadège',
-    texte: 'Au bord du chemin, une femme en tenue militaire est assise sur une borne, et elle t’attend. Elle n’a pas de lampe, et sa clochette est bourrée de chiffon pour ne pas sonner.\n\nC’est la femme de la rue de l’Horloge, celle qui menait les morts.\n\n« Nadège », dit-elle en te tendant une main froide, aussi froide que la tienne. « Le Berger, celui qui mène le troupeau, voudrait te parler. Il est à Vieux-Vernègues, sur la colline, dans les ruines du vieux village. » Elle sourit. « Tu peux venir quand tu veux, personne ne te fera de mal là-haut. Tu es des nôtres, un revenu, comme moi. Tu le sens, non ? Le froid. »\n\nElle se lève et remet son sac à l’épaule.\n\n« Viens avant que le mistral se lève. Après, on sera partis. »',
-    choix: [
-      {
-        label: 'Promettre : « J’irai. »',
-        effets: {
-          flag: 'revenus_rencontres', decouvrir: ['vernegues'], quete: ['q_berger', 'debut'],
-          journal: 'La femme à la cloche s’appelle Nadège. Elle est revenue, comme moi : elle dit que je suis « des leurs ». Le Berger m’attend à Vieux-Vernègues.',
-        },
+        label: 'Reprendre la route',
+        effets: { journal: 'Du pont au-dessus de la gare de triage de Miramas : des milliers de morts entre les trains, attirés par un haut-parleur qui parle tout seul. À l’écart, sur une voie de garage, une douzaine de wagons-citernes blancs avec des plaques orange : 268 et 1017. Fernand dit que Gérard ne s’en approchait jamais.' },
         suivant: '#fin',
       },
     ],
   },
 
-  rc_ch2_lion: {
-    illu: 'plaine_route', musique: 'tension',
-    texte: 'Au milieu de la route départementale, en plein soleil, un lion est en train de manger un mort.\n\nC’est un vrai lion, maigre, la crinière pleine de bardanes, qui s’est échappé du zoo de La Barben quand plus personne n’est venu fermer les enclos. Il tient le cadavre entre ses pattes comme un chat tient une souris, et il arrache et mâche avec un bruit de branche mouillée.\n\nIl lève la tête et te regarde, de ses yeux jaunes parfaitement vivants.\n\nLui, au moins, sait ce qu’il mange.',
+  // rh_draille : à 75 % du trajet Refuge → bergerie.
+  rv_draille: {
+    illu: 'crau_mistral', musique: 'tension', orateur: 'Fernand',
+    texte: 'La draille est un vieux chemin de moutons, large et droit, bordé de murets de pierre sèche, qui traverse la Crau vers l’ouest. Fernand la suit sans hésiter, en lisant les tas de pierres comme des panneaux.\n\nÀ mi-chemin, il lève la main, et tu t’arrêtes. Cinquante mètres devant, un cabanon de berger, quatre murs et un toit de tuiles, ouvre sa porte sur la draille. Sur le seuil, un mort est assis, adossé au chambranle, les jambes allongées dans la poussière. Il tourne la tête de droite à gauche, lentement, comme quelqu’un qui cherche d’où vient un bruit.\n\nIl n’y a pas d’autre chemin que la draille, à moins d’enjamber les murets et de faire le tour par les champs de galets.\n\n« Fais comme tu veux, chuchote Fernand. Mais si tu le tapes, tape bien. Ici, le bruit porte à trois kilomètres. »',
     choix: [
-      { label: 'Reculer lentement, sans lui tourner le dos', test: { skill: 'agilite', difficulte: 1 }, reussite: { texte: 'Il te suit des yeux jusqu’au virage, puis retourne à son repas. Il n’avait pas faim de toi, pas aujourd’hui.', suivant: '#fin' }, echec: { texte: 'Tu trébuches sur le bas-côté, et le lion se lève pour bondir vers toi.', effets: { combat: { zombies: ['fauve'] } }, suivant: '#fin' } },
-      { label: 'Faire un large détour par les vergers', effets: { tempsMin: 25, detour: 600 }, suivant: '#fin' },
+      { label: 'L’achever', effets: { combat: { zombies: ['errant'] } }, suivant: 'rv_draille_2' },
+      { label: 'Faire le tour par les murets', effets: { detour: 600, tempsMin: 15 }, suivant: '#fin' },
     ],
   },
 
-  rc_ch2_avions: {
-    illu: 'plaine_route', musique: 'tension',
-    texte: 'Deux avions passent très haut, d’abord en silence, puis le bruit arrive en retard, énorme, et roule d’un bout à l’autre de la plaine de la Crau. Ils tournent au-dessus de Salon et au-dessus de la base pour prendre des photos.\n\nIls repèrent ce qu’il faudra brûler.',
+  rv_draille_2: {
+    illu: 'crau_mistral', musique: 'calme', orateur: 'Fernand',
+    texte: 'Quand c’est fini, Fernand s’approche et retourne le corps du bout de son bâton. C’était un homme jeune, en tenue de cycliste, avec des chaussures à cales et un bidon encore accroché à la ceinture.\n\n« Un de ceux qui faisaient le tour de la Crau à vélo le dimanche, dit Fernand. Ils nous doublaient sur la route en sonnant, et les brebis s’affolaient. » Il décroche le bidon, le débouche, le renifle, et te le tend. « Les pauvres. Allez, viens. »',
+    choix: [{ label: 'Prendre le bidon et repartir', effets: { objet: ['bouteille_eau', 1] }, suivant: '#fin' }],
+  },
+
+  // rh_nuit_crau : branche de nuit, à mi-chemin du retour bergerie → Refuge.
+  rv_nuit_crau: {
+    illu: 'nuit_campagne', musique: 'tension', orateur: 'Fernand',
+    texte: 'La Crau, la nuit, ne ressemble à rien de ce que tu connais. Il n’y a pas de lune, pas un arbre, pas une lumière, seulement les galets qui crissent sous tes pieds et un ciel si plein d’étoiles qu’il a l’air posé sur la plaine. Fernand marche devant toi sans lampe, et tu suis le petit bruit de son bâton.\n\nSoudain, il s’arrête et s’accroupit. Tu fais pareil.\n\nSur ta gauche, à deux cents mètres peut-être, des silhouettes se découpent sur le ciel, à peine plus noires que la nuit. Elles avancent en file, lentement, toutes dans la même direction, vers la gare de triage, d’où leur parvient très loin la voix du haut-parleur. Tu en comptes vingt, puis tu arrêtes de compter.\n\n« Ils vont au haut-parleur, souffle Fernand. Ne bouge plus. Ils regardent devant eux. »',
+    choix: [
+      { label: 'Attendre à plat ventre qu’ils soient passés', effets: { tempsMin: 30 }, suivant: '#fin' },
+      { label: 'Continuer en rampant derrière les murets', effets: { detour: 400, tempsMin: 15 }, suivant: '#fin' },
+    ],
+  },
+
+  // rh_nuage : après la frappe, sur le retour bergerie → Refuge. LA RÈGLE DE LA BRUME (P10).
+  rv_nuage: {
+    illu: 'triage_feu', musique: 'tension', orateur: 'Fernand',
+    texte: 'À mi-chemin du Refuge, la route descend dans un creux de la plaine, et le nuage est là, couché en travers du chemin.\n\nC’est un brouillard jaune pâle, presque vert, épais comme du lait, qui remplit le creux sur un kilomètre et qui ne bouge presque pas. Il ne monte pas plus haut qu’un homme : au-dessus, l’air est clair, et dedans, on ne voit pas à dix mètres. Il sent l’eau de Javel, si fort que tes yeux se mettent à pleurer avant même que tu arrives au bord.\n\nSur la route, à tes pieds, il y a des oiseaux morts, des moineaux, des étourneaux et même un héron, tombés en plein vol, le bec ouvert.\n\nFernand a remonté son foulard sur son nez, et il parle vite, la voix étouffée.\n\n« C’est ce qui sortait de la gare, le jaune. Ça brûle les yeux et la gorge, et ça te ronge les poumons de l’intérieur. C’est plus lourd que l’air : ça reste en bas, dans les creux, au ras du sol, et quand il n’y a pas de vent, ça ne bouge plus. Un linge mouillé sur la bouche, ça aide un peu, pas beaucoup. En hauteur, on ne craint rien. » Il regarde le soleil voilé par la fumée. « Et cette nuit, s’il n’y a pas de vent, ça va s’étaler partout dans la plaine. Il faudra être en haut. »\n\nIl montre au nord une ligne de collines basses.\n\n« On peut faire le tour par là. Ça nous coûtera une heure. »',
+    choix: [
+      { label: 'Contourner par le nord', effets: { detour: 2500, tempsMin: 45, journal: JOURNAL_BRUME }, suivant: '#fin' },
+      {
+        label: 'Traverser en retenant ton souffle',
+        effets: { blessure: { type: 'brulure', zone: 'au torse' }, pv: -6, journal: JOURNAL_BRUME },
+        suivant: 'rv_nuage_2',
+      },
+    ],
+  },
+
+  rv_nuage_2: {
+    illu: 'triage_feu', musique: 'tension', orateur: null,
+    texte: 'Tu prends une grande inspiration et tu t’enfonces dans le jaune, derrière Fernand, en courant.\n\nTu tiens trente pas. Au trente et unième, ta poitrine te force à respirer, et c’est comme si tu avalais du verre pilé. Tu tousses, tu craches, tes yeux brûlent au point que tu ne vois plus la route, et c’est la main de Fernand, accrochée à ta manche, qui te tire jusqu’à l’air clair.\n\nDe l’autre côté, tu tombes à genoux dans l’herbe et tu tousses pendant de longues minutes. Ta salive a un goût de piscine et de sang.\n\n« Voilà, dit Fernand, plié en deux à côté de toi. Maintenant, tu sais. »',
+    choix: [{ label: 'Te relever', suivant: '#fin' }],
+  },
+
+  // rh_maree : après la frappe, à 75 % du retour bergerie → Refuge.
+  rv_maree: {
+    illu: 'plaine_route', musique: 'tension', orateur: 'Fernand',
+    texte: 'Vous êtes à moins de deux kilomètres du rocher quand Fernand te tire par la manche dans le fossé.\n\nSur la plaine, entre la route et le rocher de Miramas-le-Vieux, les morts traversent les champs. Ils viennent de la gare, du feu, par centaines, et ils marchent tous dans la même direction, vers le village perché. Certains ont les vêtements qui fument encore. Un homme sans bras passe à vingt mètres du fossé, la peau du dos cloquée et noire, et il ne vous regarde pas : il regarde le rocher.\n\n« Ils montent chez nous, souffle Fernand. Comme je disais. »\n\nIls sont trop nombreux pour passer au milieu. Dans une heure, peut-être, le gros sera passé.',
+    choix: [
+      { label: 'Te jeter dans le fossé et attendre', effets: { tempsMin: 60 }, suivant: '#fin' },
+      { label: 'Courir devant eux', effets: { combat: { zombies: ['coureur', 'errant'] } }, suivant: '#fin' },
+    ],
+  },
+
+  // ─────────────────────────── ACTE III → IV : la fuite ───────────────────────────
+  // rh_sentier : à mi-chemin du Refuge à la Poudrerie, après la chute.
+  rv_sentier: {
+    illu: 'refuge_nuit', musique: 'sombre', orateur: 'Inès',
+    texte: 'Le sentier de la falaise descend en lacets vers l’étang, entre les chênes kermès et les rochers. Inès passe devant, parce qu’elle le connaît : c’est par là qu’elle descendait relever les nasses de Malik.\n\nÀ mi-pente, tu te retournes. Au-dessus de vous, le village brûle. Les flammes sortent des toits autour de la place, et le clocher se découpe en noir sur le ciel orange, muet. Le vent t’apporte une odeur de bois, de graisse et de cheveux brûlés.\n\nAlors, dans le sac d’Inès, le petit récepteur qu’elle a laissé allumé se met à crachoter, et une voix de jeune fille en sort, nasillarde, si claire que tu en as la chair de poule :\n\n« Ici le Refuge de Miramas-le-Vieux. Nous accueillons les survivants. Venez par la route de Saint-Chamas, à la porte Notre-Dame. Montrez vos mains… »\n\nInès s’est arrêtée. Elle écoute sa propre voix sortir de son sac, pendant qu’au-dessus d’elle le village brûle.\n\n« Je l’avais mise en boucle pour la nuit, comme tous les soirs, dit-elle. Je n’ai pas eu le temps de l’éteindre. » Elle a un petit rire horrible. « Elle va continuer. La batterie tient une semaine, et il y a le panneau solaire. Elle va dire aux gens de venir. Chez eux. »\n\nElle se remet à descendre, très vite, sans se retourner.',
+    choix: [
+      {
+        label: 'La suivre',
+        effets: { journal: 'En descendant le sentier de la falaise, nous avons entendu le message d’Inès sortir de son récepteur : il passe en boucle depuis le village en feu, et il va continuer pendant des jours à appeler les survivants vers le Refuge.' },
+        suivant: '#fin',
+      },
+    ],
+  },
+
+  // rh_brume_montee : à 45 % de la montée Poudrerie → Cornillon, dans la brume.
+  rv_brume: {
+    illu: 'poudrerie_brume', musique: 'tension', orateur: 'Inès',
+    texte: 'Le chemin de Cornillon monte à travers les oliviers, mais la brume monte plus vite que vous. Elle vous a rattrapés au premier virage, et maintenant vous marchez dedans jusqu’à la poitrine, dans une lumière de lune toute jaune. Le foulard mouillé ne sert presque plus à rien. Tu respires par petites gorgées, et chaque gorgée te brûle.\n\nInès s’arrête net et lève la main.\n\nDevant, la brume bouge. Une forme en sort, puis une autre, puis une troisième, et tu n’entends rien : pas un grognement, pas un pas, comme si la brume avalait les sons. Les morts y marchent tranquillement, la bouche ouverte, le jaune glissant sur eux comme de l’eau. Ils ne toussent pas, parce qu’ils ne respirent presque plus.\n\n« Ils ne nous ont pas vus, chuchote Inès. Pas encore. »\n\nSur la droite, une pinède grimpe raide vers le haut de la colline, au-dessus du jaune.',
+    choix: [
+      { label: 'Retenir ton souffle et courir', effets: { pv: -4 }, suivant: '#fin' },
+      { label: 'Passer par la pinède, plus haut', effets: { detour: 800, tempsMin: 25 }, suivant: '#fin' },
+    ],
+  },
+
+  // ─────────────────────────── ACTE V : la colonne ───────────────────────────
+  // rh_colonne : à mi-chemin vers Mallemort, la nuit du mardi 6 octobre, avec la colonne.
+  rv_colonne: {
+    illu: 'nuit_campagne', musique: 'tension', orateur: 'Inès',
+    texte: 'Vers minuit, la colonne s’arrête au bord de la vallée de la Touloubre. La route descend vers le pont, et le fond de la vallée est rempli de brume jaune, immobile sous les étoiles, comme du lait dans un bol. De l’autre côté, la route remonte, et l’air redevient clair.\n\nIl faut traverser trois cents mètres de jaune.\n\nPendant que tout le monde noue ses foulards et remouille ce qu’il peut, une voix appelle au secours, en bas, dans la brume. C’est une voix d’homme, faible, qui tousse entre chaque mot. Tu le vois enfin : un homme assis au milieu de la route, au fond du jaune, à côté d’un vélo couché. Il essaie de se lever, il retombe, et il appelle encore.\n\n« Il a dû y descendre au crépuscule sans savoir, dit Inès. Il ne pourra plus remonter tout seul. » Elle te regarde. « On ne peut pas tous y aller. »',
+    choix: [
+      {
+        label: 'Mettre le masque à gaz et aller le chercher',
+        si: { objet: 'masque_gaz' },
+        effets: { tempsMin: 15, fatigue: -10 },
+        suivant: 'rv_colonne_2',
+      },
+      {
+        label: 'Aller le chercher en retenant ton souffle',
+        effets: { tempsMin: 15, fatigue: -10, blessure: { type: 'brulure', zone: 'au torse' }, pv: -5 },
+        suivant: 'rv_colonne_2',
+      },
+      {
+        label: 'Le laisser et traverser vite',
+        effets: { journal: 'Cette nuit, dans la vallée de la Touloubre, un homme appelait au secours au fond de la brume. Nous ne sommes pas allés le chercher.' },
+        suivant: 'rv_colonne_3',
+      },
+    ],
+  },
+
+  rv_colonne_2: {
+    illu: 'nuit_campagne', musique: 'calme', orateur: 'Inès',
+    texte: 'Tu descends dans le jaune, tu passes son bras sur tes épaules, et tu le remontes de l’autre côté, à moitié porté, pendant qu’il tousse contre ton cou. Il ne pèse presque rien. Il s’appelle Lucien, il a soixante ans, et il venait de Saint-Chamas à vélo parce qu’il avait entendu, à la radio, qu’un pont allait ouvrir.\n\nEn haut, il reste longtemps assis dans l’herbe, à respirer l’air propre à petites gorgées, comme on boit de l’eau quand on a trop soif.\n\nInès te tend une gourde sans rien dire, et la colonne repart, un peu plus lente qu’avant.',
+    choix: [
+      {
+        label: 'Repartir avec la colonne',
+        effets: { journal: 'Cette nuit, dans la vallée de la Touloubre, je suis {descendu|descendue} dans la brume chercher un homme qui appelait au secours. Il s’appelle Lucien, et il marche avec nous jusqu’au pont.' },
+        suivant: '#fin',
+      },
+    ],
+  },
+
+  rv_colonne_3: {
+    illu: 'nuit_campagne', musique: 'sombre', orateur: null,
+    texte: 'La colonne traverse le fond de la vallée en file, vite, en silence, chacun la main plaquée sur son foulard. Tu passes à vingt mètres de l’homme assis sur la route. Il te voit. Il lève la main vers toi, et il ne dit plus rien.\n\nDe l’autre côté, quand la route remonte dans l’air clair, personne ne parle pendant longtemps.',
     choix: [{ label: 'Continuer', suivant: '#fin' }],
   },
 
-  // ─────────── Final : Calès → Mallemort ───────────
-  rc_fin_colonne: {
-    illu: 'crau_mistral', musique: 'combat', orateur: 'Fernand',
-    texte: 'À mi-chemin du pont, sur la petite route bordée de platanes que le vent tord comme des roseaux, la colonne de Calès s’étire. Les vieux traînent, les enfants pleurent de froid, et derrière, de plus en plus fort, on entend la grande cloche du troupeau.\n\nLe vieux Fernand, de Lamanon, quatre-vingt-quatre ans et une hanche en titane, s’arrête au bord de la route. Il s’assoit sur une borne et fait signe aux autres de continuer.\n\n« Je suis trop vieux, et je vous ralentis. Allez. Allez, je vous dis ! »\n\nDerrière lui, sur la route, les premiers morts du troupeau apparaissent avec leurs cloches.',
+  // ─────────────────────────── Rencontres tirées au hasard (acte V) ───────────────────────────
+  // rh_appel_refuge : des survivants qui montent vers le Refuge, appelés par la radio d'Inès.
+  rv_appel_refuge: {
+    illu: 'plaine_route', musique: 'sombre', orateur: null,
+    texte: 'Sur la route, un homme et une femme marchent vers toi en poussant un caddie plein de sacs, avec un petit garçon assis dessus. Ils te voient de loin, et ils lèvent les mains bien haut, paumes ouvertes, comme on le leur a appris à la radio.\n\n« On va à Miramas-le-Vieux, dit l’homme. Au Refuge. Il y a une fille, à la radio, qui dit qu’ils accueillent les survivants. » Il montre le petit poste accroché à la poignée du caddie. « Elle le répète toutes les heures. C’est encore loin ? »',
     choix: [
       {
-        label: 'Porter Fernand sur ton dos',
-        test: { skill: 'force', difficulte: 2 },
-        reussite: { texte: 'Fernand pèse autant qu’un sac de ciment, et il jure comme un charretier pendant trois kilomètres. Tu ne le poses qu’au pont, et il t’embrasse sur les deux joues sans rien dire.', effets: { sta: -45, flag: 'fernand_sauve', xp: { force: 15 } }, suivant: '#fin' },
-        echec: { texte: 'Tes jambes lâchent au deuxième kilomètre. Deux enfants de l’Empéri reviennent en courant pour le porter avec toi, à trois, en titubant. Vous arrivez au pont les derniers, mais vous y arrivez.', effets: { sta: -60, fatigue: -20, flag: 'fernand_sauve' }, suivant: '#fin' },
+        label: 'Leur dire que le Refuge est tombé',
+        texte: 'Tu leur racontes la porte, la cloche et le feu. La femme met la main sur la bouche. L’homme éteint le poste, très lentement, comme si la voix pouvait l’entendre.\n\n« Et elle, alors ? La fille ? »\n\nTu leur parles de Cornillon, du pont de Mallemort, du mercredi à l’aube. Ils font demi-tour avec toi jusqu’au premier carrefour, puis ils prennent la route du nord.',
+        effets: { journal: 'J’ai croisé une famille qui montait vers le Refuge, appelée par la radio d’Inès. Je leur ai dit la vérité, et je les ai envoyés vers le pont de Mallemort.' },
+        suivant: 'rv_appel_refuge_fin',
       },
-      { label: 'Lui laisser ton arme et partir', effets: { flag: 'fernand_reste' }, suivant: 'rc_fin_fernand_reste' },
-      { label: 'L’abandonner et continuer', effets: { flag: 'fernand_reste' }, suivant: 'rc_fin_fernand_reste' },
+      {
+        label: 'Ne rien dire et les laisser passer',
+        effets: { journal: 'J’ai croisé une famille qui montait vers le Refuge, appelée par la radio d’Inès. Je ne leur ai rien dit.' },
+        suivant: '#fin',
+      },
     ],
   },
-  rc_fin_fernand_reste: {
-    illu: 'crau_mistral', musique: 'sombre',
-    texte: 'Fernand allume une cigarette, dos au vent, les mains en coupe, et il la tient comme les vieux, à l’envers, la braise au creux de la paume.\n\nQuand tu te retournes au virage, il est toujours assis sur sa borne, face aux cloches, en train de fumer.',
-    choix: [{ label: 'Ne plus te retourner', suivant: '#fin' }],
-  },
 
-  rc_fin_feu: {
-    illu: 'ligne_de_feu', musique: 'combat',
-    texte: 'Des avions passent au-dessus de toi, si bas que tu vois les rivets sous leurs ailes, deux, puis quatre. Ils arrivent du nord et filent vers le sud, vers la Crau et vers Salon, et au ras des collines, ils lâchent des chapelets de bombes incendiaires qui tombent en tournoyant.\n\nPuis, à l’horizon sud, là où se trouvent Salon, l’Empéri et la Tour de l’Horloge arrêtée sur neuf heures dix, le ciel devient orange.\n\nLe mistral se jette sur le feu comme un chien.\n\nCautère a commencé : l’armée brûle le pays.',
-    choix: [{ label: 'Courir vers le pont', effets: { flag: 'cautere_commence', sta: -15 }, suivant: '#fin' }],
-  },
-
-  // ─────────── Rencontres « d'ambiance » de l'histoire (tirées au hasard) ───────────
-  rc_tract: {
-    illu: 'plaine_route', musique: null,
-    texte: 'Il neige du papier. Un avion est passé trop haut pour qu’on l’entende, et des milliers de feuilles descendent en tourbillonnant sur les toits, sur les champs, et sur les morts qui lèvent la tête pour les regarder tomber.\n\nTu en attrapes une au vol.',
-    choix: [{ label: 'Lire la feuille', effets: { document: 'doc_tract_armee' }, suivant: '#fin' }],
-  },
-
-  rc_revenu_solitaire: {
-    illu: 'plaine_route', musique: 'calme',
-    texte: 'À la fontaine d’un hameau, un homme boit dans ses mains. Il porte une clochette au cou et un blouson de chantier, et quand il te voit, il ne bouge pas.\n\n« T’inquiète, dit-il, je suis comme toi. » Il s’essuie la bouche. « Je m’appelle Yanis. J’étais cariste à Clésud, la grande zone d’entrepôts, et je suis revenu il y a quatre jours. Je ne sais pas encore ce que je vais faire de ça. » D’un geste vague, il montre son propre corps. « Le Berger dit qu’on a une mission. Moi, je voudrais juste revoir ma mère, qui habite aux Canourgues, à Salon. Tu crois qu’elle me reconnaîtrait ? »',
-    choix: [
-      { label: 'Le rassurer : « Oui. »', suivant: '#fin' },
-      { label: 'L’en dissuader : « N’y va pas. »', suivant: '#fin' },
-    ],
+  rv_appel_refuge_fin: {
+    illu: 'plaine_route', musique: 'sombre', orateur: null,
+    texte: 'Tu les regardes s’éloigner sur la route du nord, le caddie qui cahote et le petit garçon qui se retourne pour te faire au revoir de la main.\n\nLa radio d’Inès continue d’appeler, quelque part derrière toi. Tant qu’elle parlera, il y en aura d’autres.',
+    choix: [{ label: 'Reprendre la route', suivant: '#fin' }],
   },
 };

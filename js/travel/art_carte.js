@@ -331,7 +331,7 @@ function taches(echelle, f, rng, x0, y0, W, H, marge) {
   }
   // mots griffonnés dans la marge
   const notes = R
-    ? [['Joëlle dit : pas la nuit', x0 + W * .56, y1Of(y0, H) + marge * .62, -1.5], ['eau = canal de Craponne', x0 + W * .05, y0 - marge * .45, 1]]
+    ? [['le jaune : pas la nuit en bas', x0 + W * .56, y1Of(y0, H) + marge * .62, -1.5], ['eau = canal de Craponne', x0 + W * .05, y0 - marge * .45, 1]]
     : [['jour 3 : plus d’eau au robinet', x0 + W * .5, y1Of(y0, H) + marge * .64, -1.5], ['rester loin des cours', x0 + W * .62, y0 - marge * .46, 1]];
   for (const [t, x, y, r] of notes) s += `<text class="c-note" x="${f1(x)}" y="${f1(y)}" transform="rotate(${r} ${f1(x)} ${f1(y)})" style="font-size:${f1(marge * .32)}px">${echapper(t)}</text>`;
   return `<g class="c-taches">${s}</g>`;

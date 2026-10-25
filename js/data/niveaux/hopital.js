@@ -1,10 +1,10 @@
-// Centre hospitalier du Pays salonais (CHAPITRE 1, donjon) — voir docs/NIVEAUX_BESOINS.md §6.
+// Centre hospitalier du Pays salonais — un lieu du monde, abandonné et très dangereux (le donjon du butin médical).
 // Réel : hôpital public (~350 lits), avenue Julien-Fabre ; urgences, bloc, maternité, morgue au sous-sol.
 // Parcours : parking (ambulances, tente militaire, housses) → hall barricadé (portes forçables) OU sas des ambulances
-// (ouvert) → salle de tri → couloir des box (ils cognent) → secrétariat (dossiers) ; 1er (facultatif) : bureau du chef
-// de service ; escalier de service (ouest) → sous-sol noir : salle 4 (souvenir) → vestiaires (casier de Luc) →
-// pharmacie centrale (insuline) → couloir de la morgue (brancards, morts qui font le mort, Karim assis au bout)
-// → chambre froide (badge) : le registre. Sortie : retour par l’escalier de service et le parking.
+// (ouvert) → salle de tri → couloir des box (ils cognent) → secrétariat ; 1er (facultatif) : bureau du chef de service,
+// chambres ; escalier de service (ouest) → sous-sol noir : salle des plâtres → vestiaires → pharmacie centrale →
+// couloir de la morgue (brancards, morts qui font le mort, un colosse assis au bout) → chambre froide (forçable).
+// Traces (P3) : le hall barricadé, la tente de l'armée et les housses du parking, les morts restés sur les brancards.
 // Écart : parking et RDC sont le même niveau (étage « rdc ») — un escalier de parking n’aurait pas de sens.
 export default {
   id: 'hopital', nom: 'Centre hospitalier du Pays salonais', exterieur: false,
@@ -62,7 +62,7 @@ export default {
       '                                                                      ',
       '  ##################################################################  ',
       '  #ddd...ss..s....#....#....................#ddddd#.....#.....#....#  ',
-      '  #.c.............#....#.cccccc..cccccc.m...#.cS..#bb...#bb...#bb..#  ',
+      '  #.c.............#....#.cccccc..cccccc.m...#.c...#bb...#bb...#bb..#  ',
       '  #...............#....#....................#.....#.....#.....#....#  ',
       '  |........ddd....+....#.cccccc..cccccc.....#.....#.w...#.w...#.w..#  ',
       '  #..........c....#....#....................#ss...#.....#.....#....#  ',
@@ -202,24 +202,21 @@ export default {
   ],
   legende: {
     'L': { prop: 'machine', nom: 'l’ascenseur (bloqué)', conteneur: false },
-    'S': { marqueur: 'dossiers_urgences', nom: 'les dossiers des urgences' },
     'B': { prop: 'brancard', nom: 'le brancard' },
     'U': { prop: 'tente', nom: 'la tente militaire' },
     'K': { zombie: 'errant', etat: 'cogne' },
     'R': { zombie: 'rampant', etat: 'dort' },
     'M': { zombie: 'putrefie', etat: 'fait_le_mort' },
-    'G': { zombie: 'colosse', etat: 'immobile', dir: 3.14, nom: 'Karim' },
+    'G': { zombie: 'colosse', etat: 'immobile', dir: 3.14 },
     'Y': { zombie: 'coureur', etat: 'erre' },
-    'D': { prop: 'bureau', marqueur: 'bureau_maud', nom: 'le bureau du chef de service', conteneur: false },
-    'C': { comme: 'a', marqueur: 'casier_luc', nom: 'le casier de Luc', conteneur: false },
-    'F': { prop: 'frigo', marqueur: 'frigo_pharmacie', nom: 'le frigo de la pharmacie', conteneur: false },
-    'P': { prop: 'table', marqueur: 'chambre_froide', nom: 'la paillasse', conteneur: false },
+    'D': { prop: 'bureau', nom: 'le bureau du chef de service' },
+    'C': { comme: 'a', nom: 'un casier du personnel' },
+    'F': { prop: 'frigo', nom: 'le frigo de la pharmacie' },
+    'P': { prop: 'table', nom: 'la paillasse', conteneur: false },
     'X': { porte: true, verrou: { forcer: 'pied_de_biche' }, exterieure: true, nom: 'la porte vitrée barricadée' },
     'N': { prop: 'generateur', nom: 'le groupe électrogène' },
     'Q': { prop: 'palette', nom: 'les palettes' },
   },
   declencheurs: [
-    { etage: 'ssol', x: 42, y: 12, w: 3, h: 3, marqueur: 'morgue_couloir' },
-    { etage: 'ssol', x: 18, y: 9, w: 3, h: 2, marqueur: 'salle_4' },
   ],
 };

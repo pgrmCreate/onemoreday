@@ -144,6 +144,8 @@ function retirerPv(p, n, cause) {
   if (n > 0) p._cause = cause;
   verifierMort(p);
 }
+// Une cause extérieure retire des PV (la brume jaune, js/game/brume.js).
+export function perdrePv(n, cause = 'combat', p) { retirerPv(joueur(p), n, cause); }
 
 // ---------- Mort ----------
 export function causeMort(p) {

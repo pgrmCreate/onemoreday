@@ -1,8 +1,10 @@
-// Sénas (CHAPITRE 2, facultatif : « un jour de plus ») — voir docs/NIVEAUX_BESOINS.md §11.
+// Sénas — un lieu du monde, abandonné : le village des vergers et des stations fruitières.
 // Réel : village agricole de la plaine de la Durance, vergers de pommiers et poiriers sous filets anti-grêle,
 // stations fruitières et entrepôts frigorifiques, traversé par l’ex-RN7.
-// Parcours : grand-rue (ex-RN7, voitures) → station fruitière (palox, bureau) → porte de la chambre froide (les
-// Imbert, porte à drapeau jamais posé : on parle à travers) → église → pied du clocher → chambre des sonneurs (corde).
+// Parcours : grand-rue (ex-RN7, voitures) → station fruitière (palox, bureau) → porte de la chambre froide (bloquée de
+// l'intérieur : une famille s'y était enfermée avec des lits et des chaises ; ils sont morts dedans, et ils cognent)
+// → église → pied du clocher → chambre des sonneurs (la corde de la cloche).
+// Traces (P3) : la chambre froide barricadée, les lits et les chaises dedans, les palox de fruits pourris, la grand-rue.
 // Vergers en rangs (filets = rangs d’arbres) : errants et rampants. Écart : le hangar est dans l’étage extérieur
 // (même niveau) au lieu d’un étage « station » séparé.
 export default {
@@ -16,12 +18,12 @@ export default {
       '"""""""""""""""""""""""""""":,,,,:",,,,,,,,,,,,,,,,,,,,,,,,,,,,"',
       '"""#######################"":,,,,:",T,,,,,,,,,,,,,,,,,,,,,,,,,,"',
       '"""##PPP.PPP.PP#.m..mmm..#"":,,,,:",,,,,###############,,,,,,,,"',
-      '"""##..........#.........#"":,,,,:",,,,,#A.......#....#,,T,,,,,"',
+      '"""##..F.......#.........#"":,,,,:",,,,,#A.......#....#,,T,,,,,"',
       '"""##...%..b...#.dd.....a#"":vv,,:",,,,,#........#....#,,,,,,,,"',
       '"""##PP....bccc#.c.......#"":vv,,:",,,,,#nnn.nnn.+..<.#,,,,,,,,"',
-      '"""##..........#.........#"":vv,,:",,,,,#........#....#,,,,,,,,"',
+      '"""##....F.....#.........#"":vv,,:",,,,,#........#....#,,,,,,,,"',
       '"""######K##########+#####"":,,,,:",,,,,#nnn.nnn.######,,,,,,,,"',
-      '"""#q.+..I...............+"":,,,,:",,,,,|............#,,,n,,,,,"',
+      '"""#q.+..................+"":,,,,:",,,,,|............#,,,n,,,,,"',
       '"""####..................+"":,,,,:",T,,,#nnn.nnn.....#,,,,,,,,,"',
       '"""#.PPP.QQQ.PPP.....gg..#"":,,,,:",,,,,#............|,,,,,,,,,"',
       '"""#.....................#"":,,,,:",,,,,#............#,,,T,,,,,"',
@@ -60,7 +62,7 @@ export default {
       '                                                                ',
       '                                                ###|####        ',
       '                                                #.B....#        ',
-      '                                                #.Y....#        ',
+      '                                                #......#        ',
       '                                                |......|        ',
       '                                                #...>..#        ',
       '                                                #......#        ',
@@ -117,14 +119,14 @@ export default {
     { etage: 'clocher', x: 51, y: 8, nom: 'La chambre des sonneurs', sol: 'parquet', sombre: 1 },
   ],
   legende: {
-    'K': { porte: true, verrou: { flag: 'senas_chambre_ouverte' }, marqueur: 'porte_chambre_froide', nom: 'la porte de la chambre froide' },
-    'I': { marqueur: 'imbert' },
+    'K': { porte: true, verrou: { forcer: 'pied_de_biche' }, nom: 'la porte de la chambre froide',
+      message: 'La porte de la chambre froide est bloquée de l’intérieur, et quelque chose cogne derrière, sans un mot. Un pied-de-biche ferait levier.' },
+    'F': { zombie: 'errant', etat: 'cogne' },
     'P': { prop: 'palette', nom: 'les palox de pommes' },
     'Q': { prop: 'palette', nom: 'les palox de poires' },
     'A': { prop: 'autel', nom: 'l’autel' },
     'Z': { zombie: 'errant', etat: 'erre' },
     'R': { zombie: 'rampant', etat: 'dort' },
-    'Y': { marqueur: 'corde_clocher', nom: 'la corde de la cloche' },
     'B': { prop: 'cloche', nom: 'la cloche' },
   },
   declencheurs: [

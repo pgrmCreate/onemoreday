@@ -299,6 +299,7 @@ export function creerRendu(cv, niveau) {
     ctx.restore();
     atmo.nuages(ctx, S, W, H, ecranX, ecranY, pxc, t, dpr);
     atmo.brume(ctx, S, W, H, ecranX, ecranY, pxc, t, dpr);
+    atmo.brumeJaune(ctx, S, W, H, ecranX, ecranY, pxc, t, dpr);
     atmo.mouille(ctx, S, W, H);
     // repères lisibles
     reperes(S, E, C, pxc, t);

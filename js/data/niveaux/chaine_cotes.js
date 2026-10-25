@@ -1,7 +1,7 @@
 // La chaîne des Côtes — pinède (NATURE : tenir pendant les sirènes, js/data/histoire/ruees.js).
 // Réel : la petite chaîne calcaire qui ferme la plaine de Salon au nord, de Lamanon à Rognes : pins d'Alep, chênes
 // kermès, affleurements blancs, vieilles carrières, cabanons de chasse au bout des pistes DFCI.
-// Ici : une grande parcelle de pinède (≈ 105 × 80 m) — le cabanon du grand-père de Lou (un vrai toit, une cheminée),
+// Ici : une grande parcelle de pinède (≈ 105 × 80 m) — un vieux cabanon de chasseurs (un vrai toit, une cheminée),
 // une source sous les rochers (eau inépuisable), une carrière abandonnée, un campement de fuyards qui a mal fini.
 // Peu de morts : ceux qui erraient là-haut sont descendus vers les sirènes.
 import { parcelle } from '../../carte/parcelle.js';
@@ -13,7 +13,7 @@ export default parcelle({
 }, { W: 132, H: 100, milieu: 'pinede' }, (e, P) => {
   const { W, H, rnd } = P;
 
-  // ---------- Le cabanon de chasse (le grand-père de Lou), au bout de la traverse ----------
+  // ---------- Le cabanon de chasse, au bout de la traverse ----------
   const pc = P.trouver(10, 8, [P.xT - 22, 6, P.xT + 22, Math.floor(H * 0.32)]) || { x: 10, y: 8 };
   const cab = e.piece(pc.x, pc.y, 10, 8, { nom: 'Le cabanon de chasse', sol: 'tomettes', mur: 'pierre', toit: 'tuiles', sombre: 1,
     portes: [{ cote: 's', a: 3, nom: 'la porte du cabanon' }], fenetres: [{ cote: 'e', a: 2 }, { cote: 'n', a: 4, l: 2 }] });

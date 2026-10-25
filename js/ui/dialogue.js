@@ -160,6 +160,7 @@ async function appliquer(effets, sortie, suivant) {
   if (r.detour) sortie.detour = (sortie.detour || 0) + r.detour;
   if (r.demiTour) sortie.demiTour = true;
   if (r.teleporter) sortie.teleporter = r.teleporter;
+  if (r.voyage) sortie.voyage = r.voyage;
   if (r.cinematique) { masquer(true); await flow.cinematique(r.cinematique); masquer(false); }
   if (r.combat) {
     const spec = normaliserCombat(r.combat);

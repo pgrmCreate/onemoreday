@@ -286,6 +286,11 @@ export const ITEMS = {
     kcal: 540, fatigue: 3,
     desc: 'Blanchi par le temps. Un luxe d\'avant.',
   },
+  pain: {
+    nom: 'Miche de pain', type: 'nourriture', poids: 0.4, espace: 1, volume: 0.9,
+    kcal: 1000, soif: -4,
+    desc: 'Une miche ronde à la croûte épaisse, cuite au four à bois du Refuge avec la dernière farine. Elle sent la fumée.',
+  },
   biscuits: {
     nom: 'Paquet de biscuits', type: 'nourriture', poids: 0.3, espace: 1, volume: 0.5,
     kcal: 1400, soif: -3,
@@ -446,6 +451,10 @@ export const ITEMS = {
     jet: { portee: 8, bruit: 9, combat: false },
     desc: 'À remplir — d\'eau ou de quelque chose qui brûle. Lancée au loin, elle éclate et ils vont voir.',
   },
+  jerrican_gasoil: {
+    nom: 'Jerrican de gasoil', type: 'materiau', poids: 9.2, espace: 3, volume: 10.5,
+    desc: 'Dix litres de gasoil dans un jerrican vert qui empeste. C’est lourd, ça coule sur les doigts, et ça fait rouler un camion pendant une quarantaine de kilomètres.',
+  },
   bidon_vide: {
     nom: 'Jerrican', type: 'recipient', poids: 0.6, espace: 2, volume: 10,
     contenance: 10, recipient: 'ferme',
@@ -486,6 +495,10 @@ export const ITEMS = {
   antibiotiques: {
     nom: 'Antibiotiques', type: 'soin', poids: 0.05, espace: 0, volume: 0.03, soin: 'antibio',
     desc: 'Une boîte d\'amoxicilline entamée. La seule chose qui arrête une infection déjà installée. Contre le mal des morts, rien.',
+  },
+  antibio_veto: {
+    nom: 'Oxytétracycline vétérinaire', type: 'soin', poids: 0.1, espace: 0, volume: 0.08, soin: 'antibio',
+    desc: 'Un flacon brun d’antibiotique pour les brebis, avec une étiquette à tête de mouton. C’est la même molécule que pour les gens : seule la dose change, et Gérard l’avait notée au crayon sur le bouchon.',
   },
   antidouleur: {
     nom: 'Antidouleurs', type: 'soin', poids: 0.05, espace: 0, volume: 0.03, soin: 'antidouleur',
@@ -614,6 +627,10 @@ export const ITEMS = {
   filtre_fortune: {
     nom: 'Filtre de fortune', type: 'outil', poids: 0.2, espace: 1, volume: 0.6, usage: ['filtrer'],
     desc: 'Une bouteille coupée, bourrée de chiffon et gainée de plastique. L\'eau ressort claire — sans feu, sans bruit.',
+  },
+  filtre_gaz: {
+    nom: 'Cartouche filtrante', type: 'outil', poids: 0.25, espace: 1, volume: 0.35,
+    desc: 'Une cartouche ronde à visser sur un masque à gaz, marquée « A2B2E2K2 — P3 ». Elle arrête le chlore pendant huit heures environ, puis l’odeur revient : il faut la changer.',
   },
   jumelles: {
     nom: 'Jumelles', type: 'outil', poids: 0.6, espace: 1, volume: 0.7, usage: ['observer'],
@@ -866,6 +883,10 @@ export const ITEMS = {
   carte_routiere: {
     nom: 'Carte routière', type: 'lore', poids: 0.15, espace: 0, volume: 0.15,
     desc: 'Une carte Michelin des Bouches-du-Rhône, pliée à l’envers, le coin mangé par le soleil d’une plage arrière. Les villages autour de Salon, les routes, l’étang de Berre, la Durance au nord. Avec elle, le pays salonais n’est plus une page blanche.',
+  },
+  radio_poche: {
+    nom: 'Ta radio de poche', type: 'lore', poids: 0.25, espace: 0, volume: 0.3,
+    desc: 'Un petit transistor noir à molette, l’antenne tordue. C’est lui qui t’a fait entendre la voix du Refuge, deux soirs de suite, avant que ses piles meurent en route. Sans piles neuves et sans réparation, il ne capte plus rien.',
   },
   photo_famille: {
     nom: 'Photo de famille', type: 'lore', poids: 0, espace: 0, volume: 0.001,

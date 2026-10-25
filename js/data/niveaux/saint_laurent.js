@@ -1,12 +1,14 @@
-// Collégiale Saint-Laurent (CHAPITRE 1, discrétion) — refaite au format à couches d'après docs/RETOURS_JOUEUR.md §4.3.
+// Collégiale Saint-Laurent — un lieu du monde, abandonné et dangereux (format à couches, docs/RETOURS_JOUEUR.md §4.3).
 // Réel : gothique provençal (1344-XVe s.), nef unique à croisées d'ogives, chapelles latérales, tombeau de Nostradamus
 // dans la chapelle de la Vierge, clocher, sacristie ; à l'ouest le parvis et le square Jean-XXIII.
-// En une phrase : une traversée silencieuse d'une nef pleine de morts debout ; au bout, tout se joue dans le chœur :
-// Lou dans le clocher, la clé à la ceinture du prêtre, la sacristie juste derrière l'autel. On ne retraverse jamais la nef.
-// Parcours : parvis (sac de Nathan) → portail → nef (lampe éteinte : les cierges suffisent ; on passe devant la grille de
-// la chapelle de la Vierge où Nathan cogne) → chœur → clocher (Lou) → derrière l'autel (la clé) → sacristie → ruelle.
-// Peuplement : les 46 morts de la nef (immobiles, tournés vers l'autel), le prêtre, Nathan. Aucun autre mort à
-// l'intérieur ; les morts du lieu sont dehors (parvis, ruelle).
+// En une phrase : une nef pleine de morts debout, tournés vers l'autel depuis la messe du Mercredi ; on la traverse en
+// silence (lampe éteinte : quelques veilleuses brûlent encore) pour le chœur, le clocher et la sacristie, ou l'on fait le
+// tour par la ruelle, où la sacristie a sa porte basse.
+// Parcours : parvis → portail → nef → chœur → clocher → sacristie → ruelle (et retour par la ruelle, sans la nef).
+// Traces (P3) : un vélo couché et des papiers sur le parvis, la grille de la chapelle de la Vierge fermée par un antivol
+// (quelqu'un y a enfermé un mort), la bouteille de vin de messe vide au pied du clocher, le sang derrière l'autel.
+// Peuplement : les 46 morts de la nef (immobiles), le prêtre derrière l'autel, le mort enfermé dans la chapelle. Aucun
+// autre mort à l'intérieur ; les morts du lieu sont dehors (parvis, ruelle).
 import { plan } from '../../carte/plan.js';
 
 const W = 70, H = 36;
@@ -31,7 +33,7 @@ export default plan({
   for (const [x, y] of [[2, 2], [9, 3], [5, 6]]) e.objet('platane', x, y);
   e.objet('banc', 3, 4, { w: 2, h: 1 });
   e.solRect('dalles', 0, 10, 14, 22);
-  e.marqueur('sac_nathan', 8, 22, { nom: 'le sac de sport' });
+  e.semer('papiers', 7, 21, 3, 3, 4);
   e.objet('debris', 9, 24, { nom: 'le vélo couché', conteneur: false });
   e.semer('feuilles', 0, 10, 14, 22, 10);
   e.entree('defaut', 3, 20);
@@ -44,7 +46,6 @@ export default plan({
     ouvertures: [{ cote: 'e', a: 2, l: 8 }] });           // l'arc du chœur
   e.marqueur('presentoir', nef.x0 + 1, nef.y0 + 3, { nom: 'la feuille paroissiale' });
   e.objet('etagere', nef.x0, nef.y0 + 1, { w: 1, h: 2, nom: 'le présentoir', conteneur: false });
-  e.declencheur(nef.x0, nef.y0, 3, 12, { marqueur: 'nef_entree' });
   // bancs : de x 19 à 43, deux blocs (allée centrale y 17-18, bas-côtés y 12-13 et 22-23 dégagés)
   const places = [];
   for (let x = 19; x <= 43; x += 2) {
@@ -57,27 +58,27 @@ export default plan({
     if ((i * 37) % 10 < 6) { const [x, y] = places[i]; e.zombie(k % 7 === 3 ? 'putrefie' : 'errant', x, y, { etat: 'immobile', dir: EST }); k++; }
   }
   for (let i = 0; i < places.length && k < 46; i++) { const [x, y] = places[i]; if ((i * 37) % 10 >= 6) { e.zombie('errant', x, y, { etat: 'immobile', dir: EST }); k++; } }
-  // les cierges : on traverse la nef lampe éteinte
+  // les veilleuses : quelques-unes brûlent encore, assez pour traverser la nef lampe éteinte
   for (const x of [18, 24, 30, 36, 42, 48]) { e.decal('bougies', x + 0.5, nef.y0 + 0.4); e.lumiere('bougie', x + 0.5, nef.y0 + 0.5, { r: 4, i: 0.7 }); }
   for (const x of [21, 33, 45]) { e.decal('bougies', x + 0.5, nef.y1 + 0.5); e.lumiere('bougie', x + 0.5, nef.y1 + 0.5, { r: 3.5, i: 0.6 }); }
 
-  // --- la chapelle de la Vierge (au milieu de la nef, côté nord) : Nathan derrière la grille ---
+  // --- la chapelle de la Vierge (au milieu de la nef, côté nord) : un mort enfermé derrière la grille ---
   const vi = e.piece(29, 4, 8, 8, { nom: 'La chapelle de la Vierge', sol: 'marbre', mur: 'pierre', sombre: 1, toit: 'tuiles' });
-  e.porte(32, 11, { verrou: { flag: 'grille_vierge_scellee' }, style: 'grille', marqueur: 'tombeau_nostradamus', nom: 'la grille cadenassée de la chapelle',
-    message: 'Un antivol de vélo ferme la grille. Tu ne peux pas l’ouvrir.' });
+  e.porte(32, 11, { verrou: { forcer: 'pied_de_biche' }, style: 'grille', marqueur: 'tombeau_nostradamus', nom: 'la grille cadenassée de la chapelle',
+    message: 'Un antivol de vélo ferme la grille, et un mort cogne derrière. Un pied-de-biche ferait sauter l’antivol.' });
   e.objet('caveau', vi.x0 + 2, vi.y0, { w: 3, h: 2, nom: 'le tombeau de Nostradamus' });
   e.objet('statue', vi.x1, vi.y0, { nom: 'la Vierge de plâtre' });
-  e.zombie('coureur', 32, 10, { etat: 'cogne', dir: Math.PI / 2 });
+  e.zombie('coureur', 32, 10, { etat: 'cogne', dir: Math.PI / 2 });            // quelqu'un l'a enfermé là, il cogne encore
   e.decal('bougies', vi.x0 + 0.5, vi.y1 + 0.3); e.lumiere('bougie', vi.x0 + 0.5, vi.y1 + 0.5, { r: 3, i: 0.6 });
 
   // --- le chœur (10 × 12) : l'autel, le prêtre ; le clocher au nord, la sacristie au sud ---
   const ch = e.piece(51, 11, 12, 14, { sol: 'marbre', mur: 'pierre', sombre: 1, toit: 'tuiles',
     ouvertures: [{ cote: 'o', a: 2, l: 8 }],
     portes: [{ cote: 'n', a: 6, nom: 'la porte du clocher' },
-      { cote: 's', a: 5, verrou: 'cle_sacristie', marqueur: 'porte_sacristie', nom: 'la porte de la sacristie',
-        message: 'Fermée à clé. Une plaque : SACRISTIE. Le curé gardait ses clés sur lui.' }] });
-  e.objet('autel', 56, 16, { w: 2, h: 4, nom: 'l’autel', marqueur: 'cure_autel', conteneur: false });
-  e.zombie('errant', 59, 18, { etat: 'immobile', dir: Math.PI });        // le prêtre, tourné vers la nef, sa clochette
+      { cote: 's', a: 5, verrou: { forcer: 'pied_de_biche', crocheter: true }, nom: 'la porte de la sacristie',
+        message: 'Fermée à clé. Un pied-de-biche en viendrait à bout. La sacristie a aussi une porte basse sur la ruelle.' }] });
+  e.objet('autel', 56, 16, { w: 2, h: 4, nom: 'l’autel', conteneur: false });
+  e.zombie('errant', 59, 18, { etat: 'immobile', dir: Math.PI });        // le prêtre, tourné vers la nef
   e.objet('pilier', ch.x0 + 1, ch.y0 + 1, { nom: 'un pilier du chœur' }); e.objet('pilier', ch.x0 + 1, ch.y1 - 1, { nom: 'un pilier du chœur' });
   for (const [x, y] of [[55.5, 15.5], [58.5, 15.5], [55.5, 20.5], [58.5, 20.5]]) { e.decal('bougies', x, y); e.lumiere('bougie', x, y, { r: 3.2, i: 0.7 }); }
   e.decal('flaque_sang', 59.4, 19.2, { r: 0.5 });
@@ -110,6 +111,6 @@ export default plan({
   c.objet('cloche', cl.x0, cl.y0, { nom: 'le bourdon' });
   c.objet('cloche', cl.x0 + 3, cl.y0, { w: 1, h: 1, nom: 'la cloche' });
   c.objet('cloche', cl.x0, cl.y1 - 1, { w: 1, h: 1, nom: 'la petite cloche' });
-  c.marqueur('clocher_lou', cl.x0 + 1, cl.y1);
+  c.decal('papiers', cl.x0 + 1.5, cl.y1 + 0.2, { n: 2 });
   c.decal('bougies', cl.x0 + 2.4, cl.y1 + 0.4); c.lumiere('bougie', cl.x0 + 2.5, cl.y1 + 0.5, { r: 3, i: 0.6 });
 });

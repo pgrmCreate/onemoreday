@@ -2,7 +2,7 @@
 // Réel : la steppe de galets entre Salon, Miramas et Saint-Martin-de-Crau ; herbe rase, cailloux roulés par l'ancienne
 // Durance, murets de pierre sèche, grandes bergeries voûtées où l'on hivernait les troupeaux, puits à balancier.
 // Ici : une grande parcelle ouverte (≈ 112 × 80 m) — on voit venir de loin, et on est vu de loin. La bergerie (un toit,
-// des enclos), le puits (eau inépuisable), un abri de berger, les moutons morts du Berger quand le troupeau est passé.
+// des enclos), le puits (eau inépuisable), un abri de berger, des moutons morts dans les enclos (les morts sont passés).
 import { parcelle } from '../../carte/parcelle.js';
 
 export default parcelle({
@@ -44,12 +44,12 @@ export default parcelle({
     // une brèche dans l'enclos
     for (const i of [(pe.y + 4) * W + pe.x, (pe.y + 5) * W + pe.x]) e.mur[i] = 0; }
 
-  // ---------- Sur la piste : une voiture brûlée, des traces du troupeau ----------
+  // ---------- Sur la piste : une voiture brûlée, des traces de pas par centaines ----------
   const [cx, cy] = P.chemin[2];
   if (P.libre(cx + 3, cy - 4, 4, 3)) { e.objet('voiture', cx + 3, cy - 4, { nom: 'la voiture brûlée' }); P.reserver(cx + 3, cy - 4, 3, 2); }
   e.semer('traces', 4, P.yA - 4, W - 8, 8, 30);
 
-  // ---------- Des traînards du troupeau ----------
+  // ---------- Des morts isolés, restés en arrière de ceux qui sont passés ----------
   for (let k = 0; k < 4; k++) { const x = 10 + Math.floor(rnd() * (W - 20)), y = 10 + Math.floor(rnd() * (H - 20)); if (P.libre(x, y)) e.zombie('errant', x + 0.5, y + 0.5, { etat: 'erre' }); }
   e.zombie('rampant', pb.x + 9, pb.y + 13, { etat: 'fait_le_mort', dir: 1 });
   for (let k = 0; k < 6; k++) { const x = 6 + Math.floor(rnd() * (W - 12)), y = 6 + Math.floor(rnd() * (H - 12)); if (P.libre(x, y)) e.objetSol('pierre', x, y); }

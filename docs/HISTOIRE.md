@@ -1,517 +1,477 @@
-# One More Day — Bible de l’histoire
+# One More Day — Bible de l’histoire (version 2, octobre 2026)
 
-> Document du **scénariste**. Il fait foi pour l’intrigue, les personnages, la structure, les drapeaux et les
-> **briefs des décors** de cinématiques. Données : `js/data/histoire/*.js`, `js/data/cinematiques.js`.
+> Document du **scénariste**. Il fait foi pour l’intrigue, les personnages, la structure, les drapeaux, les scènes et
+> les **plans des cinématiques**. Données : `js/data/histoire/*.js`, `js/data/cinematiques.js`.
 > Commande aux concepteurs de niveaux : `docs/NIVEAUX_BESOINS.md`. Vérification : `node tools/verifier_histoire.mjs`.
+> L’ancienne histoire (le revenu, « un pour un », Maud, le Berger) est archivée dans `docs/HISTOIRE_ANCIENNE.md` :
+> elle ne fait plus partie du jeu. Quelques lieux en gardent des traces (un camp à l’Empéri, des grottes habitées à
+> Calès) : ce sont désormais de simples lieux du monde.
 
 ---
 
 ## 1. Pitch
 
-Salon-de-Provence, septembre. Trois semaines après le Mercredi — le jour où le grand marché s’est mis à mordre —,
-tu te réveilles dans une housse mortuaire, dans un caveau du cimetière Saint-Roch, avec ton nom sur une étiquette au
-pied : *décès constaté le 6 septembre, cause : morsure*. Tu étais mort. Tu es revenu. Dans ta poche, le mot d’une
-inconnue : *« Viens à la Tour de l’Horloge. »* Quelqu’un t’attendait — et ce qu’elle sait tient en quatre mots :
-**un pour un**. Les morts peuvent revenir, à condition de manger un vivant. Toi, tu en as mangé un. Et l’armée, massée
-derrière la Durance, attend le premier coup de mistral pour brûler tout le pays salonais… et le secret avec.
+Pays salonais, fin septembre 2026. Trois semaines après **le Mercredi**, le jour où le grand marché de Salon s’est mis
+à mordre, tu survis {seul|seule} depuis vingt jours. Une voix de jeune fille, à la radio, répète la même chose toutes
+les heures : *« Ici le Refuge de Miramas-le-Vieux. Nous accueillons les survivants. Venez par la route de Saint-Chamas,
+à la porte Notre-Dame. Montrez vos mains. »*
 
-**Logline** : un·e revenant·e doit choisir ce que vaut un mort — alors qu’il ou elle en est la preuve vivante.
+Tu y vas. Derrière les remparts d’un village perché au-dessus de l’étang de Berre, quatorze personnes tiennent
+ensemble : une ancienne adjointe au maire qui note tout, un vieux berger, une lycéenne qui fait la radio, un
+infirmier, une mère et sa petite fille malade, un chauffeur routier qui veut partir. Pendant trois jours, tu es l’un des
+leurs : la quarantaine, les corvées, la garde de nuit. Puis on t’envoie dans la Crau chercher des antibiotiques pour
+l’enfant, avec une enveloppe qu’on te défend d’ouvrir.
 
-## 2. La question centrale (et ses relances)
+À l’aube, l’armée bombarde la gare de triage de Miramas, où les morts s’entassaient par milliers. Les wagons-citernes
+de chlore éventrés crachent une **brume jaune** qui, chaque nuit sans vent, descend dans les terres basses. Les morts,
+chassés du feu, montent à l’assaut du rocher. Le Refuge tombe en une nuit. Ce qu’il en reste se disperse avec une
+seule promesse : l’armée ouvrira le pont de Mallemort, sur la Durance, **une heure, à l’aube du mercredi 7 octobre**.
+
+D’ici là, il faut tenir. Quinze jours, à pied, entre la brume des nuits, les sirènes de l’armée et les morts.
+
+**Logline** : trois jours après avoir été accueilli par un refuge, tu dois garder en vie, un jour de plus, ce qui
+reste de ceux qui t’ont ouvert la porte, et comprendre pourquoi on t’a envoyé au loin la veille du bombardement.
+
+## 2. Ce qui tient le joueur en haleine
 
 | Moment | La question que se pose le joueur |
 |---|---|
-| Prologue (5 premières minutes) | **« J’étais mort. Pourquoi est-ce que je respire ? »** — et *qui m’attendait* ? |
-| Chapitre 1 | **« Qu’est-ce que Maud m’a fait ? »** → réponse (hôpital) : *on m’a fait manger quelqu’un*. Relance : **« Qui ? »** (page 14 arrachée ; l’index du registre dit *Arnaud L.* ; le casier dit *Pour Jo* ; le souvenir dit *« Jo »*). |
-| Chapitre 2 | **« Est-ce que je vais le lui dire ? »** — Joëlle, la veuve de Luc, t’accueille ; Clémence, sa fille, reçoit l’insuline pour laquelle son père est mort. Puis : **« Que vaut un mort ? »** (le Berger, les revenus, Rose). |
-| Final | **« Que faire de la vérité ? »** — Orsini révèle que l’armée sait tout depuis le rapport de Maud : *« On ne brûle pas des morts. On brûle une idée. »* Se taire, parler, ou mener le troupeau. |
+| Intro, arrivée | **« Vont-ils me laisser entrer ? »** — la porte, les mains levées, les bras qu’on retourne sous la lampe. |
+| Acte I (le Refuge) | **« Qu’est-ce qu’Hélène cache ? »** — la nuit, une lumière dans le donjon, sa voix à une radio que personne d’autre n’a. Les sirènes de l’armée vers Miramas. |
+| Acte II (la Crau) | **« Qu’y a-t-il dans l’enveloppe ? »** — « À n’ouvrir que si le Refuge tombe. » Fernand sait quelque chose. L’ouvrir ou tenir parole. |
+| Acte III (la chute) | **« Qui je sauve ? »** — la porte ouverte par Rudy, la cloche de Fernand, une seule course possible : l’enfant, Hélène ou soi. |
+| Acte IV (la brume) | **« Qu’est-ce que cette brume ? »** — elle sent l’eau de Javel, les oiseaux tombent, et les morts marchent dedans sans un bruit. |
+| Acte V (le pont) | **« Serai-je à l’heure, et avec qui ? »** — un compte à rebours de huit jours, une région à traverser, des dispersés à retrouver ou à laisser. |
+| Final | **« Pourquoi suis-je sur la liste ? »** — Hélène a rayé son nom et écrit : *ceux que j’ai envoyés à la bergerie*. |
 
-## 3. Le thème : « Un pour un »
+## 3. Le thème : un jour de plus
 
-Tout le monde, dans cette histoire, a payé une vie avec une autre, et a tort d’une manière compréhensible :
-- **Vidal** a fermé la grille sur un inconnu (toi) pour sauver dix-huit élèves.
-- **Maud** a donné des mourants — et un homme qui ne l’était pas tout à fait — à ses patients morts.
-- **Joëlle** a refusé sept réfugiés de Sénas pour que Calès tienne.
-- **Le Berger** mène les morts vers les vivants pour que chacun des siens revienne.
-- **Orsini** brûle une région pour qu’une idée ne passe pas le fleuve.
-- **Toi** : tu respires parce que Luc Arnaud ne respire plus.
-Le titre dit ce que chacun achète : **un jour de plus**.
+Personne ne sauve tout le monde. Chacun achète **un jour de plus** à quelqu’un, au prix d’un autre :
+- **Hélène** savait que l’armée frapperait. Elle ne pouvait pas faire descendre quatorze personnes dans la plaine
+  (une enfant malade, deux octogénaires, des morts partout). Elle a parié sur les murs, et elle a envoyé au loin les deux
+  seuls qui sauraient survivre dehors : Fernand, et toi.
+- **Fernand** le savait aussi. Il t’a emmené, puis il est revenu sonner la cloche pour que les morts viennent à lui.
+- **Rudy** a ouvert la porte pour sauver sa peau, et il a tué le Refuge.
+- **L’armée** a bombardé une gare pleine de chlore pour tuer dix mille morts, en sachant ce que le vent ferait.
+- **Toi** : à la fin, tu as une place sur le pont, et peut-être quelqu’un qui n’en a pas.
+
+Le jeu est un jeu de **survie** (dans l’esprit de Project Zomboid) : peu de quêtes, chacune **longue** et liée au
+temps (une nuit, deux jours, huit jours), et entre elles, manger, boire, dormir, se soigner, se cacher. On ne gagne rien
+à tuer des morts : on gagne du temps.
 
 ## 4. Ce qui est arrivé au monde (la vérité)
 
-**L’agent** (jamais nommé ; les soignants disent « l’agent », les survivants « le Mercredi », les militaires « agent M »).
-- Morsure → fièvre → arrêt cardiaque en 3 à 30 h → « l’état » : cœur à 2-4/min, température ambiante, activité cérébrale
-  de base, faim. Ce ne sont pas des morts : ce sont des **patients** (Maud) — mais on ne peut pas les soigner.
-- Les morts **reviennent quelque part** : chacun retourne là où il est mort ou à un geste d’habitude (le marché, la messe,
-  la porte du château). Ils suivent le **bruit** — et les **cloches** plus que tout.
-- **Un pour un** : si un infecté mange un adulte entier dans les 48 h suivant sa transformation, l’agent se sature et
-  s’endort : **dormance** (inerte, glacé, apparemment mort) de **4 à 14 jours** — plus longue au froid —, puis **réveil**.
-  Une fois sur trois environ, le réveil est **lucide** (« revenu ») ; sinon **raté** (quelques minutes de conscience,
-  puis rechute, puis mort). Le revenu garde **le souvenir du goût** et de la personne mangée.
-- Un revenu : mains froides, ~35 °C, la bouche qui se remplit quand une cloche sonne (conditionnement : Maud agitait une
-  clochette pour nourrir ses patients ; le Berger mène les siens aux sonnailles). Les morts le **reniflent et passent**
-  plus volontiers (« il sent le froid »). Mordu de nouveau, l’agent se réveille : le « mal » remonte (cf. GAMEPLAY §5.4).
+- **La maladie** (jamais nommée ; « le Mercredi » pour les survivants, « l’agent » pour les soignants). Morsure →
+  fièvre → mort en 3 à 30 heures → le corps se relève et mord. Les morts suivent le **bruit** et la **lumière** ; ils
+  ne respirent presque plus. Une morsure condamne presque toujours (le « mal » du moteur, GAMEPLAY §5.4).
+- **J0 = mercredi 2 septembre 2026**, jour de grand marché à Salon : la première morsure sur le cours Carnot.
+  Confinement le lendemain, puis l’effondrement en trois jours.
+- **L’armée** a reculé derrière la Durance : la **ligne Durance** (PC Durance à Mérindol). Les ponts sont fermés ou
+  murés ; seul le **pont suspendu de Mallemort** est tenu, avec une ligne de tir à 200 mètres.
+- **Le rabattage** : l’armée a repris le réseau des sirènes d’alerte et fait passer des drones à haut-parleurs. Quand
+  une zone hurle, les morts courent vers le bruit. Elle les pousse ainsi vers des **zones de destruction**.
+- **La gare de triage de Miramas** (la plus grande du Sud-Est) : depuis le 10 septembre, le haut-parleur d’un poste
+  d’aiguillage, resté sur batterie, répète une annonce. Dix mille morts s’y sont entassés entre les trains, rabattus
+  depuis la Crau. Sur une voie de garage attend un convoi de **wagons-citernes de chlore** (plaques orange « 268 / 1017 »).
+- **La frappe** : le **samedi 26 septembre (jour 4) à 6 h**, deux avions bombardent le triage. Le feu tue des
+  milliers de morts ; les citernes éventrées libèrent le chlore ; les survivants du feu fuient vers les hauteurs, donc
+  vers le rocher de Miramas-le-Vieux. L’armée avait prévenu Hélène 72 heures avant (« évacuez vers l’est »).
+- **La brume jaune** : le chlore est plus lourd que l’air. Le jour, le soleil et la brise le dispersent ; **la nuit,
+  quand le vent tombe, il s’amasse dans les terres basses** (la gare, la Crau, les bords de l’étang, la Touloubre) en
+  une brume jaune-vert qui sent l’eau de Javel. Elle brûle les yeux et les poumons ; elle tue les vivants qui y dorment.
+  Les morts y marchent sans gêne, et elle étouffe les sons. Elle faiblit de jour en jour ; le **mistral** et la **pluie**
+  la chassent. Les hauteurs (villages perchés, collines) et les étages en sont à l’abri.
+- **Le pont** : le PC Durance ouvrira le pont suspendu aux civils **recensés** une heure, à l’aube du **mercredi
+  7 octobre (jour 15)**, puis une dernière fois le **mercredi 14 octobre (jour 22)**. Contrôle des morsures, un mot de
+  passe par refuge. Le mot du Refuge : **« Beauvezer »** (le nom de son église).
 
-**Chronologie** (J0 = mercredi 2 septembre 2026, jour de grand marché) :
+**Chronologie** (jour 1 = mercredi 23 septembre 2026 ; `temps.DATE_JOUR1`) :
 
 | Date | Événement |
 |---|---|
-| J0, 10 h 40 | Cours Carnot, devant l’étal du fromager : première morsure. 21 h 10 : l’horloge de la Tour s’arrête, comme en 1909. |
-| J1 (3/09) | Confinement préfectoral. Cellule de crise (Maud, Orsini). Vidal enfermé à l’Empéri avec sa classe depuis J0. Aux urgences, P1 dévore un vieil homme et s’endort. |
-| J2-J3 | Repli de l’armée sur la **ligne Durance** (PC Durance à Mérindol, Cdt Sabine Orsini). Le fils du Berger est abattu à un barrage de la D113. Rose Castagne est mordue (1/09 au soir) puis mange Kylian Ruiz (3/09). |
-| J4 (6/09), 17 h 52 | **Toi** : pour la vidéo de ton téléphone, devant la grille de l’Empéri, Vidal te repousse. Tu es mordu, tu meurs, tu te relèves. Tu reviens tous les jours à 17 h devant la porte (dessins de Lou). |
-| J5 (7/09) | P1 se réveille lucide (4 jours de dormance, box à 30 °C). |
-| J6 (8/09) | Maud capture P4 (toi) à la perche. **Elle envoie son rapport** à la cellule de crise et au PC Durance. P1 se jette du toit. |
-| J8 (10/09) | Luc Arnaud (Lamanon), venu chercher de l’insuline, blessé à la jambe, est amené par Lou et Samir à l’Empéri puis à l’hôpital. |
-| J9 (11/09), 3 h 10 | Maud **nourrit P4 avec Luc** (sédation). Page 14. |
-| J10 (12/09) | Samir tombe du rempart ; donné à P5 (Mireille, la pharmacienne). L’armée vide l’hôpital : les corps inertes (P3, P4) partent au cimetière Saint-Roch, « lot 14 ». Maud glisse un mot dans leurs poches et se réfugie chez Nostradamus avec P5. |
-| J11 (13/09) | Paris décide **Cautère** (incendie de la zone au premier mistral) et le **Protocole R** (cacher les revenus). |
-| J14-J16 | Rose se réveille lucide. Le Berger comprend, prend ses sonnailles et commence la **transhumance à rebours** dans la Crau. La BA 701 tombe (J14-15). |
-| **J21 (mer. 23/09)** | **Jour 1 du jeu** : tu te réveilles. Trois semaines jour pour jour après le Mercredi. |
+| J0, mer. 2/09 | Le Mercredi. |
+| J3, sam. 5/09 | Hélène Garcin ferme la porte Notre-Dame de Miramas-le-Vieux sur onze habitants. Les gendarmes, en partant, lui laissent un poste radio. |
+| 10/09 | Le haut-parleur du triage commence à appeler. Inès Belkacem arrive au Refuge et lance le message radio. |
+| 16-20/09 | Arrivent Bastien, Karine et Noa, Rudy et Yohan. Quatorze personnes. Hélène envoie la liste des noms au PC Durance. |
+| **Jour 1, mer. 23/09, 18 h 30** | **Tu arrives à la porte.** Le même soir, l’armée prévient Hélène : frappe sur le triage dans 60 heures. |
+| Jour 2, jeu. 24/09 | Corvées, la brèche ; la nuit, la garde, les sirènes vers Miramas ; Hélène à la radio dans le donjon. |
+| Jour 3, ven. 25/09 | Noa s’étouffe de fièvre. Fernand et toi partez pour la bergerie de Cabassole. Hélène te donne l’enveloppe. |
+| **Jour 4, sam. 26/09, 6 h** | **La frappe.** Le soir, les morts montent à l’assaut du rocher. Vers 23 h, Rudy ouvre la porte pour fuir avec son camion : **le Refuge tombe**. |
+| Jour 5, dim. 27/09 | La Poudrerie de Saint-Chamas. À 22 h, **la brume** monte de l’étang. |
+| Jour 6, lun. 28/09 | Cornillon-Confoux, au-dessus de la brume. La radio confirme le pont. **Le pays s’ouvre.** |
+| Jour 14, mar. 6/10, 20 h | Ceux de Cornillon partent pour Mallemort. |
+| **Jour 15, mer. 7/10, 5 h - 7 h** | **Le pont.** (Sinon, dernière ouverture le jour 22, mer. 14/10.) |
 
-## 5. Ce que le joueur découvre, et quand
+## 5. Personnages
 
-| Découverte | Où | Par quoi |
+**Toi** — prénom et genre choisis. Tu survis {seul|seule} depuis le Mercredi (un mas de la Crau, puis des caves, des
+voitures) ; ce que tu étais avant reste flou et le joueur le remplit. Tu as un petit poste à piles, et c’est par lui
+que tu as entendu le Refuge. Les textes n’accordent jamais au genre sans `{masculin|féminin}`.
+
+**Hélène Garcin** — 58 ans, ancienne adjointe au maire de Miramas chargée des écoles. Lunettes au bout d’un cordon,
+gilet sans manches, un carnet à spirale où tout est compté (eau, conserves, tours de garde). Voix basse, ne crie
+jamais, sourit rarement. *Veut* : que le Refuge tienne. *Secret* : un poste radio des gendarmes caché dans le donjon,
+et la lieutenante Sabatier au bout ; elle sait la frappe depuis ton premier soir. *A tort, et raison* : elle a parié sur
+les murs. Elle a envoyé au loin ceux qui pouvaient vivre, et à la fin, elle a **rayé son nom de la liste** pour y
+écrire le tien. Sort : reste à sa radio pendant la chute (elle meurt), ou, si tu montes la chercher et insistes,
+descend par les rochers et t’attend au pont (`helene_sauvee`).
+
+**Fernand Abrieu** — 76 ans, berger de la Crau à la retraite, né au village. Casquette, bâton de buis, Opinel, il
+connaît chaque puits et chaque draille (le chemin des moutons). Sec, drôle sans sourire, il appelle les morts « les
+pauvres ». Ami d’Hélène depuis l’école. *Sait* la frappe, et accepte de t’emmener. Au retour, pendant la chute, il
+court à l’église et **sonne la cloche** pour que les morts viennent à lui : il ne redescend pas.
+
+**Inès Belkacem** — 17 ans, lycéenne d’Istres, radioamatrice avec son père (mort le Mercredi). C’est sa voix,
+le message. Casque sur le cou, sweat trop grand, ironique, courageuse, en colère contre les adultes. Elle s’échappe
+avec toi par la poterne et devient ta compagne de route (elle reste à la Poudrerie, puis à Cornillon : la base).
+
+**Bastien Moreau** — 33 ans, infirmier aux urgences de l’hôpital de Salon. Doux, anxieux, épuisé ; il soigne Noa
+avec ce qu’il n’a pas. Pendant la chute, il court vers la porte aider les autres et se perd. On le retrouve à
+**Istres**, les poumons brûlés par la brume, caché dans une pharmacie : il sait ce qu’est le chlore.
+
+**Karine Ollivier** — 39 ans, boulangère à Miramas, et sa fille **Noa**, 8 ans, qui fait une pneumonie. Karine est
+sèche avec tout le monde sauf sa fille. Selon la chute : elles fuient avec toi (`noa_avec`), partent avant à l’aube
+(`familles_parties`), ou se perdent vers **Grans**, où un vieux meunier les cache (`q_karine`).
+
+**Rudy Chabert** — 46 ans, chauffeur routier ; son camion (un porteur bâché) est garé sur la place, réservoir presque
+vide. Brutal, honnête à sa façon, il veut partir depuis le premier jour. Pendant le siège, il **ouvre la porte** pour
+fuir avec Yohan : les morts entrent. On le retrouve au **péage de Lançon**, à sec de gasoil, Yohan mort. Le pardonner,
+le laisser, ou le tuer.
+
+**Figurants du Refuge** (une réplique ou deux) : Yohan (20 ans, apprenti maçon, garde), Paul et Josette Mendès
+(81 et 79 ans), Malik Haddad (52 ans, cuisinier), Céline Barret (44 ans, le potager, la lessive) et son fils Théo
+(12 ans), sœur Agnès (71 ans, l’église).
+
+**La lieutenante Claire Sabatier** — PC Durance. Une voix à la radio, puis une femme en treillis au bout du pont,
+une liste à la main. Ni bonne ni mauvaise : elle applique.
+
+**Gérard Pons** — le berger de Cabassole, ami de Fernand ; mort dans sa bergerie, parmi ses brebis.
+
+## 6. Structure
+
+Durée visée : **acte I ≈ 1 h**, **acte II ≈ 45 min**, **acte III ≈ 30 min**, **acte IV ≈ 30 min**, **acte V : libre**
+(8 jours de jeu, 3 à 8 h selon le joueur). Le joueur ne choisit sa route qu’à partir de l’acte V : avant, chaque acte
+tient dans **un seul lieu**, et on passe de l’un à l’autre par un **voyage guidé** (sur indication, sans carte).
+
+### Les lieux de l’histoire
+
+| Lieu | Acte | Rôle |
 |---|---|---|
-| Déclaré mort, lot 14 | Prologue, cimetière | étiquette, registre, fiche de ramassage |
-| Quelqu’un attend les réveils | Prologue | mot de « M. » ; Patrick (P3) qui revient « mal » |
-| La faim devant les cloches | Prologue, Tour | scène `pro_cloches` (salive) |
-| Cautère, le mistral | Ch1 matin | Maud, scanner |
-| Tu étais « le Client » au pied du château ; Vidal t’a repoussé | Ch1, Empéri | carnet de Lou, sac rouge, vidéo |
-| **Un pour un** ; tu as mangé quelqu’un | Ch1, hôpital | registre, souvenir de la salle 4 |
-| Le donneur s’appelle Arnaud, sa femme « Jo » | Ch1, hôpital (lecture attentive) | index du registre, casier « Pour Jo », dossier (3 h 10) |
-| Deux fois sur trois, c’est raté | Ch1 | Mireille (P5) |
-| Le Berger et son troupeau | Ch1 fin | nuit des sonnailles, aube |
-| Jo, c’est Joëlle ; Clémence ; l’insuline | Ch2, Calès | arrivée |
-| Luc avait des antibiotiques : Maud a *choisi* | Ch2, procès | Joëlle |
-| Les revenus existent en nombre | Ch2, Vernègues | Nadège, le Berger, Rose |
-| L’armée sait (Protocole R), Cautère cite le rapport de Maud | Ch2, BA 701 | documents |
-| **C’est le rapport de Maud qui a déclenché Cautère** : on brûle l’idée | Final | Orsini |
+| `miramas_le_vieux` (Le Refuge) | I, III | le village fortifié : la porte Notre-Dame, la tour-porte (quarantaine), la place, la salle commune, l’infirmerie, l’église, le donjon d’Hélène, la brèche nord, le bas du village (maisons abandonnées), la poterne sud |
+| `bergerie` (Cabassole, la Crau) | II | la bergerie de Gérard, le mas, l’armoire du vétérinaire, le puits à balancier, la nuit au feu avec Fernand |
+| `miramas` (la gare de triage) | II (vue de loin), V | dix mille morts entre les trains ; après la frappe, cratères, citernes, la brume la plus épaisse |
+| `saint_chamas` (la Poudrerie) | IV | le point de ralliement au bord de l’étang ; la maison du gardien ; la brume qui monte |
+| `cornillon` | IV, V | le village perché au-dessus de la brume : la base de l’acte V |
+| `grans`, `istres`, `lancon` | V | les dispersés : Karine et Noa, Bastien, Rudy |
+| `mallemort` | V, final | le camp d’attente, le pont suspendu, la ligne de l’armée |
 
-## 6. Personnages
+### ACTE I — « Le Refuge » (jours 1 à 3, `q_refuge`)
 
-**Toi** — prénom et genre choisis. Arrivé·e à Salon le 30 août pour les vendanges (un domaine près de Pélissanne), sans
-attaches ici. Téléphone, sac rouge, *Colline* de Giono. Mordu·e le 6/09, revenu·e le 23/09. Arc : de « pourquoi moi ? »
-à « qu’est-ce que je fais de ce que je suis ? ». Les textes n’accordent jamais au genre sans `{masculin|féminin}`.
+Démarrage : cinématique `intro` → `explorer('miramas_le_vieux', { entree: 'porte' })` → scène `ref_porte`.
+L’heure de départ est **18 h 30** (`temps.DEPART_MINUTES`).
 
-**Maud Sérane** — 55 ans, cheffe des urgences. Anorak rouge sur blouse, stéthoscope en chapelet, cigarettes brunes
-qu’elle écrase « jusqu’à ce qu’il n’en reste rien ». Sèche, précise, drôle à froid. *Veut* : prouver que les morts sont
-des patients et empêcher qu’on les brûle ; te garder, toi, son « meilleur cas ». *A tort* : elle s’est donné le droit
-de choisir qui sert de nourriture — et elle a choisi Luc, qui aurait pu vivre. *Secret* : la page 14 dans sa blouse.
-*Ironie* : son rapport a déclenché Cautère. *Sort* : pendue à Calès, chassée (elle rejoint le Berger, heureuse :
-« des centaines de cas »), gardée pour l’armée, libérée (elle part vers Orsini et te laisse la page 14), livrée au Berger,
-ou tuée par toi (« Cinquante-deux. Tu es en pleine forme. »). Au procès, si tu l’as protégée, **elle mange la page 14**
-pour te couvrir. Portrait `maud`.
+1. **La porte** (`ref_porte` → `ref_porte_2` → `ref_porte_3`). Yohan sur le rempart, une lampe dans les yeux.
+   « Montre tes mains ! Plus haut. Remonte tes manches. » Hélène descend, pose trois questions (d’où tu viens, depuis
+   quand tu es {seul|seule}, si quelqu’un t’a suivi). La porte s’entrouvre. Règle : 24 heures de quarantaine dans la
+   tour-porte. Effets : `refuge_arrivee`, `q_refuge.quarantaine`, téléportation sur l’entrée `quarantaine`.
+   En co-op, l’invité a `ref_porte_coop` (vous êtes arrivés ensemble).
+2. **La nuit de quarantaine** : une cellule dans la tour-porte (matelas, cruche, seau, bougie), porte fermée de
+   l’extérieur. À 19 h, une demi-heure après qu’on t’a enfermé (`ref_nuit_bastien`), Bastien ouvre le judas, prend ta
+   température, parle de Noa ; à travers le mur, tu reconnais la voix de la radio : Inès, qui lit le message. « Dormir »
+   fait passer la nuit (`tempsMin`, on se réveille vers 6 h 30, reposé) : on n’attend pas des heures dans le noir.
+3. **Le matin** (jour 2, 7 h ; `ref_matin` → `ref_regles`) : Hélène ouvre. Le tableau des règles (`doc_regles_refuge`),
+   le carnet, les corvées : remonter l’eau du puits, et **fermer la brèche du rempart nord avant la nuit** avec Rudy.
+   Effets : `quarantaine_faite` (la porte de la tour s’ouvre), `q_refuge.corvees`, le pied-de-biche d’Hélène, et l’on se
+   retrouve sur la place (entrée `place`).
+4. **Les corvées** (librement, dans le village) :
+   - le **puits** (marqueur `puits`, `ref_puits`) : remonter vingt seaux (40 min, fatigue) → `eau_faite` ;
+   - la **brèche** (marqueur `breche`, `ref_breche`) : Rudy a le marteau et les clous ; il faut **quatre planches**,
+     à prendre dans **le bas du village** (maisons abandonnées, deux ou trois morts — personne n’y est descendu depuis
+     une semaine). Avec les planches : 50 min de travail → `breche_fermee` (le plan montre les planches à la place des
+     gravats). Sans : la brèche reste ouverte, et la garde sera plus dure.
+   - parler aux gens (Hélène, Fernand, Inès, Bastien, Karine, Rudy ; les figurants) : facultatif.
+5. **La garde** (jour 2, 21 h ; `ref_garde`) : le repas du soir en deux phrases, puis Rudy et toi à la brèche
+   jusqu’à 2 h (la scène t’y amène : entrée `poste_breche`). Mission `m_garde` (tenir, quitter = échec ; des morts
+   isolés montent par la pente et entrent PAR LA BRÈCHE : vagues `proche: true`, la sortie la plus proche). À 23 h
+   (`ref_sirenes`) : les sirènes hurlent au loin vers Miramas, des drones passent ; Rudy explique le rabattage. À 1 h
+   (`ref_helene_radio`) : une lumière au donjon, la voix d’Hélène : « … Beauvezer. Je répète, Beauvezer… Soixante
+   heures… Non. Personne ne descendra. » → `helene_radio_vue`. À 2 h, Yohan et Malik vous relèvent (`garde_faite`) ;
+   abandonner la garde → `garde_ratee` (un mort entre dans le bas du village, Céline est blessée ; on t’en parle).
+6. **Noa** (jour 3, 7 h ; `ref_noa` → `ref_enveloppe`) : Noa a 40 de fièvre et respire mal. Bastien n’a plus
+   d’antibiotiques. Fernand : Gérard, à Cabassole, soignait ses brebis avec de l’oxytétracycline, « la même chose, à
+   la dose près ». Hélène envoie Fernand **et toi** ; personne d’autre. Dans le donjon, seule avec toi, elle te donne
+   une enveloppe : **« À n’ouvrir que si le Refuge tombe. »** Malik te donne du pain et une gourde.
+   Effets : `enveloppe_helene`, `depart_crau`, `q_refuge.fin`, `q_crau.route`, **voyage guidé** vers `bergerie`.
 
-**Julien Vidal** — 44 ans, prof d’histoire-géo au lycée de l’Empéri, pull de laine bleue, lunettes au sparadrap. Fait
-cours tous les matins « tant qu’il y a un cours, il y a un lendemain ». *Veut* : garder ses élèves en vie. *A tort* :
-sa règle (« montre tes bras ») et sa main du 6 septembre. *Arc* : confronté à la vidéo (pardon, aveu, menace). Mordu en
-tenant la poterne pendant la nuit des sonnailles (ou abandonné derrière la grille — *le même geste*). Refuse d’être
-ramené : « Lequel tu me donnerais ? » Meurt en récitant « onze juin 1909, vingt et une heures dix ». Portrait `vidal`.
+### ACTE II — « La bergerie » (jours 3 et 4, `q_crau`)
 
-**Lou (Louise) Mercadier** — 15 ans, élève de Vidal, cheveux coupés aux ciseaux de cuisine, carnet à dessin. Elle t’a
-dessiné mort six fois (« le Client »). La première à savoir ce que tu es, et à garder le secret. Elle filme ton
-témoignage et note les adresses des rédactions. Survit dans toutes les fins ; son dessin clôt la fin « vers le feu ».
-Portrait `lou`.
+1. **La route** (voyage guidé `miramas_le_vieux` → `bergerie`, ≈ 6 km) :
+   - à 30 % `rh_triage` (`rv_triage`) : du pont routier au-dessus des voies, la gare de triage ; des milliers de morts
+     entre les trains, le haut-parleur, et sur une voie de garage les wagons blancs aux plaques orange. Fernand : « Gérard
+     disait qu’il fallait jamais s’approcher des blancs. » Choix : regarder longtemps (`triage_vu`), passer vite.
+   - à 75 % `rh_draille` (`rv_draille`) : sur la draille, un mort assis dans un cabanon ; premier combat à découvert,
+     ou un détour par les murets.
+2. **La bergerie** (`ber_arrivee`) : le silence, une odeur de suint et de mort, le chien enterré sous les pierres.
+   Fernand appelle Gérard. → `q_crau.bergerie`.
+3. **Gérard** (marqueur `gerard` ; `ber_gerard`) : il est debout parmi ses brebis mortes, dans la bergerie ; trois
+   brebis vivantes serrées dans l’enclos du fond. Fernand ne peut pas : « Fais-le, toi. Moi, je le connaissais. » Le
+   mort `gerard` du plan porte `flagMort: 'gerard_acheve'`.
+4. **L’armoire du vétérinaire** (marqueur `armoire_veto`, dans le mas ; `ber_armoire`) : fermée à clé ; la clé est à
+   la ceinture de Gérard (`gerard_acheve`), ou on force au pied-de-biche. Dedans : `antibio_veto` ×2, compresses,
+   seringues, et le carnet de Gérard (`doc_carnet_gerard`). → `antibio_trouves`, `q_crau.nuit`.
+5. **Le soir** (jour 3, 19 h, si l’on est à la bergerie ; `ber_soir` → `ber_soir_2`) : le feu dans la cheminée du mas,
+   la soupe, Fernand qui parle (la Crau, Gérard, Hélène à quinze ans). Il voit l’enveloppe. « Elle te l’a donnée à
+   toi ? Alors garde-la fermée. » Choix : **l’ouvrir** (`ber_enveloppe` → `doc_lettre_helene`, `enveloppe_ouverte`,
+   puis **rentrer cette nuit** avec Fernand — `retour_nuit`, voyage guidé — ou attendre l’aube) ; **tenir parole**.
+   Les sorties de la bergerie sont fermées tant que dure la nuit (« Fernand ne marche pas de nuit dans la Crau »).
+6. **La frappe** (jour 4, 6 h ; `frappe_reveil` → cinématique `frappe` → `frappe`) : deux avions bas, les explosions
+   sur la gare, une boule de feu, puis un nuage jaune qui ne monte pas. Fernand ne dit rien ; il regarde la fumée
+   comme une chose attendue (le joueur attentif le remarque). « Ils vont fuir le feu. Et le seul endroit haut, c’est
+   chez nous. On rentre. » → `frappe_faite` (la brume commence), `q_crau.retour`, voyage guidé vers le Refuge.
+   - `rh_nuage` (`rv_nuage`) : le nuage couché sur la route, des oiseaux morts ; les yeux qui brûlent. Choix :
+     contourner par le nord (détour, du temps) ou traverser en retenant son souffle (une brûlure aux poumons :
+     toux, quelques PV). **C’est là que le jeu apprend la règle de la brume** (P10).
+   - `rh_maree` (`rv_maree`) : les morts traversent les champs vers le rocher. Se cacher dans un fossé.
+   - variante de nuit (`retour_nuit`) : `rh_nuit_crau` (`rv_nuit_crau`) en allant, puis la frappe vue **depuis
+     les remparts** (`frappe_refuge`).
 
-**Joëlle « Jo » Arnaud** — 50 ans, ancienne guide des grottes de Calès (rouvertes en avril 2025), cheffe du refuge.
-Chaleureuse, dure, drôle. *Veut* : Clémence en vie, passer la Durance. *A tort* : elle a refusé sept réfugiés de Sénas
-(« Je n’aurais pas dû. J’aurais dû. »). *Secret du joueur* : son mari Luc est celui que tu as mangé. Réactions selon la
-manière dont elle l’apprend : aveu immédiat (gifle, puis « On va faire comme Luc »), aveu au procès, révélation par
-Maud (la salle veut te tuer, elle l’empêche), ou jamais (tu lui mens, elle te raconte Luc le soir). Portrait `joelle`.
+### ACTE III — « La chute » (nuit du jour 4, `q_chute`)
 
-**Clémence Arnaud** — 9 ans, diabétique de type 1. « T’as vu mon papa, à Salon ? » ; « Est-ce qu’il te parle ? ».
-Apprend au chien roux (Pistache) à donner la patte. Portrait `clemence`.
+1. **Le retour** (`siege_debut`, en entrant au Refuge après la frappe ; ou `siege_debut_nuit` à 19 h dans la
+   variante de nuit) : les morts sont au pied du rocher. Hélène distribue les postes. Fernand la regarde : « Tu le
+   savais. » Elle ne répond pas. → `siege_commence`, `q_chute.siege`, mission `m_siege` (tenir deux heures ; les
+   morts montent par la pente, plus nombreux par la brèche si elle est restée ouverte).
+   - Variante de nuit (`ref_retour_nuit`, en arrivant vers 1 h) : dans le donjon, Hélène avoue. Elle fait partir à
+     l’aube par la poterne ceux qui ne peuvent pas se battre (Karine, Noa, les Mendès, Céline, Théo) vers la Poudrerie
+     → `familles_parties`.
+2. **La porte** (fin de `m_siege` → `siege_tenu`, ou 23 h 30 au plus tard ; `chute` → cinématique `chute` →
+   `chute_2` → `chute_choix`) : un moteur rugit derrière toi. Rudy a ouvert la porte Notre-Dame et file avec son
+   camion et Yohan. Les morts entrent. Fernand court à l’église : « Je vais sonner. Ils viendront tous à moi. » La
+   cloche sonne. Une seule course possible :
+   - **l’infirmerie** (Karine et Noa) — si les familles ne sont pas déjà parties ; marqueur `infirmerie`,
+     `chute_infirmerie` → `noa_avec` ;
+   - **le donjon** (Hélène) — marqueur `radio_helene`, `chute_helene` → `helene_sauvee` (elle descend par les
+     rochers : « Je vous retrouverai au pont ») ou `helene_restee` ; elle te dit d’ouvrir l’enveloppe en bas ;
+   - **la poterne**, directement.
+   → `refuge_tombe`, `fernand_cloche`, `q_chute.fuir`. Le village est plein de morts : il faut courir pour de vrai.
+3. **La poterne** (marqueur `poterne`, `chute_poterne`) : Inès t’attend avec la radio sur le dos. La cloche se tait.
+   → `refuge_fui`, `q_brume.poudrerie`, voyage guidé vers `saint_chamas` (`rh_sentier` / `rv_sentier` : le sentier
+   de la falaise, le village qui brûle au-dessus).
 
-**Luc Arnaud** — 51 ans, électricien, moustache, peur du sang. N’existe que par ses traces : la lettre « Pour Jo », la
-photo de Calès, l’insuline, le dossier (« réservé » barré, « nul » au-dessus), la page 14, et un mot dans ta mémoire :
-« Jo ».
+### ACTE IV — « La brume » (jours 5 et 6, `q_brume`)
 
-**Le Berger — Baptistin Castagne** — 70 ans, berger de la Crau, cinquante-deux transhumances jusqu’à l’Ubaye. Chapeau
-de feutre, cape de laine, houlette, un patou et un border colley vivants. Doux, courtois, terrifiant. *Veut* : ramener
-« tout un pays » — chacun des siens mangera un vivant au-delà de la Durance (« une très grande estive »), et venger son
-fils Marius, abattu à un barrage pour une angine. *A tort* : il échange des vivants contre ses morts. Propose un marché :
-la médecin contre le salut de Calès. Portrait `berger`.
+1. **La Poudrerie** (`pou_arrivee`) : le parc et ses platanes, la maison du gardien. Qui est là dépend de la chute
+   (Karine et Noa, les familles parties à l’aube, ou personne). Si l’enveloppe est fermée, Inès : « Ouvre-la. »
+   (`pou_enveloppe` → `doc_lettre_helene`). → `q_brume.attendre`. Les sorties de la Poudrerie sont fermées
+   (« Hélène a dit d’attendre deux jours ici »).
+2. **La journée** (jour 5, 14 h ; `pou_jour`) : personne d’autre ne vient. Inès bricole une antenne sur le toit ; la
+   radio crache des bouts de bulletin. Survivre : manger, dormir, l’étang.
+3. **L’odeur** (jour 5, 20 h ; `pou_odeur`) : l’eau de Javel, le soir qui tombe sans vent ; Inès tousse. On te donne
+   un foulard mouillé (`foulard_mouille`). **Le danger est dit avant d’être appliqué** (P10).
+4. **La brume** (jour 5, 22 h ; `pou_brume` → cinématique `brume` → `pou_brume_2`) : elle sort de l’étang, couvre la
+   grève, puis le parc. Des morts en sortent sans bruit. Il faut monter : Cornillon-Confoux, le village perché, à
+   trois kilomètres. → `brume_vue`, `q_brume.fuir`, voyage guidé vers `cornillon` (`rh_brume_montee` / `rv_brume`).
+5. **Cornillon** (`cor_arrivee`) : un village vide au-dessus de la mer jaune ; la maison du guetteur. → `cornillon_arrivee`.
+   À l’aube (jour 6, 7 h ; `cor_aube` → cinématique `cornillon_aube` → `cor_aube_2`) : la plaine noyée de brume
+   jaune, les clochers qui dépassent. La radio d’Inès capte enfin le PC Durance : c’est du **chlore** ; restez en
+   hauteur la nuit ; **le pont, mercredi 7 octobre, de 6 h à 7 h**. Inès a trouvé une **carte routière** chez le
+   guetteur. → `pont_annonce`, `q_brume.fin`, `q_pont.preparer`, et les quêtes des dispersés (`q_bastien`, `q_rudy`,
+   `q_karine`) selon qui manque.
 
-**Rose Castagne** — 63 ans, première revenue. Porte le **redon**, la grosse cloche que suit tout le troupeau (« la voix
-de la mère »). Se souvient du goût de Kylian, 16 ans, qui lui apportait des œufs. « On ne revient pas. On repart
-d’ailleurs, avec quelque chose en moins et quelqu’un en plus. » Si tu l’écoutes, elle te promet le redon au pont.
-Portrait `rose`.
+### ACTE V — « Le pont » (jours 6 à 15, `q_pont`) : le pays est ouvert
 
-**Nadège** — caporal-chef de l’escadron de protection de la BA 701, revenue le 19. Sonnaille au cou, main froide.
-Messagère du Berger, t’épargne dans la rue de l’Horloge, te guide à la base. Portrait `nadege`.
+Le joueur va où il veut. La base est Cornillon (Inès y reste ; ceux qu’on retrouve y montent). Le monde presse :
+**la brume** les nuits sans vent dans les terres basses ; **les sirènes** et **les hordes** (`js/game/ruees.js`) ;
+la météo ; la faim. Les missions de survie déjà écrites (`m_guetteur` à Cornillon, `m_aime`, `m_mireille`,
+`m_marche`, `m_draisine`, `m_coffre`) sont ouvertes.
 
-**Commandante Sabine Orsini** — 50 ans, cheffe du PC Durance. Voix de la radio. Pas un monstre : une officière qui
-exécute Cautère en sachant ce que c’est. Laisse passer ta brûlure « bien ronde ». Salue, dans la fin sombre.
-Portrait `orsini`.
+- **Bastien** (`q_bastien`, Istres, marqueur `bastien_ist`, `ist_bastien`) : dans l’arrière-boutique d’une pharmacie,
+  les poumons brûlés. Il sait le chlore ; il a un **masque à gaz** et deux filtres (pris aux pompiers d’Istres) qu’il
+  ne peut plus porter assez longtemps pour marcher. Le ramener (il montera à Cornillon par les collines,
+  `bastien_cornillon`) ou le laisser.
+- **Karine et Noa** (`q_karine`, Grans, marqueur `karine_gra`, `gra_karine`) — si elles ne sont pas déjà avec toi :
+  cachées chez le meunier. Noa a encore de la fièvre : il faut les antibiotiques de Gérard (ou d’autres).
+  → `noa_soignee`, `famille_cornillon`.
+- **Rudy** (`q_rudy`, péage de Lançon, marqueur `rudy_lan`, `lan_rudy`) : dans sa cabine, à sec ; Yohan est mort
+  (mordu) et attaché sur le siège passager. Rudy se justifie (« J’ai ouvert pour sortir. Je comptais refermer. »).
+  Lui apporter **20 litres de gasoil** (`jerrican_gasoil`) → `camion_plein`, il monte à Cornillon, et la colonne
+  partira en camion ; le laisser ; le tuer (`rudy_mort`).
+- **La colonne** (jour 14, 20 h, si tu es à Cornillon ; `cor_colonne`) : on part, en camion (`camion_plein`) ou à
+  pied. → `colonne_partie`, `colonne_avec_toi`, `q_pont.attendre`, voyage guidé vers `mallemort`
+  (`rh_colonne` / `rv_colonne`). Si tu n’es pas à Cornillon, ils partent sans toi (`colonne_sans_toi`).
+- **Le camp** (`pon_camp`, en arrivant à Mallemort) : des centaines de gens sur la rive sud, des feux interdits, les
+  projecteurs de l’armée en face. Attendre l’aube.
+- **L’aube** (jour 15, entre 5 h et 7 h, à Mallemort ; `pon_aube` → cinématique `pont` → `pon_controle`) : la ligne
+  des 200 mètres, la lieutenante Sabatier, la liste. On se déshabille sous la lampe : **une morsure, et c’est non**
+  (`pon_mordu` → fin « La ligne »). Puis la liste (`pon_liste`) : quatorze noms ; celui d’Hélène est rayé, et à sa
+  place, de sa main : *ceux que j’ai envoyés à la bergerie*. Si Hélène est là (`helene_sauvee`, `pon_helene`) : elle
+  n’a plus de place. Lui donner la tienne (fin « Sa place ») ou traverser (`pon_traverser` → fin « De l’autre côté »).
+- **Le pont manqué** (jour 15, 7 h, sans toi ; `pont_rate`) : la radio annonce la dernière ouverture, le jour 22
+  (`pont_rate_1`, `q_pont.dernier`). Le jour 22 à l’aube : `pon_aube_dernier` (tu es {seul|seule} ; la colonne est
+  passée sans toi), puis le même contrôle. Manqué deux fois : `pont_rate_2` → fin « Encore un jour ».
 
-**Seconds rôles** : Patrick Veyrier (P3, chauffeur de car, revient « mal » dans sa housse) ; Mireille (P5,
-pharmacienne, « Où est ma fille ? ») ; Karim (brancardier devenu colosse) ; Nathan (meilleur ami de Lou, enfermé devant
-le tombeau de Nostradamus) ; Samir (donné à P5) ; Enzo (11 ans, mordu en silence) ; Théo (la poterne) ; Hugo, Mehdi ;
-Fernand (84 ans, hanche en titane) ; Imbert (Sénas, la chambre froide) ; Athos 6 (pilote de la Patrouille, sanglé dans
-son Alphajet) ; Yanis (revenu, cariste à Clésud, qui veut revoir sa mère aux Canourgues).
+## 7. Les fins
 
-**Portraits** (clé `portrait` des PNJ) : buste, trois-quarts, fond sombre, lumière chaude latérale ; mêmes palettes que
-les décors. `maud` (anorak rouge, blouse, stéthoscope, cigarette), `vidal` (pull bleu, lunettes sparadrap, barbe),
-`lou` (cheveux courts irréguliers, sweat trop grand, stylo derrière l’oreille), `joelle` (gilet de guide, cheveux gris
-courts, carabine en bandoulière), `clemence` (queue de cheval, lecteur de glycémie au cou), `berger` (feutre,
-moustache jaunie, cape brune), `rose` (visage fin, yeux très clairs, le redon contre la poitrine), `nadege` (treillis,
-sonnaille), `imbert` (casquette de coopérative, barbe blanche), `orsini` (treillis, parka, cheveux gris tirés).
-
-## 7. Structure
-
-Durée visée : **4 h 30 à 6 h** (prologue 30-40 min, chapitre 1 ≈ 1 h 45-2 h, chapitre 2 ≈ 1 h 45-2 h 15, final 20-30 min).
-
-### Lieux clés (11, tous dans `lieux.js`)
-
-| Lieu | Chapitre | Rôle |
-|---|---|---|
-| `cimetiere` (Saint-Roch) | Prologue | réveil, tutoriel d’exploration |
-| `tour_horloge` | Prologue | les cloches, Maud |
-| `nostradamus` | Ch1 | refuge de Maud (hub), la cave de P5 |
-| `emperi` | Ch1 | Vidal, Lou, la radio, le sac rouge, le siège |
-| `saint_laurent` | Ch1 | la nef des morts debout, Nathan, Lou |
-| `hopital` | Ch1 | le registre, la salle 4, Luc |
-| `cales` | Ch2 | hub des vivants, Joëlle, le procès, l’antenne |
-| `mallemort` | Ch2 + final | le pont, la ligne Durance |
-| `vernegues` | Ch2 | les revenus, le Berger, Rose |
-| `ba701` | Ch2 | la radio, les codes, Cautère, Protocole R |
-| `senas` | Ch2 (facultatif) | la cloche, la chambre froide |
-
-Aucun lieu supplémentaire n’est nécessaire. (Proposition facultative, si l’on veut un 12e lieu : le **pont suspendu de
-Mallemort** comme lieu distinct du pont routier — aujourd’hui les deux sont dans `mallemort`.)
-
-### PROLOGUE — « Lot 14 » (tutoriel : les trois temps un par un)
-
-Démarrage : cinématique `intro` → `explorer('cimetiere', { entree: 'caveau' })` → `pro_reveil` (avance le temps de 11 h :
-on sort du caveau vers 19 h, lumière de fin de jour).
-1. **Exploration** (cimetière) — apprendre : se lever, fouiller (`pro_scelle` : téléphone, portefeuille, mot de Maud),
-   trouver de la lumière (`pro_soldat` : lampe frontale), boire (`pro_robinet`), lire (registre, cahier du gardien),
-   décrocher le plan de Salon punaisé au mur de la loge, derrière lequel le gardien, mort dans son fauteuil, a caché le double de la clé, noué à son poignet par une ficelle : la prendre le réveille, toujours (`pro_loge_plan` → `pro_loge_cle` → `pro_loge_reveil`), sortir (`pro_grille` : la clé seulement — barbelé de l’armée, pas d’escalade).
-   Moment fort facultatif : Patrick (P3) dans sa housse (`pro_patrick`).
-2. **Carte + voyage** — une seule destination marquée : la Tour. Rencontre `rh_pro_marche` (choix : traverser le marché
-   mort, contourner = détour, regarder) puis `rh_pro_premier` (**premier combat**, un serveur, `tutoriel: true`).
-3. **La Tour** — `pro_horloge` (lumière levée), cinématique `pro_cloches`, choix **chronométré** `pro_cloches` (courir,
-   marcher parmi eux, ou céder à la faim et aller vers les cloches → combat), montée, `pro_mecanisme`, `pro_maud`,
-   cinématique `pro_sommet`, `pro_fin` (téléportation chez Nostradamus, cinématique `ch1_intro`).
-Drapeaux : `pro_note_lue`, `patrick_acheve`/`patrick_laisse`, `pro_suivi_cloches`, `pro_marche_parmi_eux`, `prologue_fini`.
-
-### CHAPITRE 1 — « Les vivants » (Salon)
-
-Quête principale `q_protocole` :
-1. `ch1_matin` — Maud : le Mercredi, la ligne Durance, **Cautère**, la radio de Vidal. `nos_bras` : **cautériser la
-   morsure au fer rouge** (brûlure, drapeau `cicatrice_brulee`), la bander (`bras_bande`) ou la montrer (`bras_nu`).
-2. `emp_arrivee` — l’inspection des bras à la porte de l’Empéri. Statuts : `emp_statut` = `normal`, `immunise`
-   (quarantaine) ou `rejete` (Vidal ne parle qu’à travers la grille).
-3. **Saint-Laurent** — la nef pleine de morts debout ; la clochette du prêtre couvre tes pas (**discrétion** : tant
-   qu’elle sonne) ; voler la clé de la sacristie (`stl_cure`) ; Nathan derrière la grille du tombeau (`stl_nathan`) ;
-   Lou dans le clocher (`stl_lou`) ; sortie par la sacristie (`stl_sortie`).
-4. `emp_retour_lou` puis `emp_radio` : le PC Durance ne répond qu’**authentifié**.
-5. **L’hôpital** — `hop_brancardier` (boss : Karim), `hop_salle4` + cinématique `souvenir_cloche` (« Jo »),
-   `hop_registre` (**un pour un**, page 14 arrachée), `hop_casier` (« Pour Jo »), `hop_frigo` (l’insuline),
-   `hop_bureau` (rapport du 8/09), `hop_dossiers` (Luc : 3 h 10).
-6. **Retournement** — `ch1_confrontation` : Maud avoue ; Mireille (P5) se réveille, dit « Où est ma fille ? », rechute
-   (combat) ; « RATÉ ». Choix : **garder le secret** (`maud_protegee`) ou **dénoncer à Vidal** (`maud_denoncee` →
-   `emp_denonciation`, `emp_arrestation` : Maud enfermée dans la chapelle).
-7. **La nuit des sonnailles** — cinématique `nuit_sonnailles` ; en chemin, `rh_ch1_cours` (Nadège t’épargne) ;
-   `ch1_siege_1` : trois postes (porte / remparts / chapelle — Enzo), puis `ch1_siege_crise`, **choix chronométré** :
-   fermer la grille sur Vidal (le même geste que lui), attendre, ou sortir. Vidal mordu : « Lequel tu me donnerais ? »
-8. **L’aube** — cinématique `aube_troupeau` (le Berger et Rose en tête) ; la radio de Calès : « Ici Jo » ; départ vers
-   le nord (`ch1_fin`, cinématique `ch2_intro`). Le troupeau a **vidé Salon** de ses morts (`troupeau_passe`).
-Secondaire `q_sac_rouge` : le carnet de Lou → le sac dans les ronces → téléphone chargé → **la vidéo du 6 septembre**
-→ confrontation avec Vidal (`emp_vidal_6sept`).
-
-### CHAPITRE 2 — « La transhumance » (le pays salonais)
-
-Quête principale `q_traversee` :
-1. **Calès** — `cal_arrivee` (les bras, encore) ; `cal_insuline` : tu donnes à Clémence l’insuline de son père.
-   Choix décisif : dire « À l’hôpital », « Je ne sais pas », ou **« C’est moi qui l’ai mangé »** (`aveu_precoce`).
-   La lettre « Pour Jo » : la donner (espoir ou vérité) ou la garder.
-2. **Mallemort (reconnaissance)** — le mur de conteneurs, le pont suspendu qui chante, le 200 M rouge, les corps ;
-   `mal_ligne` : reculer, crier (fréquence 4), ou avancer (balle).
-3. **Le procès** (`cal_retour`) — trois ouvertures selon l’état : `cal_proces_a` (tu as déjà avoué), `cal_proces_b`
-   (Maud captive : elle tient la page 14 et te regarde), `cal_proces_c` (Maud médecin adorée : tu peux mentir pour elle).
-   Retournements : **Luc avait des antibiotiques** (Maud a choisi) ; **Maud mange la page 14** pour te couvrir.
-   Verdict : pendre, chasser, garder pour l’armée. Nuit avec Joëlle : « Est-ce qu’il a eu mal ? » — « Il a dit ton nom. »
-4. **Les revenus** — `rh_ch2_revenus` (Nadège t’invite) ; **Vieux-Vernègues** (cinématique `vernegues`) : une
-   communauté de revenus qui te **reconnaît** ; le Berger (marché : la médecin contre le salut de Calès ; une sonnaille
-   pour marcher devant) ; **Rose** et le secret du **redon** (`rose_promesse`).
-5. **BA 701** (cinématique `ba701`) — Fouga pendu, rangers alignées, Alphajets ; le lieutenant de permanence ;
-   l’armoire forte : **valise radio**, **classeur d’authentification**, **ordre Cautère** (« Réf. : rapport Dr M. S.,
-   08/09 ») et **Protocole R** ; Athos 6 sanglé dans son cockpit.
-6. **L’appel** (`cal_contact`) — Orsini : le pont suspendu ouvert **une heure**, à l’aube du premier mistral ;
-   contrôle des bras ; « Sérane, je la veux vivante ».
-7. **Un jour de plus** (facultatif, `q_jour_de_plus`) — ouvrir la **martelière du canal de Craponne** (la draille
-   noyée, mais la citerne de Calès baisse) ; sonner la **cloche de Sénas** (détourner le troupeau… vers la chambre froide
-   des Imbert — ou pour rien, si tu les as convaincus de partir). Ou : livrer Maud au Berger (`berger_contourne`).
-   Chaque délai (`jour_gagne`) donne de l’avance à la colonne au final.
-8. **Le témoignage** (facultatif, `q_temoignage`) — Lou filme ta confession ; tu peux filmer aussi Maud et Rose.
-9. `ch2_veille` — exige d’être allé à Vernègues — la dernière nuit, la guitare à cinq cordes, le vent qui arrive.
-
-### TRANSVERSAL — « Les sirènes » (le rabattage de l’armée : tenir dans la nature)
-
-Avant Cautère, l’armée **rabat** les morts vers le sud : elle a repris le réseau des sirènes d’alerte (celles du
-premier mercredi du mois) et fait passer des drones à haut-parleurs. Quand une zone hurle, **tous** les morts qui
-l’entendent se lèvent et **courent** vers le bruit pendant un jour ou deux, d’autres accourent : la zone devient un
-abattoir, et les collines se vident. Il faut sortir et **tenir** : la **chaîne des Côtes** (pinède, le cabanon de chasse
-du grand-père de Lou, une source), la **Crau** (coussouls, bergerie, puits) ou la **Touloubre** (rivière, vieux moulin,
-jardins ouvriers). Données : `js/data/histoire/ruees.js`, scènes `scenes_ruees.js`, moteur `js/game/ruees.js`.
-- Ch1 : une fois la radio de l’Empéri essayée (`radio_essayee`), elle capte l’armée en clair (`ru_salon_annonce`) :
-  sirènes sur **Salon** 16 h plus tard, pendant 30 h (quête `q_sirenes` : quitter la ville → tenir → fin).
-- Ch2 : à l’étape `ba701`, la fréquence 4 annonce le rabattage des **villages de la plaine** (`ru_plaine_annonce`,
-  quête `q_sirenes_plaine`).
-- Ensuite, tous les 3 à 5 jours (dès le jour 3 pour les hordes) : des **sirènes** (Salon avant `troupeau_passe`, la
-  plaine après) ou une **horde** qui traverse un lieu connu (un bourg, un quartier — souvent un lieu où l'on est déjà
-  allé : ta base). Jamais pendant la nuit des sonnailles, le siège, ni après `mistral_leve`.
-- **La radio** (`js/game/radio.js`) : sans radio, on est **pris par surprise** (un quart d'heure de drones, 25 min de
-  grondement, et seulement sur place). Avec une radio, on le sait ~12 h (sirènes) ou ~8 h (horde) avant, et le
-  bulletin météo annonce pluie, **orage**, mistral, brouillard une heure avant. Une radio est **lourde et encombrante** :
-  ni sac ni dos, on la porte à deux mains, ou on la pose au camp (posée à portée de bras, elle parle encore). Le
-  **poste radio** (trouvé) veut des piles ; la **radio à manivelle** se bricole (mécanique 2, ou la revue de mécanique,
-  le manuel de bricolage, le guide de survie).
-
-### FINAL — « Le mistral »
-
-Cinématique `le_mistral` → `fin_depart` (devant ou derrière la colonne ; le troupeau loin ou proche selon
-`jour_gagne`) → voyage Calès → Mallemort : `rh_fin_colonne` (Fernand), `rh_fin_feu` (**Cautère commence**) →
-`fin_pont_1` + cinématique `pont_mallemort` → **retournement final** `fin_orsini_*` : *le rapport de Maud a signé
-Cautère ; on brûle une idée* → `fin_bras` (Orsini voit ta brûlure « bien ronde » et laisse passer) → `fin_choix`.
-
-## 8. Les fins
-
-| Fin | Condition | Ce qui arrive | Variantes |
+| Fin | Drapeau | Ce qui arrive | Continuer ? |
 |---|---|---|---|
-| **A — Cautère** (« le silence ») | toujours | Tu passes, manches baissées. Herse, pont routier sauté, le feu. Six semaines plus tard, un camp au bord du Rhône : le dimanche, la cloche sonne, ta bouche se remplit. « Un jour de plus. » | Joëlle sait (elle pose une assiette à côté de la sienne sans te parler) / ne sait pas (elle te raconte Luc le soir, tu te tais pour toujours). |
-| **B — La Voix** (« la vérité ») | `temoignage_filme` | Une barre de réseau au milieu du pont ; Orsini lève la main pour qu’on ne tire pas ; un soldat tire quand même ; « Envoyé ». Cautère suspendu. Trois mois plus tard : un gymnase réfrigéré, des familles en file, « LE DON, UN ACTE RESPONSABLE ». « Le monde a eu un jour de plus pour décider. Il a décidé. » | Témoignages de Maud / Rose en plus. |
-| **C — La Transhumance** | `rose_promesse` | Rose te donne le redon. **Vers le feu** : tu mènes onze mille morts dans les flammes, Rose à ton bras ; le dessin de Lou, « Un jour de plus ». **Vers le pont** : les conteneurs basculent, le troupeau passe la Durance ; au pied du Ventoux, chaque matin, des revenus se redressent ; tu es le berger. | Deux faces d’un même choix. |
+| **De l’autre côté** | `fin_pont` | Tu passes le pont avec ceux que tu as gardés en vie. Un camp de l’armée à Mérindol, une douche froide, une liste qu’on appelle. Variantes : Noa guérie, Bastien, Rudy, Inès qui rallume sa radio. | non |
+| **Sa place** | `fin_place` | Tu donnes ta place à Hélène. Elle passe ; tu restes sur la rive sud, avec la Durance entre toi et le reste du monde. « Un jour de plus. » | **oui** : la partie continue, sans quête |
+| **La ligne** | `fin_ligne` | Mordu{|e}, tu es {refoulé|refoulée} à la ligne des 200 mètres. Ceux que tu as amenés passent. Toi, tu as encore quelques jours. | **oui** |
+| **Encore un jour** | `fin_seul` | Le pont ne rouvrira plus. La radio se tait. Il reste le pays, la brume qui faiblit, et toi. | **oui** |
 
-Écran de fin : `js/data/histoire/fins.js` (drapeaux `fin_cautere`, `fin_voix`, `fin_transhumance_feu`,
-`fin_transhumance_estive`).
+L’écran de fin d’une fin « continuer » propose **« Continuer à survivre »** : on reprend la partie là où elle en est
+(bac à sable, comme Project Zomboid).
 
-## 9. Drapeaux importants
+## 8. Drapeaux importants
 
 | Drapeau | Posé par | Sert à |
 |---|---|---|
-| `prologue_fini`, `ch1_fini`, `mistral_leve` | fin de chaque partie | présence des PNJ, déclencheurs |
-| `cicatrice_brulee` / `bras_bande` / `bras_nu` | `nos_bras` | inspections (Empéri, Calès, pont) |
-| `emp_statut` = normal \| immunise \| rejete | Empéri | accès, textes |
-| `lou_sait`, `video_vue`, `vidal_confronte` (+ `vidal_pardonne`/`vidal_avoue`/`vidal_menace`) | sac rouge | Vidal |
-| `registre_trouve`, `souvenir_vu`, `lettre_luc_trouvee`, `insuline_trouvee`, `rapport_lu` | hôpital | procès, radio, Vidal |
-| `maud_protegee` / `maud_denoncee` → `maud_captive` / `maud_medecin` | confrontation | branche du procès |
-| `vidal_mort` / `vidal_acheve` / `vidal_acheve_lou`, `theo_sauve` | siège | Lou, textes |
-| `troupeau_passe` | aube | **Salon se vide** (danger ↓), traînards en région |
-| `aveu_precoce`, `aveu`, `joelle_sait`, `revele_public`, `mensonge_jo`, `maud_a_mange_page`, `page_brulee` | Calès | Joëlle, fins |
-| `maud_morte`, `maud_exilee`, `maud_berger`, `maud_liberee`, `tu_as_tue_maud` | procès et après | Vernègues, pont |
-| `vernegues_fait`, `rose_promesse`, `berger_sonnaille`, `berger_offre_maud`, `berger_contourne` | Vernègues | départ, fin C |
-| `orsini_contact`, `orsini_sait`, `protocole_r_lu` | BA 701, appel | final |
-| `delai_canal`, `delai_senas`, `jour_gagne`, `citerne_basse`, `senas_*` | un jour de plus | final (avance de la colonne) |
-| `telephone_charge`, `temoignage_filme`, `temoignage_maud`, `temoignage_rose`, `temoin_extra` | témoignage | fin B |
-| `cautere_commence` | voyage final | carte : le sud brûle |
+| `refuge_arrivee`, `quarantaine_faite` | acte I | porte de la tour-porte, présence des PNJ |
+| `eau_faite`, `breche_fermee`, `planches_demandees` | corvées | brèche (plan), garde, siège |
+| `garde_faite` / `garde_ratee`, `helene_radio_vue` | la garde | répliques, soupçons |
+| `depart_crau` | `ref_enveloppe` | la frappe, les PNJ |
+| `triage_vu`, `gerard_vu`, `gerard_acheve`, `antibio_trouves` | acte II | armoire, Noa |
+| `enveloppe_ouverte`, `retour_nuit`, `retour_nuit_fait`, `familles_parties` | l’enveloppe | branche de nuit |
+| `frappe_faite` | la frappe | **la brume commence** (`js/game/brume.js`) |
+| `siege_commence`, `siege_tenu`, `refuge_tombe`, `fernand_cloche`, `refuge_fui` | acte III | états du Refuge (vivant / siège / tombé) |
+| `noa_avec`, `helene_sauvee`, `helene_restee`, `helene_vue_chute` | la chute | qui vit, qui est où |
+| `brume_vue`, `cornillon_arrivee`, `pont_annonce` | acte IV | ouverture du pays, sirènes |
+| `bastien_trouve`, `bastien_cornillon`, `noa_retrouvee`, `noa_soignee`, `famille_cornillon`, `rudy_trouve`, `camion_plein`, `rudy_cornillon`, `rudy_mort` | acte V | la colonne, les variantes de fin |
+| `colonne_partie`, `colonne_avec_toi`, `colonne_sans_toi`, `pont_fait`, `pont_rate_1`, `pont_rate_2` | le pont | final |
+| `fin_pont`, `fin_place`, `fin_ligne`, `fin_seul` | fins | écran de fin |
+
+## 9. Systèmes que l’histoire demande au moteur
+
+- **Voyage guidé** : effet de scène `voyage: { vers, indication: true }` — on part tout de suite, sans carte, sur un
+  trajet tracé ; les rencontres scénarisées se déclenchent aux fractions `a` du trajet.
+- **Sorties gardées** : `e.sortie(x, y, w, h, { si, message })` — une sortie fermée tant que la condition est fausse,
+  qui dit pourquoi (la bergerie la nuit, la Poudrerie pendant l’attente).
+- **Mort qui pose un drapeau** : `e.zombie(type, x, y, { flagMort })` (Gérard).
+- **Conditions** : `lieu` (le lieu où l’on est), `et`, `non`, `jourMax`, `heureMin`, `heureMax`, `mordu`.
+- **Effet** `retirer: [['planche', 4]]` (consommer des objets dans une scène).
+- **La brume** (`js/game/brume.js`, `REGLAGES.brume`) : active après `frappe_faite` ; la nuit (21 h → 8 h), sans
+  mistral ni pluie, dans les lieux bas (`BAS`), de plus en plus faible ; le jour 4, la gare seulement, puis elle
+  s’étend. Dans un lieu touché : un voile jaune-vert, la vue réduite, la toux, des PV perdus et le mal de poitrine ;
+  rien au premier étage ; à moitié avec un foulard mouillé ; rien avec un **masque à gaz** muni d’un filtre (un filtre
+  dure 8 heures de brume). Annoncée par l’odeur un peu avant, et par la radio. Mort : `brume`.
+- **Fins qui continuent** : `continuer: true` dans `fins.js`.
+- **Sirènes** : elles ne commencent qu’à l’acte V (`pont_annonce`), sauf celles de la nuit du jour 2, qui ne sont
+  qu’un son et une scène.
 
 ## 10. Conventions d’écriture et de données
 
-- **Tutoiement**, co-op compatible : aucun texte ne suppose qu’on est seul ou à deux. Genre : `{masculin|féminin}`,
-  avec parcimonie ; les écrits du monde (mot de Maud, registre) ne s’accordent pas, sauf ceux qui connaissent le joueur.
-  Le journal est à la **première personne**, sans accord.
-- Apostrophe typographique `’` dans les textes ; zones du corps : vocabulaire `ZONES_CORPS` de `clothing.js`.
-- **`illu`** d’une scène = un id de **décor** (§13) — la bibliothèque de décors sert aussi de vignettes fixes.
-- **Musique** des scènes : `calme | sombre | tension | combat | mort | null` ; des cinématiques : `titre | calme | sombre | tension | combat | mort | refuge`.
-- Conditions : `{ quete: ['id','etape'] }` = étape **courante**. Pour un « et » de deux drapeaux : `flag` + `flagEgal`, ou
-  un drapeau composite (`jour_gagne`, `temoin_extra`).
+- **Tutoiement**, co-op compatible : aucun texte ne suppose qu’on est seul ou à deux. Genre : `{masculin|féminin}`.
+- **Charte** : `docs/CHARTE_ECRITURE.md` (récit fluide, phrases liées, sensations par le personnage, aucune
+  phrase sans verbe en série) et `docs/RETOURS_JOUEUR.md` P9 pour l’interface.
+- Apostrophe typographique `’` dans les textes. Le mot « mort » désigne les créatures (jamais « zombie »).
+- `illu` d’une scène = un id de **décor** (§11). Musique des scènes : `calme | sombre | tension | combat | mort | null`.
+- Conditions : `{ quete: ['id', 'etape'] }` = étape **courante**. Plusieurs drapeaux : `et: [{…}, {…}]`.
 - Les scènes-menus des PNJ (`*_parler`) reviennent à elles-mêmes ; « Partir » → `#fin`.
-- Les effets `combat` reprennent à `suivant` quand le combat se termine (victoire **ou** fuite) ; les textes qui
-  suivent un combat sont écrits pour convenir aux deux issues.
+- Un effet `combat` reprend à `suivant` quand le combat se termine (victoire **ou** fuite).
 
-## 11. Extensions de format utilisées (à implémenter ou ignorer sans casse)
+## 11. Cinématiques et décors
 
-| Extension | Où | Effet attendu |
-|---|---|---|
-| `combat.tutoriel: true` | `rc_pro_premier` | combat guidé (bulles d’aide, mort unique lent, pas de mort du joueur) |
-| effet `detour: mètres` | rencontres | ajoute des mètres au trajet (déjà prévu par GAMEPLAY) |
-| `si` sur un PNJ | `pnj.js` | présence conditionnelle du PNJ |
-| `titre` dans un plan de cinématique | `intro`, `ch1_intro`, `ch2_intro`, `le_mistral` | carton de titre |
-| `DECORS` exporté par `cinematiques.js` | vérification | liste des décors attendus |
-| `PARTIES_SCENES` exporté par `scenes.js` | vérification | détection des doublons |
-| verrou de porte par drapeau `verrou: { flag: 'x' }` | niveaux (voir NIVEAUX_BESOINS) | porte de l’Empéri |
-| entrées nommées `{ entree: 'nom' }` | niveaux | `teleporter: { lieu, entree }` |
+Direction (demande du propriétaire, 25 oct. 2026) : **des plans tournés dans Blender**, sobres, crédibles, sans
+réalisme extrême mais **sans dessin animé** ; des **mains bien faites** (vue à la première personne : peau, ongles,
+plis, poussière, poignets, manches). Lumière naturelle, caméra portée, grain léger. Rendu : `tools/blender/cine/`
+(`plans3.py`, `omd_mains.py`). Chaque plan a un `clip` ; le décor est le repli si la vidéo manque, et sert de vignette
+aux scènes (plaque photo `img/cine/<décor>.webp` : une image du clip tourné, `plaques_histoire.py`).
+Les **vignettes fixes** des scènes (`refuge_place`, `triage_horde`…) sont de **vraies photos 360°** Poly Haven, cadrées
+et étalonnées (`plaques_photo.py`, cadrages dans `vignettes_photo.py`), avec, quand il le faut, des éléments 3D
+incrustés sous la lumière de la photo (`composites.py` : la horde, les morts du péage, la bergerie). Les scènes n'en
+montrent souvent que la bande centrale (panneau vertical) : ce qui compte doit être au milieu.
 
-## 12. Besoins pour le gameplay (à l’attention du game designer et des moteurs)
+### Les cinématiques
 
-- **Morts utilisés** : `errant`, `coureur`, `enrage`, `colosse`, `militaire`, `rampant`, `fauve` (tous présents dans
-  `zombies.js`). Souhaits : un **« sonnailleur »** (mort portant une cloche : fait du bruit en marchant, attire les
-  autres) pour le troupeau et les traînards ; un **« raté »** (revenu qui rechute : parle une phrase, puis enragé) pour
-  Mireille et Patrick — à défaut `enrage` convient.
-- **Plaies** : `brulure` (cautère, pont), `profonde` (balle), `entaille`, `egratignure`.
-- **Le revenu** (réponse à GAMEPLAY §14) : proposition légère — les morts détectent un peu moins le joueur à l’odeur
-  (« il sent le froid »), jamais au bruit ni à la vue ; le son `cloche` (et les sonnailles) déclenche un toast
-  « Ta bouche se remplit. » et +faim légère. Le « mal » de GAMEPLAY §5.4 colle à l’histoire : à 100, c’est la mort
-  `infection`/`rechute` (texte dans `morts.js`).
-- **Causes de mort** supplémentaires écrites : `rechute`, `froid`, `feu`, `balle`, `chute`, `noyade`, `execution`,
-  `fauve`, `epuisement`.
-- **Drapeaux → monde** : `troupeau_passe` : danger de Salon fortement réduit (le troupeau a emporté ses morts), rues
-  « vides » ; traînards dans la région nord. `cautere_commence` / `mistral_leve` : mistral (bruit ambiant fort : ouïe
-  des morts et du joueur réduites), feu au sud de la carte. `citerne_basse` : l’eau de Calès rationnée.
-- **Rencontres aléatoires** : désactivées pendant le prologue (hors scénarisées) ; `poids: 0` = scénarisée uniquement.
-- **Objets** : tous les objets d’histoire sont dans `objets_quete.js` (dont `valise_radio` 8,5 kg, `redon` 4 kg).
-  La `perche_fourriere` (lore) pourrait devenir une arme d’allonge (poussée) si le game designer le souhaite.
-- **Temps** : `pro_reveil` avance de 11 h (réveil à 8 h → sortie du caveau vers 19 h). Le reste de l’histoire ne
-  dépend pas de l’heure, sauf la libération/l’exécution de Maud (`nuit: true`).
+**`intro`** (titre) — *Le message.*
+1. `intro_1` (`crau_aube`) — La Crau au lever du jour, une route droite, une voiture brûlée, des pylônes. « Pays
+   salonais. Trois semaines après le Mercredi, le jour où le marché de Salon s’est mis à mordre. »
+2. `intro_2` (`mains_radio`) — Gros plan, première personne : deux mains sales tiennent un petit poste à piles ; le
+   pouce tourne la molette ; le grésillement. « Depuis vingt jours, tu survis {seul|seule}. Il y a deux jours, ta radio
+   a capté une voix. »
+3. `intro_3` (`voie_ferree`) — Première personne, on marche sur le ballast d’une voie unique vers une colline ; en
+   haut, des remparts et un clocher dans le soir. « “Ici le Refuge de Miramas-le-Vieux. Nous accueillons les
+   survivants. Venez à la porte Notre-Dame. Montrez vos mains.” »
+4. `intro_4` (`refuge_porte`) — Contre-plongée sur la porte : un arc de pierre doublé de palettes et de tôles, une
+   silhouette sur le rempart, le faisceau d’une lampe qui descend sur toi. « “Stop ! Montre tes mains !” »
+5. `intro_5` (`mains_levees`) — Première personne : les mains se lèvent dans le faisceau, paumes ouvertes, puis
+   retroussent les manches et tournent les avant-bras, lentement. « Pas de morsure. Pas encore. » (attendre)
+6. `intro_6` (`noir`) — Carton « One More Day ». (attendre)
 
-## 13. Briefs des décors de cinématiques
+**`frappe`** (tension) — *La gare.*
+1. `frappe_1` (`crau_aube`) — L’aube sur la Crau depuis la bergerie ; Fernand de dos, bâton en main ; deux avions
+   passent très bas. « Le grondement arrive avant les avions. »
+2. `frappe_2` (`triage_feu`) — Au loin, la gare de triage : explosions en chapelet, une boule de feu, puis un nuage
+   jaune-vert qui roule au ras du sol au lieu de monter. « Puis le feu, et après le feu, quelque chose de jaune qui ne
+   monte pas. »
+3. `frappe_3` (`mains_enveloppe`) — Première personne : une main tient l’enveloppe d’Hélène, l’autre se crispe
+   dessus ; au fond, flou, le nuage. « “À n’ouvrir que si le Refuge tombe.” » (attendre)
 
-Direction commune (REFONTE §8) : nuit, encre, papier sale, lumière chaude rare (ambre `#c9a227`), sang
-(`#8e1b24`/`#d6303e`), crème `#e6dfcc` sur quasi-noir `#0b0b0c`. SVG en **4 à 6 couches** de parallaxe (L1 = fond, le
-plus lent ; L5-L6 = premier plan, le plus rapide). Silhouettes découpées, peu de détails internes, textures de grain.
-Largeur ≈ 3 écrans pour les travellings (`x` 0 → 1). Les décors « vignettes » (fin de liste) servent d’illustrations
-fixes aux scènes : 3 couches suffisent, cadrage 16:9 centré.
+**`chute`** (combat) — *La porte.*
+1. `chute_1` (`refuge_nuit`) — Le rocher de nuit, les remparts éclairés par des torches, une masse sombre qui monte
+   la pente. « Ils montent par centaines. »
+2. `chute_2` (`mains_corde`) — Gros plan : de vieilles mains noueuses tirent la corde d’une cloche ; la corde
+   remonte, retombe. « Fernand sonne. »
+3. `chute_3` (`refuge_nuit`) — Dans la rue, les morts tournent tous la tête vers l’église et s’y dirigent. « Et ils
+   vont tous vers lui. » (attendre)
 
-### Décors de cinématiques
+**`brume`** (sombre) — *L’étang.*
+1. `brume_1` (`etang_nuit`) — L’étang de Berre sous la lune ; une brume basse, jaunâtre, avance sur l’eau.
+2. `brume_2` (`poudrerie_brume`) — Le parc de la Poudrerie : la brume coule entre les platanes ; une silhouette en
+   sort, sans bruit.
+3. `brume_3` (`mains_foulard`) — Première personne : une main plaque un foulard mouillé sur le bas du visage ; l’autre
+   s’appuie au tronc ; la toux. (attendre)
 
-**`salon_marche`** — *Le cours Carnot, mercredi 2 septembre, 10 h, avant.* L1 ciel bleu pâle, rocher et château de
-l’Empéri au loin. L2 façades provençales ocre et crème, volets bleus, toits de tuiles, enseignes (tabac, pharmacie).
-L3 voûte de platanes, troncs tachetés. L4 étals et bâches rayées rouge/blanc/vert, cageots de pêches, fromages sous
-cloche, fleurs. L5 foule en silhouettes colorées (cabas, poussettes). Palette chaude : ocre `#d9a45b`, vert platane
-`#6f8a3e`, bâches `#b8322c`. Anim : `foule_marche` (glissement lent des silhouettes), `platanes_brise`,
-`pigeons_envol`, `fontaine_coule` (fontaine de la place de Gaulle à gauche).
+**`cornillon_aube`** (calme) — *La mer jaune.*
+1. `cornillon_1` (`cornillon_belvedere`) — Du belvédère de Cornillon : la plaine noyée sous une brume jaune, d’où
+   dépassent des clochers, des pylônes, la tour d’une usine ; l’étang qui brille.
+2. `cornillon_2` (`mains_carte`) — Première personne : des mains déplient une carte routière sur le muret ; un doigt
+   suit la route jusqu’à la Durance. (attendre)
 
-**`salon_mercredi`** — *Même cadre, 10 h 51 : la panique.* Même composition que `salon_marche` mais ciel voilé, étals
-renversés, fruits écrasés, une bâche arrachée, une silhouette penchée sur une autre au premier plan (lecture floue,
-pas de gore explicite), un gyrophare bleu lointain. Palette désaturée, rouges plus sombres. Anim : `foule_court`
-(silhouettes qui filent dans les deux sens), `etals_renverses` (un étal bascule), `silhouette_penchee` (mouvement de tête
-saccadé).
+**`pont`** (tension) — *L’aube du mercredi.*
+1. `pont_1` (`durance_pont`) — La Durance à l’aube, le pont suspendu entre ses pylônes de pierre, les projecteurs.
+2. `pont_2` (`mallemort_camp`) — La foule de la rive sud qui se lève, des couvertures, des enfants portés.
+3. `pont_3` (`mains_liste`) — Première personne : une main gantée de soldat tend une feuille ; tes mains la prennent.
+   (attendre)
 
-**`couloir_hopital`** — *Urgences, la nuit.* L1 couloir en perspective, portes de box numérotées, néons. L2 brancards
-contre les murs, un drap. L3 chariot de soins avec une petite **clochette** de bronze à manche de bois. L4 une main
-(manche de blouse, anorak rouge au poignet) qui glisse un papier plié dans la poche d’une housse blanche. Palette
-vert d’eau `#8fb3a8`, blanc sale, un seul accent rouge. Anim : `neon_clignote`, `clochette_tremble`, `main_billet`.
+**Fins** : `fin_pont` (`mallemort_camp` puis `camp_refugies`), `fin_place` (`durance_pont`, `mains_feu`),
+`fin_seul` (`cornillon_belvedere`, `mains_feu`). La fin « La ligne » reprend `fin_seul`.
 
-**`salon_mistral_vide`** — *Salon trois semaines après, jour, vent.* L1 ciel très bleu, nuages étirés. L2 toits,
-Tour de l’Horloge (cadran 21 h 10), château. L3 cours désert, voitures abandonnées portières ouvertes. L4 platanes qui
-ploient. L5 un journal qui vole, feuilles. Palette froide lumineuse `#5d8fb8`, ocres lavés. Anim : `platanes_vent`,
-`journal_vole`, `drone_passe` (petit drone gris au loin).
+### Les décors (vignettes et replis)
 
-**`housse_noir`** — *L’intérieur de la housse.* Quasi-noir, un léger dégradé blanc laiteux (plastique vu de dedans),
-une ligne verticale de fermeture éclair. Anim : `souffle_plastique` (le plastique se gonfle et se colle en rythme),
-`fermeture_eclair` (la ligne s’ouvre de haut en bas, lumière orangée qui entre). Sert aussi au carton de titre.
+Images des plans tournés, ou photos réelles pour les vignettes fixes. Les anciens décors encore utiles sont gardés
+(`durance_pont`, `camp_refugies`, `plaine_route`, `nuit_campagne`, `crau_mistral`).
 
-**`place_crousillat_nuit`** — *La place, la nuit.* L1 ciel nocturne indigo. L2 Tour de l’Horloge trois étages de pierre
-blonde, campanile de fer forgé et trois cloches, cadran 21 h 10. L3 façade du Grand Hôtel de la Poste (fenêtres noires),
-maisons. L4 **la Fontaine Moussue** : champignon de pierre verte barbu de mousse, quatre mascarons crachant l’eau.
-L5 terrasses : tables rondes, chaises renversées, un parasol plié. Accent : un cône de lampe au sol (joueur hors champ).
-Palette `#1c2230`, pierre `#b9a27a`, mousse `#4d6b3a`, lampe `#e8d49a`. Anim : `cloches_balancent`, `fontaine_coule`,
-`silhouettes_convergent` (des dizaines de silhouettes sortent des rues et marchent vers la tour, visages levés),
-`porte_entrouverte` (rai de lumière au pied de la tour, une main).
-
-**`horloge_sommet`** — *Du sommet de la tour, nuit.* L1 horizon : Alpilles en ombre, lueur d’incendie lointaine.
-L2 toits de la vieille ville, l’Empéri éteint sur son rocher (une fenêtre allumée). L3 la place en contrebas : foule
-immobile, visages levés, la fontaine. L4 ferronnerie du campanile, une cloche en amorce, cadran vu de dos (21 h 10).
-Palette bleu nuit, points ambre. Anim : `foule_immobile` (très léger balancement), `cloches_immobiles`,
-`incendie_lointain`, `cadran_21h10` (reflet sur l’aiguille).
-
-**`salon_aube_toits`** — *Aube depuis la maison de Nostradamus.* L1 ciel rose-gris, brume basse. L2 le rocher du Puech
-et le château, linge qui sèche sur les remparts. L3 mer de toits de tuiles, cheminées, fumées droites (pas de vent).
-L4 lucarne et rebord de pierre au premier plan. Palette `#d8a79a`, `#7c6f78`. Anim : `martinets`, `fumees_droites`,
-`linge_emperi`, `platanes_immobiles`.
-
-**`salle_quatre`** — *Salle des plâtres, souvenir.* Cadrage serré, rouge dominant. L1 carrelage mural. L2 lit
-d’examen, sangles de cuir, menottes. L3 chariot, bandes plâtrées, clochette. L4 brancard qui entre par la droite : un
-homme moustachu, jambe en attelle, qui ne crie pas. Palette `#3a0f12`, `#8e1b24`, blanc cassé. Anim :
-`clochette_agitee`, `sangles_tirent`, `brancard_approche`, `visage_homme` (gros plan flou, lèvres qui forment « Jo »).
-
-**`cours_troupeau`** — *Le cours Victor-Hugo, nuit des sonnailles.* L1 ciel noir, étoiles. L2 façades, rocher de
-l’Empéri au fond (torches sur les remparts). L3 voûte de platanes. L4 **la marée** : masse compacte de silhouettes qui
-remplit le cours d’un trottoir à l’autre. L5 en tête, silhouettes droites avec cloche au cou et lampe au poing
-(faisceaux). Palette `#0e1016`, faisceaux `#e8d49a`. Anim : `troupeau_coule` (défilement continu), `lampes_de_tete`
-(faisceaux qui balaient), `sonnailleurs_marchent`, `troupeau_tourne` (la masse s’incurve vers le rocher),
-`emperi_lointain` (torches qui vacillent).
-
-**`emperi_siege`** — *L’Empéri pendant le siège (vignette et fond).* L1 ciel rougi. L2 murs et tours, torches sur le
-chemin de ronde, gamins en silhouette avec sabres et bouteilles. L3 porte et grille de chantier doublée de palettes.
-L4 marée au pied, bras levés. Effets compatibles : braises, fumée. Palette noir/ambre/rouge.
-
-**`emperi_remparts_aube`** — *Du rempart, à l’aube.* L1 ciel gris perle. L2 plaine vers le nord, route d’Avignon, rond-
-point, champs, horizon. L3 **le troupeau** qui s’éloigne en rivière de dos courbés. L4 en tête, minuscules : le Berger
-(chapeau, houlette, cape), deux chiens, Rose portant **le redon** contre sa poitrine. L5 créneaux du rempart au
-premier plan. Palette froide `#9aa3a8`. Anim : `troupeau_s_eloigne`, `berger_marche`, `chiens_tournent`, `redon_balance`.
-
-**`route_jean_moulin`** — *Sortie nord de Salon, matin.* L1 ciel clair, Alpilles au loin. L2 rond-point, **statue de
-Jean Moulin** (bronze noir, bras tendus vers le ciel), un drap blanc noué aux poignets (« CALÈS → PAR LES COLLINES »).
-L3 route piétinée, glissières tordues, chaussures, poussette. L4 herbes du bas-côté. Anim : `drap_claque`.
-
-**`cales_falaises`** — *Le cirque de Calès au-dessus de Lamanon.* L1 ciel. L2 deux falaises de safre jaune `#d7b36a`
-trouées de grottes carrées sur plusieurs niveaux, escaliers taillés. L3 feux dans les grottes, linge, silhouettes,
-une échelle de corde. L4 chênes kermès, antenne tendue au sommet. Soir : ciel orangé, lueurs ambre. Anim :
-`feux_grottes`, `echelle_corde`, `linge_seche`.
-
-**`vernegues_ruines`** — *Vieux-Vernègues, la nuit.* L1 ciel étoilé, plaine en contrebas (lumières nulles). L2 dent
-du château ruiné. L3 église sans toit, arcs sans voûte ; sur le mur, à la chaux, **UN POUR UN**. L4 figuiers dans les
-ruines, bouches de caves au ras du sol. L5 centaines de bougies (niches, murets) ; silhouettes assises (revenus) qui
-jouent aux cartes. Palette bleu-noir, bougies `#f0c26a`. Anim : `bougies_vacillent`, `revenus_assis`,
-`inscription_chaux` (lumière qui glisse sur l’inscription).
-
-**`ba701_tarmac`** — *Base aérienne 701, jour de chaleur.* L1 ciel blanc de chaleur, collines. L2 tour de contrôle,
-hangars arrondis, grillage, miradors vides. L3 neuf **Alphajets** bleu-blanc-rouge alignés, verrières fermées.
-L4 rond-point : **Fouga Magister** sur son mât, un corps en uniforme pendu au bout de l’aile. L5 parking : trois cents
-paires de rangers alignées. Palette `#d9d2bd`, tricolore délavé. Anim : `fouga_mat`, `corps_balance`, `manche_a_air`,
-`drapeau_mat`, `rangers_alignees` (léger miroitement), effet `chaleur`.
-
-**`crau_mistral`** — *La plaine sous le mistral.* L1 ciel lavé bleu cobalt `#2f6db3`, nuages déchiquetés qui filent.
-L2 Alpilles nettes. L3 plaine caillouteuse, haies de cyprès pliées. L4 herbes couchées, poussière. L5 la colonne de
-Calès (silhouettes courbées, enfants portés). Anim : `herbes_couchees`, `nuages_filent`, `cypres_plient`,
-`colonne_marche`.
-
-**`durance_pont`** — *Mallemort, le fleuve.* L1 ciel (bleu de mistral ou gris). L2 rive nord : sacs de sable, filets
-de camouflage, projecteurs, tente blanche, silhouettes en combinaison. L3 **pont suspendu** : pylônes de pierre en arc
-de triomphe, câbles en courbe, tablier de planches, « 200 M » peint en rouge. À côté, le pont routier béton muré de
-conteneurs empilés. L4 Durance grise, écume, bancs de galets. L5 rive sud, roseaux. Anim : `cables_vibrent`,
-`eau_ecume`, `colonne_traverse`, `projecteurs`, `troupeau_arrive`, `herse_tombe`, `pont_routier_saute`,
-`conteneurs_basculent`, `troupeau_traverse`, `telephone_envoye` (gros plan : écran, barre de progression),
-`ecrans_s_allument` (fondu vers mosaïque d’écrans).
-
-**`ligne_de_feu`** — *Cautère.* L1 ciel noir-orange. L2 collines de pins en feu. L3 mur de flammes couché par le vent
-vers la droite (sud). L4 silhouettes (troupeau) et, selon le plan, le Berger immobile. L5 braises. Passage d’avions
-(silhouettes basses). Palette `#1a0a05`, `#e2551c`, `#f4b23c`. Anim : `flammes_avancent`, `avions_passent`,
-`troupeau_brule`, `berger_immobile`, `troupeau_arrive`.
-
-**`camp_refugies`** — *Camp de toile au bord du Rhône, six semaines après.* L1 ciel gris d’automne, platanes jaunes.
-L2 Rhône, peupliers. L3 rangées de tentes blanches, une chapelle en préfabriqué avec une petite cloche. L4 cuisine
-collective, fumée. Anim : `tentes_vent`, `fumee_cuisine`, `cloche_chapelle`.
-
-**`gymnase_froid`** — *Gymnase réfrigéré, banlieue de Lyon.* L1 murs, paniers de basket relevés, lignes du terrain.
-L2 **quatre cents housses blanches** alignées sur le parquet, étiquettes. L3 affiche « LE DON, UN ACTE RESPONSABLE ».
-L4 file de familles à la porte, buée. Palette blanc bleuté `#cfdbe3`, lumière de néon. Anim : `file_familles`,
-`buee_respiration`, `affiche_don`.
-
-**`troupeau_feu`** — *Fin C, vers le feu.* L1 ciel en feu. L2 collines embrasées. L3 une silhouette de dos, le redon
-levé, une petite femme à son bras. L4 onze mille silhouettes qui suivent. Dernier plan : route calcinée, une cloche
-fêlée au sol. Anim : `troupeau_suit`, `redon_leve`, `rose_bras`, `flammes_avancent`, `silhouette_dans_flammes`,
-`cloche_au_sol`.
-
-**`estive_ventoux`** — *Fin C, l’estive.* L1 le Ventoux, sommet blanc « comme un os ». L2 pentes, alpages. L3 le
-troupeau qui monte en file. L4 des silhouettes qui se redressent, regardent leurs mains. Lumière d’aube froide.
-Anim : `troupeau_monte`, `redon_balance`, `revenus_se_redressent`, `sommet_blanc`.
-
-### Vignettes des scènes (plans fixes)
-
-- **`cimetiere_caveau`** — intérieur d’une chapelle funéraire : étagères de marbre, cercueils de chêne, inscription
-  FAMILLE ROUX-BÉRENGER, housses blanches au sol, rai de lumière rouge sous la porte.
-- **`saint_roch_nuit`** — le cimetière Saint-Roch sur son rocher : allées de mausolées accolés, conteneurs
-  frigorifiques blancs sur l’esplanade, loge du gardien, soldat NRBC assis, housses le long des murs, grille ouvragée.
-- **`cours_nuit`** — les cours de Salon la nuit : platanes, étals abandonnés sous bâches, voitures, enseigne du tabac,
-  réverbères morts ; lune.
-- **`nostradamus_cabinet`** — le cabinet reconstitué du musée : bureau de bois, sphère armillaire, crâne en plâtre,
-  mannequin de cire en robe noire de médecin du XVIe, scanner radio sur batterie de voiture, cendrier plein.
-- **`emperi_cour`** — la cour d’honneur de l’Empéri, galerie Renaissance, linge entre les colonnes, marmite sur feu de
-  palettes, tableau d’ardoise, tour d’angle avec antenne sur bâton de ski.
-- **`montee_puech`** — la montée du Puech : galets, deux murs, grilles du lycée, banderole « BIENVENUE AUX SECONDES »,
-  porte du château doublée de palettes, ronces sous le rempart.
-- **`collegiale_nef`** — nef gothique très haute, bancs, dizaines de silhouettes debout tournées vers l’autel, prêtre
-  en aube avec clochette, grille de la chapelle de la Vierge et plaque de Nostradamus, lumière de cierges.
-- **`hopital_parvis`** — urgences : ambulances en épi portes ouvertes, tente militaire effondrée, housses contre le mur,
-  drap « ICI ON SOIGNE ENCORE ».
-- **`hopital_sous_sol`** — couloir de sous-sol, néons morts, tiroirs d’inox de la morgue, casiers du vestiaire, lampe.
-- **`cales_grande_salle`** — la grande grotte de Calès : voûte de safre, torches, foule assise, un tabouret au centre.
-- **`senas_station`** — vergers sous filets anti-grêle noirs, station fruitière de tôle, « NON » à la bombe rouge,
-  clocher au fond.
-- **`plaine_route`** — route départementale entre oliviers et vergers, restanques, Alpilles au loin, jour.
-- **`nuit_campagne`** — chemin de campagne la nuit, borne kilométrique, silhouette assise, étoiles.
+- **`crau_aube`** — la Crau à l’aube : galets, herbe rase, une route droite, des pylônes, une voiture brûlée.
+- **`mains_radio`** — gros plan sur des mains qui tiennent un poste à piles.
+- **`voie_ferree`** — une voie unique dans le soir, la colline de Miramas-le-Vieux et ses remparts.
+- **`refuge_porte`** — la porte Notre-Dame la nuit : arc de pierre, palettes, tôles, la lampe du guetteur.
+- **`mains_levees`** — mains levées dans un faisceau de lampe, manches retroussées.
+- **`noir`** — fond noir (cartons de titre).
+- **`refuge_place`** — la place du Refuge le jour : l’église, le linge, le camion bâché, le puits.
+- **`refuge_nuit`** — les remparts la nuit, les torches, la pente en contrebas.
+- **`refuge_cellule`** — la cellule de quarantaine : voûte, matelas, bougie, judas.
+- **`refuge_donjon`** — le donjon d’Hélène : une table, le poste radio des gendarmes, le carnet.
+- **`triage_horde`** — la gare de triage vue du pont : des trains, des milliers de silhouettes, les wagons blancs.
+- **`triage_feu`** — la gare de triage en feu, le nuage jaune.
+- **`bergerie_crau`** — la bergerie de Cabassole : long bâtiment de pierre, puits à balancier, enclos.
+- **`bergerie_nuit`** — le mas la nuit : la cheminée, Fernand, la soupe.
+- **`mains_enveloppe`** — une enveloppe entre deux mains.
+- **`mains_corde`** — des mains âgées sur une corde de cloche.
+- **`etang_nuit`** — l’étang de Berre la nuit, une brume basse.
+- **`poudrerie_parc`** — le parc de la Poudrerie : platanes, canal, maison du gardien.
+- **`poudrerie_brume`** — le même parc noyé de brume jaune.
+- **`mains_foulard`** — un foulard mouillé plaqué sur le visage.
+- **`cornillon_belvedere`** — la plaine sous la brume vue de Cornillon.
+- **`mains_carte`** — une carte routière dépliée sur un muret.
+- **`mallemort_camp`** — le camp de la rive sud à l’aube.
+- **`mains_liste`** — une feuille tendue par une main gantée.
+- **`mains_feu`** — des mains au-dessus d’un petit feu.
+- **`peage_lancon`** — le péage de Lançon : sept voies de voitures, un camion bâché.
+- **`grans_moulin`** — le vieux moulin de Grans au bord de la Touloubre.
+- **`istres_pharmacie`** — l’arrière-boutique d’une pharmacie, des rideaux tirés.
+- **`durance_pont`** — la Durance, le pont suspendu et ses pylônes de pierre, la rive nord tenue par l’armée.
+- **`camp_refugies`** — un camp de toile au bord du Rhône, l’automne.
+- **`plaine_route`** — une départementale entre oliviers et vergers, les Alpilles au loin.
+- **`nuit_campagne`** — un chemin de campagne la nuit, une borne kilométrique.
+- **`crau_mistral`** — la plaine de la Crau sous le mistral.

@@ -1,9 +1,12 @@
 // Istres — un bout de ville au bord de la BA 125. L'avenue et son parking, le tabac-presse (arrière-boutique,
-// réserve), un petit immeuble (hall, deux appartements). Derrière la grille forcée : le bâtiment des transmissions
-// (le dernier message de la base est resté à côté des radios) et un hangar fermé de l'intérieur — ils cognent
-// encore contre la porte. Sortie : l'avenue (ouest).
+// réserve), un petit immeuble (hall, deux appartements), et au sud de l'avenue LA PHARMACIE : l'officine pillée, et
+// derrière, l'arrière-boutique fermée, sans fenêtre, où Bastien se cache à l'acte V (marqueur `bastien_ist`, scène
+// ist_bastien), les poumons brûlés par la brume. Repère : la croix verte de l'enseigne, au coin de la façade.
+// Derrière la grille forcée : le bâtiment des transmissions (le dernier message de la base est resté à côté des
+// radios) et un hangar fermé de l'intérieur — ils cognent encore contre la porte. Sortie : l'avenue (ouest).
+// Version 1 : la pharmacie (sur le parking au sud de l'avenue).
 export default {
-  id: 'istres', nom: 'Istres', exterieur: true,
+  id: 'istres', nom: 'Istres', exterieur: true, version: 1,
   sansSanitaires: ['Le hangar'],   // pas de toilettes, et c'est normal : un hangar (tools/verifier_realisme.mjs)
   typeButin: 'village',
   pool: ['errant', 'errant', 'coureur', 'hurleur', 'militaire', 'enrage'],
@@ -34,19 +37,19 @@ export default {
       'E,,,vvv,,,,,,,,,,,,,,,,,,,,,,vvv,,,,,,%,,,;,,,,,,,vvv,,,Z,,,,,,,T,,,,x',
       'x,,,,,,,,,,,,,%,,,,,,,,,,Z,,,vvv,,,,,,,,,,H,,,,,,,,,,,,,,,,,,,,,,,,,,x',
       'x,,T,,,,T,,,,T,,,,T,,,,T,,,,T,,,,T,,,,T,,,G,,,,,,,,,,,,,,,,,,,,,,,,,,x',
-      'x,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,,,,,,,,,,,,,,,,,Z,,,,,,,,x',
-      'x,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,,,,,,,,,,,,,,,,,,,,,,,,,,x',
-      'x,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,,,,,,,,,,,,,,,,,,,,,,,,,,x',
-      'x,,,vvv,vvv,vvv,vvv,,,,,vvv,,,T,,,,,,,,,,,G,,,##########X###########,x',
-      'x,,,vvv,vvv,vvv,vvv,,,,,vvv,,,,,,,,,,,,,,,G,,,#........K.K.........#,x',
-      'x,,,,,,,,,,,,,,,,,Z,,,,,,,,,,,,,,,,,,,,,,,G,,,#....................#,x',
-      'x,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,,,#.VVVV.......PP..PP..#,x',
-      'x,,,vvv,,,,,vvv,,,,,vvv,,,,,,,,,,,,,T,,,,,G,,,#.VVVV...Z...PP..PP..#,x',
-      'x,,,vvv,,,,,vvv,,,,,vvv,,,,,,,,,,,,,,,,,,,G,,,#....................#,x',
-      'x,,,,,,,,Z,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,,,#..%.....%.....Z.....#,x',
-      'x,,,,,,,,,,,,,,,,,,,,,%,,,,,,,,,,,,,,,,,,,G,,,#.VVVV...............#,x',
-      'x,,,,,,BBBBBBBBB,,,,,,,,,,,,,,T,,,,,,,,,,,G,,,#.VVVV....U....%..ss.#,x',
-      'x,,,,,,BBBBBBBBB,,,,,,,,,,,,,,,,,,,,,,,,,,G,,,#.................ss.#,x',
+      'x,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,C,,,G,,,,,,,,,,,,,,,,,Z,,,,,,,,x',
+      'x,,,,,,,,,,,,,,,,,,,,,,,##||||#W#||||###,,G,,,,,,,,,,,,,,,,,,,,,,,,,,x',
+      'x,,,,,,,,,,,,,,,,,,,,,,,#ss..........ss#,,G,,,,,,,,,,,,,,,,,,,,,,,,,,x',
+      'x,,,vvv,vvv,vvv,vvv,,,,,#s............s#,,G,,,##########X###########,x',
+      'x,,,vvv,vvv,vvv,vvv,,,,,#s..ss....ss..s#,,G,,,#........K.K.........#,x',
+      'x,,,,,,,,,,,,,,,,,Z,,,,,#s..ss....ss..s#,,G,,,#....................#,x',
+      'x,,,,,,,,,,,,,,,,,,,,,,,#..............#,,G,,,#.VVVV.......PP..PP..#,x',
+      'x,,,vvv,,,,,vvv,,,,,vvv,#...rrrrrg.....#,,G,,,#.VVVV...Z...PP..PP..#,x',
+      'x,,,vvv,,,,,vvv,,,,,vvv,############Q###,,G,,,#....................#,x',
+      'x,,,,,,,,Z,,,,,,,,,,,,,,#q..#.ss......w#,,G,,,#..%.....%.....Z.....#,x',
+      'x,,,,,,,,,,,,,,,,,,,,,%,#...+........JL#,,G,,,#.VVVV...............#,x',
+      'x,,,,,,BBBBBBBBB,,,,,,,,#...#.sssss..gg#,,G,,,#.VVVV....U....%..ss.#,x',
+      'x,,,,,,BBBBBBBBB,,,,,,,,################,,G,,,#.................ss.#,x',
       'x,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,G,,,#....%...............#,x',
       'x,,,,,,,,,,,,,,,,,,,,,T,,,,,,,,,,,,,,,,,,,G,,,#.........%..........#,x',
       'x,,,,,T,,,,,,,,,,,,,,,,,,,,,Z,,,,,,,,,T,,,G,,,#ssss.....aaaa....ggg#,x',
@@ -72,6 +75,9 @@ export default {
     { etage: 'rdc', x: 49, y: 9, nom: 'La salle radio', sol: 'lino' },
     { etage: 'rdc', x: 59, y: 6, nom: 'Le bureau des transmissions', sol: 'lino', sombre: 1 },
     { etage: 'rdc', x: 55, y: 31, nom: 'Le hangar', sol: 'beton', sombre: 2 },
+    { etage: 'rdc', x: 31, y: 26, nom: 'La pharmacie', sol: 'carrelage', sombre: 1 },
+    { etage: 'rdc', x: 33, y: 33, nom: 'L’arrière-boutique de la pharmacie', sol: 'lino', sombre: 2, sansMorts: true },
+    { etage: 'rdc', x: 26, y: 33, nom: 'Les toilettes de la pharmacie', sol: 'carrelage', sombre: 2 },
   ],
   legende: {
     'G': { prop: 'grille', nom: 'la grille de la base' },
@@ -83,5 +89,11 @@ export default {
     'P': { prop: 'palette' },
     'X': { porte: true, verrou: { forcer: 'pied_de_biche' }, exterieure: true },
     'D': { document: 'doc_istres', nom: 'le dernier message' },
+    // la pharmacie
+    'C': { prop: 'poteau', nom: 'l’enseigne de la pharmacie, une croix verte éteinte' },
+    'W': { porte: true, style: 'vitree', exterieure: true, nom: 'la porte vitrée de la pharmacie' },
+    'Q': { porte: true, nom: 'la porte de l’arrière-boutique' },
+    'L': { prop: 'lit_camp', nom: 'le lit de camp', conteneur: false },
+    'J': { pnj: 'bastien_ist', marqueur: 'bastien_ist' },
   },
 };

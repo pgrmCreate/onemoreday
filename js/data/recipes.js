@@ -29,6 +29,21 @@
 export const RECIPES = [
 
   // ======================== SOINS ========================
+  // contre la brume jaune (js/game/brume.js) : un linge trempé noué sur le nez et la bouche
+  {
+    id: 'r_foulard_mouille', cat: 'survie', nom: 'Foulard mouillé',
+    resultat: { id: 'foulard_mouille', qty: 1 },
+    ingredients: [{ id: 'chiffon', qty: 1 }, { id: 'bouteille_eau', qty: 1 }],
+    outils: [], poste: null, skill: null, tempsMin: 2, xp: {}, connue: true,
+    desc: 'Tremper un chiffon et le nouer sur le nez et la bouche. Contre la brume jaune, il retient à peu près la moitié de ce qui brûle.',
+  },
+  {
+    id: 'r_foulard_mouille_croupie', cat: 'survie', nom: 'Foulard mouillé (eau croupie)',
+    resultat: { id: 'foulard_mouille', qty: 1 },
+    ingredients: [{ id: 'chiffon', qty: 1 }, { id: 'eau_croupie', qty: 1 }],
+    outils: [], poste: null, skill: null, tempsMin: 2, xp: {}, connue: true,
+    desc: 'Même avec de l’eau qu’on ne boirait pas, un chiffon trempé noué sur la bouche retient une partie de la brume jaune.',
+  },
   {
     id: 'r_bandage_fortune', cat: 'soins', nom: 'Bandage de fortune',
     resultat: { id: 'bandage_fortune', qty: 1 },

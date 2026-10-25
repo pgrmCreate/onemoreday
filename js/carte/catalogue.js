@@ -230,10 +230,12 @@ export const OBJETS = {
   plan_mural: { cat: null, bloque: 0, t: [1, 1], nom: 'le plan de Salon', decor: 1, mural: 1 },             // punaisé au mur (posé sur la case du mur)
   tableau_cles:{ cat: null, bloque: 0, t: [1, 1], nom: 'le tableau de clés', decor: 1, mural: 1 },
   banc_pierre:{ cat: null, bloque: 1, t: [2, 1], nom: 'le banc de pierre' },
+  brebis:     { cat: null, bloque: 1, t: [1, 1], nom: 'la brebis' },                     // vivante (enclos de la bergerie de Cabassole)
   // — décor au sol (on marche dessus) —
   cadavre:    { c: '%', cat: null, bloque: 0, t: [1, 1], nom: 'le corps', decor: 1 },
   gardien_mort: { cat: null, bloque: 0, t: [1, 1], tf: [1, 1], nom: 'le gardien', decor: 1 },   // assis, mort, dans son fauteuil (drapeau : il s'est levé)
   debris:     { c: ';', cat: null, bloque: 0, t: [1, 1], nom: 'les débris', decor: 1, bruit: 2.5 },
+  brebis_morte: { cat: null, bloque: 0, t: [1, 1], nom: 'la brebis morte', decor: 1 },
   // — anciens noms (props de légende) gardés tels quels —
   haie:       { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'la haie' },
   grille:     { cat: null, bloque: 1, t: [1, 1], nom: 'la grille' },

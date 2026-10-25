@@ -18,7 +18,7 @@ import { niveau } from './player.js';
 
 const I = () => REGLAGES.inventaire;
 const joueur = (p) => p || (G && G.player);
-export const SLOTS_VETEMENT = ['tete', 'haut', 'torse', 'veste', 'mains', 'poignet', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
+export const SLOTS_VETEMENT = ['tete', 'visage', 'haut', 'torse', 'veste', 'mains', 'poignet', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
 export const SLOTS_TENUS = ['arme', 'mainG', 'dos'];          // ce qu'on tient / porte sanglé (instances)
 export const NOMS_SLOTS = { ...SLOTS, arme: 'Main droite', mainG: 'Main gauche', dos: 'Dans le dos', lampe: 'Lampe' };
 

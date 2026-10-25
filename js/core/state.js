@@ -3,7 +3,7 @@
 import { emit } from './bus.js';
 import { REGLAGES } from '../data/reglages.js';
 
-export const VERSION = 3;
+export const VERSION = 4;   // 4 : la nouvelle histoire (oct. 2026) — les parties de l'ancienne ne se reprennent pas
 const CLE = { solo: 'omd_v3_solo', hote: 'omd_v3_hote', invite: 'omd_v3_invite' };
 let cleActive = CLE.solo;
 export let G = null;
@@ -19,8 +19,10 @@ export function joueurNeuf(nom = 'Sam', genre = 'm') {
     faim: 80, soif: 70, fatigue: 85, // 100 = bien
     mal: 0,                           // contamination 0..100 (GAMEPLAY §5.4)
     skillXp: {},
-    inventaire: [],
-    equip: { arme: null, mainG: null, dos: null, tete: null, haut: 'tshirt', torse: null, veste: null, mains: null, poignet: null, jambes: 'jean', pieds: 'baskets', sac: null, ceinture: null, holster: null },
+    // vingt jours de survie {seul|seule} avant le Refuge (docs/HISTOIRE.md §5) : un petit sac, de quoi boire un peu, un couteau,
+    // et la radio de poche qui a capté le message (ses piles sont mortes en route)
+    inventaire: [{ id: 'bouteille_eau', qty: 1 }, { id: 'biscuits', qty: 1 }, { id: 'allumettes', qty: 1 }, { id: 'chiffon', qty: 2 }, { id: 'radio_poche', qty: 1 }],
+    equip: { arme: 'couteau_cuisine', mainG: null, dos: null, tete: null, visage: null, haut: 'tshirt', torse: null, veste: 'coupe_vent', mains: null, poignet: null, jambes: 'jean', pieds: 'baskets', sac: 'sac_a_dos', ceinture: null, holster: null },
     accesRapide: [],
     blessures: [],
     maladie: null,

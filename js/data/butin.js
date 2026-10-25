@@ -475,6 +475,32 @@ const SACS = {
     voiture: [L('valise_cabine', 1, 1, 0.04), L('sac_voyage', 1, 1, 0.04), L('sac_isotherme', 1, 1, 0.03)], ferme: [L('hotte_vendange', 1, 1, 0.06), L('gibeciere', 1, 1, 0.04), L('sac_jute', 1, 1, 0.08)],
     convoi: [L('musette', 1, 1, 0.06), L('sac_samu', 1, 1, 0.03)], secours: [L('sac_samu', 1, 1, 0.1)], campement: [L('sac_alpinisme', 1, 1, 0.06), L('sac_expedition', 1, 1, 0.03), L('sac_trail', 1, 1, 0.04)] },
 };
+// ---------------------------------------------------------------------------
+// LA BRUME ET LA ROUTE (nouvelle histoire, docs/HISTOIRE.md §9) : de quoi respirer dans la brume jaune (masques, cartouches)
+// et faire rouler le camion de Rudy (gasoil). Rares, et là où ils seraient pour de vrai.
+// ---------------------------------------------------------------------------
+const BRUME = {
+  caserne: { vetements: [L('masque_gaz', 1, 1, 0.14)], etagere: [L('filtre_gaz', 1, 2, 0.16), L('masque_ffp2', 1, 3, 0.2)], machine: [L('jerrican_gasoil', 1, 1, 0.12)] },
+  gendarmerie: { vetements: [L('masque_gaz', 1, 1, 0.06)], etagere: [L('filtre_gaz', 1, 1, 0.06)] },
+  commissariat: { vetements: [L('masque_gaz', 1, 1, 0.04)], etagere: [L('filtre_gaz', 1, 1, 0.04)] },
+  base: { vetements: [L('masque_gaz', 1, 1, 0.12)], etagere: [L('filtre_gaz', 1, 3, 0.14)], machine: [L('jerrican_gasoil', 1, 1, 0.15)] },
+  hopital: { etagere: [L('masque_ffp2', 1, 4, 0.3), L('masque_gaz', 1, 1, 0.02)] },
+  pharmacie: { etagere: [L('masque_ffp2', 1, 3, 0.25)], comptoir: [L('masque_ffp2', 1, 2, 0.2)] },
+  bricolage: { etagere: [L('masque_ffp2', 1, 2, 0.12), L('filtre_gaz', 1, 1, 0.04)], machine: [L('jerrican_gasoil', 1, 1, 0.06)] },
+  usine: { etagere: [L('masque_gaz', 1, 1, 0.05), L('filtre_gaz', 1, 1, 0.06)], machine: [L('jerrican_gasoil', 1, 1, 0.06)] },
+  triage: { machine: [L('jerrican_gasoil', 1, 1, 0.1)], etagere: [L('masque_gaz', 1, 1, 0.03), L('filtre_gaz', 1, 1, 0.04)] },
+  aerodrome: { machine: [L('jerrican_gasoil', 1, 1, 0.12)] },
+  route: { voiture: [L('jerrican_gasoil', 1, 1, 0.025)], machine: [L('jerrican_gasoil', 1, 1, 0.08)] },
+  village: { machine: [L('jerrican_gasoil', 1, 1, 0.04)] },
+  nature: { etagere: [L('antibio_veto', 1, 1, 0.04), L('jerrican_gasoil', 1, 1, 0.03)] },
+  defaut: { voiture: [L('jerrican_gasoil', 1, 1, 0.006)] },
+};
+for (const [type, cats] of Object.entries(BRUME)) {
+  for (const [cat, lignes] of Object.entries(cats)) {
+    if (!SACS[type]) SACS[type] = {};
+    SACS[type][cat] = plus(SACS[type][cat] || [], lignes);
+  }
+}
 // Le défaut d'abord (ses nouvelles lignes profitent aux lieux qui n'ont pas la catégorie),
 // en mémorisant les tables d'origine pour ne pas compter deux fois.
 {

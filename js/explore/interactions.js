@@ -562,6 +562,8 @@ export function prendreEscalier(s) {
 async function sortirDuLieu(s) {
   if (!V || V.occupe) return;
   if (V.arene) { api.finArene('sortie'); return; }
+  // une sortie gardée par l'histoire (la bergerie la nuit, la Poudrerie pendant l'attente) : elle dit pourquoi
+  if (s && s.si && !verifierCondition(s.si)) { message(s.message || 'Tu ne peux pas partir par là pour l’instant.', 3200); return; }
   const echelle = (s && s.echelle) || V.L.echelle || 'salon';
   const id = V.lieuId;
   // Une rue d'un tronçon (marcher sans carte) : son bord mène à la rue suivante, au cul-de-sac ou au lieu au bout.

@@ -124,6 +124,12 @@ async function sceneMaintenant(id, opts) {
       const t = r.teleporter;
       emit('histoire:teleporter', { lieu: t.lieu, entree: t.entree || null });   // co-op : l'autre peut suivre
       setTimeout(() => explorer(t.lieu, { entree: t.entree }), 0);
+    } else if (r && r.voyage) {
+      // Voyage guidé (docs/HISTOIRE.md §9) : on part tout de suite, sans carte, sur le trajet que l'histoire trace ;
+      // les rencontres scénarisées se jouent aux fractions du trajet (déclencheurs 'voyage').
+      const v = r.voyage, de = v.de || (G && G.player.position && G.player.position.lieu);
+      emit('histoire:teleporter', { lieu: v.vers, entree: v.entree || null });   // co-op : l'autre peut nous rejoindre là-bas
+      setTimeout(() => voyager({ de, vers: v.vers, allure: v.allure || 'normale', indication: v.indication !== false }), 0);
     }
     return r;
   } finally {

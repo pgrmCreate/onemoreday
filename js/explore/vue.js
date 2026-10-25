@@ -39,6 +39,7 @@ import { rueeSim, etatRuee, lieuDansZone, typeActif } from '../game/ruees.js';
 import { lierPlan, chargerMemoire, sauverMemoire, basculerPlan, planOuvert, fermerPlan } from './plan_lieu.js';
 import { lierMissions, majMissions, guideMission, reperesMissions } from './missions_vue.js';
 import { lieuCalme } from '../game/missions.js';
+import * as brume from '../game/brume.js';
 
 export { verifierCondition };
 const RX = REGLAGES.exploration, RL = REGLAGES.lumiere;
@@ -530,6 +531,11 @@ function image(t, dt) {
     if (V.nLampes >= 4) break;
   }
   V.nLampes = feuxCommeLampes(V.lampes, V.nLampes);       // feux de camp construits : ils éclairent pour de vrai
+  for (const L of (E.rendu && E.rendu.lumieresSi) || []) {    // lumières du plan à condition (le feu du Refuge tant qu'il vit)
+    if (V.nLampes >= 8) break;
+    if (!verifierCondition(L.si)) continue;
+    V.lampes[V.nLampes++] = { x: L.x, y: L.y, dir: 0, forme: 'halo', angle: 360, portee: Math.max(2, L.r * 0.85), sec: true, feu: L.type === 'feu' || L.type === 'bougie' };
+  }
   V.nLampes = feuxAlarmes(t, V.lampes, V.nLampes);        // une alarme de voiture : les phares clignotent
   const opaque = V.canal.grilles ? V.canal.grilles(E.id).opaque : E.opaque;
   calculerLOS(C, opaque, j.x, j.y, 17);
@@ -589,6 +595,13 @@ function image(t, dt) {
   // à ciel ouvert : une pièce extérieure, et pas sous un toit construit
   { const ii = icase(E, V.j.x, V.j.y), pi = ii >= 0 ? E.piece[ii] : -1; const P = pi >= 0 ? V.niveau.pieces[pi] : null; const T = grilleToits(E); Sc.dehors = (P ? !!P.exterieur : !!V.niveau.exterieur) && !(T && ii >= 0 && T[ii]); }
   Sc.pluie = V.pluie || 0; Sc.vent = V.vent ?? 0.3; Sc.meteo = V.meteo || 'clair';
+  // la brume jaune (js/game/brume.js) : où l'on est (rez-de-chaussée ou étage, dehors ou dedans), et la force du voile
+  if (!V.tBrume || t - V.tBrume > 1000) {
+    V.tBrume = t;
+    const ie = V.niveau.etageIdx[E.id];
+    brume.setContexte({ lieu: V.lieuId, rdc: ie === 0 || /cave|sous|crypte/.test(E.id), dehors: !!Sc.dehors });
+    Sc.brumeJaune = brume.visuel();
+  }
   if (!V.tBiome || t - V.tBiome > 1000) { V.tBiome = t; Sc.biome = biomeAutour(E, V.j.x, V.j.y); }   // ville, sec (Crau), vert
   if (V.dehorsSon !== Sc.dehors) { V.dehorsSon = Sc.dehors; try { mod.audio && mod.audio.setPluieInterieur && mod.audio.setPluieInterieur(!Sc.dehors); } catch (e) {} }
   const J = Sc.joueur;

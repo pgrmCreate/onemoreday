@@ -47,6 +47,10 @@ def compositeur():
         for k, v in (('glare_type', 'FOG_GLOW'), ('quality', 'MEDIUM')):
             try: setattr(gl, k, v)
             except Exception: pass
+        # Blender 5 : le type est une entrée « menu » (par défaut « Streaks » : des étoiles en croix sur chaque lumière)
+        for k, v in (('Type', 'Fog Glow'), ('Quality', 'Medium')):
+            try: gl.inputs[k].default_value = v
+            except Exception: pass
         for k, v in (('Threshold', 3.0), ('Size', 0.5), ('Strength', 0.25)):
             try: gl.inputs[k].default_value = v
             except Exception: pass

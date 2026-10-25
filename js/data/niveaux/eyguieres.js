@@ -1,5 +1,5 @@
 // Eyguières — au pied des Alpilles. La grand-route, la place et sa fontaine, le café-tabac, l'église, une maison
-// de ville, un garage. À l'est, le mas où le troupeau a trouvé une famille le 8 : la table est encore mise.
+// de ville, un garage. À l'est, le mas où les morts ont surpris une famille le 8 : la table est encore mise.
 // La carte postale jamais postée traîne au pied de la boîte aux lettres du mas. Sorties : Salon (ouest), l'aérodrome (sud).
 export default {
   id: 'eyguieres', nom: 'Eyguières', exterieur: true,

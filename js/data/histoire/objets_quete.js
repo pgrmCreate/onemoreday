@@ -1,60 +1,20 @@
 // ============ OBJETS DE QUÊTE ET DE LORE (fusionnés dans ITEMS au chargement — REFONTE §11) ============
 // Même format que js/data/items.js. type : 'quete' (sert à l'histoire, ne se jette pas) | 'lore' (souvenir, lisible).
 // poids en kg, espace en cases. Les ids ne doivent pas entrer en collision avec items.js (vérifié par tools/verifier_histoire.mjs).
+// Les objets de l'histoire qui se consomment (antibio_veto, jerrican_gasoil, foulard_mouille, masque_gaz, filtre_gaz, pain)
+// sont dans items.js et clothing.js.
 export const OBJETS_QUETE = {
-  // ─── Prologue ───
-  etiquette_orteil: { nom: 'Étiquette d’orteil', type: 'lore', poids: 0.01, espace: 0,
-    desc: 'Un carton attaché par un fil de fer. Ton nom, en capitales. DÉCÈS CONSTATÉ LE 06/09. Tu ne sais pas vraiment pourquoi tu la gardes. Peut-être pour ne pas oublier.' },
-  bracelet_p4: { nom: 'Bracelet jaune « P4 »', type: 'lore', poids: 0, espace: 0,
-    desc: 'Un bracelet d’hôpital en plastique jaune, marqué « URG — P4 » : urgences, patient numéro 4. Tu n’arrives pas à l’enlever. Tu n’essaies plus.' },
-  telephone_perso: { nom: 'Ton téléphone', type: 'quete', poids: 0.18, espace: 0,
-    desc: 'L’écran est fendu en étoile. Tes pouces se souviennent du code mieux que toi. Il lui faut du courant pour s’allumer, et du réseau pour envoyer quoi que ce soit.' },
-  portefeuille_perso: { nom: 'Ton portefeuille', type: 'lore', poids: 0.1, espace: 0,
-    desc: 'Une carte d’identité à ton nom, un billet de vingt euros, une carte de fidélité d’une boulangerie de Marseille. Sur la photo de la carte, c’est toi. À peu près.' },
-  trousseau_inconnu: { nom: 'Trousseau de trois clés', type: 'lore', poids: 0.05, espace: 0,
-    desc: 'Trois clés que tu ne reconnais pas : une clé d’appartement, une de boîte aux lettres, une de cadenas de vélo. Quelque part, une porte t’attend.' },
+  // ─── L'histoire (docs/HISTOIRE.md) ───
+  enveloppe_helene: { nom: 'L’enveloppe d’Hélène', type: 'quete', poids: 0.02, espace: 0,
+    desc: 'Une enveloppe blanche, épaisse, sur laquelle Hélène a écrit de sa petite écriture droite : À N’OUVRIR QUE SI LE REFUGE TOMBE. Dedans, on sent deux feuilles pliées en trois. Le jour où tu l’ouvres, elle reste dans ton sac, et la lettre aussi.' },
+
+  // ─── Les clés et les plans du monde (utilisés par les plans de niveaux et le voyage) ───
   plan_salon: { nom: 'Plan de Salon-de-Provence', type: 'quete', poids: 0.05, espace: 0,
-    desc: 'Un plan du centre-ville, celui que donne l’office de tourisme, en papier glacé, troué aux quatre coins par des punaises. Il montre la vieille ville et ses boulevards : la Tour de l’Horloge, la Fontaine Moussue, le château de l’Empéri sur son rocher, la maison de Nostradamus, la collégiale Saint-Laurent. Le cimetière Saint-Roch est tout en bas, au bord du papier. Au-delà des boulevards, plus rien : ni la gare, ni l’hôpital, ni la base aérienne, ni les villages autour. Le reste, il faudra le découvrir sur place. Le gardien du cimetière l’a couvert de notes au stylo bille.' },
+    desc: 'Un plan du centre-ville, celui que donne l’office de tourisme, en papier glacé, troué aux quatre coins par des punaises. Il montre la vieille ville et ses boulevards : la Tour de l’Horloge, la Fontaine Moussue, le château de l’Empéri sur son rocher, la maison de Nostradamus, la collégiale Saint-Laurent. Le cimetière Saint-Roch est tout en bas, au bord du papier. Au-delà des boulevards, il n’y a plus rien : ni la gare, ni l’hôpital, ni la base aérienne, ni les villages autour. Le reste, il faudra le découvrir sur place. Le gardien du cimetière l’a couvert de notes au stylo bille.' },
   cle_grille_saint_roch: { nom: 'Double de la clé de la grille', type: 'quete', poids: 0.1, espace: 0,
     desc: 'Une grosse clé de laiton, plus longue que ta main. À l’anneau pend une étiquette en carton : DOUBLE GRILLE — NE PAS DONNER. Le gardien du cimetière Saint-Roch l’avait cachée aux soldats, sur un clou, derrière le plan de Salon punaisé au mur de sa loge, et il l’avait attachée à son poignet par une ficelle de cuisine, dont un bout cassé pend encore à l’anneau. Elle ouvre la grille principale du cimetière.' },
-
-  // ─── Chapitre 1 ───
   cle_sacristie: { nom: 'Clé de la sacristie', type: 'quete', poids: 0.1, espace: 0,
     desc: 'Une longue clé de fer ouvragée, avec une étiquette en carton : SACRISTIE. Elle pendait à la ceinture d’un prêtre mort, qui agitait encore sa clochette.' },
-  livre_colline: { nom: 'Colline, de Giono', type: 'lore', poids: 0.15, espace: 0,
-    desc: 'Un livre de poche gonflé par l’humidité. En guise de marque-page, un billet de train Marseille–Salon du 30 août. C’est l’histoire d’un village de Provence dont la source se tarit, et d’hommes qui ont peur de la colline. Tu l’avais presque fini.' },
-  batterie_externe: { nom: 'Batterie externe', type: 'quete', poids: 0.2, espace: 0,
-    desc: 'Trouvée dans ton sac rouge. Il lui reste un tiers de sa charge : assez pour rallumer ton téléphone une fois. Pas deux.' },
-  gants_vendange: { nom: 'Gants de vendange neufs', type: 'lore', poids: 0.1, espace: 0,
-    desc: 'L’étiquette est encore attachée. Tu étais donc {venu|venue} faire les vendanges. Tu les enfileras peut-être un jour, pour autre chose.' },
-  cloche_maud: { nom: 'Clochette de la salle 4', type: 'lore', poids: 0.3, espace: 1,
-    desc: 'Une petite cloche de bronze à manche de bois, comme celles des instituteurs d’autrefois. Chaque fois qu’elle tinte, ta bouche se remplit de salive. Tu la gardes quand même, enveloppée dans un chiffon, le battant bloqué.' },
-  badge_morgue: { nom: 'Badge « Accès morgue »', type: 'quete', poids: 0.01, espace: 0,
-    desc: 'Un badge magnétique pris sur Karim, le brancardier. Il ouvre la chambre froide, au sous-sol de l’hôpital : les serrures marchent encore sur la batterie de secours.' },
-  registre_protocole: { nom: 'Registre « PROTOCOLE — M. S. »', type: 'quete', poids: 0.9, espace: 1,
-    desc: 'Un grand registre noir à dos toilé, rangé dans un sac de congélation. Dedans : des dates, des doses, des donneurs. Un mort nourri d’un vivant, à chaque ligne. La page quatorze a été arrachée. C’est une preuve. De quoi, exactement ? Cela dépend de qui la lit.' },
-  lettre_luc: { nom: 'Enveloppe « Pour Jo »', type: 'quete', poids: 0.02, espace: 0,
-    desc: 'Une grosse écriture appliquée : POUR JO. Dessous : « Joëlle Arnaud, Lamanon, les grottes ». Tu sais ce qu’il y a dedans.' },
-  photo_luc: { nom: 'Photo pliée en deux', type: 'lore', poids: 0, espace: 0,
-    desc: 'Un homme d’une cinquantaine d’années, moustachu, rougi par le soleil, porte sur ses épaules une petite fille qui sourit de toutes ses dents manquantes. Derrière eux, une falaise trouée de grottes. Au dos : « Clem et moi, Calès, avril. »' },
-  insuline_luc: { nom: 'Insuline « ARNAUD — À RENDRE »', type: 'quete', poids: 0.2, espace: 0,
-    desc: 'Quatre stylos d’insuline dans une boîte blanche, sur laquelle Maud a écrit au feutre. Luc Arnaud est venu à Salon pour les chercher. Hors du frigo, ils tiendront encore quelques semaines.' },
-  perche_fourriere: { nom: 'Perche de fourrière', type: 'lore', poids: 1.6, espace: 3,
-    desc: 'Une longue perche d’aluminium terminée par un nœud coulant en câble gainé, trouvée dans l’ambulance de Maud. C’est avec elle que Maud t’a {attrapé|attrapée} le 8 septembre, comme on attrape un chien errant.' },
-
-  // ─── Chapitre 2 ───
-  page_14: { nom: 'Page quatorze', type: 'lore', poids: 0, espace: 0,
-    desc: 'Une feuille arrachée au registre de Maud, devenue douce comme un vieux billet à force d’être manipulée. On y lit : ARNAUD Luc. DONNEUR POUR P4. P4, c’est toi.' },
-  sonnaille: { nom: 'Sonnaille de laiton', type: 'lore', poids: 0.6, espace: 1,
-    desc: 'Une petite cloche de troupeau bosselée, sur son collier de cuir. Le Berger te l’a offerte. Ceux qui la portent marchent en tête des morts, et les morts les suivent. Bourrée de chiffon, elle se tait.' },
-  dessin_lou: { nom: 'Dessin de Lou', type: 'lore', poids: 0, espace: 0,
-    desc: 'Toi, vu de dos, au bord de la falaise de Calès, face à la plaine. En bas, très loin, des centaines de silhouettes minuscules. Lou a écrit dessous : « Si un jour tu oublies à quoi tu ressembles. »' },
   cle_armoire_forte: { nom: 'Clé « A.F. — Armoire forte »', type: 'quete', poids: 0.05, espace: 0,
-    desc: 'Une clé au bout d’une chaînette, prise au cou de l’officier de garde de la BA 701, la base aérienne. Elle ouvre l’armoire forte, le coffre aux documents secrets.' },
-  valise_radio: { nom: 'Valise radio tactique', type: 'quete', poids: 8.5, espace: 4,
-    desc: 'Un poste radio militaire vert olive, avec son combiné et sa batterie de rechange. Lourd comme une valise de pierres. Branché sur une antenne placée en hauteur, il porte jusqu’à la Durance, où campe l’armée.' },
-  carnet_authentification: { nom: 'Classeur d’authentification', type: 'quete', poids: 0.6, espace: 1,
-    desc: 'Un classeur rouge à anneaux, marqué DIFFUSION RESTREINTE. Il contient des grilles de codes, une page par jour. Sans ces codes, l’armée coupera la communication dès les premiers mots.' },
-  redon: { nom: 'Le redon de Rose', type: 'quete', poids: 4, espace: 3,
-    desc: 'La grosse cloche qui mène le troupeau : du bronze bosselé et verdi, un collier de cuir épais comme une ceinture, un battant gros comme un poing. Les bergers l’appellent « la voix de la mère » : là où elle sonne, tout le troupeau suit.' },
+    desc: 'Une clé au bout d’une chaînette, prise au cou de l’officier de garde de la base aérienne 701. Elle ouvre l’armoire forte, le coffre où l’on rangeait les documents secrets.' },
 };

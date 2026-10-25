@@ -49,7 +49,8 @@ export function appliquerEffets(effets, ctx = {}) {
         case 'tempsMin': clock.sauter(v); break;   // co-op : l'invité demande le saut à l'hôte
         case 'xp': player.gagnerXps(v); break;
         case 'decouvrir': for (const id of (Array.isArray(v) ? v : [v])) { const L = G.world.lieux[id] || (G.world.lieux[id] = {}); if (!L.decouvert) { L.decouvert = true; emit('lieu:decouvert', { id }); } } break;
-        case 'quete': quetes.avancer(v[0], v[1]); break;
+        case 'quete': for (const q of (Array.isArray(v[0]) ? v : [v])) quetes.avancer(q[0], q[1]); break;
+        case 'retirer': for (const [id, q] of v) donner(id, -(q ?? 1)); break;
         case 'journal': noteJournal(v); break;
         case 'document': if (!G.documents.includes(v)) { G.documents.push(v); emit('toast', { texte: `Document : ${(DOCUMENTS[v] || {}).titre || v}`, type: 'document' }); } emit('document', { id: v, silencieux: true }); break;
         case 'butin': {
@@ -63,6 +64,7 @@ export function appliquerEffets(effets, ctx = {}) {
         case 'consequence': emit('mission:consequence', v); break;   // vacarme / réveil / annonce d'une étape (js/explore/missions_vue.js)    // ['accepter' | 'plusTard' | 'refuser', id] | ['donner', id, objet]
         case 'combat': res.combat = v; break;
         case 'teleporter': res.teleporter = v; break;
+        case 'voyage': res.voyage = v; break;          // départ en voyage guidé à la fermeture de la scène (js/game/flow.js)
         case 'cinematique': res.cinematique = v; break;
         case 'detour': res.detour = (res.detour || 0) + v; break;
         case 'demiTour': res.demiTour = !!v; break;

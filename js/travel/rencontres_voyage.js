@@ -17,33 +17,17 @@ import { pref } from '../core/prefs.js';
 import { rueeTroncon, etatRuee, migrationConnue, lieuDansZone } from '../game/ruees.js';
 
 const V = () => REGLAGES.voyage;
+import { verifier as verifierCondition } from '../game/conditions.js';
 const R = () => REGLAGES.voyage.RENCONTRES;
 const avert = new Set();
 function warn(k, ...a) { if (!avert.has(k)) { avert.add(k); console.warn('[voyage]', ...a); } }
 
 // ---------------------------------------------------------------- conditions (REFONTE §4.5)
+// Les mêmes conditions que partout ailleurs (js/game/conditions.js : drapeaux en liste, et / ou / non, lieu, heures…).
 export function condition(c) {
   if (!c) return true;
   if (!G) return false;
-  const W = G.world, P = G.player;
-  for (const [k, v] of Object.entries(c)) {
-    let ok = true;
-    switch (k) {
-      case 'flag': ok = !!W.flags[v]; break;
-      case 'pasFlag': ok = !W.flags[v]; break;
-      case 'flagEgal': ok = W.flags[v[0]] === v[1]; break;
-      case 'objet': { const [id, q] = Array.isArray(v) ? v : [v, 1]; ok = (P.inventaire || []).filter(i => i.id === id).reduce((s, i) => s + (i.qty || 1), 0) >= q || Object.values(P.equip || {}).includes(id); break; }
-      case 'skill': { const xp = (P.skillXp || {})[v[0]] || 0; const Pal = REGLAGES.competences?.PALIERS || [0]; let n = 0; for (let i = 1; i < Pal.length; i++) if (xp >= Pal[i]) n = i; ok = n >= v[1]; break; }
-      case 'nuit': { const h = (W.minutes % 1440) / 60, H = REGLAGES.temps.HEURES; ok = (h >= H.NUIT || h < H.AUBE) === !!v; break; }
-      case 'jourMin': ok = Math.floor(W.minutes / 1440) + 1 >= v; break;
-      case 'lieuVisite': ok = !!(W.lieux[v] && W.lieux[v].visite); break;
-      case 'quete': ok = !!(W.quetes[v[0]] && W.quetes[v[0]].etape === v[1]); break;
-      case 'ou': ok = (v || []).some(condition); break;
-      default: warn('cond:' + k, 'condition inconnue', k); ok = true;
-    }
-    if (!ok) return false;
-  }
-  return true;
+  return verifierCondition(c);
 }
 
 // ---------------------------------------------------------------- météo (fallback si le monde ne la tient pas)

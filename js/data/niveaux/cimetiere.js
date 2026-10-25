@@ -1,21 +1,13 @@
-// Cimetière Saint-Roch (PROLOGUE) — refait avec l'API à couches (js/carte/plan.js).
+// Cimetière Saint-Roch — un lieu du monde, abandonné (format à couches, js/carte/plan.js).
 // Réel : cimetière en terrasses sur le rocher, bd du Roi-René ; chapelles funéraires en rangs, grille ouvragée.
-// Plus compact et plus dense que l'ancien plan (46 × 34 au lieu de 60 × 45), lisible dès la première minute :
-//   la chapelle Roux-Bérenger (on s'y réveille, des bougies brûlent encore) → dehors, une FUSÉE ROUGE qui finit de brûler
-//   près d'un soldat mort (sa lampe frontale ; un rampant fait le mort à côté : premier combat) → l'esplanade NRBC
-//   (housses en rang, fût enflammé, camion au gyrophare, conteneur A où « ça cogne », tente, robinet) → la remise
-//   (une pelle : de quoi se défendre) → la loge du gardien (le plan de Salon punaisé au mur, et derrière lui le double de la
-//   clé, noué par une ficelle au poignet du gardien, mort dans son fauteuil : un corps du décor, qu'on ne peut pas tuer,
-//   et qui se relève forcément quand on emporte la clé) → la grille (pas d'escalade : barbelé de l'armée ; à deux en co-op).
+// En une phrase : la morgue provisoire de l'armée, montée à la hâte en septembre puis laissée là ; on y entre par le
+// boulevard pour fouiller la tente NRBC, la loge du gardien et la remise, en se méfiant des corps qui ne sont pas tous morts.
+// Parcours : le boulevard → la grille (la chaîne a été coupée : elle se pousse) → l'allée centrale → l'esplanade NRBC
+// (housses en rang, fût noirci, camion militaire, conteneur A où « ça cogne », tente, robinet) → l'allée des mausolées
+// (un soldat de l'équipe de ramassage, un rampant fait le mort à côté) → la loge du gardien (mort dans son fauteuil)
+// → la remise (une pelle). Traces (P3) : les housses alignées, le conteneur qui cogne, le soldat, la loge abandonnée.
 // Chemin discret : le carré ancien, à l'ouest (herbe haute, ossuaire noir où se logent les morts procéduraux).
 import { plan } from '../../carte/plan.js';
-
-// Ouvrir la grille à la clé, depuis la porte (les mêmes effets que le choix « Ouvrir la grille avec la clé » de pro_grille).
-const OUVRIR_GRILLE = {
-  flag: 'pro_grille_ouverte',
-  quete: ['q_prologue', 'horloge'],
-  journal: 'Je suis {sorti|sortie} du cimetière Saint-Roch. La Tour de l’Horloge est à cinq cents mètres. C’est là que m’attend « M. ».',
-};
 
 export default plan({
   id: 'cimetiere', nom: 'Cimetière Saint-Roch', exterieur: true, typeButin: 'cimetiere',
@@ -42,37 +34,33 @@ export default plan({
 
   // ---------- L'enceinte (pierre sèche), la grille ----------
   e.contour('pierre', 0, 0, W, 30);
-  // collé à la grille : « Examiner la grille » (E) et, dans les autres actions, « Ouvrir la grille » (la clé en poche)
-  e.porte(22, 29, { verrou: { flag: 'pro_grille_ouverte', cle: 'cle_grille_saint_roch', effets: OUVRIR_GRILLE }, marqueur: 'grille_sortie',
-    message: 'Fermée à clé. Les deux battants de fer forgé ne bougent pas d’un millimètre : il faudrait la clé du gardien.', exterieure: true, nom: 'la grille principale', style: 'grille' });
+  // la grille : quelqu'un a coupé la chaîne, les battants se poussent (on entre par le boulevard, on ressort par là)
+  e.porte(22, 29, { exterieure: true, nom: 'la grille principale', style: 'grille' });
   e.murRect('grille', 18, 29, 4, 1); e.murRect('grille', 23, 29, 4, 1); // la grille ouvragée laisse voir le boulevard
 
-  // ---------- La chapelle Roux-Bérenger (le réveil) ----------
+  // ---------- La chapelle Roux-Bérenger : des cercueils en attente, des bougies consumées ----------
   const ch = e.piece(34, 2, 8, 7, { nom: 'Chapelle Roux-Bérenger', sol: 'marbre', mur: 'pierre', sombre: 1, toit: 'ardoise',
     portes: [{ cote: 's', a: 2, nom: 'la porte de la chapelle' }], fenetres: [{ cote: 's', a: 4 }] });
   e.objet('cercueil', ch.x0, ch.y0, { rot: 1, w: 2, h: 1 });
   e.objet('cercueil', ch.x1 - 1, ch.y0, { rot: 1, w: 2, h: 1 });
-  e.objet('treteau', ch.x0 + 2, ch.y0, { nom: 'le sachet agrafé à ta housse', marqueur: 'scelle_effets', conteneur: false, w: 2, h: 1 });
+  e.objet('treteau', ch.x0 + 2, ch.y0, { nom: 'les tréteaux', conteneur: false, w: 2, h: 1 });
   e.objet('couronne', ch.x0 + 5, ch.y0 + 1);
   e.objet('housse', ch.x0 + 1, ch.y0 + 2);
   e.objet('housse', ch.x0 + 4, ch.y0 + 2);
   e.objet('housse', ch.x0, ch.y0 + 2, { rot: 1, w: 1, h: 1 });
-  e.decal('bougies', ch.x0 + 0.6, ch.y0 + 1.4); e.decal('bougies', ch.x1 + 0.3, ch.y0 + 1.5);
+  e.decal('cendres', ch.x0 + 0.6, ch.y0 + 1.4, { r: 0.25 }); e.decal('cendres', ch.x1 + 0.3, ch.y0 + 1.5, { r: 0.25 });   // les bougies se sont consumées
   e.decal('fleurs', ch.x0 + 2.5, ch.y0 + 1.3, { r: 0.4 });
-  e.entree('caveau', ch.x0 + 3, ch.y0 + 3);
-  // la sortie de la chapelle : la fusée rouge, le soldat — le premier choc
-  e.declencheur(35, 9, 5, 1, { scene: 'pro_dehors', unique: true });
 
-  // ---------- La chapelle voisine (Estève) et la housse de Patrick ----------
+  // ---------- La chapelle voisine (Estève), une housse tombée dans l'allée ----------
   const es = e.piece(26, 2, 7, 6, { nom: 'Chapelle Estève', sol: 'marbre', mur: 'pierre', sombre: 2, toit: 'ardoise',
     portes: [{ cote: 's', a: 2, etat: 'ouverte' }] });
   e.objet('cercueil', es.x0, es.y0, { rot: 1, w: 2, h: 1 }); e.objet('autel', es.x0 + 2, es.y0, { w: 3, h: 1 });
-  e.objet('housse', 31, 8, { rot: 1, w: 1, h: 1 }); e.marqueur('housse_patrick', 31, 8);
+  e.objet('housse', 31, 8, { rot: 1, w: 1, h: 1 });
   e.decal('traces', 28.5, 8.6, { a: 0.2 });
 
-  // ---------- L'allée des mausolées : le soldat NRBC, la fusée ----------
-  e.objet('cadavre', 41, 11); e.marqueur('soldat_nrbc', 41, 11, { nom: 'le soldat' });
-  e.lumiere('fusee', 40.4, 12.3); e.decal('cendres', 40.4, 12.3, { r: 0.35 });
+  // ---------- L'allée des mausolées : un soldat de l'équipe de ramassage, sa fusée éteinte depuis longtemps ----------
+  e.objet('cadavre', 41, 11, { nom: 'le soldat' });
+  e.decal('cendres', 40.4, 12.3, { r: 0.35 });
   e.decal('flaque_sang', 41.3, 11.6, { r: 0.6 });
   e.zombie('rampant', 39, 12, { etat: 'fait_le_mort', dir: 0 });          // il « dort » contre le soldat
   e.objet('stele', 42, 12); e.objet('tombe', 43, 12, { rot: 0, w: 1, h: 2 });
@@ -101,7 +89,8 @@ export default plan({
 
   // ---------- L'esplanade NRBC ----------
   const ca = e.piece(32, 14, 8, 4, { nom: 'Conteneur frigorifique A', sol: 'metal', mur: 'tole', sombre: 2, toit: 'tole',
-    portes: [{ cote: 'o', a: 0, verrou: { forcer: 'pied_de_biche' }, marqueur: 'conteneur_frigo', nom: 'la porte du conteneur A', style: 'metal' }] });
+    portes: [{ cote: 'o', a: 0, verrou: { forcer: 'pied_de_biche' }, nom: 'la porte du conteneur A', style: 'metal',
+      message: 'Le conteneur est fermé par une barre et un cadenas, et quelque chose cogne à l’intérieur. Un pied-de-biche ferait sauter le cadenas.' }] });
   e.zombie('errant', ca.x0 + 2, ca.y0, { etat: 'cogne' }); e.zombie('errant', ca.x0 + 4, ca.y0 + 1, { etat: 'cogne' });
   e.objet('housse', ca.x0 + 3, ca.y0 + 1, { rot: 1, w: 1, h: 1 });
   e.decal('trainee_sang', 30, 15.6, { l: 2, a: 0 });
@@ -110,10 +99,10 @@ export default plan({
   e.objet('tente', 25, 14, { conteneur: { nom: 'la tente NRBC effondrée', items: [{ id: 'bandage', qty: 2 }, { id: 'desinfectant', qty: 1 }], table: 'defaut.caisse' } });
   for (let k = 0; k < 6; k++) e.objet('housse', 25 + k, 18, { rot: 0, w: 1, h: 1 });
   e.zombie('rampant', 28, 19, { etat: 'fait_le_mort', dir: 1.5 });
-  e.objet('brasero', 29, 16);
-  e.objet('camion_mil', 24, 21, { w: 5, h: 2 });
+  e.objet('fut', 29, 16, { nom: 'le fût noirci' }); e.decal('cendres', 29.5, 16.6, { r: 0.4 });
+  e.objet('camion_mil', 24, 21, { w: 5, h: 2, lumiere: false });          // batterie à plat : le gyrophare ne tourne plus
   e.objet('sacs_sable', 38, 22, { w: 3, h: 1 }); e.objet('barriere', 42, 21, { rot: 1, w: 1, h: 2 });
-  e.objet('lavabo', 43, 14, { nom: 'le robinet', marqueur: 'robinet_fleurs', conteneur: false });
+  e.objet('lavabo', 43, 14, { nom: 'le robinet', conteneur: false });
   e.semer('papiers', 26, 13, 12, 9, 6, { n: 3 });
   e.decal('flaque', 42.8, 15.2, { r: 0.5 });
   e.zombie('errant', 38, 20, { etat: 'erre' });
@@ -121,14 +110,12 @@ export default plan({
   // ---------- La loge du gardien (sud-ouest) ----------
   const lo = e.batiment(2, 22, 8, 7, { nom: 'Loge du gardien', sol: 'lino', toit: 'tuiles', sombre: 1,
     portes: [{ cote: 'e', a: 1 }], fenetres: [{ cote: 'n', a: 2, l: 2 }, { cote: 'e', a: 3 }] });
-  e.objet('bureau', lo.x0 + 2, lo.y0, { nom: 'le bureau du gardien', marqueur: 'loge_gardien', conteneur: false, w: 2, h: 1 });
-  // le plan de Salon punaisé au mur, à côté de la fenêtre (derrière lui, le double de la clé) ; le tableau de clés près de la porte
-  e.objet('plan_mural', lo.x0 + 4, lo.y0 - 1, { drapeau: 'pro_plan_pris' });
+  e.objet('bureau', lo.x0 + 2, lo.y0, { nom: 'le bureau du gardien', w: 2, h: 1 });
+  // le plan de Salon punaisé au mur, à côté de la fenêtre ; le tableau de clés près de la porte
+  e.objet('plan_mural', lo.x0 + 4, lo.y0 - 1);
   e.objet('tableau_cles', lo.x1, lo.y0 - 1);
-  // le gardien, mort dans son fauteuil : un simple corps du décor (pas un mort qu'on peut frapper) ; quand on emporte la
-  // clé, il disparaît du fauteuil et un mort se lève à sa place, réveillé et sur toi (reveil : même sous ton nez)
-  e.objet('chaise', lo.x0 + 2, lo.y0 + 1); e.objet('gardien_mort', lo.x0 + 2, lo.y0 + 1, { drapeau: 'pro_cle_prise' });
-  e.zombie('errant', lo.x0 + 2, lo.y0 + 1, { si: { flag: 'pro_cle_prise' }, reveil: true, dir: -1.57 });
+  // le gardien, mort dans son fauteuil : un corps du décor, qui ne se relèvera pas
+  e.objet('chaise', lo.x0 + 2, lo.y0 + 1); e.objet('gardien_mort', lo.x0 + 2, lo.y0 + 1);
   e.objet('lit_simple', lo.x0, lo.y0 + 3, { w: 1, h: 2 });
   e.objet('armoire', lo.x0, lo.y0, { w: 1, h: 2, rot: 1 });
   e.objet('cuisine', lo.x0 + 2, lo.y1, { w: 2, h: 1 });
@@ -145,7 +132,7 @@ export default plan({
 
   // ---------- La remise (une pelle : de quoi se défendre) ----------
   const re = e.piece(11, 25, 6, 4, { nom: 'La remise', sol: 'beton', mur: 'bois', sombre: 1, toit: 'tole', portes: [{ cote: 'n', a: 1 }] });
-  e.objet('etabli_meuble', re.x0 + 1, re.y1, { w: 3, h: 1, nom: 'l’établi', marqueur: 'remise_etabli', conteneur: { nom: 'l’établi', items: [{ id: 'pelle', qty: 1 }], table: 'cimetiere.etagere' } });
+  e.objet('etabli_meuble', re.x0 + 1, re.y1, { w: 3, h: 1, nom: 'l’établi', conteneur: { nom: 'l’établi', items: [{ id: 'pelle', qty: 1 }], table: 'cimetiere.etagere' } });
   e.objet('poubelle', re.x1, re.y0);
   e.objet('fut', re.x0, re.y1);
 
@@ -158,7 +145,7 @@ export default plan({
   e.objet('lampadaire', 26, 30);
   e.objet('voiture', 6, 31, { w: 3, h: 2, couleur: '#3a3a3a' });
   e.objet('voiture', 29, 31, { w: 3, h: 2 });
-  e.objet('ambulance', 36, 31, { w: 4, h: 2 }); e.lumiere('gyro_bleu', 38, 32, { r: 5 });
+  e.objet('ambulance', 36, 31, { w: 4, h: 2 });
   e.decal('marquage', 15, 32.5, { a: 0, r: 0.8 }); e.decal('marquage', 23, 32.5, { a: 0, r: 0.8 });
   e.semer('feuilles', 0, 30, W, 4, 10);
   e.entree('defaut', 22, 31);

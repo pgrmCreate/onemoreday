@@ -19,13 +19,44 @@
 export const REGLAGES = {
 
   // ===========================================================================
+  //  BRUME JAUNE — le chlore de la gare de triage après la frappe (js/game/brume.js, docs/HISTOIRE.md §4)
+  // ===========================================================================
+  brume: {
+    // lieux bas où le chlore s'amasse la nuit : force (0..1) et délai (jours après la frappe, jour 4 à 6 h)
+    BAS: {
+      miramas:        { force: 1.0, delai: 0 },     // la gare elle-même
+      bergerie:       { force: 0.8, delai: 0.55 },  // la Crau, sous le vent de la gare
+      crau_coussouls: { force: 0.6, delai: 1.0 },
+      istres:         { force: 0.7, delai: 1.2 },
+      saint_chamas:   { force: 0.9, delai: 1.6 },   // le bord de l'étang : la Poudrerie, la nuit du jour 5
+      aerodrome:      { force: 0.4, delai: 2.0 },
+      grans:          { force: 0.5, delai: 2.0 },
+      touloubre:      { force: 0.55, delai: 2.0 },
+      berre:          { force: 0.6, delai: 2.5 },
+      lancon:         { force: 0.3, delai: 3.0 },
+    },
+    PLEINE_JOURS: 6,        // pleine force pendant 6 jours après la frappe…
+    DECLIN_JOURS: 14,       // …puis elle faiblit jusqu'au plancher en 14 jours
+    PLANCHER: 0.12,
+    NUITS_SURES: 2,         // les deux premières nuits, elle monte à coup sûr
+    CHANCE_NUIT: 0.75,      // ensuite, trois nuits sur quatre (une brise suffit à la disperser)
+    DEDANS: 0.6,            // au rez-de-chaussée, à l'intérieur : 60 %
+    EN_ROUTE: 0.7,          // en marchant (on ne s'y attarde pas)
+    PV_PAR_MIN: 0.11,       // pleine brume sans protection : ≈ 6,6 PV par heure (une nuit dehors peut tuer)
+    SOMMEIL_MULT: 1.6,      // dormir dedans : on respire à fond, sans se réveiller assez tôt
+    FATIGUE_PAR_MIN: 0.05,
+    TOUX_MIN: 4,            // une quinte de toux toutes les 4 minutes de jeu au plus
+    FILTRE_MIN: 480,        // une cartouche de masque à gaz : 8 heures de brume
+  },
+
+  // ===========================================================================
   //  TEMPS — l'horloge du monde
   // ===========================================================================
   temps: {
     MS_PAR_MINUTE: 2381,        // 2 381 ms réelles = 1 minute de jeu → une journée ≈ 57 min réelles
                                 //   (encore 30 % plus lent qu'en v3 : 1 667 ms / 0,7).
                                 //   ↑ = le monde vieillit moins vite (moins de repas, de piles) ; ↓ = plus pressant.
-    DEPART_MINUTES: 480,        // la partie commence le jour 1 à 8 h 00.
+    DEPART_MINUTES: 1110,       // la partie commence le jour 1 à 18 h 30 : on arrive à la porte du Refuge au coucher du soleil.
     DATE_JOUR1: [2026, 9, 23],  // le jour 1 est le mercredi 23 septembre 2026 (docs/HISTOIRE.md : trois semaines après le Mercredi).
     HEURES: {                   // courbe de lumière (clock.lumiereJour) : 0 la nuit, rampe, 1 le jour
       AUBE: 6,                  //   6 h → la lumière commence à monter
@@ -99,7 +130,7 @@ export const REGLAGES = {
     // --- HORDE lointaine (boucle sonore) : morts du même étage entre DIST_MIN et DIST_MAX cases ---
     // Le dehors entendu depuis un bâtiment : ENTREE à la porte, divisé par e tous les DECROIT unités, jamais sous MIN.
     DEDANS_SON: { ENTREE: 0.12, DECROIT: 1.5, MIN: 0.008, PORTEE: 12 },
-    CLOCHES_SOIR: { HEURE: 21 + 10 / 60, FIN_FLAG: 'prologue_fini' }, // les cloches de Maud, chaque soir, jusqu'à la fin du prologue.
+    CLOCHES_SOIR: null,         // (ancienne histoire : les cloches de la Tour chaque soir) — { HEURE, FIN_FLAG } pour les rallumer.
     HORDE_SON: { DIST_MIN: 12, DIST_MAX: 80, CALME: 6, FORTE: 18, SALON_DEHORS: true }, // ≥ 6 → gémissements au loin ; ≥ 18 → la ville grouille ; dehors dans Salon : toujours au moins le fond calme.
 
     // --- BRUIT : rayon (cases) du bruit émis ; les morts dont (distance ≤ rayon × ouïe) l'entendent ---
@@ -711,9 +742,9 @@ export const REGLAGES = {
       ANTIBIO_DELAI_MIN: 180,   // les antibiotiques guérissent TOUTES les infections 3 h après la prise.
     },
     // --- LE MAL (contamination des morts) — une égratignure n'est pas une condamnation, une morsure l'est presque ---
-    // Le protagoniste a DÉJÀ été mordu{|e}, est mort{|e} et revenu{|e} (prologue) : son sang résiste. Le mal n'est donc
-    // pas un tirage caché « tu es condamné(e) ou non », mais une JAUGE visible (0..100) qui se charge à chaque plaie
-    // souillée par un mort et se vide lentement. À 100 : la RECHUTE — tu redeviens l'un d'eux (mort définitive).
+    // Le mal n'est pas un tirage caché « tu es condamné ou non », mais une JAUGE visible (0..100) qui se charge à chaque plaie
+    // souillée par un mort et se vide lentement : une morsure rend très malade, une deuxième avant la guérison tue. À 100 :
+    // la RECHUTE — on meurt, et le corps se relève (mort définitive). Une morsure pas guérie : refoulé au pont (condition `mordu`).
     CONTAMINATION: {
       // points ajoutés à la création de la blessure = POINTS[type] × zombie.infection × difficulté.contamination
       POINTS: { egratignure: 3, entaille: 6, profonde: 10, morsure: 70, contusion: 0, fracture: 0, brulure: 0 },
