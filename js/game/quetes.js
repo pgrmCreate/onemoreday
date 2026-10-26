@@ -14,6 +14,8 @@ export function avancer(id, et, { distant = false } = {}) {
   if (et === 'fin') q.faite = true;
   const def = QUETES[id].etapes[et];
   if (def && def.objectif && !distant) noteJournal(`Objectif — ${def.objectif}`, 'objectif');
+  // pas de « Nouvel objectif » : l'étape peut porter une pensée du personnage, dite en une ligne (js/ui/notif.js)
+  if (def && def.pensee) emit('mission:notif', { type: 'pensee', texte: def.pensee });
   emit('quete', { id, etape: et, distant });
 }
 // Quête principale active : la dernière principale non finie (ordre de déclaration).

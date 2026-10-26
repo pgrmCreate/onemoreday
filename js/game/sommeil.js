@@ -9,7 +9,7 @@
 // chaque bloc dormi ; l'invité le dort à son tour et répond. Le premier réveillé (plafond du couchage, intrusion, mort,
 // liaison perdue) arrête le sommeil des deux : personne ne compte d'heures que l'autre n'a pas vécues.
 import { G, genrer, getFlag } from '../core/state.js';
-import { refugeHabite, pieceProtegee } from '../explore/refuge.js';
+import { refugeHabite, pieceProtegee, condition } from '../explore/refuge.js';
 import { emit, on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 import { texteHorloge, heureConnue, momentVague } from './temps_connu.js';
@@ -60,17 +60,32 @@ async function situation() {
   const P = pid >= 0 ? V.niveau.pieces[pid] : null;
   // un refuge habité (js/explore/refuge.js) protège ses pièces sansMorts — pas la montée dehors ; au siège, il ne protège plus
   let sur = !!(V.L && V.L.refuge) || (refugeHabite(V.niveau, getFlag) && pieceProtegee(V.niveau, { etage: j.etage, x: j.x, y: j.y }));
+  // un camp où quelqu'un veille (le plan : veille { si, x, y, rayon }) : dehors, mais on dort en sûreté près de lui
+  const ve = V.niveau.veille;
+  if (!sur && ve && condition(ve.si, getFlag) && Math.hypot(j.x - ve.x, j.y - ve.y) <= ve.rayon) sur = true;
   let raisonRisque = '';
   if (!sur && P && !P.exterieur) {
-    // toutes les portes qui donnent sur la pièce sont fermées ?
+    // Les pièces qu'on atteint depuis la sienne par des portes ouvertes forment l'abri : une porte ouverte sur un cabinet
+    // de toilettes fermé, ou sur la chambre voisine dont la porte est close, ne laisse rien entrer. Seule compte une porte
+    // ouverte qui mène dehors (ou vers une pièce qui donne dehors), et un mort dans l'abri.
+    const ouverte = (p) => { const s = V.snap.portes[p.cle]; return !s || s.etat === 'ouverte' || s.etat === 'cassee'; };
+    const abri = new Set([pid]), file = [pid];
     let ouvertes = 0;
-    for (const p of V.niveau.portes) {
-      if (p.etage !== E.id) continue;
-      if (!(p.pieces || []).includes(pid)) continue;
-      const s = V.snap.portes[p.cle];
-      if (!s || s.etat === 'ouverte' || s.etat === 'cassee') ouvertes++;
+    while (file.length) {
+      const q = file.shift();
+      for (const p of V.niveau.portes) {
+        if (p.etage !== E.id || !(p.pieces || []).includes(q) || !ouverte(p)) continue;
+        const autres = p.pieces.filter(r => r !== q);
+        if (p.exterieure || !autres.length) { ouvertes++; continue; }
+        for (const r of autres) {
+          if (abri.has(r)) continue;
+          const R = V.niveau.pieces[r];
+          if (!R || R.exterieur) { ouvertes++; continue; }
+          abri.add(r); file.push(r);
+        }
+      }
     }
-    const mortsIci = V.zListe.some(z => { if (z.etage !== j.etage) return false; const i = icase(E, z.x, z.y); return i >= 0 && E.piece[i] === pid; });
+    const mortsIci = V.zListe.some(z => { if (z.etage !== j.etage) return false; const i = icase(E, z.x, z.y); return i >= 0 && abri.has(E.piece[i]); });
 
     sur = ouvertes === 0 && !mortsIci;
     raisonRisque = mortsIci ? 'un mort est dans la pièce' : ouvertes ? `${ouvertes} porte${ouvertes > 1 ? 's' : ''} ouverte${ouvertes > 1 ? 's' : ''}` : '';

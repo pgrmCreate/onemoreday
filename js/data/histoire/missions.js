@@ -25,11 +25,47 @@
 //   agir      { lieu, piece, libelle, ms, bruit?, reveil?, annonce? }  un geste chronométré sur place (bruit : rayon du
 //                                              vacarme ; reveil : { piece } — tous les morts de la pièce se réveillent et viennent)
 //   fuir      { lieu }                         sortir du lieu vivant·e
+//   deposer   { lieu, marqueur, points }       ranger dans le conteneur du plan (son marqueur) de quoi caler `points` de faim :
+//                                              on ne « donne » rien, la caisse se remplit et l'étape avec (dit en mots)
+//   construire { lieu, besoins: [{ types, n?, nom }] }  bâtir sur place ce qui est demandé (constructions du lieu : un feu de
+//                                              l'un des types, n alarmes…) ; le guide dit ce qui manque encore
+// Ce n'est pas un RPG (docs/RETOURS_JOUEUR.md #60) : aucun bandeau « Nouvelle mission ». Une étape peut porter `pensee`
+// (au début) et `penseeFaite` (remplie), la mission `penseeFin` : une ligne de pensée du personnage (js/ui/notif.js).
 // vagues : { chaqueMin, n: [min, max], nuit?, types? } — des morts entrent par les bords et marchent vers la cible.
 // preparer : { piece, n, etat } — à la première entrée pendant l'étape : les morts de la pièce passent dans cet état
 //            ('dort' : endormis debout) et n autres y sont posés.
 
 export const MISSIONS = {
+
+  // ═══════════════ LE DÉBUT : le bois de la Barben (docs/HISTOIRE_DEBUT_V3.md, scènes bb_matin et bb_camp) ═══════════════
+  m_vivres: {
+    titre: 'La caisse du camp',
+    resume: 'Il n’y a plus rien à manger pour sept. Je dois rapporter du mas du vallon de quoi tenir quelques jours, et le ranger dans la caisse du camp, près du fourgon.',
+    etapes: [
+      { type: 'deposer', lieu: 'bois_barben', marqueur: 'caisse_camp', points: 90, texte: 'Ranger de quoi manger dans la caisse du camp',
+        penseeFaite: 'Ça ne tiendra pas plus de deux jours.' },
+    ],
+    fin: {   // le récit de la fin (Martine qui compte) ouvre la scène suivante, bb_camp : l'ordre reste juste
+      effets: { flag: 'vivres_faits', journal: 'J’ai rapporté du mas de quoi tenir deux ou trois jours, et je l’ai rangé dans la caisse du camp. Aujourd’hui, tout le monde a mangé.' },
+    },
+  },
+  m_camp: {
+    titre: 'Le camp',
+    resume: 'Le fourgon ne repartira pas. René veut un vrai camp : un feu dans le creux, sous les pins, qu’on ne voie pas de la piste, une ligne de boîtes de conserve sur un fil tout autour, et un abri de branches et de bâche pour Laura.',
+    etapes: [
+      { type: 'construire', lieu: 'bois_barben', texte: 'Monter le camp',
+        besoins: [
+          { types: ['feu_branches', 'feu_camp', 'four_pierre'], nom: 'un feu' },
+          { types: ['alarme_conserves'], n: 2, nom: 'la ligne de boîtes' },
+          { types: ['abri_branches'], nom: 'l’abri' },
+        ],
+        penseeFaite: 'Ça ne tiendrait pas contre grand-chose. Mais on les entendra venir.' },
+    ],
+    fin: {
+      texte: 'Ça ne ressemble pas à grand-chose, mais c’est un camp. Laura s’est glissée sous l’abri, et Mathis s’est assis contre sa mère, à côté du feu qui ne fait presque pas de lumière. Sandrine lui caresse les cheveux sans y penser.\n\nThierry, lui, reste assis à l’écart sur le marchepied du fourgon, les yeux sur la piste. Il ne mange pas, et il ne parle à personne.',
+      effets: { flag: 'camp_monte', quete: ['q_debut', 'nuit'], journal: 'Le camp est monté : un feu dans le creux, une ligne de boîtes autour, et l’abri pour Laura. Thierry ne parle plus à personne.' },
+    },
+  },
 
   // ═══════════════ LES MISSIONS DE L'HISTOIRE (sans offre : acceptées par une scène, docs/HISTOIRE.md §6) ═══════════════
 

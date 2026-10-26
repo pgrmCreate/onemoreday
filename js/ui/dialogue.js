@@ -136,6 +136,8 @@ export async function jouerScene(id) {
       const r = await appliquer(effets, sortie, suivant);
       if (r === 'mort') { sortie.fin = '#mort'; break; }
       if (suivant === '#combat') { sortie.fin = '#combat'; break; }
+      // un choix qui répond par un texte et clôt la scène : on lit d'abord la réponse
+      if (texte && suivant === '#fin') await afficher({ texte, illu: def.illu, auto: { label: 'Continuer', suivant: '#fin' } });
       if (suivant && suivant.startsWith('#')) { sortie.fin = suivant; break; }
       // Texte de résultat : affiché en tête de la scène suivante ; s'il n'y en a pas, petite page.
       if (texte) {

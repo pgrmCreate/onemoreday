@@ -4,6 +4,10 @@
 // poids > 0 → s'ajoute au tirage aléatoire quand `si` est vrai (couleur de l'histoire en cours).
 export const RENCONTRES_HISTOIRE = [
   // ─── Scénarisées (déclencheurs 'voyage') ───
+  // Le début : la route du bois de la Barben au Vieux-Vernègues, avec René, Laura et Mathis
+  { id: 'rh_chateau_bas',     poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'plaine_route', scene: 'rv_chateau_bas' },
+  { id: 'rh_village_neuf',    poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, hostile: true, illu: 'plaine_route', scene: 'rv_village_neuf' },
+  { id: 'rh_porte_vernegues', poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'nuit_campagne', scene: 'rv_porte_vernegues' },
   // Acte II : la route de la Crau, avec Fernand
   { id: 'rh_triage',       poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, illu: 'triage_horde', scene: 'rv_triage' },
   { id: 'rh_draille',      poids: 0, type: 'choix', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true, hostile: true, illu: 'crau_mistral', scene: 'rv_draille' },

@@ -197,10 +197,13 @@ export async function nouvelleAventure({ nom, genre, difficulte, mode = 'solo', 
   if (avant) avant();
   cacherEcran();
   demarrerSystemes();
-  quetes.avancer('q_refuge', 'arrivee');
+  // le début (docs/HISTOIRE_DEBUT_V3.md) : deux jours dans un fourgon, sans rien manger ou presque, à dormir assis
+  Object.assign(G.player, { faim: 55, soif: 60, fatigue: 70 });
   sauver();
-  await flow.cinematique('intro');
-  await flow.explorer('miramas_le_vieux', { entree: 'porte' });
+  await flow.cinematique('ouverture');
+  await flow.explorer('bois_barben', { entree: 'fourgon' });
+  // pas de « Nouvel objectif » : la pensée de la première étape, une fois qu'on est sur la piste
+  setTimeout(() => quetes.avancer('q_debut', 'panne'), 1800);
 }
 
 export async function continuer(mode = 'solo', avant = null) {
@@ -222,7 +225,7 @@ async function reprendrePosition() {
     if (v.indication) await flow.voyager({ de: v.de, vers: v.vers, allure: v.allure || 'normale', indication: true });
     else await flow.ouvrirCarte({ echelle: lieuEchelle(v.vers), depuis: v.de, reprise: v });
   } else {
-    await flow.explorer('miramas_le_vieux', { entree: 'porte' });
+    await flow.explorer('bois_barben', { entree: 'fourgon' });
   }
   annoncerRepli(repli);
 }
@@ -240,10 +243,10 @@ export async function demarrerInvite({ position, neuf, avant } = {}) {
   const repli = preparerRepriseErrance(G.player);
   position = G.player.position;
   if (position && position.lieu) await flow.explorer(position.lieu, { entree: position.entree || undefined });
-  else await flow.explorer('miramas_le_vieux', { entree: 'porte' });
+  else await flow.explorer('bois_barben', { entree: 'fourgon' });
   annoncerRepli(repli);
-  // premier soir à deux : vous êtes arrivés ensemble à la porte du Refuge
-  if (neuf && G && !G.world.flags.quarantaine_faite) setTimeout(() => flow.scene('ref_porte_coop').catch(() => {}), 600);
+  // premier soir à deux : le fourgon vous a ramassés ensemble au bord de la route
+  if (neuf && G && !G.world.flags.camp_attaque) setTimeout(() => flow.scene('bb_coop').catch(() => {}), 600);
 }
 
 // ---------- Mort ----------

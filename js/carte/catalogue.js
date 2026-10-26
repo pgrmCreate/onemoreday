@@ -208,6 +208,10 @@ export const OBJETS = {
   brasero:    { cat: null, bloque: 1, t: [1, 1], nom: 'le fût enflammé', lumiere: 'feu' },
   feu_camp:   { cat: null, bloque: 1, t: [1, 1], nom: 'le feu de camp', lumiere: 'feu' },
   fontaine:   { cat: null, bloque: 1, t: [2, 2], nom: 'la fontaine' },
+  // un vrai puits de campagne : margelle ronde en pierre, potence de bois, poulie, seau (on y puise : objet(…, { eau: true }))
+  puits:      { cat: null, bloque: 1, t: [2, 2], nom: 'le puits' },
+  // un rang de vigne palissée : les ceps, le fil de fer tendu entre deux piquets, des grappes (dessin en longueur, w × 1)
+  vigne:      { cat: null, bloque: 1, opaque: 0, t: [4, 1], nom: 'le rang de vigne' },
   statue:     { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'la statue' },
   tente:      { cat: 'caisse', bloque: 1, t: [3, 3], nom: 'la tente' },
   generateur: { cat: 'machine', bloque: 1, t: [2, 1], nom: 'le groupe électrogène' },
@@ -236,6 +240,7 @@ export const OBJETS = {
   gardien_mort: { cat: null, bloque: 0, t: [1, 1], tf: [1, 1], nom: 'le gardien', decor: 1 },   // assis, mort, dans son fauteuil (drapeau : il s'est levé)
   debris:     { c: ';', cat: null, bloque: 0, t: [1, 1], nom: 'les débris', decor: 1, bruit: 2.5 },
   brebis_morte: { cat: null, bloque: 0, t: [1, 1], nom: 'la brebis morte', decor: 1 },
+  traces_pneus: { cat: null, bloque: 0, t: [4, 2], nom: 'les traces de pneus', decor: 1, sol: 1 },   // deux ornières crantées dans la terre
   // — anciens noms (props de légende) gardés tels quels —
   haie:       { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'la haie' },
   grille:     { cat: null, bloque: 1, t: [1, 1], nom: 'la grille' },

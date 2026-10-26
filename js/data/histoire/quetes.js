@@ -5,6 +5,29 @@
 // `heures` d'une étape : la carte n'y mène qu'à ces heures-là (générique, voir js/travel/carte.js).
 
 export const QUETES = {
+  // Le début (docs/HISTOIRE_DEBUT_V3.md) : pas de « Nouvel objectif » — chaque étape porte une pensée du personnage, dite
+  // une fois (js/ui/notif.js) ; l'objectif reste lisible dans le menu Objectifs.
+  q_debut: {
+    titre: 'Le bois', chapitre: 0, principale: true,
+    etapes: {
+      panne:      { objectif: 'Passer la nuit au camp, près du fourgon, sur la piste du bois de la Barben', lieu: 'bois_barben',
+                    pensee: 'Le moteur ne repartira pas ce soir. On va dormir ici, au bord de la piste.' },
+      vivres:     { objectif: 'Rapporter à manger du mas, en bas du sentier du vallon, et le ranger dans la caisse du camp', lieu: 'bois_barben',
+                    pensee: 'Il faut trouver à manger pour tout le monde. René parle d’un mas, en bas du vallon.' },
+      camp:       { objectif: 'Monter le camp : un feu dans le creux sous les pins, une ligne de boîtes sur un fil, un abri', lieu: 'bois_barben',
+                    pensee: 'Si on reste, il faut un vrai camp. Un feu qu’on ne voit pas, des boîtes sur un fil, un abri pour Laura.' },
+      nuit:       { objectif: 'Passer la nuit au camp', lieu: 'bois_barben' },
+      vigie:      { objectif: 'Monter à la vigie par le pare-feu, au nord de la piste, et appeler à l’aide avec la radio', lieu: 'vigie_barben',
+                    pensee: 'La vigie, en haut du pare-feu. Si la radio marche, quelqu’un viendra peut-être nous chercher.' },
+      vigie_haut: { objectif: 'Monter dans la cabine de la vigie et appeler à l’aide avec la radio', lieu: 'vigie_barben' },
+      retour:     { objectif: 'Redescendre au camp par le pare-feu', lieu: 'bois_barben' },
+      chercher:   { objectif: 'Chercher Mathis autour du camp', lieu: 'bois_barben', pensee: 'Mathis. Où est Mathis ?' },
+      nuit3:      { objectif: 'Passer la nuit au camp avec ceux qui restent', lieu: 'bois_barben' },
+      route:      { objectif: 'Aller au Vieux-Vernègues avec René, Laura et Mathis', lieu: 'vernegues',
+                    pensee: 'Vernègues. On partira à l’aube, avec ce qui reste.' },
+      fin:        { objectif: 'Le Refuge du Vieux-Vernègues' },
+    },
+  },
   q_refuge: {
     titre: 'Le Refuge', chapitre: 1, principale: true,
     etapes: {

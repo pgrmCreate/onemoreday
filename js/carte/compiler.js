@@ -99,6 +99,7 @@ export function compilerPlan(plan, def = {}) {
     id: meta.id, nom: meta.nom || meta.id, exterieur: !!meta.exterieur, fin: F,
     typeButin: meta.typeButin || null, pool: meta.pool || null, morts: meta.morts || null, mortsDehorsSeulement: !!meta.mortsDehorsSeulement, planVersion: meta.version || 0, def,
     refuge: meta.refuge || null,     // refuge habité tant que la condition tient (js/explore/sim.js : tenirRefuge)
+    veille: meta.veille || null,     // { si, x, y, rayon } : quelqu'un monte la garde — on dort en sûreté près de lui (js/game/sommeil.js)
     etages: [], etageIdx: {}, pieces: [], meubles: [], meubleParCle: {}, portes: [], porteParCle: {},
     escaliers: [], entrees: {}, sorties: [], marqueurs: {}, spawns: [], pnj: [], sol: [], declencheurs: [],
     avertissements, format: 'couches',
@@ -184,8 +185,9 @@ export function compilerPlan(plan, def = {}) {
       const opaque = ob.opaque != null ? (ob.opaque ? 1 : 0) : (d.opaque || 0);
       Object.assign(R, { cases, bloque, opaque, haut: ob.haut ?? d.haut ?? null, lumiere: ob.lumiere ?? d.lumiere ?? null });
       E.rendu.objets.push(R);
-      // Un objet de décor (chaise, corps, débris, tapis, housse) reste du sol — sauf s'il a un contenu ou un marqueur.
-      const meuble = !d.decor || !!ob.conteneur || !!ob.marqueur;
+      // Un objet de décor (chaise, corps, débris, tapis, housse) reste du sol — sauf s'il a un contenu, un marqueur ou une
+      // condition (si : il n'est là que tant qu'elle tient, js/explore/sim.js majObjetsSi).
+      const meuble = !d.decor || !!ob.conteneur || !!ob.marqueur || !!ob.si;
       const dk = DECOS.indexOf(ob.type);
       for (const i of cases) {
         if (E.code[i] !== K.SOL) continue;
@@ -304,6 +306,7 @@ export function compilerPlan(plan, def = {}) {
         items: cont && Array.isArray(cont.items) ? cont.items.map(it => ({ id: it.id, qty: it.qty || 1 })) : null,
         table: cont && 'table' in cont ? cont.table : undefined,
         marqueur: R.marqueur || null, eau: R.eau || null, piece: E.piece[cases[0]],
+        si: R.si || null,
         rendu: R,
       };
       if (m.cat === null && cont) m.cat = 'etagere';

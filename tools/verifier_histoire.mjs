@@ -48,7 +48,7 @@ const MUSIQUES_SCENE = new Set(['calme', 'sombre', 'tension', 'combat', 'mort', 
 const MUSIQUES_CINE = new Set(['titre', 'calme', 'sombre', 'tension', 'combat', 'mort', 'refuge']);
 const COND_CLES = new Set(['flag', 'pasFlag', 'flagEgal', 'objet', 'pasObjet', 'skill', 'nuit', 'jourMin', 'jourMax', 'heureMin', 'heureMax',
   'lieu', 'lieuVisite', 'quete', 'queteFaite', 'mordu', 'solo', 'coop', 'ou', 'et', 'non']);
-const EFFET_CLES = new Set(['flag', 'mission', 'flags', 'retirerFlag', 'objet', 'objets', 'blessure', 'pv', 'sta', 'faim', 'soif', 'fatigue',
+const EFFET_CLES = new Set(['flag', 'mission', 'pensee', 'flags', 'retirerFlag', 'objet', 'objets', 'blessure', 'pv', 'sta', 'faim', 'soif', 'fatigue',
   'tempsMin', 'xp', 'decouvrir', 'quete', 'journal', 'document', 'combat', 'cinematique', 'teleporter', 'voyage', 'retirer', 'bruit', 'infection', 'detour']);
 const DECL_QUAND = new Set(['entree_lieu', 'marqueur', 'flag', 'heure', 'voyage']);
 const TYPES_RENC = new Set(['combat', 'choix', 'butin', 'ambiance', 'pnj']);
@@ -270,8 +270,9 @@ for (const m of Object.values(MISSIONS)) { for (const et of m.etapes || []) flag
 for (const k of MORTS_REQUISES) if (!MORTS[k]) err(`morts : cause « ${k} » manquante`);
 Object.entries(MORTS).forEach(([k, t]) => verifTexte(t, `morts.${k}`));
 for (const [id, f] of Object.entries(FINS)) {
-  if (!CINEMATIQUES[f.cinematique]) err(`fin ${id} : cinématique inconnue`);
-  if (!SCENES[f.scene]) err(`fin ${id} : scène inconnue`);
+  // une fin peut se passer de cinématique et de scène (la fin provisoire du début : seulement l'écran de fin)
+  if (f.cinematique && !CINEMATIQUES[f.cinematique]) err(`fin ${id} : cinématique inconnue`);
+  if (f.scene && !SCENES[f.scene]) err(`fin ${id} : scène inconnue`);
   if (!flagsPoses.has(f.flag)) err(`fin ${id} : drapeau « ${f.flag} » jamais posé`);
 }
 

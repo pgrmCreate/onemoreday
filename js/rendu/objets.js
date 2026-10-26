@@ -682,6 +682,61 @@ const DESSINS = {
     c.fillStyle = 'rgba(150,180,190,0.15)'; ellipse(c, W / 2 - 8, H / 2 - 8, 14, 6, -0.6); c.fill();
     c.fillStyle = '#9a9282'; cercle(c, W / 2, H / 2, 8); c.fill(); c.fillStyle = '#6a6252'; cercle(c, W / 2, H / 2, 4); c.fill();
   },
+  // le puits : margelle de pierres sèches, l'eau noire tout au fond, la potence de bois en travers et sa poulie, le seau
+  puits(c, W, H, r) {
+    const R0 = Math.min(W, H) / 2 - 4;
+    avecOmbre(c, 9, 4, 7, 0.65, () => { c.fillStyle = '#7a7262'; cercle(c, W / 2, H / 2, R0); c.fill(); });
+    // les pierres de la margelle
+    for (let k = 0; k < 16; k++) {
+      const a = k / 16 * 6.28 + r() * 0.1, x = W / 2 + Math.cos(a) * R0 * 0.82, y = H / 2 + Math.sin(a) * R0 * 0.82;
+      c.fillStyle = teinte('#8e8574', 0.8 + r() * 0.35); c.save(); c.translate(x, y); c.rotate(a); rr(c, -R0 * 0.2, -R0 * 0.13, R0 * 0.4, R0 * 0.26, 2); c.fill(); c.restore();
+    }
+    // le trou : noir au fond, un reflet d'eau
+    const g = c.createRadialGradient(W / 2, H / 2, 1, W / 2, H / 2, R0 * 0.62);
+    g.addColorStop(0, '#05080a'); g.addColorStop(0.75, '#0e1418'); g.addColorStop(1, '#262420');
+    c.fillStyle = g; cercle(c, W / 2, H / 2, R0 * 0.62); c.fill();
+    c.fillStyle = 'rgba(150,175,185,0.16)'; ellipse(c, W / 2 - R0 * 0.12, H / 2 + R0 * 0.08, R0 * 0.2, R0 * 0.07, -0.4); c.fill();
+    // la potence : deux montants, la traverse, la poulie, la corde qui descend
+    avecOmbre(c, 6, 3, 4, 0.6, () => {
+      c.fillStyle = BOIS_F; c.fillRect(W / 2 - 3, H / 2 - R0 - 1, 6, R0 * 0.38); c.fillRect(W / 2 - 3, H / 2 + R0 * 0.63, 6, R0 * 0.38);
+      c.fillStyle = BOIS; c.fillRect(W / 2 - 2.5, H / 2 - R0 + 2, 5, R0 * 2 - 4);
+    });
+    c.fillStyle = '#3a3a38'; cercle(c, W / 2, H / 2, 4.5); c.fill(); c.fillStyle = '#6e6a62'; cercle(c, W / 2, H / 2, 2); c.fill();
+    c.strokeStyle = 'rgba(190,170,130,0.85)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(W / 2 + 4, H / 2); c.lineTo(W / 2 + R0 * 0.95, H / 2 + R0 * 0.2); c.stroke();
+    // le seau posé sur la margelle
+    avecOmbre(c, 4, 2, 3, 0.6, () => { c.fillStyle = '#5c6366'; cercle(c, W / 2 + R0 * 0.98, H / 2 + R0 * 0.32, R0 * 0.2); c.fill(); });
+    c.fillStyle = '#2a3034'; cercle(c, W / 2 + R0 * 0.98, H / 2 + R0 * 0.32, R0 * 0.13); c.fill();
+  },
+  // un rang de vigne : la terre griffée, le fil de fer, les ceps tordus, les feuilles et les grappes noires de septembre
+  vigne(c, W, H, r) {
+    const long = W >= H, L = long ? W : H, l = long ? H : W;
+    c.save(); if (!long) { c.translate(W, 0); c.rotate(Math.PI / 2); }
+    c.fillStyle = 'rgba(70,50,30,0.35)'; c.fillRect(0, l * 0.3, L, l * 0.4);
+    c.strokeStyle = 'rgba(150,150,145,0.7)'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(2, l / 2); c.lineTo(L - 2, l / 2); c.stroke();
+    c.fillStyle = '#4a4440'; c.fillRect(1, l / 2 - 2, 3, 4); c.fillRect(L - 4, l / 2 - 2, 3, 4);
+    const n = Math.max(2, Math.round(L / 22));
+    for (let k = 0; k < n; k++) {
+      const x = (k + 0.5) * L / n + (r() - 0.5) * 4;
+      for (let f = 0; f < 7; f++) {
+        const a = r() * 6.28, d = 3 + r() * l * 0.32, t = 3.5 + r() * 4, q = 0.65 + r() * 0.55;
+        avecOmbre(c, 3, 1.5, 2, 0.35, () => { c.fillStyle = rgb([70 * q, 92 * q, 38 * q]); cercle(c, x + Math.cos(a) * d, l / 2 + Math.sin(a) * d * 0.7, t); c.fill(); });
+      }
+      if (r() < 0.25) { c.fillStyle = 'rgba(160,120,40,0.55)'; cercle(c, x + 4, l / 2 - 3, 4); c.fill(); }   // une feuille qui jaunit
+      c.fillStyle = '#4a3428'; cercle(c, x, l / 2, 2.4); c.fill();
+      for (let g = 0; g < 2; g++) if (r() < 0.75) {
+        const gx = x + (r() - 0.5) * 12, gy = l / 2 + (g ? 1 : -1) * (3 + r() * 4);
+        for (let b = 0; b < 6; b++) { c.fillStyle = b % 3 ? '#2a1830' : '#3e2646'; cercle(c, gx + (b % 2) * 1.8 - 0.9, gy + (b >> 1) * 1.6 - 1.6, 1.4); c.fill(); }
+      }
+    }
+    c.restore();
+  },
+  // deux ornières de gros pneus crantés, imprimées dans la terre de la piste (un véhicule lourd, qui a tourné sur place)
+  traces_pneus(c, W, H, r) {
+    for (const y of [H * 0.3, H * 0.72]) {
+      c.fillStyle = 'rgba(40,28,18,0.32)'; c.beginPath(); c.moveTo(0, y - 3); c.quadraticCurveTo(W / 2, y - 3 + (r() - 0.5) * 6, W, y - 4); c.lineTo(W, y + 4); c.quadraticCurveTo(W / 2, y + 3, 0, y + 3); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(25,16,10,0.45)'; for (let x = 2; x < W - 2; x += 4.5) c.fillRect(x, y - 2.5, 2, 5);
+    }
+  },
   statue(c, W, H) { boite(c, 4, 4, W - 8, H - 8, '#8a8476', { r: 2 }); avecOmbre(c, 6, 4, 5, 0.6, () => { c.fillStyle = '#a8a294'; ellipse(c, W / 2, H / 2, 9, 7); c.fill(); cercle(c, W / 2 + 2, H / 2 - 1, 4.5); c.fill(); }); },
   tente(c, W, H, r) {
     avecOmbre(c, 10, 5, 7, 0.6, () => { c.fillStyle = '#3e4632'; rr(c, 4, 4, W - 8, H - 8, 4); c.fill(); });

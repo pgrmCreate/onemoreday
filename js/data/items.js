@@ -52,6 +52,12 @@ export const ITEMS = {
     dur: 40, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper', 'ouvrir'],
     desc: 'La lame est encore propre. Ça ne durera pas — mais bien aiguisée, elle tient plus longtemps qu\'on ne croit.',
   },
+  couteau_poche: {
+    nom: 'Couteau de poche', type: 'arme', poids: 0.1, espace: 0, volume: 0.08,
+    dmg: [4, 8], vitesse: 380, sta: 4, allonge: 0, charge: 1.3, stagger: 0.02, crit: 0.14,
+    dur: 30, bruit: 0, skill: 'dexterite', reparation: 'lame', usage: ['couper', 'ouvrir'],
+    desc: 'Un couteau pliant à manche de bois, la lame usée par les années. C’est tout ce qui te reste de ce que tu avais en poche le premier jour.',
+  },
   couteau_artisanal: {
     nom: 'Couteau artisanal', type: 'arme', poids: 0.3, espace: 1, volume: 0.2,
     dmg: [5, 9], vitesse: 420, sta: 5, allonge: 0, charge: 1.3, stagger: 0.03, crit: 0.12,
@@ -761,6 +767,11 @@ export const ITEMS = {
     nom: 'Figues', type: 'nourriture', poids: 0.25, espace: 1, volume: 0.35,
     kcal: 180, perissable: 30, soif: 2,
     desc: 'Des figues violettes, éclatées par le soleil de septembre. Personne n\'est venu les ramasser cette année.',
+  },
+  raisin: {
+    nom: 'Grappe de raisin', type: 'nourriture', poids: 0.3, espace: 1, volume: 0.4,
+    kcal: 200, perissable: 48, soif: 6,
+    desc: 'Une grappe de raisin noir, trop mûre, que personne n’a vendangée. Les guêpes en ont mangé la moitié.',
   },
   amandes: {
     nom: 'Amandes', type: 'nourriture', poids: 0.12, espace: 0, volume: 0.15,

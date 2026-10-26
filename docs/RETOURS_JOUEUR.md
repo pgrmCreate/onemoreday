@@ -177,6 +177,22 @@ Comme dans Project Zomboid, le jeu, c'est de durer. L'histoire existe, mais ses 
 on se soigne. **On ne gagne rien à tuer des morts** : les récompenses de l'histoire sont des objets, des renseignements,
 des gens en vie — jamais de l'expérience.
 
+### P18. On fait les choses, on ne les valide pas
+Une tâche se fait par de vrais gestes dans le monde (marcher, fouiller, porter, construire, puiser) ; aucun bouton de
+scène ne fait passer le temps pour l'accomplir à la place du joueur (le sommeil mis à part). Une étape se termine quand le
+monde a changé : la caisse du camp est assez pleine (étape `deposer`), le feu, les boîtes et l'abri existent (étape
+`construire`). Pas de bandeau « Nouvelle mission » ni « Objectif rempli » : une pensée du personnage, en une ligne
+(`pensee` d'une étape, effet `pensee` d'une scène) ; le menu Objectifs reste.
+
+### P19. Peu de mots, et seulement quand on va vers les gens
+Pas d'interrogatoire, pas de présentations en chaîne : au début, une scène dure au plus trois échanges, et les gens ne
+parlent que si l'on va vers eux. On apprend qui ils sont en vivant à côté d'eux (répliques des figurants, menus courts).
+
+### P20. Un lieu se comporte comme ses habitants l'auraient arrangé
+Un camp a quelqu'un qui veille (méta `veille`), un refuge habité n'a aucun mort dans ses murs et l'on ne franchit pas sa
+porte comme on veut ; les morts viennent de quelque part (le bruit, la lumière). Les accessoires d'histoire suivent l'état
+du monde (objet du plan avec `si` : le fourgon qui n'est plus là, les traces qui apparaissent).
+
 ---
 
 ## 2. Journal des retours
@@ -283,6 +299,19 @@ des gens en vie — jamais de l'expérience.
 | 52 | Puis des sorties forcées : un bombardement, une brume étrange. | — | La frappe sur la gare de triage (jour 4, 6 h) fait tomber le Refuge ; le chlore des wagons devient la **brume jaune** (`js/game/brume.js`) qui chasse de la Poudrerie et reste un danger des nuits sans vent dans les terres basses. | fait (25 oct.) |
 | 53 | Un scénario prenant, plus survie que RPG, une quête principale mais peu de quêtes, et qui demandent du temps. | — | P17. Acte V libre : le pont de Mallemort ouvert une heure le jour 15 (dernière chance le jour 22) ; les dispersés à retrouver (facultatif) ; fins qui continuent la partie (« Continuer à survivre »). | fait (25 oct.) |
 | 54 | Refaire les vidéos dans Blender : pas d'extrême réalisme, mais des mains bien faites, pas de dessin animé. | Les anciens plans montraient des mains raides, parfois dessinées à la main. | `tools/blender/cine/omd_mains.py` : mains MPFB à la première personne (IK analytique, paume et doigts posés), peau SSS, saleté ; `plans3.py` : 25 plans tournés (fumées et brume en nuées, petit feu en volume). Les 10 vignettes des scènes sont de **vraies photos 360°** (Poly Haven) cadrées et étalonnées (nuit, bougie, brume), avec la horde, les morts du péage et la bergerie incrustés en 3D sous la lumière de la photo (`plaques_photo.py`, `composites.py`). | fait (25 oct.) |
+
+### 26 octobre 2026 — le début ne fait pas entrer dans l'histoire
+
+| # | Ce qu'il dit | Cause probable | Décision | Statut |
+|---|---|---|---|---|
+| 55 | Trop de dialogues au début, c'est lourd ; pourquoi doit-on dire d'où on vient ? | `ref_porte` enchaîne trois scènes et trois questions ; le choix de l'origine pose `origine_crau`, `origine_salon` ou `origine_istres`, qu'aucune autre partie du jeu ne lit. | Plus d'interrogatoire ; au début, une scène dure au plus trois échanges, et l'on parle aux gens quand on va vers eux (`docs/HISTOIRE_DEBUT_V3.md` §1). | fait (26 oct.) : nouveau début sans interrogatoire ; le Refuge à reprendre |
+| 56 | Le puits ne ressemble pas à un puits, on ne sait pas qu'il est là ; on tire l'eau, et d'un coup c'est fait : on a l'impression d'appuyer sur des boutons. | Le « puits » est l'objet `fontaine` renommé (`miramas_le_vieux.js`) ; « Remonter vingt seaux » fait passer 40 min et pose `eau_faite`, sans aucun geste. | Un vrai puits (margelle, poulie, seau) ; puiser = action qui dure, avec seau et corde. Règle : on fait les choses, on ne les valide pas. | partiel (26 oct.) : vrai puits (objet `puits`) au mas du début ; la corvée du Refuge est à refaire avec lui |
+| 57 | Les morts entrent dans le fort ; il suffit de sortir les attirer, ils viennent, on rentre. La porte de base ne devrait pas s'ouvrir : il y a des morts pas loin. | Trois morts placés dans le bas du village, à l'intérieur des remparts, et la brèche ouverte. | Un lieu habité se comporte comme ses habitants l'auraient arrangé : aucun mort dans les murs d'un refuge habité, une porte gardée qu'on ne franchit pas comme on veut. | à faire avec le Refuge du Vieux-Vernègues ; appliqué au camp du début (veille, morts venus du bois) |
+| 58 | On ne peut pas dormir parce que la porte des toilettes est ouverte. | `sommeil.js` compte toutes les portes de la pièce, même celle d'un WC fermé sans autre issue. | Ne compter que les portes qui mènent vers un endroit dangereux. | fait (26 oct.) |
+| 59 | Au début, on a de l'équipement de départ, on ne comprend pas. Il préfère partir avec des survivants en voiture, être perdu au milieu d'une forêt, s'arrêter au milieu d'une route, puis explorer en douceur la campagne et la ville, plutôt que commencer dans un camp tout fait avec plein de survivants. | — | Nouveau début dans le bois de la Barben : le fourgon en panne, trois étapes (manger, construire le camp, la vigie dont la radio ne marche pas), le camp attaqué au retour (une secte, qu'on ne découvre que plus tard), puis la route jusqu'au Refuge, déplacé au Vieux-Vernègues ; on part avec ce qu'on a sur soi (`docs/HISTOIRE_DEBUT_V3.md`). | fait (26 oct.) : bois de la Barben, vigie, route de Vernègues, porte du Refuge (`docs/HISTOIRE_DEBUT_V3.md`) |
+| 60 | On ne répond pas à une quête en mode « nouvelle quête » ; ce n'est pas un RPG, on ne gagne pas un point pour avoir tiré l'eau du puits. | Bandeaux « Nouvelle mission », « Objectif rempli », « Mission accomplie » (`notif.js`, `missions.js`). | Plus de bandeaux : de courtes pensées du personnage à la première personne ; le menu Objectifs reste, rédigé de la même façon. | fait (26 oct.) : pensées (`js/ui/notif.js`), menu Objectifs gardé |
+| 61 | C'est un jeu de survie, triste et horrible, qui suit une histoire ; l'histoire peut évoluer selon les actions du joueur. Il veut qu'on réfléchisse et qu'on lui pose des questions avant de modifier le scénario. | — | Chaque changement de trame passe d'abord par une proposition écrite et des questions au propriétaire. | règle |
+| 62 | Les vidéos attendront : on les refera une fois qu'il aura joué le jeu de A à Z et que le scénario tiendra la route, pas à chaque modification. | — | Pas de tournage tant que l'histoire n'est pas validée ; les scènes utilisent des images fixes ou le texte seul. | règle |
 
 ---
 

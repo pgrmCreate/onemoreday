@@ -10,6 +10,32 @@
 const AU_REFUGE = { lieu: 'miramas_le_vieux' };
 
 export const DECLENCHEURS = [
+  // ═══════════════════════ LE DÉBUT — LE BOIS (docs/HISTOIRE_DEBUT_V3.md) ═══════════════════════
+  // La cinématique 'ouverture' (trois phrases sur un écran noir) est jouée à la création de la partie, puis on arrive sur
+  // la piste, à côté du fourgon (explorer('bois_barben', { entree: 'fourgon' })) : on joue tout de suite, sans scène.
+  // le matin du jour 2 : il n'y a plus rien à manger, René parle du mas
+  { quand: 'heure', jourMin: 2, heure: 7, si: { quete: ['q_debut', 'panne'] }, scene: 'bb_matin' },
+  // la caisse est assez pleine : le fourgon ne repartira pas, on monte le camp
+  { quand: 'flag', flag: 'vivres_faits', scene: 'bb_camp' },
+  // le soir, une fois le camp monté : les boîtes sonnent
+  { quand: 'heure', heure: 21, si: { flag: 'camp_monte', pasFlag: 'boites_sonnees', lieu: 'bois_barben' }, scene: 'bb_boites' },
+  // le matin qui suit : la vigie
+  { quand: 'heure', heure: 7, si: { flag: 'boites_sonnees', heureMax: 10, quete: ['q_debut', 'nuit'] }, scene: 'bb_vigie' },
+  { quand: 'marqueur', lieu: 'bois_barben', marqueur: 'pare_feu', si: { quete: ['q_debut', 'vigie'] }, scene: 'bb_pare_feu', libelle: 'Monter à la vigie' },
+  // la vigie : en arrivant, pendant ce temps, au camp… (camp_attaque) ; la radio de la cabine
+  { quand: 'entree_lieu', lieu: 'vigie_barben', si: { quete: ['q_debut', 'vigie'] }, scene: 'vig_arrivee', unique: true },
+  { quand: 'marqueur', lieu: 'vigie_barben', marqueur: 'radio_vigie', si: { pasFlag: 'radio_vigie_vue' }, scene: 'vig_radio', libelle: 'Allumer le poste radio' },
+  // le retour : le camp vide, Mathis caché, la radio de René, le départ
+  { quand: 'entree_lieu', lieu: 'bois_barben', si: { flag: 'camp_attaque', pasFlag: 'retour_vu' }, scene: 'bb_retour', unique: true },
+  { quand: 'heure', heure: 21, si: { flag: 'retour_vu', pasFlag: 'mathis_trouve', lieu: 'bois_barben' }, scene: 'bb_mathis_sort' },
+  { quand: 'heure', heure: 22, si: { flag: 'mathis_trouve', pasFlag: 'radio_refuge', lieu: 'bois_barben' }, scene: 'bb_radio' },
+  { quand: 'heure', heure: 6, si: { flag: 'radio_refuge', heureMax: 11, pasFlag: 'depart_vernegues', lieu: 'bois_barben' }, scene: 'bb_depart' },
+  { quand: 'marqueur', lieu: 'bois_barben', marqueur: 'rene_apres', si: { flag: 'radio_refuge', pasFlag: 'depart_vernegues' }, scene: 'bb_rene_depart', libelle: 'Parler à René' },
+  // la route de Vernègues : le temple de Château-Bas, le village neuf, la porte du Refuge
+  { quand: 'voyage', de: 'bois_barben', vers: 'vernegues', a: 0.35, si: { flag: 'depart_vernegues' }, rencontre: 'rh_chateau_bas', unique: true },
+  { quand: 'voyage', de: 'bois_barben', vers: 'vernegues', a: 0.75, si: { flag: 'depart_vernegues' }, rencontre: 'rh_village_neuf', unique: true },
+  { quand: 'voyage', de: 'bois_barben', vers: 'vernegues', a: 0.96, si: { flag: 'depart_vernegues' }, rencontre: 'rh_porte_vernegues', unique: true },
+
   // ═══════════════════════ ACTE I — LE REFUGE ═══════════════════════
   { quand: 'entree_lieu', lieu: 'miramas_le_vieux', si: { pasFlag: 'refuge_arrivee' }, scene: 'ref_porte', unique: true, invite: false },
   // Bastien passe une demi-heure après qu'on t'a enfermé (on ne reste pas des heures à attendre dans le noir) ; « dormir » fait passer la nuit

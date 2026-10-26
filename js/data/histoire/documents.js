@@ -7,6 +7,14 @@
 
 export const DOCUMENTS = {
 
+  // ═══════════════ LE DÉBUT : la vigie de la crête (docs/HISTOIRE_DEBUT_V3.md) ═══════════════
+  // Le cahier du guetteur, posé dans la cabine : le dernier guetteur est Lucien, que René retrouve à la porte du Refuge.
+  // Les « trois hommes polis » du 4 × 4 sont la secte (on ne le sait pas encore) : c'est elle qui a coupé le câble.
+  doc_cahier_guetteur: {
+    titre: 'Le cahier du guetteur', style: 'carnet', lieu: 'vigie_barben',
+    texte: '(Un grand cahier à spirale, à couverture rouge, ouvert sur la table de la cabine. Chaque ligne commence par une heure. L’écriture est penchée, appliquée, celle de quelqu’un qui a appris à l’école à bien écrire.)\n\n2 sept. 16 h 10. Fumées sur Salon, centre-ville, au moins trois foyers. Signalé au CODIS. Pas de réponse.\n\n3 sept. 9 h. Fumées sur Salon, toute la journée. Le CODIS répond enfin : « Pas d’engins disponibles. Restez à votre poste. » Je reste.\n\n6 sept. Plus de téléphone. La radio marche, mais plus personne ne répond sur le canal des pompiers. Sur le canal de l’armée, des voix qui parlent de la Durance.\n\n8 sept. Le poste de Lambesc ne répond plus. Je ne descends plus au village pour dormir : je dors en bas, sur le lit de camp.\n\n11 sept. 15 h. Un 4 × 4 est monté par la piste du nord, un gros, gris. Trois hommes, très polis, propres sur eux. Ils voulaient savoir si j’étais seul, si j’avais de l’essence, si la radio marchait. Je leur ai dit que la vigie était à l’État. Ils ont souri.\n\n12 sept. 6 h. Le câble de l’antenne est coupé, cette nuit, net. Plus rien ne passe. Je n’ai rien entendu.\n\n12 sept. 7 h. Je descends à Vernègues. Si quelqu’un lit ceci : ne restez pas sur les pistes.\n\nLucien Moutte, guetteur.',
+  },
+
   // ═══════════════ LE REFUGE DE MIRAMAS-LE-VIEUX (actes I et III) — donnés par les scènes ═══════════════
   doc_message_refuge: {
     titre: 'Le message de la radio', style: 'carnet',

@@ -31,6 +31,46 @@
 
 ---
 
+## 0 bis. Le début : `bois_barben` et `vigie_barben` (docs/HISTOIRE_DEBUT_V3.md)
+
+### `bois_barben` — le bois de la Barben
+
+**Rôle** : la piste de pompiers où le fourgon du groupe tombe en panne, le camp qu’on monte à côté, et en bas du vallon
+le mas abandonné où l’on va chercher à manger. Deux états : avant et après l’attaque du camp (`camp_attaque`). On y dort
+en sûreté près du camp : René veille (méta `veille`).
+
+**Entrées** : `fourgon` (à côté du fourgon : le démarrage de la partie), `defaut` (= `fourgon`), `pare_feu` (le bas du
+pare-feu : le retour de la vigie).
+
+| Marqueur | Où | Ce qui s’y passe |
+|---|---|---|
+| `fourgon` | l’arrière du fourgon (conteneur, objet conditionnel `si: { pasFlag: 'camp_attaque' }`) | les affaires du groupe : le sac de sport, la bâche, la corde |
+| `caisse_camp` | la caisse du camp, près du fourgon | mission `m_vivres` (étape `deposer`) : la caisse se remplit de ce qu’on rapporte du mas |
+| `pare_feu` | le bas du pare-feu, au nord de la piste | `bb_pare_feu` : monter à la vigie (étape `vigie`) |
+| `rene`, `laura` | PNJ du groupe, avant l’attaque | `bb_rene`, `bb_laura` |
+| `rene_apres`, `laura_apres`, `mathis_cache`, `mathis_apres` | PNJ après l’attaque | `bb_rene_apres` (puis `bb_rene_depart`), `bb_laura_apres`, `bb_mathis` (Mathis caché au fond d’un roncier), `bb_mathis_apres` |
+
+**Indices de l’attaque** (objets conditionnels `si: { flag: 'camp_attaque' }`, avec un `message`) : le fil de René coupé
+net, un mort au crâne enfoncé sur la piste, les traces d’un deuxième véhicule (`traces_pneus`), la place vide du fourgon.
+
+**Morts** : aucun au camp ; le vigneron dans ses vignes, sa femme dans la chambre du mas ; un procédural au plus, dehors.
+
+### `vigie_barben` — la vigie de la crête
+
+**Rôle** : la tour de guet des pompiers ; on y monte appeler à l’aide, et la radio ne marche pas (le câble de l’antenne
+est coupé net). D’en haut, on voit le pays, et la fumée au-dessus du Vieux-Vernègues.
+
+**Entrées** : `pare_feu` (le haut du chemin du pare-feu : l’arrivée du voyage guidé), `defaut` (= `pare_feu`).
+
+| Marqueur | Où | Ce qui s’y passe |
+|---|---|---|
+| `radio_vigie` | le poste radio, sur la table de la cabine (étage `cabine`) | `vig_radio` : la radio n’entend rien, le câble est coupé |
+
+Le cahier du guetteur (`doc_cahier_guetteur`) est posé sur la table de la cabine. Déclencheurs du plan : la cabine
+(`vig_cabine`, une fois), le bout du chemin (`vig_redescendre`, une fois la cabine vue).
+
+---
+
 ## 1. `miramas_le_vieux` — Le Refuge (actes I et III)
 
 **Rôle** : le village fortifié de Miramas-le-Vieux, où le joueur est accueilli, fait sa quarantaine, ses corvées et sa

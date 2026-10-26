@@ -2,7 +2,7 @@
 // appliquerEffets(effets) applique ce qui est immédiat et RENVOIE ce qui doit être traité par l'appelant :
 //   { combat, teleporter, detour, demiTour, cinematique }  (le dialogue enchaîne combat/cinématique,
 //   le voyage lit detour/demiTour, le flow applique teleporter à la fermeture de la scène).
-import { G, setFlag, retirerFlag, noteJournal } from '../core/state.js';
+import { G, setFlag, retirerFlag, noteJournal, genrer } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import * as clock from '../core/clock.js';
 import * as quetes from './quetes.js';
@@ -60,6 +60,7 @@ export function appliquerEffets(effets, ctx = {}) {
           break;
         }
         case 'bruit': emit('bruit', { rayon: v * 4, source: 'scene' }); break;
+        case 'pensee': emit('mission:notif', { type: 'pensee', texte: genrer(v) }); break;   // une pensée du personnage, en une ligne (js/ui/notif.js)
         case 'mission': missions.effet(v); break;
         case 'consequence': emit('mission:consequence', v); break;   // vacarme / réveil / annonce d'une étape (js/explore/missions_vue.js)    // ['accepter' | 'plusTard' | 'refuser', id] | ['donner', id, objet]
         case 'combat': res.combat = v; break;

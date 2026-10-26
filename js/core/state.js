@@ -19,10 +19,10 @@ export function joueurNeuf(nom = 'Sam', genre = 'm') {
     faim: 80, soif: 70, fatigue: 85, // 100 = bien
     mal: 0,                           // contamination 0..100 (GAMEPLAY §5.4)
     skillXp: {},
-    // vingt jours de survie {seul|seule} avant le Refuge (docs/HISTOIRE.md §5) : un petit sac, de quoi boire un peu, un couteau,
-    // et la radio de poche qui a capté le message (ses piles sont mortes en route)
-    inventaire: [{ id: 'bouteille_eau', qty: 1 }, { id: 'biscuits', qty: 1 }, { id: 'allumettes', qty: 1 }, { id: 'chiffon', qty: 2 }, { id: 'radio_poche', qty: 1 }],
-    equip: { arme: 'couteau_cuisine', mainG: null, dos: null, tete: null, visage: null, haut: 'tshirt', torse: null, veste: 'coupe_vent', mains: null, poignet: null, jambes: 'jean', pieds: 'baskets', sac: 'sac_a_dos', ceinture: null, holster: null },
+    // ramassé{|e} au bord de la route par le fourgon (docs/HISTOIRE_DEBUT_V3.md §3) : on n'a que ce qu'on porte sur soi, ses
+    // vêtements, un couteau de poche et une bouteille presque vide ; les affaires du groupe sont dans le fourgon
+    inventaire: [{ id: 'bouteille_vide', qty: 1, eau: { q: 'propre', L: 0.2 } }],
+    equip: { arme: 'couteau_poche', mainG: null, dos: null, tete: null, visage: null, haut: 'tshirt', torse: null, veste: 'coupe_vent', mains: null, poignet: null, jambes: 'jean', pieds: 'baskets', sac: null, ceinture: null, holster: null },
     accesRapide: [],
     blessures: [],
     maladie: null,

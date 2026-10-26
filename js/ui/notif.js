@@ -1,13 +1,14 @@
-// ============ Bandeaux de mission — « Nouvelle mission », « Objectif rempli », « Mission accomplie / échouée » ============
-// Écoute le bus 'mission:notif' { type: 'nouveau'|'objectif'|'reussite'|'echec'|'info', titre, texte }.
-// Un bandeau à la fois, en haut au centre, dans une file : on ne rate rien, même quand plusieurs objectifs tombent ensemble.
+// ============ Les pensées du personnage — une ligne discrète en haut de l'écran ============
+// Écoute le bus 'mission:notif' { type: 'nouveau'|'objectif'|'reussite'|'echec'|'info'|'pensee', texte }.
+// Ce n'est pas un RPG (docs/RETOURS_JOUEUR.md #60) : pas de titre « Nouvelle mission » ni « Objectif rempli », pas de
+// jingle. Seulement ce que pense le personnage, en italique, une pensée à la fois, dans une file : on ne rate rien.
+// Seul un échec (repéré·e, un poste quitté) fait un bruit sourd.
 import { on } from '../core/bus.js';
 import { genrer } from '../core/state.js';
-import { ico } from './icons.js';
 
-const DUREE = { nouveau: 4200, objectif: 3400, reussite: 4800, echec: 5200, info: 3600 };
-const ICONE = { nouveau: 'objectif', objectif: 'coche', reussite: 'coche', echec: 'alerte', info: 'info' };
-const SON = { nouveau: 'decouverte', objectif: 'decouverte', reussite: 'decouverte', echec: 'alerte_infection', info: null };
+// le temps de lire : une base, plus le temps des mots
+const duree = (texte) => Math.min(9000, 2600 + 55 * texte.length);
+const SON = { echec: 'alerte_infection' };
 const file = [];
 let racine = null, enCours = false, branche = false;
 let audio = null;
@@ -21,9 +22,9 @@ function conteneur() {
   return racine;
 }
 export function notifier(n) {
-  if (!n || typeof document === 'undefined') return;
+  if (!n || !n.texte || typeof document === 'undefined') return;
   const d = file[file.length - 1];
-  if (d && d.titre === n.titre && d.texte === n.texte) return;   // doublon immédiat
+  if (d && d.texte === n.texte) return;   // doublon immédiat
   file.push(n);
   if (!enCours) suivant();
 }
@@ -32,16 +33,15 @@ function suivant() {
   if (!n) { enCours = false; return; }
   enCours = true;
   const type = n.type || 'info';
+  const texte = genrer(n.texte || '');
   const b = document.createElement('div');
-  b.className = `ui-notif ui-notif-${type}`;
-  b.innerHTML = `<span class="ui-notif-ic">${ico(ICONE[type] || 'info')}</span><span class="ui-notif-t"><b></b><span></span></span>`;
-  b.querySelector('b').textContent = genrer(n.titre || '');
-  b.querySelector('.ui-notif-t span').textContent = genrer(n.texte || '');
+  b.className = `ui-pensee ui-pensee-${type}`;
+  b.textContent = texte;
   b.addEventListener('click', () => fermer(b));
   conteneur().appendChild(b);
   try { if (SON[type] && audio && audio.sfx) audio.sfx(SON[type]); } catch (e) {}
   requestAnimationFrame(() => b.classList.add('visible'));
-  b._t = setTimeout(() => fermer(b), DUREE[type] || 3600);
+  b._t = setTimeout(() => fermer(b), duree(texte));
 }
 function fermer(b) {
   if (!b.isConnected || b._ferme) return;

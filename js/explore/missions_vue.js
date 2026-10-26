@@ -9,6 +9,7 @@ import { G, genrer } from '../core/state.js';
 import { on } from '../core/bus.js';
 import { SCENES } from '../game/donnees.js';
 import { hasTagDispo } from '../game/inventory.js';
+import { pointsAliment } from '../game/survival.js';
 import { FIN, icase } from '../carte/catalogue.js';
 import * as M from '../game/missions.js';
 import { message, sfx, sfxA, vib, caseLibrePres } from './commun.js';
@@ -196,6 +197,14 @@ export function majMissions(dt) {
         if (dansPiece(r, j.x, j.y, j.etage, 1.2)) M.reussirEtape(id);
         break;
       }
+      case 'deposer': if (lieu) deposer(id, s, e); break;
+      case 'construire': {
+        if (!lieu) break;
+        const manque = M.constructionsManquantes(e, snap.constructions || []);
+        if (s.d.manque !== manque.join('|')) { s.d.manque = manque.join('|'); M.majAvancee(id); }
+        if (!manque.length) M.reussirEtape(id);
+        break;
+      }
       case 'proteger': if (lieu) proteger(id, m, s, e, pas); break;
       case 'tenir': {
         const v = e.vagues; if (!v || !lieu) break;
@@ -206,6 +215,23 @@ export function majMissions(dt) {
       default: break;
     }
   }
+}
+// Déposer : ce qu'il y a dans un conteneur du plan (son marqueur), compté en points de faim. On ne « donne » rien à
+// personne : on range ce qu'on rapporte dans la caisse, et l'étape se remplit quand la caisse est assez pleine.
+let lectureCaisse = false;
+function deposer(id, s, e) {
+  const mk = V.niveau.marqueurs[e.marqueur];
+  if (!mk || !mk.meuble || lectureCaisse || !V.canal.contenu) return;
+  lectureCaisse = true;
+  V.canal.contenu(mk.meuble).then((items) => {
+    lectureCaisse = false;
+    if (!V || M.etapeDe(id) !== e) return;
+    let pts = 0;
+    for (const it of items || []) pts += (it.qty || 1) * pointsAliment(it.id, it.reste ?? 1);
+    const f = Math.min(1, pts / (e.points || 1));
+    if (s.d.f !== f) { s.d.f = f; M.majAvancee(id); }
+    if (f >= 1) M.reussirEtape(id);
+  }, () => { lectureCaisse = false; });
 }
 // Tout le monde se réveille dans la pièce (ou le lieu) et vient vers toi.
 function reveiller(rv) {

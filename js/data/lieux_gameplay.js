@@ -51,6 +51,8 @@ export const LIEUX_GAMEPLAY = {
   la_barben:        { danger: 0.6,  pool: ['errant', 'fauve', 'chien_infecte', 'errant', 'sanglier'], morts: { n: [3, 6] }, typeButin: 'zoo', repeuplement: 0.4, abondance: 1.1, ambiance: 'region' },
   aurons:           { danger: 0.2,  pool: ['errant', 'rampant'], morts: { n: [1, 3] }, typeButin: 'village', repeuplement: 0.3, ambiance: 'village' },
   vernegues:        { danger: 0.25, pool: ['errant', 'rampant', 'putrefie'], morts: { n: [1, 3] }, typeButin: 'ruines', repeuplement: 0.2, ambiance: 'region' },
+  bois_barben:      { danger: 0.15, pool: ['errant'], morts: { n: [0, 1] }, typeButin: 'nature', repeuplement: 0.1, ambiance: 'region' },
+  vigie_barben:     { danger: 0.1,  pool: ['errant'], morts: { n: [0, 1] }, typeButin: 'nature', repeuplement: 0.05, ambiance: 'region' },
   // la nature (grandes parcelles) : peu de morts, rien à piller, mais de l'eau, du bois, de la place ; jamais de sirènes
   chaine_cotes:     { danger: 0.15, pool: ['errant', 'errant', 'rampant'], morts: { n: [2, 4] }, typeButin: 'nature', repeuplement: 0.15, ambiance: 'region' },
   crau_coussouls:   { danger: 0.15, pool: ['errant', 'errant', 'rampant'], morts: { n: [2, 4] }, typeButin: 'nature', repeuplement: 0.15, ambiance: 'region' },

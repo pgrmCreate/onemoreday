@@ -307,9 +307,23 @@ export function creerSimLieu(opts) {
     if (si.non && condOk(si.non)) return false;
     return true;
   }
+  // Les objets conditionnels du plan (objet(…, { si })) : là tant que la condition tient, retirés sinon (le fourgon qui
+  // n'est plus là au retour, les traces qui apparaissent). Ce sont des accessoires d'histoire : on ne les démonte pas, et
+  // leur présence ne dépend que de la condition (rien n'est gardé dans la sauvegarde qui la contredise).
+  const meublesSi = niveau.meubles.filter(m => m.si);
+  function majObjetsSi() {
+    let change = false;
+    for (const m of meublesSi) {
+      const la = condOk(m.si);
+      if (la && retires.has(m.cle)) { retires.delete(m.cle); change = true; }
+      else if (!la && !retires.has(m.cle)) { retires.add(m.cle); change = true; }
+    }
+    if (change) { recalculerDyn(); vm++; cache = null; }
+  }
   // Les morts conditionnels du plan (foule qui apparaît après une scène, qui se disperse plus tard) :
   // réévalués chaque seconde ; jamais sous le nez d'un joueur.
   function majConditionnels() {
+    majObjetsSi();
     niveau.spawns.forEach((s, idx) => {
       if (!s.si) return;
       const ok = condOk(s.si);
@@ -1705,7 +1719,7 @@ export function creerSimLieu(opts) {
   // ---------- Points d'eau (réglages exploration.EAU) ----------
   // Réserve d'un meuble tirée de la graine : WC, baignoire, lavabo, évier ont une chance d'être à sec ; fontaine, puits et
   // meuble marqué eau ne tarissent pas. puiserEau(joueurId, cle, L) → { ok, L, reste } (reste null = inépuisable).
-  const TYPE_EAU = { wc: 'wc', baignoire: 'baignoire', lavabo: 'lavabo', cuisine: 'evier', fontaine: 'fontaine' };
+  const TYPE_EAU = { wc: 'wc', baignoire: 'baignoire', lavabo: 'lavabo', cuisine: 'evier', fontaine: 'fontaine', puits: 'fontaine' };
   function reserveEau(cle) {
     const m = niveau.meubleParCle[cle]; if (!m || retires.has(cle)) return 0;
     const R = m.eau ? RX.EAU.fontaine : RX.EAU[TYPE_EAU[m.type]]; if (!R) return 0;

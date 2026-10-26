@@ -104,11 +104,8 @@ export function majHUD() {
   const o = objectifCourant();
   const ot = o ? o.objectif : '';
   els.obj.hidden = !ot; els.objTxt.textContent = ot;
-  if (ot && ot !== dernierObjectif && dernierObjectif) {
-    els.obj.classList.remove('neuf'); void els.obj.offsetWidth; els.obj.classList.add('neuf');
-    // En exploration l'objectif n'est pas affiché en permanence : on l'annonce une fois.
-    if (document.body.dataset.temps !== 'carte') emit('toast', { texte: `Nouvel objectif : ${ot}`, duree: 4200 });
-  }
+  // le bouton Objectifs s'éclaire un instant ; l'annonce, s'il y en a une, est la pensée de l'étape (js/game/quetes.js)
+  if (ot && ot !== dernierObjectif && dernierObjectif) { els.obj.classList.remove('neuf'); void els.obj.offsetWidth; els.obj.classList.add('neuf'); }
   dernierObjectif = ot;
   // Moodles (le mal a sa propre jauge)
   const p = G.player; const ms = etatsCorps(p).filter(m => m.id !== 'mal');

@@ -242,6 +242,9 @@ export const RECOLTES = {
   figuier_barbarie: { geste: 'Couper', outil: 'couper', mainsNues: 3, ms: 6000, rendu: { fibres: 1 }, bruit: 1,
              cueillette: { id: 'fruits_sauvages', qty: 2, mois: [8, 9, 10] } },
   haie:    { geste: 'Couper', outil: 'elaguer', mainsNues: 2.5, ms: 9000, rendu: { branche: 2, brindilles: 3 }, bruit: 2 },
+  // un rang de vigne : on l'arrache pour ses sarments et son fil de fer ; en septembre, on y cueille les grappes oubliées
+  vigne:   { geste: 'Arracher', outil: 'couper', mainsNues: 2.5, ms: 9000, rendu: { branche: 2, brindilles: 2, fil_de_fer: 1 }, bruit: 2,
+             cueillette: { id: 'raisin', qty: 2, mois: [8, 9, 10] } },
 };
 
 // Meubles qu'on démonte pour récupérer des planches (outil 'marteler' ou 'forcer'). type de meuble → { planche, autres, ms }.

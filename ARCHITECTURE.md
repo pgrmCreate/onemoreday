@@ -59,6 +59,8 @@ js/explore/             Temps 1 : l'exploration — et le combat sur place
                           geste « agir », offres à l'arrivée (sim : appelerMorts, preparerMission, reveillerZone, getCalme)
 
 js/travel/              Temps 2 : géographie réelle, carte illustrée SVG, voyage et rencontres ; brouillard de la carte
+                        (les sentiers à pied absents d'OpenStreetMap — pare-feu, chemins de vigne — : js/data/sentiers.js,
+                        ajoutés au graphe de leur feuille par geo.js) ;
                         (geo.js : zonesVues, reveler — le plan de Salon dévoile le centre, la carte routière le pays salonais,
                         chaque trajet un couloir ; G.world.brouillard / carteVue)
 js/cine/                cinématiques en parallaxe (36 décors) ; lib.js : personnages dessinés comme des corps (membres galbés,

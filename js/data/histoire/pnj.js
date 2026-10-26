@@ -5,6 +5,14 @@
 const AVANT_SIEGE = { flag: 'quarantaine_faite', pasFlag: 'siege_commence' };
 
 export const PNJ = {
+  // ─── Le début : le bois de la Barben (docs/HISTOIRE_DEBUT_V3.md) — les figurants du groupe sont dans le plan ───
+  rene:         { nom: 'René', portrait: 'rene', lieu: 'bois_barben', marqueur: 'rene', scene: 'bb_rene', si: { pasFlag: 'camp_attaque' } },
+  laura:        { nom: 'Laura', portrait: 'laura', lieu: 'bois_barben', marqueur: 'laura', scene: 'bb_laura', si: { pasFlag: 'camp_attaque' } },
+  rene_apres:   { nom: 'René', portrait: 'rene', lieu: 'bois_barben', marqueur: 'rene_apres', scene: 'bb_rene_apres', si: { flag: 'camp_attaque' } },   // au départ : bb_rene_depart (déclencheur)
+  laura_apres:  { nom: 'Laura', portrait: 'laura', lieu: 'bois_barben', marqueur: 'laura_apres', scene: 'bb_laura_apres', si: { flag: 'camp_attaque' } },
+  mathis_cache: { nom: 'Mathis', portrait: 'mathis', lieu: 'bois_barben', marqueur: 'mathis_cache', scene: 'bb_mathis', si: { flag: 'retour_vu', pasFlag: 'mathis_trouve' } },
+  mathis_apres: { nom: 'Mathis', portrait: 'mathis', lieu: 'bois_barben', marqueur: 'mathis_apres', scene: 'bb_mathis_apres', si: { flag: 'mathis_trouve' } },
+
   // ─── Le Refuge (acte I) ───
   helene:   { nom: 'Hélène', portrait: 'helene', lieu: 'miramas_le_vieux', marqueur: 'helene', scene: 'helene_parler', si: AVANT_SIEGE },
   fernand:  { nom: 'Fernand', portrait: 'fernand', lieu: 'miramas_le_vieux', marqueur: 'fernand', scene: 'fernand_parler', si: { flag: 'quarantaine_faite', pasFlag: 'depart_crau' } },

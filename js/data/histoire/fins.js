@@ -2,6 +2,12 @@
 // Le drapeau posé par la dernière scène désigne la fin atteinte.
 // continuer : true → l'écran de fin propose « Continuer à survivre » : la partie reprend là où elle en est, sans quête.
 export const FINS = {
+  // provisoire : le nouveau début s'arrête à la porte du Refuge du Vieux-Vernègues, que l'on reconstruit ensuite
+  // (docs/HISTOIRE_DEBUT_V3.md §5) ; quand le Refuge sera prêt, cette fin disparaîtra et l'histoire continuera
+  debut: {
+    flag: 'fin_debut', titre: 'À suivre', sousTitre: 'La porte du Vieux-Vernègues', continuer: false, decor: 'nuit_campagne',
+    resume: 'Le début de l’histoire s’arrête ici pour l’instant. Le Refuge du Vieux-Vernègues, ceux qui y vivent et ce qui t’y attend sont en train d’être construits.',
+  },
   pont: {
     flag: 'fin_pont', titre: 'De l’autre côté', sousTitre: 'Le pont de Mallemort',
     cinematique: 'fin_pont', scene: 'pon_traverser_2', continuer: false,

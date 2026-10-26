@@ -41,14 +41,15 @@ ok(M.aProposer('cornillon', () => false) === null && M.aProposer('cornillon', (p
 // ---------- Nettoyer ----------
 titre('Nettoyer : le marché du mercredi');
 appliquerEffets({ mission: ['accepter', 'm_marche'] });
-ok(M.etat('m_marche').etat === 'active' && dernier().type === 'nouveau', `accepter par un effet de scène → « ${dernier().titre} »`);
+// pas de bandeau « Nouvelle mission » (docs/RETOURS_JOUEUR.md #60) : sans pensée écrite, rien ne s'affiche
+ok(M.etat('m_marche').etat === 'active' && !notifs.some(x => /mission|objectif/i.test(x.titre || '')), 'accepter par un effet de scène : mission active, sans bandeau');
 ok(M.lieuCalme('place_de_gaulle'), 'pendant le nettoyage, le lieu est bouclé (plus d’arrivées tranquilles)');
 ok(M.guide('place_de_gaulle').startsWith('Le marché du mercredi'), `guide : « ${M.guide('place_de_gaulle')} »`);
 M.reussirEtape('m_marche');
-ok(notifs.some(x => x.titre === 'Objectif rempli') && M.etapeDe('m_marche').type === 'atteindre', 'place vidée : « Objectif rempli », puis frapper chez Odile');
+ok(!notifs.some(x => x.titre === 'Objectif rempli') && M.etapeDe('m_marche').type === 'atteindre', 'place vidée : étape suivante (frapper chez Odile), sans « Objectif rempli »');
 const conserves = inv.countItem('conserve_haricots');
 M.reussirEtape('m_marche');
-ok(M.etat('m_marche').etat === 'reussie' && dernier().titre === 'Mission accomplie', 'mission accomplie (bandeau)');
+ok(M.etat('m_marche').etat === 'reussie' && !notifs.some(x => x.titre === 'Mission accomplie'), 'mission réussie, sans bandeau « Mission accomplie »');
 ok(inv.countItem('conserve_haricots') === conserves + 2, 'récompense : les conserves d’Odile');
 ok(M.lieuCalme('place_de_gaulle') && G.world.lieux.place_de_gaulle.calmeJusqua > G.world.minutes + 3 * 1440, 'la place reste calme quatre jours');
 

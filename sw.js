@@ -1,5 +1,5 @@
 // ============ Service worker — jeu jouable hors-ligne (PWA) ============
-const CACHE = 'onemoreday-v82';
+const CACHE = 'onemoreday-v83';
 const FICHIERS = [
   './',
   './index.html',
@@ -90,6 +90,7 @@ const FICHIERS = [
   './js/data/histoire/scenes_brume.js',
   './js/data/histoire/scenes_chute.js',
   './js/data/histoire/scenes_crau.js',
+  './js/data/histoire/scenes_debut.js',
   './js/data/histoire/scenes_pnj.js',
   './js/data/histoire/scenes_pont.js',
   './js/data/histoire/scenes_refuge.js',
@@ -105,6 +106,7 @@ const FICHIERS = [
   './js/data/niveaux/ba701.js',
   './js/data/niveaux/bergerie.js',
   './js/data/niveaux/berre.js',
+  './js/data/niveaux/bois_barben.js',
   './js/data/niveaux/cales.js',
   './js/data/niveaux/canourgues.js',
   './js/data/niveaux/carrefour_morgan.js',
@@ -148,6 +150,7 @@ const FICHIERS = [
   './js/data/niveaux/touloubre.js',
   './js/data/niveaux/tour_horloge.js',
   './js/data/niveaux/vernegues.js',
+  './js/data/niveaux/vigie_barben.js',
   './js/data/niveaux/weldom.js',
   './js/data/recherche.js',
   './js/data/recipes.js',
@@ -155,6 +158,7 @@ const FICHIERS = [
   './js/data/rencontres.js',
   './js/data/rencontres_scenes.js',
   './js/data/reseau.js',
+  './js/data/sentiers.js',
   './js/data/serveur.js',
   './js/data/soundscapes.js',
   './js/data/troncons.js',

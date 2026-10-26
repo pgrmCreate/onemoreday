@@ -11,6 +11,7 @@
 //   pointA(iti, d) → {x, y, angle}               lieuxAffiches(echelle) → [lieu…]
 import { CARTE_SALON } from '../data/carte_salon.js';
 import { CARTE_REGION } from '../data/carte_region.js';
+import { SENTIERS } from '../data/sentiers.js';
 import { LIEUX, SALON_SUR_REGION } from '../game/donnees.js';
 import { zonesEn } from '../data/zones.js';
 import { REGLAGES } from '../data/reglages.js';
@@ -53,18 +54,39 @@ export function feuille(echelle) {
   const nx = new Float64Array(nb), ny = new Float64Array(nb);
   for (let i = 0, x = 0, y = 0; i < nb; i++) { x += vn[2 * i]; y += vn[2 * i + 1]; nx[i] = x * u; ny[i] = y * u; }
   const ve = decoder(c.aretes); const aretes = []; const adj = Array.from({ length: nb }, () => []);
+  const ajouterArete = (a, b, classe, L, pts) => {
+    let lg = 0; for (let k = 1; k < pts.length; k++) lg += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
+    const e = { a, b, classe, L: Math.max(L, lg * 0.98), lg: lg || 1, pts };
+    adj[a].push(aretes.length); if (b !== a) adj[b].push(aretes.length);
+    aretes.push(e);
+  };
   for (let i = 0, a = 0; i < ve.length;) {
     a += ve[i++]; const b = a + ve[i++]; const classe = ve[i++]; const L = ve[i++]; const n = ve[i++];
     const pts = [[nx[a], ny[a]]]; let cx = nx[a] / u, cy = ny[a] / u;
     for (let k = 0; k < n; k++) { cx += ve[i++]; cy += ve[i++]; pts.push([cx * u, cy * u]); }
     pts.push([nx[b], ny[b]]);
-    let lg = 0; for (let k = 1; k < pts.length; k++) lg += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
-    const e = { a, b, classe, L: Math.max(L, lg * 0.98), lg: lg || 1, pts };
-    adj[a].push(aretes.length); if (b !== a) adj[b].push(aretes.length);
-    aretes.push(e);
+    ajouterArete(a, b, classe, L, pts);
+  }
+  // les sentiers (js/data/sentiers.js) : chacun devient une voie de classe 5, et ses deux bouts sont reliés au carrefour
+  // le plus proche (s'il est à moins de 1,5 km) pour que le trajet puisse y entrer et en sortir
+  const ss = SENTIERS[echelle] || [];
+  const NX = new Float64Array(nb + 2 * ss.length), NY = new Float64Array(nb + 2 * ss.length);
+  NX.set(nx); NY.set(ny);
+  let nn = nb;
+  for (const s of ss) {
+    const pts = s.pts.map(([lat, lon]) => { const p = projeter(lat, lon, echelle); return [p.x, p.y]; });
+    const a = nn++, b = nn++;
+    [NX[a], NY[a]] = pts[0]; [NX[b], NY[b]] = pts[pts.length - 1];
+    adj.push([], []);
+    ajouterArete(a, b, 5, 0, pts);
+    for (const bout of [a, b]) {
+      let best = -1, bd = 1500;
+      for (let k = 0; k < nb; k++) { const d = Math.hypot(nx[k] - NX[bout], ny[k] - NY[bout]); if (d < bd) { bd = d; best = k; } }
+      if (best >= 0) ajouterArete(bout, best, 5, 0, [[NX[bout], NY[bout]], [nx[best], ny[best]]]);
+    }
   }
   const f = {
-    echelle, c, u, klon, nx, ny, aretes, adj,
+    echelle, c, u, klon, nx: NX, ny: NY, aretes, adj,
     cadre: c.cadre.map(v => v * u),
     lignes: (couche) => (f['_' + couche] ||= decoderLignes(c[couche], u)),
   };

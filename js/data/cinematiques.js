@@ -22,6 +22,17 @@ export const DECORS = [
 export const CINEMATIQUES = {
 
   // ─────────── Nouvelle partie : le message ───────────
+  // ─────────── Le début (docs/HISTOIRE_DEBUT_V3.md §3) : pas de vidéo, trois phrases sur un écran noir ───────────
+  // Les plans tournés attendront que l'histoire soit validée de bout en bout (docs/RETOURS_JOUEUR.md #62).
+  ouverture: { musique: 'titre', plans: [
+    { decor: 'noir', camera: { de: { x: 0.5, zoom: 1.0 }, vers: { x: 0.5, zoom: 1.0 } }, duree: 8000, effets: ['grain'], anim: [],
+      texte: 'Ça fait deux jours qu’ils t’ont {ramassé|ramassée} au bord de la route de Pélissanne : six inconnus dans un fourgon de plombier, qui roulent tous feux éteints.' },
+    { decor: 'noir', camera: { de: { x: 0.5, zoom: 1.0 }, vers: { x: 0.5, zoom: 1.0 } }, duree: 8000, effets: ['grain'], anim: [],
+      texte: 'Ce soir, pour éviter les morts de la nationale, ils ont pris une piste de pompiers à travers le bois de la Barben. Le moteur a toussé au milieu des pins, puis il s’est tu.', attendre: true },
+    { decor: 'noir', camera: { de: { x: 0.5, zoom: 1.0 }, vers: { x: 0.5, zoom: 1.0 } }, duree: 3500,
+      effets: ['fondu_noir'], anim: [], titre: 'One More Day', texte: '', attendre: true },
+  ] },
+
   intro: { musique: 'titre', plans: [
     { clip: 'intro_1', decor: 'crau_aube', camera: { de: { x: 0.3, zoom: 1.15 }, vers: { x: 0.6, zoom: 1.05 } }, duree: 8500,
       effets: ['grain'], anim: [],

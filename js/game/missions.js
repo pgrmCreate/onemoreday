@@ -90,6 +90,10 @@ function ecrire(id, s, notif = null) {
   emit('mission:maj', { id, notif });
 }
 const bandeau = (type, titre, texte) => ({ type, titre: genrer(titre || ''), texte: genrer(texte || '') });
+// Ce n'est pas un RPG (docs/RETOURS_JOUEUR.md #60) : ni « Nouvelle mission » ni « Objectif rempli ». Une étape peut porter
+// une PENSÉE du personnage (pensee au début, penseeFaite quand elle est remplie ; penseeFin pour la mission), dite en une
+// ligne discrète ; sans pensée, rien ne s'affiche (le menu Objectifs reste à jour).
+const pensee = (type, texte) => (texte ? { type, titre: '', texte: genrer(texte) } : null);
 // Une info sur place (vague, repéré·e…) : bandeau, sans changer l'état.
 export function annoncer(type, titre, texte) { const n = bandeau(type, titre, texte); emit('mission:notif', n); emit('mission:maj', { id: null, notif: n }); }
 
@@ -154,7 +158,7 @@ function debutEtape(id, premiere) {
   if (e.type === 'proteger') s.d.pv = (m.pnj && m.pnj.pv) || 100;
   if (e.type === 'nourrir') Object.assign(s.d, { jour: clock.jour(), mange: 0, faits: 0, rates: 0, grace: clock.jour(), okJour: null });
   if (e.type === 'eliminer') { const L = W().lieux[e.lieu] || (W().lieux[e.lieu] = {}); delete L.calmeJusqua; }
-  ecrire(id, s, bandeau('nouveau', premiere ? `Nouvelle mission — ${m.titre}` : 'Nouvel objectif', e.texte));
+  ecrire(id, s, pensee('nouveau', e.pensee));
   emit('mission:etape', { id, i: s.i });
 }
 // L'étape courante est remplie : ses effets, le bandeau, puis l'étape suivante (ou la fin).
@@ -173,7 +177,7 @@ export function reussirEtape(id, { par = null, variante = null } = {}) {
   s.par = dest;
   const effets = effetsEtape(e, variante);
   if (effets) livrerA(dest, id, effets);
-  ecrire(id, s, bandeau('objectif', 'Objectif rempli', e.texte));
+  ecrire(id, s, pensee('objectif', e.penseeFaite));
   s.i++;
   if (s.i >= m.etapes.length) { reussir(id); return; }
   debutEtape(id, false);
@@ -184,7 +188,7 @@ function reussir(id) {
   if (m.nettoye) {     // le lieu nettoyé reste calme quelques jours
     for (const e of m.etapes) if (e.type === 'eliminer') { const L = W().lieux[e.lieu] || (W().lieux[e.lieu] = {}); L.calmeJusqua = maintenant() + m.nettoye * 1440; }
   }
-  ecrire(id, s, bandeau('reussite', 'Mission accomplie', m.titre));
+  ecrire(id, s, pensee('reussite', m.penseeFin));
   if (m.fin) livrerA(s.par || 'hote', id, m.fin.effets, 'fin', m.fin.texte);
 }
 export function echouer(id, raison = '') {
@@ -193,7 +197,7 @@ export function echouer(id, raison = '') {
   if (!tenant()) return;
   const dest = qui(id, m.etapes[s.i], null);
   s.etat = 'echouee'; s.fin = maintenant();
-  ecrire(id, s, bandeau('echec', `Mission échouée — ${m.titre}`, raison));
+  ecrire(id, s, pensee('echec', raison));
   if (m.echec) livrerA(dest, id, m.echec.effets, 'echec', m.echec.texte);
 }
 
@@ -383,6 +387,20 @@ export function dureeMots(min) {
   return `encore ${mn || 1} min`;
 }
 const MOTS_PV = (pv) => pv >= 90 ? 'indemne' : pv >= 60 ? 'légèrement blessée' : pv >= 30 ? 'blessée' : 'gravement blessée';
+// Construire : ce qui manque encore, d'après les constructions du lieu. besoins : [{ types: [...], n?, nom }].
+export function constructionsManquantes(e, constructions) {
+  const out = [];
+  for (const b of e.besoins || []) {
+    const n = constructions.filter(c => b.types.includes(c.type) && (c.pv == null || c.pv > 0)).length;
+    if (n < (b.n || 1)) out.push(b.nom);
+  }
+  return out;
+}
+// Déposer : la caisse en mots, jamais en nombre.
+const MOTS_CAISSE = (f) => (f >= 1 ? 'c’est assez pour quelques jours' : f >= 0.66 ? 'encore un peu' : f >= 0.33 ? 'il en faudrait encore' : f > 0 ? 'presque rien' : 'elle est vide');
+const et = (l) => (l.length > 1 ? `${l.slice(0, -1).join(', ')} et ${l[l.length - 1]}` : l[0] || '');
+// L'avancée a changé (caisse, constructions) : on prévient l'écran (guide, journal) sans rien annoncer.
+export function majAvancee(id) { emit('mission:maj', { id }); }
 export function guide(lieuId) {
   for (const { m, s, e } of ici(lieuId)) {
     let etatTxt = '';
@@ -393,6 +411,8 @@ export function guide(lieuId) {
       case 'proteger': etatTxt = `${m.pnj.nom} : ${MOTS_PV(s.d.pv ?? 100)} — ${dureeMots(e.minutes - (s.d.compte || 0))}`; break;
       case 'nourrir': { const b = besoinMots(e, s); etatTxt = s.d.okJour === clock.jour() ? `${m.pnj.nom} a mangé aujourd’hui` : `${m.pnj.nom} attend ${b}`; break; }
       case 'atteindre': etatTxt = s.d.repere ? 'repéré{|e} ! ' + genrer(e.texte).toLowerCase() : genrer(e.texte); break;
+      case 'deposer': etatTxt = MOTS_CAISSE(s.d.f || 0); break;
+      case 'construire': etatTxt = s.d.manque ? `il manque encore ${et(s.d.manque.split('|'))}` : genrer(e.texte); break;
       default: etatTxt = genrer(e.texte);
     }
     return genrer(`${m.titre} — ${etatTxt}`);
@@ -407,6 +427,8 @@ export function avancee(id) {
     case 'tenir': return (s.d.compte || 0) > 0 ? `Sur place : ${dureeMots(e.minutes - s.d.compte)}.` : 'Le compte n’a pas commencé : il faut être sur place.';
     case 'proteger': return `${m.pnj.nom} : ${MOTS_PV(s.d.pv ?? 100)}.`;
     case 'nourrir': return `Nourri à sa faim : ${s.d.faits || 0} jour${(s.d.faits || 0) > 1 ? 's' : ''} sur ${e.jours}.`;
+    case 'deposer': { const t = MOTS_CAISSE(s.d.f || 0); return t.charAt(0).toUpperCase() + t.slice(1) + '.'; }
+    case 'construire': return s.d.manque ? `Il manque encore ${et(s.d.manque.split('|'))}.` : '';
     default: return '';
   }
 }

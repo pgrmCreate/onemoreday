@@ -45,6 +45,9 @@ export const LIEUX_GEO = {
   la_barben:        { nom: 'La Barben — château et parc animalier', echelle: 'region', lat: 43.62597, lon: 5.20839, type: 'zoo' },
   aurons:           { nom: 'Aurons', echelle: 'region', lat: 43.66492, lon: 5.15690, type: 'village' },
   vernegues:        { nom: 'Vieux-Vernègues', echelle: 'region', lat: 43.69020, lon: 5.16746, type: 'ruines' },
+  // le début (docs/HISTOIRE_DEBUT_V3.md) : la piste DFCI dans le bois au nord de La Barben, et la vigie sur la crête
+  bois_barben:      { nom: 'Le bois de la Barben', echelle: 'region', lat: 43.64180, lon: 5.20120, type: 'nature' },
+  vigie_barben:     { nom: 'La vigie de la crête', echelle: 'region', lat: 43.65560, lon: 5.21150, type: 'nature' },
   cales:            { nom: 'Grottes de Calès — Lamanon', echelle: 'region', lat: 43.70411, lon: 5.08199, type: 'grotte' },
   eyguieres:        { nom: 'Eyguières', echelle: 'region', lat: 43.69513, lon: 5.02972, type: 'village' },
   aerodrome:        { nom: 'Aérodrome de Salon-Eyguières', echelle: 'region', lat: 43.65719, lon: 5.01027, type: 'aerodrome' },

@@ -174,7 +174,7 @@ export function feuxCommeLampes(lampes, n, max = 6) {
   return n;
 }
 // ---------- Points d'eau : WC, baignoire, lavabo, évier (réserve, parfois à sec), fontaine, puits, rivière (inépuisables) ----------
-const TYPES_EAU = new Set(['wc', 'baignoire', 'lavabo', 'cuisine', 'fontaine']);
+const TYPES_EAU = new Set(['wc', 'baignoire', 'lavabo', 'cuisine', 'fontaine', 'puits']);
 let pointEau = null;
 // remplirAuPointEau(index) : « Remplir » sur un contenant du sac → { ok, raison? }. La réserve est tenue par la simulation
 // (partagée en co-op) ; l'eau est toujours croupie.
@@ -227,7 +227,7 @@ function majContexte() {
     if (m.marqueur === 'etabli') etabliVrai = etabli = true;
     if (TYPES_EAU.has(m.type) || m.eau) {   // réserve à sec (déjà vidée, ou rien n'en coule) : on cherche ailleurs
       const reste = V.snap && V.snap.eau ? V.snap.eau[m.cle] : undefined;
-      if (!(reste <= 0.01) && (!eau || !eau.infini)) eau = { cle: m.cle, nom: m.nom, infini: m.type === 'fontaine' || !!m.eau };
+      if (!(reste <= 0.01) && (!eau || !eau.infini)) eau = { cle: m.cle, nom: m.nom, infini: m.type === 'fontaine' || m.type === 'puits' || !!m.eau };
     }
   }
   // cases d'eau (rivière, canal, étang, bassin) et marqueurs d'eau : inépuisables
