@@ -124,7 +124,7 @@ export function creerAtmosphere() {
     }
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.globalAlpha = 0.34 * f;
+    ctx.globalAlpha = 0.52 * f;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(calque, 0, 0, lw, lh, 0, 0, W, H);
     ctx.restore();

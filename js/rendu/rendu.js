@@ -19,6 +19,8 @@ import { textureToit, chargerSolsPhoto, surSolsPrets } from './textures.js';
 import { K, FIN, icase } from '../carte/catalogue.js';
 import { CONSTRUCTIONS, tailleConstruction, RECOLTES } from '../data/construction.js';
 import { ZOMBIES } from '../data/zombies.js';
+import { aoMurs, ombreContact, solVivant, lumiereFenetres, ombrePerso, bordsToit, etalonnage2 } from './finitions.js';
+import { soleil } from './atmosphere.js';
 
 const MAX_BLOCS = 40;
 
@@ -79,6 +81,8 @@ export function creerRendu(cv, niveau) {
     const ux0 = bx * CHUNK, uy0 = by * CHUNK, ux1 = ux0 + CHUNK, uy1 = uy0 + CHUNK;
     c.save(); c.translate(-ux0 * TS, -uy0 * TS);
     peindreSol(c, niveau, E, x0, y0, x1, y1);
+    solVivant(c, E, x0, y0, x1, y1);
+    aoMurs(c, E, x0, y0, x1, y1);
     const dans = (R) => R.x + R.w >= ux0 - 1 && R.x <= ux1 + 1 && R.y + R.h >= uy0 - 1 && R.y <= uy1 + 2;
     const objets = (E.rendu ? E.rendu.objets : []).filter(R => !R.retire && dans(R));
     // un arbre abattu laisse sa souche
@@ -87,7 +91,7 @@ export function creerRendu(cv, niveau) {
     const plat = (R) => R.d && R.d.decor && !R.d.mural;
     for (const R of objets) if (plat(R)) { R.E_w = E.w; dessinerObjet(c, R); }
     peindreMurs(c, niveau, E, x0, y0, x1, y1);
-    objets.filter(R => !plat(R)).sort((a, b2) => (a.y + a.h) - (b2.y + b2.h)).forEach(R => { R.E_w = E.w; dessinerObjet(c, R); });
+    objets.filter(R => !plat(R)).sort((a, b2) => (a.y + a.h) - (b2.y + b2.h)).forEach(R => { R.E_w = E.w; ombreContact(c, R); dessinerObjet(c, R); });
     c.restore();
     return b;
   }
@@ -154,6 +158,7 @@ export function creerRendu(cv, niveau) {
     ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (W / 2 + sx0 - cam.x * pxc), dpr * (H / 2 + sy0 - cam.y * pxc));
     const visCase = (x, y) => { const i = icase(E, x, y); if (i < 0) return 0; return C.los[i] === C.stamp ? C.vis[i] : 0; };
     const vuCase = (x, y) => { const i = icase(E, x, y); if (i < 0) return 0; return C.vu[i]; };
+    lumiereFenetres(ctx, S, niveau, E, vuCase, vx0, vy0, vx1, vy1);
     // sang des combats (liste de l'ancien combat_vue) → calque persistant
     if (S.sang && S.sang.length) {
       if (sangTraite > S.sang.length) sangTraite = 0;
@@ -229,8 +234,13 @@ export function creerRendu(cv, niveau) {
     entree(J.y, 'moi', J).ph = phase('moi', J.x, J.y);
     const styleJ = S.styleJoueur || (J.lampe ? STYLE_JOUEUR_L : STYLE_JOUEUR);
     tmpListe.sort(parY);
+    // ombres portées des personnages dehors (selon le soleil), puis silhouettes cernées de noir et un peu plus grandes :
+    // elles se détachent de tous les sols
+    const soleilNow = soleil(S.heure ?? 12);
+    if (soleilNow) { const fo = soleilNow.force * ({ clair: 1, mistral: 0.95, couvert: 0.3, pluie: 0.12, brouillard: 0.1, orage: 0.08 }[S.meteo] ?? 1); if (fo > 0.05) for (const e of tmpListe) { const i = icase(E, e.o.x, e.o.y); if (i >= 0 && E.lumBase[i] >= 0.99) ombrePerso(ctx, e.o.x * TS, e.o.y * TS, soleilNow, fo); } }
     for (const e of tmpListe) {
       const o = e.o;
+      ctx.save(); ctx.translate(o.x * TS, o.y * TS); ctx.scale(1.12, 1.12); ctx.translate(-o.x * TS, -o.y * TS); ctx.shadowColor = 'rgba(0,0,0,0.85)'; ctx.shadowBlur = 2.6 * dpr * k * 1.12;
       if (e.k === 'mort') dessinerMort(ctx, o.x * TS, o.y * TS, o, t, ZOMBIES[o.type]);
       else if (e.k === 'pnj') dessinerHumain(ctx, o.x * TS, o.y * TS, o.dir ?? Math.PI / 2, o.style ? (o._st || (o._st = { ...STYLE_PNJ, ...o.style })) : STYLE_PNJ, { t, marche: 0, phase: 0 });
       else if (e.k === 'pair') dessinerHumain(ctx, o.x * TS, o.y * TS, o.dir, e.st, { t, marche: o.marche ?? (o.allure && o.allure !== 'immobile' ? 1 : 0), phase: e.ph, allure: o.allure, arme: o.arme, lampe: o.lampe, geste: o.geste, empoigne: o.empoigne, fantome: e.v < 0.15, aTerre: o.aTerre, agonie: o.agonie });
@@ -239,6 +249,7 @@ export function creerRendu(cv, niveau) {
         frontale: o.lampe && !o.lampeMain, geste: o.cbt && o.cbt.geste, charge: o.cbt ? Math.max(0, o.cbt.charge) : 0, vise: o.cbt && o.cbt.vise,
         empoigne: o.cbt && o.cbt.empoigne, flash: o.cbt ? o.cbt.flash : 0, agonie: o.agonie,
       });
+      ctx.restore();
     }
     for (const e of tmpListe) { e.o = null; e.st = null; }   // pas de référence gardée vers les morts et coéquipiers d'hier
     // feux, particules, traînées, éclats de l'ancien combat
@@ -466,6 +477,14 @@ export function creerRendu(cv, niveau) {
     }
     const r = rng(graine(cle));
     if (r() < 0.6 && T.type !== 'verriere') { const cx = TF * (1.2 + r() * Math.max(0, (x1 - x0) - 2.4)), cy = TF * (1.2 + r() * Math.max(0, (y1 - y0) - 2.4)); c.fillStyle = 'rgba(0,0,0,0.5)'; c.fillRect(cx + 3, cy + 4, TS * 0.4, TS * 0.4); c.fillStyle = '#6a5a4a'; c.fillRect(cx, cy, TS * 0.4, TS * 0.4); c.fillStyle = '#1a1410'; c.fillRect(cx + 4, cy + 4, TS * 0.4 - 8, TS * 0.4 - 8); }
+    // modelé : on creuse l'ombre sous le faîtage et on éclaire son arête, puis rives sombres au bord
+    if (T.type !== 'terrasse' && T.type !== 'verriere') {
+      const gr2 = horiz ? c.createLinearGradient(0, 0, 0, Hp) : c.createLinearGradient(0, 0, Wp, 0);
+      gr2.addColorStop(0, 'rgba(0,0,0,0.12)'); gr2.addColorStop(0.42, 'rgba(255,236,205,0.12)'); gr2.addColorStop(0.5, 'rgba(255,240,215,0.2)');
+      gr2.addColorStop(0.52, 'rgba(0,0,0,0.3)'); gr2.addColorStop(0.75, 'rgba(0,0,0,0.12)'); gr2.addColorStop(1, 'rgba(0,0,0,0.22)');
+      c.fillStyle = gr2; c.fillRect(0, 0, Wp, Hp);
+    }
+    bordsToit(c, masque, x0, y0);
     if (T.type === 'terrasse' && r() < 0.7) { const cx = TF * (1 + r() * Math.max(0, (x1 - x0) - 3)), cy = TF * (1 + r() * Math.max(0, (y1 - y0) - 3)); c.fillStyle = '#8a8a86'; rr(c, cx, cy, TS * 0.8, TS * 0.6, 3); c.fill(); c.strokeStyle = '#4a4a48'; c.beginPath(); c.arc(cx + TS * 0.4, cy + TS * 0.3, TS * 0.2, 0, 7); c.stroke(); }
     c.restore();
     // bord du toit (génoise) : arête sombre tout autour
@@ -779,7 +798,7 @@ export function creerRendu(cv, niveau) {
       ctx.fillStyle = `rgba(${r * 255 | 0},${g * 255 | 0},${b * 255 | 0},${Math.min(0.32, ecart * 0.45)})`;
       ctx.fillRect(0, 0, W, H); ctx.restore();
     }
-    void S;
+    etalonnage2(ctx, S, W, H);
   }
   function preparerGrain() {
     const c = document.createElement('canvas'); c.width = c.height = 160;
@@ -792,7 +811,7 @@ export function creerRendu(cv, niveau) {
     const c = document.createElement('canvas'); c.width = Math.round(W); c.height = Math.round(H);
     const g = c.getContext('2d');
     const rad = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.74);
-    rad.addColorStop(0, 'rgba(0,0,0,0)'); rad.addColorStop(1, 'rgba(0,0,0,0.72)');
+    rad.addColorStop(0, 'rgba(0,0,0,0)'); rad.addColorStop(1, `rgba(0,0,0,0.45)`);
     g.fillStyle = rad; g.fillRect(0, 0, W, H);
     vignette = c;
   }
@@ -801,7 +820,7 @@ export function creerRendu(cv, niveau) {
   return {
     cam, resize, dessiner, sansImage, ecranVersMonde, mondeVersEcran, suivre, recaler, setZoom, effets,
     zoom: () => cam.zoom, taille: () => ({ W, H }),
-    viderCache() { blocs.clear(); toitsCache.clear(); },
+    viderCache() { blocs.clear(); toitsCache.clear(); vignette = null; },
     fermer() { offSols(); offObjets(); blocs.clear(); toitsCache.clear(); grain = null; vignette = null; lumiere.fermer(); effets.fermer(); anim.clear(); },
   };
 }

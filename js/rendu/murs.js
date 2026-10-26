@@ -6,7 +6,7 @@ import { TS, TF as T, rng, hash, cercle, ellipse, rr, avecOmbre } from './outils
 import { textureMur, COULEURS_MUR } from './textures.js';
 import { K, MURS, MURS_IDS } from '../carte/catalogue.js';
 
-export const FACE = 0.4;       // hauteur de la face avant d'un mur, en unités (dessinée sur la petite case du dessous)
+export const FACE = 0.78;      // hauteur de la face avant d'un mur, en unités (dessinée sous le mur, sur près de deux petites cases)
 const motifsMur = new Map();
 export function viderMotifsMur() { motifsMur.clear(); }
 function motifMur(c, style) {
@@ -35,7 +35,8 @@ export function peindreMurs(c, niv, E, x0, y0, x1, y1) {
     murBas(c, E, x, y, st, horiz || !vert, vert);
   }
   // 2) faces avant (sous les murs pleins) — avant les dessus pour que l'arête recouvre proprement
-  for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
+  // (la face descend sur près de deux petites cases → on reprend aussi le mur deux rangs au-dessus du bloc)
+  for (let y = Math.max(0, y0 - 2); y <= Y1; y++) for (let x = X0; x <= X1; x++) {
     const i = y * w + x;
     if (!estMurPlein(E, i) || !(MURS[style(E, i)] || {}).epais) continue;
     const j = at(x, y + 1);
@@ -81,12 +82,13 @@ export function peindreMurs(c, niv, E, x0, y0, x1, y1) {
 // Face avant d'un mur : bande verticale sur la case du dessous, dégradé + rangs selon la matière, plinthe, ombre de contact.
 function face(c, E, x, y, st) {
   const C = COULEURS_MUR[st] || COULEURS_MUR.platre;
-  const px = x * T, py = (y + 1) * T, H = Math.min(T, TS * FACE);
+  const px = x * T, py = (y + 1) * T, H = TS * FACE;
   const g = c.createLinearGradient(0, py, 0, py + H);
-  g.addColorStop(0, C.face); g.addColorStop(1, 'rgba(10,8,6,1)');
+  g.addColorStop(0, C.face); g.addColorStop(0.55, C.face); g.addColorStop(1, 'rgba(14,11,8,1)');
   c.fillStyle = g; c.fillRect(px, py, T, H);
-  // texture légère de la face (motif du mur assombri)
-  c.save(); c.globalAlpha = 0.35; c.fillStyle = motifMur(c, st); c.fillRect(px, py, T, H); c.restore();
+  // texture de la face (motif du mur assombri), qu'on lise sa matière ; arête claire en haut, pied dans l'ombre
+  c.save(); c.globalAlpha = 0.6; c.fillStyle = motifMur(c, st); c.fillRect(px, py, T, H); c.restore();
+  const g3 = c.createLinearGradient(0, py, 0, py + H); g3.addColorStop(0, 'rgba(255,238,210,0.16)'); g3.addColorStop(0.3, 'rgba(0,0,0,0)'); g3.addColorStop(1, 'rgba(0,0,0,0.55)'); c.fillStyle = g3; c.fillRect(px, py, T, H);
   const r = rng(x * 7349 + y * 131);
   if (st === 'pierre' || st === 'rocher') { c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 1; for (let k = 1; k < 3; k++) { c.beginPath(); c.moveTo(px, py + H * k / 3); c.lineTo(px + T, py + H * k / 3); c.stroke(); } for (let k = 0; k < 2; k++) { const xx = px + r() * T; c.beginPath(); c.moveTo(xx, py + (k % 3) * H / 3); c.lineTo(xx, py + ((k % 3) + 1) * H / 3); c.stroke(); } }
   else if (st === 'brique') { c.strokeStyle = 'rgba(0,0,0,0.4)'; c.lineWidth = 1; for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(px, py + H * k / 4); c.lineTo(px + T, py + H * k / 4); c.stroke(); } }
