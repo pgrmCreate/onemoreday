@@ -193,6 +193,12 @@ Un camp a quelqu'un qui veille (méta `veille`), un refuge habité n'a aucun mor
 porte comme on veut ; les morts viennent de quelque part (le bruit, la lumière). Les accessoires d'histoire suivent l'état
 du monde (objet du plan avec `si` : le fourgon qui n'est plus là, les traces qui apparaissent).
 
+### P21. Les gens font quelque chose, et les choses ressemblent à ce qu'elles sont
+Un personnage n'attend jamais planté à sa case : il a une occupation qui se voit et s'entend (un geste, un outil, une
+pose, un trajet), il dort la nuit ou il veille, il se tourne vers toi quand tu t'approches (`vie` d'un PNJ du plan,
+`js/explore/pnj_vie.js`). Un objet par terre se reconnaît sans lire son nom (`js/rendu/objets_sol.js`). Un geste qui
+prend du temps (fabriquer, construire, fouiller, manger) se fait sur le terrain, sous nos yeux, avec une barre qui avance.
+
 ---
 
 ## 2. Journal des retours
@@ -312,6 +318,16 @@ du monde (objet du plan avec `si` : le fourgon qui n'est plus là, les traces qu
 | 60 | On ne répond pas à une quête en mode « nouvelle quête » ; ce n'est pas un RPG, on ne gagne pas un point pour avoir tiré l'eau du puits. | Bandeaux « Nouvelle mission », « Objectif rempli », « Mission accomplie » (`notif.js`, `missions.js`). | Plus de bandeaux : de courtes pensées du personnage à la première personne ; le menu Objectifs reste, rédigé de la même façon. | fait (26 oct.) : pensées (`js/ui/notif.js`), menu Objectifs gardé |
 | 61 | C'est un jeu de survie, triste et horrible, qui suit une histoire ; l'histoire peut évoluer selon les actions du joueur. Il veut qu'on réfléchisse et qu'on lui pose des questions avant de modifier le scénario. | — | Chaque changement de trame passe d'abord par une proposition écrite et des questions au propriétaire. | règle |
 | 62 | Les vidéos attendront : on les refera une fois qu'il aura joué le jeu de A à Z et que le scénario tiendra la route, pas à chaque modification. | — | Pas de tournage tant que l'histoire n'est pas validée ; les scènes utilisent des images fixes ou le texte seul. | règle |
+
+### 27 octobre 2026 — au début, les gens restent plantés là
+
+| # | Ce qu'il dit | Cause probable | Décision | Statut |
+|---|---|---|---|---|
+| 63 | Les personnages du début sont stoïques : ils ne bougent pas, il n'y a rien à faire. Il les veut en mouvement, avec des animations élémentaires qui montrent qu'ils font quelque chose, et des sons selon l'activité (l'outil sous le capot, quelqu'un qui fait un tour). | Les PNJ du plan étaient dessinés immobiles (`marche: 0`), à leur case, sans rien dans les mains. | Une **vie** pour chaque PNJ du plan (`pnj(…, { vie })`, `js/explore/pnj_vie.js`) : des moments joués au hasard (aller quelque part par un chemin qui contourne les arbres, un geste, une pose, des sons situés, une phrase marmonnée), une place pour la nuit ; il s'arrête et te regarde quand tu lui parles, il te laisse passer. Au camp : Thierry sous le capot levé (clé à cliquet, outil qui tombe, démarreur qui ne prend pas), Martine qui compte les provisions, Sandrine qui ne quitte pas son fils des yeux, Mathis qui joue avec un bâton et lance des cailloux, René qui veille sur sa souche et fait sa ronde jusqu'au fil (sa canne tape la terre), Laura qui ne bouge presque pas (sa jambe, une plainte). La nuit, ils dorment près du fourgon ; René veille. Rendu : assis, jambes allongées, couché sous une couverture, mains au travail, canne, tête qui se tourne. Contrôle : `dev/test_pnj_vie.mjs`. | fait (27 oct.) |
+| 64 | Les objets par terre ressemblent à des cartes à ramasser : une branche doit ressembler à une branche, chaque objet doit avoir un genre de modèle, même sans 3D. | Tout objet au sol était le même rectangle brun cerné d'un cercle doré qui clignote. | Chaque objet par terre a son dessin vu de dessus (`js/rendu/objets_sol.js`) : une branche de pin morte (écorce, rameaux, aiguilles rousses, cassure claire), des brindilles, des cailloux, une boîte de conserve couchée, une bouteille, une canette froissée, un rouleau de fil de fer, une corde lovée, une bâche pliée, les armes dessinées comme en main, les vêtements pliés selon la partie du corps… et une famille pour tout le reste ; plusieurs exemplaires montrent plusieurs objets. Plus de cercle doré : une lueur douce qui respire et un éclat de temps en temps. | fait (27 oct.) |
+| 65 | Quand on fabrique un objet (ou qu'on construit), il veut revenir sur le terrain, et voir une barre de progression, ou un indicateur qui tourne. | La barre de fabrication restait dans le menu. | Fabriquer ferme le menu : le personnage fabrique devant soi, les mains au travail (le marteau s'il faut clouer), un anneau qui tourne et se remplit au-dessus de sa tête avec l'objet dedans, la barre en bas avec son indicateur qui tourne ; bouger ou un mort qui approche l'arrête sans rien coûter. Même anneau pour construire. Sur la carte, la barre reste dans le menu. | fait (27 oct.) |
+| 66 | L'objectif du premier soir, « passer la nuit », c'est bizarre, alors qu'il y a des trucs par terre à ramasser. | La première étape ne demandait rien de concret ; le bois mort servait seulement le lendemain. | (Choix du propriétaire.) Le premier soir, René veut du bois mort sur le tas, près du creux (mission `m_bois`, étape `deposer` comptée en objets) : on ramasse les branches au pied des pins, on les pose sur le tas, puis l'objectif devient « te trouver un coin pour dormir près de René ». Au matin, un tas pas fait se clôt sans un mot ; le tas sert au feu et à l'abri du lendemain. | fait (27 oct.) |
+
 
 ---
 

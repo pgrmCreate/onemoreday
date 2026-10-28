@@ -12,6 +12,7 @@ import { peindreSol } from './sols.js';
 import { peindreMurs, FACE, viderMotifsMur } from './murs.js';
 import { dessinerObjet, spriteHaut, chargerObjetsPhoto, surObjetsPrets, viderSprites } from './objets.js';
 import { dessinerHumain, dessinerMort, dessinerCadavre } from './personnages.js';
+import { dessinerObjetSol, dessinerIconeObjet } from './objets_sol.js';
 import { creerLumiere, ambiance, SUB } from './lumiere.js';
 import { creerEffets } from './effets.js';
 import { creerAtmosphere } from './atmosphere.js';
@@ -175,7 +176,7 @@ export function creerRendu(cv, niveau) {
       dessinerCadavre(ctx, cd, t, t0 == null ? null : t - t0, ZOMBIES[cd.type]);
     }
     // objets au sol
-    for (const o of S.sol) { if (o.etage !== E.id || !vuCase(o.x, o.y)) continue; objetSol(ctx, o, t); }
+    for (const o of S.sol) { if (o.etage !== E.id || !vuCase(o.x, o.y)) continue; dessinerObjetSol(ctx, o, t); }
     // portes animées
     for (const p of niveau.portes) {
       if (p.etage !== E.id || p.x < vx0 - 1 || p.x > vx1 + 1 || p.y < vy0 - 1 || p.y > vy1 + 1) continue;
@@ -215,7 +216,7 @@ export function creerRendu(cv, niveau) {
     }
     // personnages, triés par y
     tmpListe.length = 0;
-    for (const n of S.pnj) if (n.etage === E.id && visCase(n.x, n.y) >= 0.2) entree(n.y, 'pnj', n);
+    for (const n of S.pnj) if (n.etage === E.id && visCase(n.x, n.y) >= 0.2) entree(n.y, 'pnj', n).ph = phase('pnj:' + n.id, n.x, n.y, n.style && n.style.taille < 0.9 ? 3.1 : 2.4);
     for (const z of S.zombies) {
       if (z.etage !== E.id || !voirMort(z, S, visCase)) continue;
       entree(z.y, 'mort', z);
@@ -242,12 +243,15 @@ export function creerRendu(cv, niveau) {
       const o = e.o;
       ctx.save(); ctx.translate(o.x * TS, o.y * TS); ctx.scale(1.12, 1.12); ctx.translate(-o.x * TS, -o.y * TS); ctx.shadowColor = 'rgba(0,0,0,0.85)'; ctx.shadowBlur = 2.6 * dpr * k * 1.12;
       if (e.k === 'mort') dessinerMort(ctx, o.x * TS, o.y * TS, o, t, ZOMBIES[o.type]);
-      else if (e.k === 'pnj') dessinerHumain(ctx, o.x * TS, o.y * TS, o.dir ?? Math.PI / 2, o.style ? (o._st || (o._st = { ...STYLE_PNJ, ...o.style })) : STYLE_PNJ, { t, marche: 0, phase: 0 });
+      else if (e.k === 'pnj') dessinerHumain(ctx, o.x * TS, o.y * TS, o.dir ?? Math.PI / 2, o.style ? (o._st || (o._st = { ...STYLE_PNJ, ...o.style })) : STYLE_PNJ, {
+        t, marche: o.marche || 0, phase: e.ph || 0, allure: o.allure, pose: o.pose, travail: o.geste, outil: o.outil, tete: o.tete || 0,
+        canne: o.canne, tremble: o.tremble, couverture: o.couverture, graine: o.id,
+      });
       else if (e.k === 'pair') dessinerHumain(ctx, o.x * TS, o.y * TS, o.dir, e.st, { t, marche: o.marche ?? (o.allure && o.allure !== 'immobile' ? 1 : 0), phase: e.ph, allure: o.allure, arme: o.arme, lampe: o.lampe, geste: o.geste, empoigne: o.empoigne, fantome: e.v < 0.15, aTerre: o.aTerre, agonie: o.agonie });
       else dessinerHumain(ctx, o.x * TS, o.y * TS, o.dir, styleJ, {
         t, marche: o.marche, phase: e.ph, allure: o.allure, arme: o.equip && (o.equip.deux || o.equip.droite), lampe: o.lampe && o.lampeMain,
         frontale: o.lampe && !o.lampeMain, geste: o.cbt && o.cbt.geste, charge: o.cbt ? Math.max(0, o.cbt.charge) : 0, vise: o.cbt && o.cbt.vise,
-        empoigne: o.cbt && o.cbt.empoigne, flash: o.cbt ? o.cbt.flash : 0, agonie: o.agonie,
+        empoigne: o.cbt && o.cbt.empoigne, flash: o.cbt ? o.cbt.flash : 0, agonie: o.agonie, travail: o.travail, outil: o.outil,
       });
       ctx.restore();
     }
@@ -405,15 +409,6 @@ export function creerRendu(cv, niveau) {
     if (s.etat === 'verrouillee' && a.o < 0.05) { const cx = x + TS / 2, cy = y + TS / 2; c.fillStyle = '#b08a3a'; rr(c, cx - 3.5, cy - 1, 7, 6, 1); c.fill(); c.strokeStyle = '#b08a3a'; c.lineWidth = 1.6; c.beginPath(); c.arc(cx, cy - 1, 2.5, Math.PI, 0); c.stroke(); }
     // dégâts (PV de porte entamés) : fissures
     if (s.pvMax && s.pv < s.pvMax * 0.7 && a.o < 0.05) { c.strokeStyle = 'rgba(0,0,0,0.6)'; c.lineWidth = 1; const r = rng(p.x * 13 + p.y); c.beginPath(); c.moveTo(x + TS * 0.3, y + TS * 0.5); c.lineTo(x + TS * (0.4 + r() * 0.2), y + TS * (0.42 + r() * 0.16)); c.lineTo(x + TS * 0.7, y + TS * 0.5); c.stroke(); }
-  }
-
-  function objetSol(c, o, t) {
-    const x = o.x * TS, y = o.y * TS;
-    const pulse = 0.5 + 0.5 * Math.sin(t / 380 + o.uid);
-    c.fillStyle = 'rgba(0,0,0,0.4)'; ellipse(c, x + 1.5, y + 2, 7, 5); c.fill();
-    if (o.doc) { c.save(); c.translate(x, y); c.rotate(((o.uid * 37) % 10) / 10 - 0.5); c.fillStyle = '#d8d0b8'; c.fillRect(-6, -4.5, 12, 9); c.fillStyle = 'rgba(0,0,0,0.3)'; for (let k = 0; k < 3; k++) c.fillRect(-4.5, -2.5 + k * 2.4, 9 - k * 2, 0.9); c.restore(); }
-    else { c.fillStyle = '#7a6a4a'; rr(c, x - 6, y - 5, 12, 10, 2.5); c.fill(); c.fillStyle = 'rgba(255,240,200,0.15)'; c.fillRect(x - 5, y - 4, 10, 1.6); }
-    c.strokeStyle = `rgba(201,162,39,${0.35 + 0.4 * pulse})`; c.lineWidth = 1.4; cercle(c, x, y, 10 + pulse * 2); c.stroke();
   }
 
   function arcAttaque(c, z, t) {
@@ -686,6 +681,12 @@ export function creerRendu(cv, niveau) {
         etiquette(x, y - pxc * 0.95, m.nom, coul, false);
       } else fleche(x, y, coul, m.nom, Math.hypot(m.x - S.joueur.x, m.y - S.joueur.y), false, t);
     }
+    // ce que marmonnent les gens (js/explore/pnj_vie.js) : une bulle au-dessus d'eux, si l'on est assez près pour entendre
+    for (const n of S.pnj) {
+      if (!n.bulle || n.etage !== E.id || !(n.bulleA > 0)) continue;
+      const d = Math.hypot(n.x - S.joueur.x, n.y - S.joueur.y); if (d > 9) continue;
+      bulle(ecranX(n.x), ecranY(n.y) - pxc * 1.05, n.bulle, n.bulleA * Math.min(1, (9 - d) / 2));
+    }
     // coéquipier : nom au-dessus de la tête, ou flèche au bord quand il est hors de vue
     for (const p of S.pairs) {
       if (p.etage !== E.id) continue;
@@ -696,14 +697,35 @@ export function creerRendu(cv, niveau) {
         etiquette(x, y - pxc * 0.85, (p.nom || 'Coéquipier') + (p.agonie ? ' — à terre !' : ''), p.agonie ? '#ff6a6a' : '#7cc8ff', !v);
       } else fleche(x, y, '#7cc8ff', p.nom || 'Coéquipier', d, false, t);
     }
-    // barre de fouille / d'action
+    // barre de fouille / d'action : un anneau qui tourne et se remplit au-dessus de la tête, et la barre dessous
+    // (fabriquer, construire, fouiller, manger : on voit que le personnage est occupé, et combien il reste)
     if (S.fouilleOn) {
       const f = S.fouille, bx = ecranX(f.x) - pxc * 0.7, by = ecranY(f.y) - pxc * 0.95, bw = pxc * 1.4;
       ctx.fillStyle = 'rgba(0,0,0,0.75)'; rr(ctx, bx - 3, by - 3, bw + 6, 11, 3); ctx.fill();
       ctx.fillStyle = '#d8b03a'; rr(ctx, bx, by, bw * f.frac, 5, 2); ctx.fill();
       ctx.fillStyle = 'rgba(230,223,204,0.8)';
       for (let n = 0; n < f.n; n++) { const fx = bx + bw * (n + 1) / (f.n + 1); ctx.fillRect(fx - 0.5, by - 1, 1, 7); }
+      if (f.anneau) {
+        const cx = ecranX(S.joueur.x), cy = ecranY(S.joueur.y) - pxc * 1.45, R = Math.max(9, pxc * 0.3);
+        ctx.fillStyle = 'rgba(8,8,10,0.72)'; cercle(ctx, cx, cy, R + 4); ctx.fill();
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'rgba(230,223,204,0.18)'; ctx.lineWidth = 3; cercle(ctx, cx, cy, R); ctx.stroke();
+        ctx.strokeStyle = '#d8b03a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.max(0.02, f.frac) * Math.PI * 2); ctx.stroke();
+        const a0 = t / 260;   // le petit arc qui tourne : ça charge
+        ctx.strokeStyle = 'rgba(255,240,200,0.9)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(cx, cy, R - 4.5, a0, a0 + 1.6); ctx.stroke();
+        ctx.lineCap = 'butt';
+        if (f.objet) dessinerIconeObjet(ctx, f.objet, cx, cy, R * 0.72);   // ce qu'on fabrique
+      }
     }
+  }
+  function bulle(x, y, txt, a) {
+    ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, a));
+    ctx.font = 'italic 500 12px Oswald, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const w = Math.min(ctx.measureText(txt).width + 14, W * 0.7);
+    ctx.fillStyle = 'rgba(236,230,214,0.92)'; rr(ctx, x - w / 2, y - 11, w, 22, 9); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - 5, y + 10); ctx.lineTo(x, y + 17); ctx.lineTo(x + 4, y + 10); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#2a2622'; ctx.fillText(txt, x, y + 0.5, w - 10);
+    ctx.restore();
   }
   function etiquette(x, y, txt, coul, attenue) {
     ctx.font = '600 12px Oswald, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

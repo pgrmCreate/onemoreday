@@ -97,7 +97,17 @@ function verifEffets(e, ctx) {
     if (!EFFET_CLES.has(k)) err(`${ctx} : effet inconnu « ${k} »`);
     switch (k) {
       case 'flag': if (Array.isArray(v)) flagsPoses.add(v[0]); else if (typeof v === 'string') flagsPoses.add(v); else err(`${ctx} : flag mal formé`); break;
-      case 'mission': if (!Array.isArray(v) || typeof v[0] !== 'string') err(`${ctx} : mission doit être ['geste', id, …]`); else if (v[0] === 'cache' && !(MISSIONS[v[1]] && MISSIONS[v[1]].cache)) err(`${ctx} : mission « ${v[1]} » sans cache`); break;
+      case 'mission': {
+        // un geste ['accepter', id] ou plusieurs [['clore', a], ['accepter', b]] (js/game/missions.js effet)
+        const liste = Array.isArray(v) && Array.isArray(v[0]) ? v : [v];
+        for (const g of liste) {
+          if (!Array.isArray(g) || typeof g[0] !== 'string') { err(`${ctx} : mission doit être ['geste', id, …]`); continue; }
+          if (!['accepter', 'plusTard', 'refuser', 'clore', 'donner', 'agir', 'cache'].includes(g[0])) err(`${ctx} : geste de mission inconnu « ${g[0]} »`);
+          if (g[1] && !MISSIONS[g[1]]) err(`${ctx} : mission « ${g[1]} » inconnue`);
+          if (g[0] === 'cache' && !(MISSIONS[g[1]] && MISSIONS[g[1]].cache)) err(`${ctx} : mission « ${g[1]} » sans cache`);
+        }
+        break;
+      }
       case 'flags': if (typeof v !== 'object') err(`${ctx} : flags mal formé`); else Object.keys(v).forEach(f => flagsPoses.add(f)); break;
       case 'objet': if (!Array.isArray(v) || typeof v[1] !== 'number') err(`${ctx} : objet doit être ['id', qty]`); else objetOk(v[0], ctx); break;
       case 'objets': if (!Array.isArray(v)) err(`${ctx} : objets mal formé`); else v.forEach(o => objetOk(o[0], ctx)); break;

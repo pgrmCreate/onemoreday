@@ -57,6 +57,7 @@ export function recevoirOp(op) {
     case 'accepter': accepter(op.id); break;
     case 'plusTard': plusTard(op.id); break;
     case 'refuser': refuser(op.id); break;
+    case 'clore': clore(op.id); break;
     case 'reussir': if (s && s.etat === 'active' && s.i === op.i) reussirEtape(op.id, { par: 'invite', variante: op.variante || null }); break;
     case 'echouer': if (s && s.etat === 'active' && s.i === op.i) echouer(op.id, op.raison || ''); break;
     case 'nourrir': nourrirPoints(op.id, op.pts || 0, 'invite'); break;
@@ -144,6 +145,13 @@ export function accepter(id) {
 }
 export function plusTard(id) { if (estInvite()) relayer({ op: 'plusTard', id }); else if (tenant()) ecrire(id, { etat: 'proposee', depuis: maintenant() }); }
 export function refuser(id) { if (estInvite()) relayer({ op: 'refuser', id }); else if (tenant()) ecrire(id, { etat: 'refusee', depuis: maintenant() }); }
+// Une mission dont l'histoire est passée (le tas de bois du premier soir, au matin) : elle s'arrête sans un mot.
+export function clore(id) {
+  if (estInvite()) { relayer({ op: 'clore', id }); return; }
+  if (!tenant()) return;
+  const s = etat(id); if (!s || s.etat !== 'active') return;
+  ecrire(id, { ...s, etat: 'close', fin: maintenant() });
+}
 // La mise en scène d'une étape est faite (chez l'invité : on prévient l'hôte, qui ne la refera pas en arrivant).
 export function marquerPrepare(id) {
   const s = etat(id); if (!s || !s.d) return;
@@ -398,6 +406,9 @@ export function constructionsManquantes(e, constructions) {
 }
 // Déposer : la caisse en mots, jamais en nombre.
 const MOTS_CAISSE = (f) => (f >= 1 ? 'c’est assez pour quelques jours' : f >= 0.66 ? 'encore un peu' : f >= 0.33 ? 'il en faudrait encore' : f > 0 ? 'presque rien' : 'elle est vide');
+// … et le tas de bois (objets : { ids, n })
+const MOTS_TAS = (f) => (f >= 1 ? 'ça fera pour demain' : f >= 0.66 ? 'encore une ou deux branches' : f >= 0.33 ? 'c’est encore maigre' : f > 0 ? 'trois fois rien' : 'le tas est vide');
+const motsDepot = (e, f) => (e.objets ? MOTS_TAS(f) : MOTS_CAISSE(f));
 const et = (l) => (l.length > 1 ? `${l.slice(0, -1).join(', ')} et ${l[l.length - 1]}` : l[0] || '');
 // L'avancée a changé (caisse, constructions) : on prévient l'écran (guide, journal) sans rien annoncer.
 export function majAvancee(id) { emit('mission:maj', { id }); }
@@ -411,7 +422,7 @@ export function guide(lieuId) {
       case 'proteger': etatTxt = `${m.pnj.nom} : ${MOTS_PV(s.d.pv ?? 100)} — ${dureeMots(e.minutes - (s.d.compte || 0))}`; break;
       case 'nourrir': { const b = besoinMots(e, s); etatTxt = s.d.okJour === clock.jour() ? `${m.pnj.nom} a mangé aujourd’hui` : `${m.pnj.nom} attend ${b}`; break; }
       case 'atteindre': etatTxt = s.d.repere ? 'repéré{|e} ! ' + genrer(e.texte).toLowerCase() : genrer(e.texte); break;
-      case 'deposer': etatTxt = MOTS_CAISSE(s.d.f || 0); break;
+      case 'deposer': etatTxt = motsDepot(e, s.d.f || 0); break;
       case 'construire': etatTxt = s.d.manque ? `il manque encore ${et(s.d.manque.split('|'))}` : genrer(e.texte); break;
       default: etatTxt = genrer(e.texte);
     }
@@ -427,7 +438,7 @@ export function avancee(id) {
     case 'tenir': return (s.d.compte || 0) > 0 ? `Sur place : ${dureeMots(e.minutes - s.d.compte)}.` : 'Le compte n’a pas commencé : il faut être sur place.';
     case 'proteger': return `${m.pnj.nom} : ${MOTS_PV(s.d.pv ?? 100)}.`;
     case 'nourrir': return `Nourri à sa faim : ${s.d.faits || 0} jour${(s.d.faits || 0) > 1 ? 's' : ''} sur ${e.jours}.`;
-    case 'deposer': { const t = MOTS_CAISSE(s.d.f || 0); return t.charAt(0).toUpperCase() + t.slice(1) + '.'; }
+    case 'deposer': { const t = motsDepot(e, s.d.f || 0); return t.charAt(0).toUpperCase() + t.slice(1) + '.'; }
     case 'construire': return s.d.manque ? `Il manque encore ${et(s.d.manque.split('|'))}.` : '';
     default: return '';
   }
@@ -455,10 +466,12 @@ function prendreCache(id, dest) {
   livrerA(dest, id, c.effets, 'cache', null);
 }
 export function effet(v) {
+  if (Array.isArray(v) && Array.isArray(v[0])) { for (const x of v) effet(x); return; }   // plusieurs : [['clore', a], ['accepter', b]]
   const [quoi, id, x] = Array.isArray(v) ? v : [v];
   if (quoi === 'accepter') accepter(id);
   else if (quoi === 'plusTard') plusTard(id);
   else if (quoi === 'refuser') refuser(id);
+  else if (quoi === 'clore') clore(id);
   else if (quoi === 'donner') donner(id, x);
   else if (quoi === 'agir') emit('mission:agir', { id, variante: x });   // le geste choisi dans la scène (js/explore/missions_vue.js)
   else if (quoi === 'cache') { if (estInvite()) relayer({ op: 'cache', id }); else prendreCache(id, 'hote'); }

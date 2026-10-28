@@ -218,7 +218,19 @@ export function majMissions(dt) {
 }
 // Déposer : ce qu'il y a dans un conteneur du plan (son marqueur), compté en points de faim. On ne « donne » rien à
 // personne : on range ce qu'on rapporte dans la caisse, et l'étape se remplit quand la caisse est assez pleine.
+// objets : { ids, n } — compté en objets (le tas de bois : n branches ou brindilles).
 let lectureCaisse = false;
+// Ce conteneur (clé de meuble) est-il celui où une mission en cours demande de ranger quelque chose ici ? → l'étape
+// (la caisse du camp, le tas de bois) : on l'ouvre pour RANGER, même vide, et l'invite le dit (« Poser du bois sur le tas »).
+export function depotIci(cle) {
+  if (!V || !cle || !G) return null;
+  for (const { e } of M.ici(V.lieuId)) {
+    if (e.type !== 'deposer') continue;
+    const mk = V.niveau.marqueurs[e.marqueur];
+    if (mk && mk.meuble === cle) return e;
+  }
+  return null;
+}
 function deposer(id, s, e) {
   const mk = V.niveau.marqueurs[e.marqueur];
   if (!mk || !mk.meuble || lectureCaisse || !V.canal.contenu) return;
@@ -227,8 +239,9 @@ function deposer(id, s, e) {
     lectureCaisse = false;
     if (!V || M.etapeDe(id) !== e) return;
     let pts = 0;
-    for (const it of items || []) pts += (it.qty || 1) * pointsAliment(it.id, it.reste ?? 1);
-    const f = Math.min(1, pts / (e.points || 1));
+    if (e.objets) { for (const it of items || []) if (e.objets.ids.includes(it.id)) pts += it.qty || 1; }
+    else for (const it of items || []) pts += (it.qty || 1) * pointsAliment(it.id, it.reste ?? 1);
+    const f = Math.min(1, pts / ((e.objets ? e.objets.n : e.points) || 1));
     if (s.d.f !== f) { s.d.f = f; M.majAvancee(id); }
     if (f >= 1) M.reussirEtape(id);
   }, () => { lectureCaisse = false; });

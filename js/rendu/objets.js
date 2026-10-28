@@ -4,6 +4,7 @@
 // (spriteHaut), pour qu'on passe dessous.
 import { TS, TF, rng, canvas, rr, cercle, ellipse, avecOmbre, boite, teinte, hex, rgb } from './outils.js';
 import { disposition } from '../carte/catalogue.js';
+import { brancheSeche, caillou } from './objets_sol.js';
 
 const BOIS = '#5d4128', BOIS_C = '#7a5838', BOIS_F = '#3b2819', METAL = '#6e7272', BLANC = '#c9c4b6', DRAP = '#b9b2a0';
 const pick = (r, a) => a[Math.floor(r() * a.length)];
@@ -454,6 +455,42 @@ const DESSINS = {
     c.fillStyle = '#b89668'; cercle(c, W / 2, H / 2, m * 0.34); c.fill();
     c.strokeStyle = 'rgba(90,60,30,0.55)'; c.lineWidth = 0.8; for (let k = 1; k < 5; k++) { cercle(c, W / 2 + r() - 0.5, H / 2 + r() - 0.5, m * 0.34 * k / 5); c.stroke(); }
     c.fillStyle = 'rgba(220,200,160,0.7)'; for (let k = 0; k < 7; k++) { const a = r() * 6.28; c.fillRect(W / 2 + Math.cos(a) * m * 0.6, H / 2 + Math.sin(a) * m * 0.6, 3, 1.4); }
+  },
+  // le tas de bois mort du camp : des branches de pin empilées en travers, la cassure claire des gros bouts
+  tas_bois(c, W, H, r) {
+    c.fillStyle = 'rgba(30,20,10,0.28)'; ellipse(c, W / 2 + 2, H / 2 + 3, W * 0.46, H * 0.36); c.fill();
+    for (let k = 0; k < 7; k++) {
+      const a = (k % 2 ? 0.45 : -0.4) + (r() - 0.5) * 0.7, L = W * (0.34 + r() * 0.12), cx = W / 2 + (r() - 0.5) * W * 0.18, cy = H / 2 + (r() - 0.5) * H * 0.2;
+      avecOmbre(c, 3, 1.5, 2, 0.45, () => brancheSeche(c, cx - Math.cos(a) * L, cy - Math.sin(a) * L, cx + Math.cos(a) * L, cy + Math.sin(a) * L, 3 + r() * 1.6, r, { aiguilles: r() < 0.35, rameaux: 1 }));
+    }
+  },
+  // des pierres de calcaire, posées là par la nature (le creux sous les pins) : pas des gravats de chantier
+  rochers(c, W, H, r) {
+    for (let k = 0; k < 6; k++) {
+      const R = 4 + r() * 6, x = W * (0.25 + r() * 0.5), y = H * (0.25 + r() * 0.5);
+      avecOmbre(c, 3, 1.5, 2, 0.5, () => caillou(c, x, y, R, r, ['#8e877a', '#857f73', '#968e7e', '#7e786c'][Math.floor(r() * 4)]));
+    }
+  },
+  // le capot levé d'un fourgon, vu d'en haut (posé sur la case de l'avant) : le compartiment moteur à nu — le bloc, la
+  // batterie, les durites, la calandre — et le capot dressé contre le pare-brise, avec sa béquille
+  capot_ouvert(c, W, H, r, R) {
+    const coul = (R && R.couleur) || '#e8e6e0';
+    const x0 = W * 0.44, x1 = W * 0.97, y0 = H * 0.13, y1 = H * 0.87;
+    c.fillStyle = '#17181a'; rr(c, x0, y0, x1 - x0, y1 - y0, 3); c.fill();
+    c.fillStyle = '#3c3f42'; rr(c, x0 + 3, H * 0.3, (x1 - x0) * 0.5, H * 0.4, 2); c.fill();                 // le bloc moteur
+    c.fillStyle = '#55595c'; for (let k = 0; k < 4; k++) c.fillRect(x0 + 5, H * 0.33 + k * H * 0.09, (x1 - x0) * 0.42, H * 0.04);
+    c.fillStyle = '#101012'; rr(c, x0 + (x1 - x0) * 0.6, y0 + 3, (x1 - x0) * 0.32, H * 0.2, 1.5); c.fill();   // la batterie
+    c.fillStyle = '#b02a22'; cercle(c, x0 + (x1 - x0) * 0.68, y0 + 6, 1.6); c.fill(); c.fillStyle = '#222'; cercle(c, x0 + (x1 - x0) * 0.84, y0 + 6, 1.6); c.fill();
+    c.fillStyle = '#d8b020'; cercle(c, x0 + (x1 - x0) * 0.72, H * 0.72, 2); c.fill();                       // le bouchon d'huile
+    c.strokeStyle = '#0c0c0c'; c.lineWidth = 2.2; c.beginPath(); c.moveTo(x0 + 6, H * 0.74); c.bezierCurveTo(x0 + 10, H * 0.84, x1 - 12, H * 0.82, x1 - 5, H * 0.66); c.stroke();
+    c.strokeStyle = 'rgba(160,165,168,0.6)'; c.lineWidth = 0.8; for (let y = y0 + 3; y < y1 - 2; y += 3) { c.beginPath(); c.moveTo(x1 - 4, y); c.lineTo(x1 - 1, y); c.stroke(); }   // la calandre
+    // le capot dressé : sa face peinte, vue en raccourci, contre le pare-brise
+    avecOmbre(c, 4, 3, 2, 0.6, () => {
+      const g = c.createLinearGradient(W * 0.2, 0, W * 0.46, 0); g.addColorStop(0, teinte(coul, 0.72)); g.addColorStop(1, teinte(coul, 1.05));
+      c.fillStyle = g; rr(c, W * 0.22, H * 0.1, W * 0.22, H * 0.8, 2.5); c.fill();
+    });
+    c.strokeStyle = 'rgba(0,0,0,0.55)'; c.lineWidth = 1; rr(c, W * 0.22, H * 0.1, W * 0.22, H * 0.8, 2.5); c.stroke();
+    c.strokeStyle = '#8a8e90'; c.lineWidth = 1; c.beginPath(); c.moveTo(W * 0.42, H * 0.22); c.lineTo(x0 + 4, H * 0.18); c.stroke();   // la béquille
   },
   roncier(c, W, H, r) {
     for (let k = 0; k < 14; k++) { const a = r() * 6.28, d = r() * W * 0.32; c.fillStyle = teinte('#2e3a1e', 0.7 + r() * 0.6); cercle(c, W / 2 + Math.cos(a) * d, H / 2 + Math.sin(a) * d, 5 + r() * 6); c.fill(); }

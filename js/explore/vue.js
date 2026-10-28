@@ -38,6 +38,9 @@ import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement
 import { rueeSim, etatRuee, lieuDansZone, typeActif } from '../game/ruees.js';
 import { lierPlan, chargerMemoire, sauverMemoire, basculerPlan, planOuvert, fermerPlan } from './plan_lieu.js';
 import { lierMissions, majMissions, guideMission, reperesMissions } from './missions_vue.js';
+import { animerPnj } from './pnj_vie.js';
+import { lancerAction } from './interactions.js';
+import { fabriquer, dureeBarreMs } from '../game/crafting.js';
 import { lieuCalme } from '../game/missions.js';
 import * as brume from '../game/brume.js';
 
@@ -190,6 +193,23 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null, po
     if (!entree) return;
     if (V !== v || v.action || v.occupe) { d.rendre(entree); return; }
     mangerEnAction(entree, { forcer: !!d.forcer, rendre: d.rendre });
+  }));
+  // Fabriquer depuis le menu : on revient sur le terrain, et le personnage fabrique devant soi (docs/RETOURS_JOUEUR.md
+  // #65) — les mains au travail, l'anneau qui tourne au-dessus de la tête, la barre ; bouger, frapper, un mort qui approche :
+  // on s'arrête, rien n'est consommé. d = { id, nom, qty, cible, tempsMin, marteler } ; d.pris = true si l'on s'en charge.
+  V.off.push(on('fabrication:demande', (d) => {
+    if (!V || V.arene || V.occupe || G.player.agonie || !d || V.fouille) return;
+    d.pris = true;
+    import('../ui/panels/index.js').then(m => { if (m.panneauOuvert()) m.fermerPanneau(); }).catch(() => {});
+    if (V.action) couperAction();
+    const v = V, debut = G.world.minutes;
+    lancerAction(`${d.nom}…`, Math.max(2500, dureeBarreMs(d.tempsMin)), v.j.x, v.j.y, async () => {   // assez long pour voir ses mains faire
+      const res = await fabriquer(d.id, d.qty, { cible: d.cible, minutesEcoulees: G.world.minutes - debut });
+      if (V !== v) return;
+      if (!res.ok) message(res.raison || 'Impossible.', 2600);
+      else { sfx('loot'); message(`Fabriqué : ${res.texte}.`, 2200); }
+    }, 0, d.marteler ? 'clouer' : 'craft', d.marteler ? 1600 : 2300);
+    if (V.action) Object.assign(V.action, { anneau: true, objet: d.objet || null, geste: d.marteler ? 'marteler' : 'fabriquer', outil: d.marteler ? 'marteau' : null });
   }));
 
   // rendu + entrées
@@ -573,6 +593,7 @@ function image(t, dt) {
   if (V._placeVu !== enPlacement()) { V._placeVu = enPlacement(); V.entrees.setPlacement && V.entrees.setPlacement(V._placeVu); }
   if (V.butin && distanceButin(V.butin, j) > 1.9) { interrompreFouille(); fermerButin(); }   // trop loin : la fouille s'arrête aussi (sinon elle finit « vide », fenêtre fermée)
   V.tPnj -= dt; if (V.tPnj <= 0) { V.tPnj = 800; majPnj(); V.reperesMission = reperesMissions(); }
+  animerPnj(V, dt, grilleBloque());   // ils vivent : marcher, travailler, s'asseoir, dormir (js/explore/pnj_vie.js)
   V.tPos -= dt; if (V.tPos <= 0) { V.tPos = 2000; if (!V.arene) G.player.position = { mode: 'lieu', lieu: V.lieuId, etage: j.etage, x: +j.x.toFixed(2), y: +j.y.toFixed(2), planV: V.niveau.planVersion || 0, abords: abordsDe(V) }; tension(); }
   V.tGuide -= dt; if (V.tGuide <= 0) { V.tGuide = 700; majObjectif(); majCoopHud(pairs); }
   // --- HUD ---
@@ -607,6 +628,8 @@ function image(t, dt) {
   const J = Sc.joueur;
   J.x = j.x; J.y = j.y; J.dir = j.dir; J.marche = j.marche; J.lampe = !!la; J.lampeMain = !!(la && (RL.SOURCES[la.id] || {}).mains); J.allure = j.allure;
   J.equip = V.equipVu; J.cbt = V.cbt.rendu(); J.agonie = !!G.player.agonie;
+  // les mains occupées : fouiller, fabriquer, bâtir, manger (personnages.js : travail)
+  J.travail = V.fouille ? 'fouille' : V.action ? (V.action.geste || null) : null; J.outil = V.action ? V.action.outil || null : null;
   Sc.fx = V.cbt.fx; Sc.sang = V.cbt.sang; Sc.moi = V.canal.joueurId || JOUEUR_ID;
   Sc.styleJoueur = styleJoueur();
   Sc.soi = Sc.soi || {}; Sc.soi.x = j.x; Sc.soi.y = j.y;
@@ -620,6 +643,7 @@ function image(t, dt) {
   if (V.fouille) { Fo.x = V.fouille.x; Fo.y = V.fouille.y; Fo.frac = V.fouille.p; Fo.n = V.fouille.items.length; Sc.fouilleOn = true; }
   else if (V.action) { Fo.x = V.action.x; Fo.y = V.action.y; Fo.frac = V.action.t / V.action.duree; Fo.n = 0; Sc.fouilleOn = true; }
   else Sc.fouilleOn = false;
+  Fo.anneau = !!(V.action && V.action.anneau && !V.fouille); Fo.objet = Fo.anneau ? V.action.objet || null : null;
   // un panneau plein écran (téléphone) cache tout : on fait avancer l'état de l'image sans la dessiner
   if (mod.panneaux && mod.panneaux.couvreEcran && mod.panneaux.couvreEcran()) V.rendu.sansImage(Sc);
   else V.rendu.dessiner(Sc);

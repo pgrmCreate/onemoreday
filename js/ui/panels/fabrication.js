@@ -11,6 +11,7 @@ import { iconeObjet, ICONE_CATEGORIE_RECETTE } from '../icons.js';
 import { toast } from '../toast.js';
 import { el, icoEl, bouton, avecScroll, vide, pct, g } from './commun.js';
 import { commandeTransfert, transfertEnCours } from '../transferts.js';
+import { emit } from '../../core/bus.js';
 
 let etat = { cat: null, sel: null, qty: 1, cible: null };
 let apiPanneau = null;
@@ -144,6 +145,12 @@ function remplirFiche(f, p, racine) {
 
 function lancer(r, e, pied, racine) {
   if (enCours || transfertEnCours()) return;
+  // Sur le terrain (docs/RETOURS_JOUEUR.md #65) : le menu se ferme, on revient au jeu, et le personnage fabrique devant
+  // toi — les mains au travail, un anneau qui tourne au-dessus de lui, la barre en bas ; bouger interrompt sans rien coûter.
+  // Hors d'un lieu (sur la carte), la barre reste ici, dans le panneau.
+  const d = { id: r.id, nom: r.nom, qty: etat.qty, cible: etat.cible, tempsMin: e.tempsMin, objet: r.resultat ? r.resultat.id : null, marteler: !!(r.outils && r.outils.includes('marteler')), pris: false };
+  emit('fabrication:demande', d);
+  if (d.pris) { etat.qty = 1; etat.cible = null; return; }
   const duree = craft.dureeBarreMs(e.tempsMin);
   const travail = { id: r.id, qty: etat.qty, cible: etat.cible, debut: performance.now(), duree, raf: 0 };
   enCours = travail;

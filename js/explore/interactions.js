@@ -27,6 +27,8 @@ import { ciblesConstruction, libelleConstruction, agirConstruction, construction
 import { DEMONTABLES } from '../data/construction.js';
 import { recoltable, propositionNature, libelleNature, secondaireNature, agirNature } from './nature.js';
 import { pnjsMissions, ciblesMissions } from './missions_vue.js';
+import { depotIci } from './missions_vue.js';
+import { ecouter } from './pnj_vie.js';
 import { estCellule, carteEnMain, departPar, NOM_COTE } from '../travel/errance.js';
 
 const RX = REGLAGES.exploration;
@@ -100,7 +102,9 @@ export function chercherCible() {
     const doc = docDuMarqueur(m.id);
     const pnj = V.pnj.find(q => q.marqueur === m.id);
     if (!decl && !doc && !pnj) continue;
-    if (pnj && !decl) continue;
+    // un personnage : on lui parle à LUI ; s'il vit sa vie (il marche : js/explore/pnj_vie.js), son marqueur ne bouge pas
+    // avec lui — parler() joue alors son déclencheur
+    if (pnj && (!decl || pnj.vie)) continue;
     proposer({ type: decl ? 'marqueur' : 'doc', decl, doc, m, etage: E.id, x0: m.x, y0: m.y, x1: m.x + 1, y1: m.y + 1, cx: m.x + 0.5, cy: m.y + 0.5 }, d, 0.3);
   }
   // une porte qui porte une scène (la grille du cimetière) : E l'examine, le menu des actions garde le geste de la porte
@@ -290,6 +294,7 @@ function libelle(c) {
       if (!c.m.conteneur && !estLit(c.m)) return (secondaireMeuble(c.m) || {}).libelle || `Démonter ${c.m.nom}`;
       const st = V.snap.conteneurs[c.m.cle];
       if (voitureFermee(c.m)) return `Casser une vitre (${c.m.nom})`;
+      { const dep = depotIci(c.m.cle); if (dep) return dep.libelle || `Ranger dans ${c.m.nom}`; }   // la caisse du camp, le tas de bois
       if (estLit(c.m) && (!c.m.conteneur || (st && st.progres >= 1 && st.reste === 0))) return `Dormir ${/^(lit|lit_simple|lit_hopital|abri_branches)$/.test(c.m.type) ? 'dans' : 'sur'} ${c.m.nom}`;
       if (st && st.progres >= 1 && st.reste === 0) return `Fouiller ${c.m.nom} (vide)`;
       return `Fouiller ${c.m.nom}`;
@@ -299,7 +304,7 @@ function libelle(c) {
     case 'sortie': return libelleSortie(c.s);
     case 'marqueur': return (c.decl && c.decl.libelle) || (c.m && c.m.def && c.m.def.nom ? `Examiner ${c.m.def.nom}` : 'Examiner');
     case 'doc': return `${(G.documents || []).includes(c.doc) ? 'Relire' : 'Lire'} : ${(DOCUMENTS[c.doc] || {}).titre || 'document'}`;
-    case 'pnj': return `Parler à ${c.q.nom}`;
+    case 'pnj': { const d = c.q.vie && declencheurMarqueur(c.q.marqueur); return (d && d.libelle) || `Parler à ${c.q.nom}`; }
     case 'mission': return c.lib;
     case 'relever': return `Relever ${c.p.nom || 'ton coéquipier'}`;
     case 'sol': return c.o.doc ? `Lire : ${(DOCUMENTS[c.o.doc] || {}).titre || 'document'}` : `Ramasser : ${nomObjet(c.o.id)}${c.o.qty > 1 ? ' ×' + c.o.qty : ''}`;
@@ -444,6 +449,7 @@ export function mangerEnAction(entree, { forcer = false, rendre }) {
     message(frac >= 1 ? r.texte : `Tu t'arrêtes de manger. ${r.texte}`, 3800);
   };
   lancerAction(`Tu manges : ${nom}…`, S.dureeRepas(pts), V.j.x, V.j.y, () => finir(1), 0, 'manger', 1600, finir);
+  if (V.action) V.action.geste = 'manger';   // la main qui va à la bouche (js/rendu/personnages.js)
   sfx('manger');
   return true;
 }
@@ -460,7 +466,7 @@ export function majPnj() {
   for (const q of n.pnj) {
     const P = PNJ[q.id] || {};
     if (!verifierCondition(q.si || P.si)) continue;
-    out.push({ id: q.id, nom: q.nom || P.nom || q.id, scene: P.scene, marqueur: q.marqueur, etage: q.etage, x: q.x + 0.5, y: q.y + 0.5, dir: q.dir ?? Math.PI / 2, style: q.style, repliques: q.repliques || P.repliques || null });
+    out.push({ id: q.id, nom: q.nom || P.nom || q.id, scene: P.scene, marqueur: q.marqueur, etage: q.etage, x: q.x + 0.5, y: q.y + 0.5, dir: q.dir ?? Math.PI / 2, style: q.style, repliques: q.repliques || P.repliques || null, vie: q.vie || null });
   }
   for (const [id, P] of Object.entries(PNJ)) {
     if (P.lieu !== V.lieuId || !P.marqueur || !n.marqueurs[P.marqueur]) continue;
@@ -474,6 +480,7 @@ export function majPnj() {
   V.pnj = out;
 }
 async function parler(q) {
+  ecouter(V, q.id);                          // il s'arrête et te regarde (js/explore/pnj_vie.js)
   if (q.parler) return q.parler();          // un personnage de mission
   const d = declencheurMarqueur(q.marqueur);
   if (d) return jouerDeclencheur(d);

@@ -31,8 +31,11 @@ js/rendu/               ★ LE MOTEUR DE RENDU (canvas 2D)
   sols.js                 sol : matières, transitions irrégulières, variations, occlusion au pied des murs, décals
   murs.js                 murs : dessus texturé, arêtes, face avant (hauteur), murets, grilles, haies, fenêtres, escaliers
   objets.js               ~70 meubles et objets dessinés (véhicules, tombes, tentes…) + houppiers en sprites
+  objets_sol.js           les objets posés PAR TERRE, vus de dessus : un dessin par objet (branche, caillou, conserve, bouteille,
+                          fil de fer…) ou par famille (armes comme en main, vêtements pliés, soins…), sprites en cache, lueur douce
   personnages.js          les vivants (joueur, coéquipier habillé comme il l'est, PNJ) : torse selon le vêtement du dessus,
                           tête et coiffure, mains, chaussures en sprites ; bras à coude, armes, gestes, sacs, objet du dos
+                          ; poses (assis, jambes allongées, couché sous une couverture), mains au travail, canne, tête tournée
                           (banc d'essai dev/vivants.html)
   corps.js                outils partagés des corps : cache de sprites (pixels, budget par image), ombre, volume, épaules,
                           bras à coude qui se raccourcit quand il pend
@@ -47,7 +50,10 @@ js/rendu/               ★ LE MOTEUR DE RENDU (canvas 2D)
 
 js/explore/             Temps 1 : l'exploration — et le combat sur place
   vue.js                  le cœur de l'écran : entrer/sortir, boucle, déplacement, micro-arrêt, caméra, guide d'objectif
+                          (fabriquer depuis le menu : on revient sur le terrain, l'action se joue ici — 'fabrication:demande')
   interactions.js         la touche E : portes (et portes « à deux »), fouille, PNJ, documents, déclencheurs, escaliers, relever
+  pnj_vie.js              la VIE des PNJ (plan : pnj(…, { vie })) : moments (aller, geste, pose, sons situés, phrase marmonnée),
+                          chemins qui contournent les obstacles, la nuit (dormir, veiller), s'arrêter et regarder quand on parle
   butin.js                fouille en temps réel, fenêtre de butin, sol
   combat_vue.js           gestes du joueur (tape, enchaînement, charge, esquive, poussée, tir) et retours d'impact
   combat_lieu.js          combats de scène (des morts surgissent) et embuscades de voyage

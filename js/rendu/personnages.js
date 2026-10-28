@@ -29,9 +29,11 @@ export function formeArme(id) {
   return 'objet';
 }
 const DEUX_MAINS = new Set(['batte', 'hache', 'pelle', 'masse', 'lance', 'fusil']);
-const LONGUEUR = { couteau: 11, machette: 22, batte: 28, hache: 26, pelle: 25, masse: 28, marteau: 15, lance: 40, barre: 26, pistolet: 10, fusil: 30, lampe: 9, objet: 10 };
+const LONGUEUR = { couteau: 11, machette: 22, batte: 28, hache: 26, pelle: 25, masse: 28, marteau: 15, lance: 40, barre: 26, pistolet: 10, fusil: 30, lampe: 9, objet: 10, cle: 12, baton: 22 };
+// l'outil d'un geste (pnj_vie : outil) → la forme dessinée dans la main
+const formeOutil = (o) => (!o ? null : o === 'cle' || o === 'baton' ? o : formeArme(o));
 
-function dessinerArme(c, forme, L) {
+export function dessinerArme(c, forme, L) {
   c.lineCap = 'round';
   switch (forme) {
     case 'couteau': c.fillStyle = '#2a1e14'; rr(c, -2, -1.6, 5, 3.2, 1); c.fill(); c.fillStyle = '#c8ccd0'; c.beginPath(); c.moveTo(3, -1.4); c.lineTo(L, 0); c.lineTo(3, 1.4); c.closePath(); c.fill(); break;
@@ -57,6 +59,11 @@ function dessinerArme(c, forme, L) {
     case 'pistolet': c.fillStyle = '#18181a'; rr(c, -1, -2.6, L + 2, 5.2, 1.2); c.fill(); c.fillStyle = '#2c2c30'; c.fillRect(-2, 1, 4, 4); break;
     case 'fusil': c.fillStyle = '#4a3220'; rr(c, -10, -2.6, 14, 5.2, 2); c.fill(); c.fillStyle = '#1c1c1e'; c.fillRect(2, -1.8, L, 3.6); break;
     case 'lampe': c.fillStyle = '#2a2a2c'; rr(c, -2, -2.4, L, 4.8, 1.5); c.fill(); c.fillStyle = '#f2e6b8'; c.fillRect(L - 2, -2, 2, 4); break;
+    // une clé plate (le mécanicien) : le manche d'acier, la tête ouverte
+    case 'cle': c.strokeStyle = '#8e9396'; c.lineWidth = 2.2; c.beginPath(); c.moveTo(-2, 0); c.lineTo(L - 3, 0); c.stroke();
+      c.fillStyle = '#9ea3a6'; c.beginPath(); c.arc(L - 1, 0, 3, 0.7, Math.PI * 2 - 0.7); c.lineTo(L - 1, 0); c.closePath(); c.fill(); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, -1, L - 5, 0.7); break;
+    // un bâton (le gamin qui joue, qui dessine dans la terre)
+    case 'baton': c.strokeStyle = '#6a4e30'; c.lineWidth = 1.8; c.beginPath(); c.moveTo(-3, 0); c.quadraticCurveTo(L * 0.5, -1.5, L, 0.5); c.stroke(); c.lineWidth = 1; c.beginPath(); c.moveTo(L * 0.6, -0.6); c.lineTo(L * 0.7, -3); c.stroke(); break;
     default: c.fillStyle = '#6a5a4a'; rr(c, -2, -2, L, 4, 1.5); c.fill();
   }
 }
@@ -387,14 +394,18 @@ function mainV(c, a, x, y, ang, s, ouverte) {
 export function dessinerHumain(c, x, y, dir, P, A) {
   const s = (P.taille || 1);
   const a = apparenceVivant(P), car = a.carrure;
-  if (!A.fantome && !(A.agonie || A.aTerre)) dessinerOmbre(c, x, y, dir, 15 * car * s, 12 * car * s, s);
+  const etendu = A.pose === 'dort' || A.pose === 'allonge';
+  if (!A.fantome && !(A.agonie || A.aTerre || etendu)) dessinerOmbre(c, x, y, dir, 15 * car * s, 12 * car * s, s);
   c.save();
   c.translate(x, y); c.rotate(dir); c.scale(s, s);
   if (A.fantome) c.globalAlpha = 0.55;
+  if (A.tremble) { const t = A.t || 0; c.translate(Math.sin(t / 23) * 0.45, Math.cos(t / 31) * 0.45); }   // la fièvre, la peur
   if (A.agonie || A.aTerre) { couche(c, P, A, a); c.restore(); return; }
+  if (etendu) { allonge(c, P, A, a); c.restore(); return; }
   const m = A.marche || 0, ph = A.phase || 0;
   const pas = Math.sin(ph) * 7 * m, bal = Math.sin(ph * 2) * 0.8 * m;
   const accroupi = A.allure === 'accroupi', course = A.allure === 'course';
+  const assis = A.pose === 'assis' || A.pose === 'assis_tendu', tendu = A.pose === 'assis_tendu';
   // contour (coéquipier) : un halo net, visible même dans le noir
   if (P.contour) {
     c.strokeStyle = P.contour; c.lineWidth = 3;
@@ -404,7 +415,22 @@ export function dessinerHumain(c, x, y, dir, P, A) {
   // jambes et chaussures (accroupi : genoux devant, pieds sous soi)
   c.lineCap = 'round';
   const Ch = sprite(`vp:${a.seed}`, 6, 3.6, (cc) => peindreChaussureV(cc, a));
+  // assis sur une couverture : elle est sous lui
+  if (assis && A.couverture) {
+    c.fillStyle = 'rgba(0,0,0,0.25)'; rr(c, -11, -11, tendu ? 35 : 27, 24, 3); c.fill();
+    c.fillStyle = A.couverture; rr(c, -12, -12, tendu ? 35 : 27, 24, 3); c.fill();
+    c.strokeStyle = 'rgba(255,240,210,0.22)'; c.lineWidth = 0.8; for (const yy of [-8, 8]) { c.beginPath(); c.moveTo(-10, yy); c.lineTo(tendu ? 21 : 13, yy); c.stroke(); }
+  }
   for (const sd of [-1, 1]) {
+    if (assis) {
+      // assis : la cuisse vers l'avant, le genou (plié : vu d'en haut, rond), le pied juste devant ; jambes allongées : tendues
+      const kx = tendu ? 10 : 9.5, ky = sd * (tendu ? 4.8 : 5.8) * car, fx = tendu ? 19.5 : 12.5, fy = sd * (tendu ? 4.6 : 6.4) * car;
+      c.strokeStyle = 'rgba(8,6,4,0.5)'; c.lineWidth = 6.6 * car; c.beginPath(); c.moveTo(-1.5, sd * 4.3 * car); c.lineTo(kx, ky); c.lineTo(fx - 1, fy); c.stroke();
+      c.strokeStyle = a.K.jambe; c.lineWidth = 5.6 * car; c.stroke();
+      c.save(); c.translate(fx, fy); if (Ch) posee(c, Ch); else { c.fillStyle = rgbC(a.chaussures); ellipse(c, 0.6, 0, 4.4, 2.3); c.fill(); } c.restore();
+      if (!tendu) { c.fillStyle = a.K.jambe; cercle(c, kx, ky, 3.1 * car); c.fill(); c.fillStyle = 'rgba(255,246,230,0.12)'; cercle(c, kx - 0.6, ky - 0.6, 1.5 * car); c.fill(); }
+      continue;
+    }
     const fx = (sd < 0 ? pas : -pas) * 0.95 + 1.2 + (accroupi ? 4 : 0), fy = sd * 5.4 * car;
     c.strokeStyle = 'rgba(8,6,4,0.5)'; c.lineWidth = 6.4 * car; c.beginPath(); c.moveTo(-1.5, sd * 4.3 * car); c.lineTo(fx - 1, fy); c.stroke();
     c.strokeStyle = a.K.jambe; c.lineWidth = 5.4 * car; c.stroke();
@@ -415,7 +441,7 @@ export function dessinerHumain(c, x, y, dir, P, A) {
   if (P.dos) objetDos(c, P.dos, sac, bal);
   if (sac) sacArriere(c, sac, bal, m, ph);
   // bras, arme, torse, mains : la racine des bras passe sous la carrure ; l'arme est tenue (la main par-dessus le manche)
-  const tx = course ? 2 : accroupi ? 1 : 0;
+  const tx = course ? 2 : accroupi ? 1 : assis ? -1.5 : 0;
   const pose = poseBras(A);
   const Ld = LONGUEUR[pose.forme] || 10;
   const SWb = 12.3 * car - 1.8;
@@ -432,9 +458,15 @@ export function dessinerHumain(c, x, y, dir, P, A) {
   const tient = !!pose.forme;
   mainV(c, a, pose.gx, pose.gy, angG, -1, !(tient && DEUX_MAINS.has(pose.forme)) && !pose.lampeG);
   mainV(c, a, pose.dx, pose.dy, tient ? pose.angle : angD, 1, !tient);
+  // la canne (René) : tenue de la main gauche, le bout qui touche terre un peu devant
+  if (pose.canne) {
+    c.lineCap = 'round'; c.strokeStyle = 'rgba(10,6,2,0.8)'; c.lineWidth = 3; c.beginPath(); c.moveTo(pose.gx - 1.5, pose.gy + 0.5); c.lineTo(pose.gx + 4.5, pose.gy - 2.5); c.stroke();
+    c.strokeStyle = '#7a5634'; c.lineWidth = 1.9; c.stroke();
+    c.fillStyle = '#2a1e14'; cercle(c, pose.gx + 4.8, pose.gy - 2.7, 1.2); c.fill();
+  }
   // tête
-  const hx = 2 + tx + (course ? 1.5 : 0) + (accroupi ? 0.8 : 0);
-  c.save(); c.translate(hx, bal * 0.5);
+  const hx = 2 + tx + (course ? 1.5 : 0) + (accroupi ? 0.8 : 0) + (assis ? 0.6 : 0);
+  c.save(); c.translate(hx, bal * 0.5); if (A.tete) c.rotate(A.tete);
   const H = sprite(`vh:${a.seed}`, 13, 8, (cc) => peindreTeteV(cc, a));
   if (H) posee(c, H); else { c.fillStyle = a.K.peau; cercle(c, 0, 0, 6.5); c.fill(); }
   if (A.frontale) { c.fillStyle = '#2a2a2c'; rr(c, 3.4, -2, 3, 4, 1); c.fill(); c.fillStyle = '#f8ecc0'; c.fillRect(5.9, -1.4, 1.2, 2.8); c.strokeStyle = 'rgba(30,30,32,0.9)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(0, 0, 6.3, 5.3, 0, -PI * 0.42, PI * 0.42); c.stroke(); }
@@ -457,6 +489,9 @@ function poseBras(A) {
   const forme = formeArme(A.arme), deux = forme && DEUX_MAINS.has(forme);
   const balG = Math.sin(ph + PI) * 5 * m, balD = Math.sin(ph) * 5 * m;
   let P = { gx: 3 + balG, gy: -14, dx: 3 + balD, dy: 14, forme, angle: 0.25, armeAvant: true, lampeG: null };
+  const assis = A.pose === 'assis' || A.pose === 'assis_tendu';
+  if (assis && !forme) Object.assign(P, { gx: 9, gy: -7, dx: 9, dy: 7 });   // les mains posées sur les genoux
+  if (A.canne && !assis && !A.travail) Object.assign(P, { gx: 9 + Math.sin(ph + PI) * 3 * m, gy: -11.5, canne: true });
   if (forme) {
     if (deux) Object.assign(P, { gx: 8, gy: -4, dx: 5, dy: 9, angle: -0.55 });
     else if (forme === 'pistolet' || forme === 'fusil') Object.assign(P, { dx: 15, dy: 3, angle: 0, gx: forme === 'fusil' ? 9 : 12, gy: forme === 'fusil' ? -1 : -3 });
@@ -495,8 +530,64 @@ function poseBras(A) {
     if (G.type === 'tir') { const k = 1 - p; P.dx -= k * 4; P.gx -= k * 3; return P; }
     if (G.type === 'esquive') { Object.assign(P, { gx: -2, gy: -15, dx: -2, dy: 15 }); return P; }
   }
+  if (A.travail && !(A.charge > 0)) { const T = travailBras(A, P); if (T) return T; }
   if (A.vise) { P.dx = 16; P.dy = 2; P.angle = 0; }
   return P;
+}
+// Les mains au travail (js/explore/pnj_vie.js : geste ; le joueur qui fouille, fabrique, bâtit, mange) : de petits
+// mouvements qui disent ce qu'on fait, l'outil dans la main droite.
+function travailBras(A, P) {
+  const t = A.t || 0, S = Math.sin, C = Math.cos, o = formeOutil(A.outil);
+  const libre = { lampeG: null, canne: false };
+  switch (A.travail) {
+    case 'meca': { const k = S(t / 170); return { ...P, ...libre, gx: 14 + S(t / 230) * 1.5, gy: -5, dx: 15 + k * 1.2, dy: 5 + C(t / 170) * 1.6, forme: o || 'cle', angle: -0.25 + k * 0.45, armeAvant: true }; }
+    case 'fouille': return { ...P, ...libre, gx: 11 + 4 * Math.max(0, S(t / 240)), gy: -7 + 2 * S(t / 410), dx: 11 + 4 * Math.max(0, S(t / 240 + PI)), dy: 7 + 2 * C(t / 370), forme: null };
+    case 'compter': return { ...P, ...libre, gx: 11 + S(t / 300), gy: -3.5, dx: 12 + 2 * Math.max(0, S(t / 520)), dy: 3.5 + S(t / 260), forme: null };
+    case 'gratter': return { ...P, ...libre, gx: 9, gy: -7, dx: 13 + S(t / 190) * 4, dy: 6 + C(t / 380) * 2, forme: o || 'baton', angle: 0.35 + S(t / 190) * 0.25, armeAvant: true };
+    case 'lancer': { const p = (t % 2200) / 2200, k = p < 0.25 ? -p / 0.25 : p < 0.38 ? -1 + (p - 0.25) / 0.13 * 2 : Math.max(0, 1 - (p - 0.38) / 0.3); return { ...P, ...libre, gx: 6, gy: -12, dx: 8 + k * 9, dy: 10 - k * 6, forme: null }; }
+    case 'jambe': return { ...P, ...libre, gx: 13, gy: -6 + S(t / 700), dx: 14 + S(t / 500) * 1.5, dy: -3, forme: null };
+    case 'tete': return { ...P, ...libre, gx: 8, gy: -7, dx: 5.5, dy: 3.5, forme: null };
+    case 'verifier': return { ...P, ...libre, gx: 15, gy: -3 + S(t / 300), dx: 16, dy: 3, forme: null };
+    case 'bras': return { ...P, ...libre, gx: 7, gy: 4.5, dx: 7.5, dy: -4.5, forme: null };
+    case 'fabriquer': return { ...P, ...libre, gx: 11 + S(t / 150) * 1.5, gy: -4, dx: 12 + C(t / 130) * 2, dy: 4 + S(t / 210), forme: o, angle: 0.2 + S(t / 130) * 0.3, armeAvant: true };
+    case 'marteler': { const k = Math.abs(S(t / 190)); return { ...P, ...libre, gx: 14, gy: -3, dx: 9 + k * 6, dy: 7 - k * 2, forme: o || 'marteau', angle: -0.9 + k * 1.3, armeAvant: true }; }
+    case 'manger': { const p = (t % 1700) / 1700, k = p < 0.35 ? S(p / 0.35 * PI) : 0; return { ...P, ...libre, gx: 7, gy: -9, dx: 9 - k * 4, dy: 8 - k * 5, forme: null }; }
+    default: return null;
+  }
+}
+// Couché sur le dos, au calme : il dort (la poitrine se soulève à peine) ou il est allongé, éveillé (la main au front,
+// de temps en temps). Une couverture le couvre jusqu'à la poitrine.
+function allonge(c, P, A, a) {
+  const t = A.t || 0, car = a.carrure, ph = (A.graine ? graine(String(A.graine)) % 100 : 0) / 10;
+  const souffle = 1 + 0.03 * Math.sin(t / (A.pose === 'dort' ? 1100 : 800) + ph);
+  c.fillStyle = 'rgba(0,0,0,0.28)'; ellipse(c, 0, 2, 22, 11.5); c.fill();
+  c.lineCap = 'round';
+  for (const sd of [-1, 1]) {
+    c.strokeStyle = 'rgba(8,6,4,0.5)'; c.lineWidth = 6.6 * car; c.beginPath(); c.moveTo(-6, sd * 4); c.lineTo(-21, sd * 5.5); c.stroke();
+    c.strokeStyle = a.K.jambe; c.lineWidth = 5.6 * car; c.stroke();
+    c.fillStyle = rgbC(a.chaussures); ellipse(c, -22.5, sd * 5.5, 2.6, 2.3); c.fill();
+  }
+  c.save(); c.scale(souffle, souffle);
+  c.fillStyle = 'rgba(8,6,4,0.55)'; ellipse(c, 0, 0, 11.8, 10.6); c.fill();
+  c.fillStyle = rgbC(a.vet); ellipse(c, 0, 0, 11, 9.8); c.fill();
+  volume(c, () => { c.beginPath(); c.ellipse(0, 0, 11, 9.8, 0, 0, TAU); }, 1, 0, 11.5, 0.16, 0.5);
+  if (a.col) { c.fillStyle = rgbC(a.col); ellipse(c, 8.4, 0, 2.6, 3.6); c.fill(); }
+  c.restore();
+  const k = A.pose === 'allonge' ? Math.max(0, Math.sin(t / 2600 + ph)) : 0;   // éveillé : la main qui monte au front
+  const angG = brasV(c, a, 6, -8.5, 1, -5, -1);
+  const angD = brasV(c, a, 6, 8.5, 2 + k * 11, 5 - k * 3, 1);
+  mainV(c, a, 1, -5, angG, -1, true);
+  mainV(c, a, 2 + k * 11, 5 - k * 3, angD, 1, true);
+  if (A.couverture) {
+    c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, -24, -11.5, 31, 24, 4); c.fill();
+    c.fillStyle = A.couverture; rr(c, -25, -12.5, 31, 24, 4); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 0.8; for (const yy of [-5, 4]) { c.beginPath(); c.moveTo(-23, yy); c.quadraticCurveTo(-8, yy + 2, 4, yy - 1); c.stroke(); }
+    c.fillStyle = 'rgba(255,240,210,0.16)'; c.fillRect(2, -12, 3.5, 23);   // le bord replié
+  }
+  c.save(); c.translate(13, 0); if (A.tete) c.rotate(A.tete * 0.4);
+  const H = sprite(`vh:${a.seed}`, 13, 8, (cc) => peindreTeteV(cc, a));
+  if (H) posee(c, H); else { c.fillStyle = a.K.peau; cercle(c, 0, 0, 6.5); c.fill(); }
+  c.restore();
 }
 // Allongé (à terre, agonie) : sur le dos, il rampe en tirant sur ses coudes ; à l'agonie, il saigne.
 function couche(c, P, A, a) {

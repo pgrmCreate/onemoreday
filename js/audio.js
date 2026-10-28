@@ -107,6 +107,9 @@ const BANQUE_SFX = {
   remplir:          { f: ['effect/water-fill.mp3'], vol: 0.5 },
   amb_feu_crepite:  { f: [1, 2, 3].map(i => `environnement/fire-crackle-${i}.mp3`), vol: 0.4 },
   rate:             { f: ['effect/swing-miss.mp3'], vol: 0.5 },  // l'arme fend l'air
+  // les gens du camp (js/explore/pnj_vie.js) : une plainte étouffée (la blessée, le vieux qui se relève)
+  gemit_f:          { f: ['action/femal-light-pain.mp3'], vol: 0.3 },
+  gemit_h:          { f: ['action/light-pain-male.mp3'], vol: 0.3 },
 };
 // Hordes lointaines : des boucles posées SOUS l'ambiance quand beaucoup de morts
 // rôdent dans le quartier (voir setHorde). « calme » = gémissements longs et
@@ -927,11 +930,11 @@ function env(gn, t, a, peak, dur) {
   gn.gain.linearRampToValueAtTime(peak, t + a);
   gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
 }
-function burstAt(t, dur, fType, fFreq, peak, q = 1, versEcho = false) {
+function burstAt(t, dur, fType, fFreq, peak, q = 1, versEcho = false, dest = null) {
   const s = ctx.createBufferSource(); s.buffer = noiseBuffer(dur + 0.1);
   const f = ctx.createBiquadFilter(); f.type = fType; f.frequency.value = fFreq; f.Q.value = q;
   const gn = ctx.createGain(); env(gn, t, 0.005, peak, dur);
-  s.connect(f); f.connect(gn); gn.connect(master);
+  s.connect(f); f.connect(gn); gn.connect(dest || master);
   if (versEcho) gn.connect(echo);
   s.start(t); s.stop(t + dur + 0.1);
 }
@@ -945,7 +948,7 @@ function tonAt(t, f0, f1, dur, type, peak, opts = {}) {
     const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = opts.filtre; f.Q.value = opts.q || 1;
     o.connect(f); tete = f;
   }
-  tete.connect(gn); gn.connect(master);
+  tete.connect(gn); gn.connect(opts.dest || master);
   if (opts.echo) gn.connect(echo);
   if (opts.vib) {
     const lfo = ctx.createOscillator(); lfo.frequency.value = opts.vib;
@@ -953,6 +956,25 @@ function tonAt(t, f0, f1, dur, type, peak, opts = {}) {
     lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + dur + 0.1);
   }
   o.start(t); o.stop(t + dur + 0.1);
+}
+// Un bruit synthétisé SITUÉ (le geste d'un personnage, quelque part dans le lieu) : son volume et son côté selon où il est.
+function sortieSituee(opts = {}) {
+  const g = ctx.createGain(); g.gain.value = Math.max(0, Math.min(1.5, opts.volume ?? 1));
+  if (opts.pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, opts.pan)); g.connect(p); p.connect(master); }
+  else g.connect(master);
+  setTimeout(() => { try { g.disconnect(); } catch (e) {} }, 4000);
+  return g;
+}
+// Un moteur qu'on lance : le démarreur tourne par à-coups (un grondement grave haché), sans que ça prenne.
+function demarreurAt(t, dur, dest, peak) {
+  const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(58, t); o.frequency.linearRampToValueAtTime(78 + Math.random() * 8, t + dur);
+  const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = 2;
+  const am = ctx.createGain(); am.gain.value = 0.5;
+  const lfo = ctx.createOscillator(); lfo.frequency.value = 8 + Math.random() * 1.5; const lg = ctx.createGain(); lg.gain.value = 0.48; lfo.connect(lg); lg.connect(am.gain);
+  const gn = ctx.createGain(); gn.gain.setValueAtTime(0.0001, t); gn.gain.linearRampToValueAtTime(peak, t + 0.05); gn.gain.setValueAtTime(peak, t + dur - 0.08); gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(f); f.connect(am); am.connect(gn); gn.connect(dest);
+  o.start(t); o.stop(t + dur + 0.05); lfo.start(t); lfo.stop(t + dur + 0.05);
+  for (let k = 0; k < dur * 8; k++) burstAt(t + k / 8 + 0.02, 0.04, 'bandpass', 380, peak * 0.5, 2, false, dest);
 }
 
 // Chaque nom de la banque → sa recette de synthèse. Tous discrets : ce sont
@@ -1499,6 +1521,56 @@ export function sfx(nom, opts = {}) {
     }
     case 'tissu_dechire': { // déchirure sèche : rafale de bruit qui monte dans l'aigu
       for (let i = 0; i < 6; i++) burstAt(t + i * 0.034, 0.03, 'highpass', 1700 + i * 380, 0.075 - i * 0.006);
+      break;
+    }
+    // ─── Les gestes des gens (js/explore/pnj_vie.js), situés dans le lieu ───
+    case 'cle': { // une clé à cliquet sous un capot : une rafale de petits clics de métal
+      const d = sortieSituee(opts), n = 5 + Math.floor(Math.random() * 4), pas = 0.05 + Math.random() * 0.02;
+      for (let i = 0; i < n; i++) { burstAt(t + i * pas, 0.016, 'highpass', 3600, 0.15, 1, false, d); tonAt(t + i * pas, 2800, 2500, 0.03, 'square', 0.01, { filtre: 5200, a: 0.002, dest: d }); }
+      break;
+    }
+    case 'metal': { // un outil qui tinte contre le moteur
+      const d = sortieSituee(opts), f = 1700 + Math.random() * 1100;
+      tonAt(t, f, f * 0.985, 0.4, 'sine', 0.06, { a: 0.002, dest: d }); tonAt(t, f * 1.51, f * 1.49, 0.24, 'sine', 0.03, { a: 0.002, dest: d });
+      burstAt(t, 0.025, 'bandpass', 3200, 0.1, 2, false, d);
+      break;
+    }
+    case 'outil_tombe': { // la clé qui tombe sur les cailloux de la piste
+      const d = sortieSituee(opts);
+      [0, 0.11, 0.19].forEach((dt, i) => { burstAt(t + dt, 0.03, 'bandpass', 2600 - i * 300, 0.16 - i * 0.04, 3, false, d); tonAt(t + dt, 1500 - i * 200, 1400 - i * 200, 0.12, 'triangle', 0.035 - i * 0.008, { a: 0.002, dest: d }); });
+      break;
+    }
+    case 'demarreur': { // le démarreur du fourgon : trois tentatives, et le moteur ne prend pas
+      const d = sortieSituee(opts);
+      demarreurAt(t, 0.6, d, 0.09); demarreurAt(t + 0.85, 0.55, d, 0.09); demarreurAt(t + 1.65, 1.05, d, 0.08);
+      break;
+    }
+    case 'capot': { // un capot qu'on rabat : le coup sourd, la tôle qui vibre
+      const d = sortieSituee(opts);
+      burstAt(t, 0.25, 'lowpass', 240, 0.5, 1, false, d); tonAt(t, 150, 55, 0.3, 'sine', 0.3, { a: 0.003, dest: d }); tonAt(t, 640, 610, 0.5, 'triangle', 0.025, { a: 0.003, dest: d });
+      break;
+    }
+    case 'canne': { // le bout de la canne sur la terre
+      const d = sortieSituee(opts);
+      burstAt(t, 0.035, 'lowpass', 1200, 0.13, 1, false, d); tonAt(t, 540, 320, 0.05, 'sine', 0.045, { a: 0.002, dest: d });
+      break;
+    }
+    case 'caillou': { // un caillou lancé qui rebondit sur la piste
+      const d = sortieSituee(opts);
+      [0, 0.16, 0.27, 0.34].forEach((dt, i) => burstAt(t + 0.25 + dt, 0.018, 'highpass', 2400 + i * 300, 0.14 / (i + 1), 1, false, d));
+      break;
+    }
+    case 'gratter': { // un bâton qui gratte la terre
+      const d = sortieSituee(opts);
+      const s = ctx.createBufferSource(); s.buffer = noiseBuffer(0.5);
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.4; f.frequency.setValueAtTime(800, t); f.frequency.linearRampToValueAtTime(1500, t + 0.3);
+      const gn = ctx.createGain(); env(gn, t, 0.04, 0.06, 0.34);
+      s.connect(f); f.connect(gn); gn.connect(d); s.start(t); s.stop(t + 0.45);
+      break;
+    }
+    case 'canettes': { // des boîtes de conserve vides qui s'entrechoquent
+      const d = sortieSituee(opts);
+      for (let i = 0; i < 3; i++) { const dt = i * (0.06 + Math.random() * 0.05), f = 1500 + Math.random() * 1200; tonAt(t + dt, f, f * 0.97, 0.13, 'triangle', 0.03, { a: 0.002, dest: d }); burstAt(t + dt, 0.02, 'highpass', 3000, 0.08, 1, false, d); }
       break;
     }
     // Nom inconnu : on ne fait rien — les appels venus d'ailleurs ne cassent jamais.

@@ -182,7 +182,8 @@ export class EtagePlan {
   marqueur(id, x, y, o = {}) { this.marqueurs.push({ id, x, y, ...o }); return this; }
   // pnj(id, x, y, { si, marqueur, nom, dir, style, repliques }) — un PNJ de l'histoire (id de PNJ) ou un FIGURANT (id libre,
   //   nom + repliques : quelques phrases dites au hasard quand on lui parle ; style : couleurs/coiffure, dir : regard).
-  pnj(id, x, y, o = {}) { this.pnjs.push({ id, x, y, si: o.si || null, marqueur: o.marqueur || null, nom: o.nom || null, dir: o.dir ?? null, style: o.style || null, repliques: o.repliques || null }); if (o.marqueur) this.marqueur(o.marqueur, x, y, { pnj: id }); return this; }
+  // vie : ce qu'il fait de ses journées (il marche, travaille, s'assoit, dort) — js/explore/pnj_vie.js
+  pnj(id, x, y, o = {}) { this.pnjs.push({ id, x, y, si: o.si || null, marqueur: o.marqueur || null, nom: o.nom || null, dir: o.dir ?? null, style: o.style || null, repliques: o.repliques || null, vie: o.vie || null }); if (o.marqueur) this.marqueur(o.marqueur, x, y, { pnj: id }); return this; }
   document(id, x, y, o = {}) { this.solItems.push({ x, y, doc: id, marqueur: o.marqueur || null }); return this; }
   objetSol(id, x, y, qty = 1) { this.solItems.push({ x, y, id, qty }); return this; }
   declencheur(x, y, w, h, o = {}) { this.declencheurs.push({ x, y, w, h, ...o }); return this; }

@@ -23,13 +23,14 @@ export const vueCourante = () => V;
 export const vib = (ms) => { try { if (pref('vibrations') !== false && navigator.vibrate) navigator.vibrate(ms); } catch (e) {} };
 export const sfx = (n, o) => { try { return mod.audio && mod.audio.sfx && mod.audio.sfx(n, o); } catch (e) {} };
 // Son situé dans le lieu : plus on est loin, moins on l'entend (au-delà de la portée : rien). Un étage d'écart = étouffé.
-export function sfxA(nom, x, y, etage, portee = 14) {
+// vol : un son discret de nature (un geste, un pas) est plus bas qu'un bruit franc.
+export function sfxA(nom, x, y, etage, portee = 14, vol = 1) {
   if (!V) return;
   let d = Math.hypot(x - V.j.x, y - V.j.y);
   if (etage && etage !== V.j.etage) d = d * 1.6 + 6;
   const f = 1 - d / portee;
   if (f <= 0) return;
-  sfx(nom, { volume: Math.pow(f, 1.6), pan: Math.max(-0.8, Math.min(0.8, (x - V.j.x) / 10)) });
+  sfx(nom, { volume: Math.pow(f, 1.6) * vol, pan: Math.max(-0.8, Math.min(0.8, (x - V.j.x) / 10)) });
 }
 export function posPorte(cle) { const p = V && V.niveau.porteParCle[cle]; return p ? [p.x + 0.5, p.y + 0.5, p.etage] : null; }
 

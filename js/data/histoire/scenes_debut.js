@@ -32,6 +32,11 @@ export const SCENES_DEBUT = {
         suivant: 'bb_rene',
       },
       {
+        label: 'Parler du bois', si: { quete: ['q_debut', 'bois'] },
+        texte: '« Du bois mort, tout ce que tu trouves au pied des pins, et tu le poses sur le tas, à côté du creux. » Il regarde le ciel qui s’éteint entre les branches. « On n’allumera rien ce soir : un feu, la nuit, ça se voit de loin. Mais demain, on en aura besoin, et ça t’occupera les mains. » Il montre le fourgon du menton. « Il y a un sac de sport à l’arrière. Prends-le : à bras, tu n’en porteras qu’une à la fois. »',
+        suivant: 'bb_rene',
+      },
+      {
         label: 'Parler du mas', si: { quete: ['q_debut', 'vivres'] },
         texte: '« Le mas des Arnaud, en bas du sentier. Il y a des vignes que personne n’aura vendangées, un figuier, un puits, et Paulette faisait des conserves pour tout le quartier. » Il se tait un moment. « Ils étaient vieux, tous les deux. S’ils sont encore là, ils ne sont plus eux-mêmes. Prends ce que tu trouves et range-le dans la caisse, près du fourgon. Martine comptera. »',
         suivant: 'bb_rene',
@@ -82,7 +87,7 @@ export const SCENES_DEBUT = {
       {
         label: 'Descendre au mas',
         effets: {
-          quete: ['q_debut', 'vivres'], mission: ['accepter', 'm_vivres'],
+          quete: ['q_debut', 'vivres'], mission: [['clore', 'm_bois'], ['accepter', 'm_vivres']],
           journal: 'Le fourgon ne repart pas, et il n’y a plus rien à manger pour sept. René m’envoie au mas des Arnaud, en bas du sentier du vallon : des vignes, un potager, un puits. Je dois ranger ce que je rapporte dans la caisse du camp.',
         },
         suivant: '#fin',

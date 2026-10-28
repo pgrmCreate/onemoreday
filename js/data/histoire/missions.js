@@ -27,6 +27,7 @@
 //   fuir      { lieu }                         sortir du lieu vivant·e
 //   deposer   { lieu, marqueur, points }       ranger dans le conteneur du plan (son marqueur) de quoi caler `points` de faim :
 //                                              on ne « donne » rien, la caisse se remplit et l'étape avec (dit en mots)
+//             { lieu, marqueur, objets: { ids, n } }  … ou n objets parmi ces ids (le tas de bois : des branches, des brindilles)
 //   construire { lieu, besoins: [{ types, n?, nom }] }  bâtir sur place ce qui est demandé (constructions du lieu : un feu de
 //                                              l'un des types, n alarmes…) ; le guide dit ce qui manque encore
 // Ce n'est pas un RPG (docs/RETOURS_JOUEUR.md #60) : aucun bandeau « Nouvelle mission ». Une étape peut porter `pensee`
@@ -38,11 +39,26 @@
 export const MISSIONS = {
 
   // ═══════════════ LE DÉBUT : le bois de la Barben (docs/HISTOIRE_DEBUT_V3.md, scènes bb_matin et bb_camp) ═══════════════
+  // le premier soir : René veut du bois mort sur le tas, près du creux (pas de feu ce soir, mais demain on en aura besoin).
+  // Acceptée au début de la partie (js/main.js) ; close sans un mot le lendemain matin si le tas n'est pas fait (bb_matin).
+  m_bois: {
+    titre: 'Le tas de bois',
+    resume: 'René veut du bois mort sur le tas, près du creux, avant qu’il fasse noir. Pas de feu ce soir, la lumière se voit de loin, mais demain on en aura besoin.',
+    etapes: [
+      { type: 'deposer', lieu: 'bois_barben', marqueur: 'tas_bois', objets: { ids: ['branche', 'brindilles', 'buche'], n: 5 }, texte: 'Poser du bois mort sur le tas, près du creux',
+        libelle: 'Poser du bois sur le tas',
+        penseeFaite: 'Ça fera pour demain. Maintenant, dormir, si j’y arrive.' },
+    ],
+    fin: {
+      effets: { flag: 'bois_fait', quete: ['q_debut', 'panne'], journal: 'J’ai ramassé du bois mort au pied des pins et je l’ai posé sur le tas, près du creux. René dit qu’on n’allumera rien ce soir : la lumière se voit de loin.' },
+    },
+  },
   m_vivres: {
     titre: 'La caisse du camp',
     resume: 'Il n’y a plus rien à manger pour sept. Je dois rapporter du mas du vallon de quoi tenir quelques jours, et le ranger dans la caisse du camp, près du fourgon.',
     etapes: [
       { type: 'deposer', lieu: 'bois_barben', marqueur: 'caisse_camp', points: 90, texte: 'Ranger de quoi manger dans la caisse du camp',
+        libelle: 'Ranger à manger dans la caisse du camp',
         penseeFaite: 'Ça ne tiendra pas plus de deux jours.' },
     ],
     fin: {   // le récit de la fin (Martine qui compte) ouvre la scène suivante, bb_camp : l'ordre reste juste

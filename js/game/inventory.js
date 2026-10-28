@@ -695,6 +695,15 @@ function nettoyerAccesRapide(p) {
   if (p.accesRapide.length > max) p.accesRapide.length = max;
 }
 // Ranger ce que tient la main droite là d'où il vient (dos, ceinture, sac). → { ok, ou?, raison? }
+// Sortir ce qu'on tient en main ('arme') ou dans le dos ('dos') pour le poser ailleurs (une branche sur le tas de bois) :
+// l'instance sortie (à rendre si ça échoue : tenirInstance, ou addItem).
+export function sortirTenue(slot, p) {
+  p = joueur(p); if (!p.equip[slot]) return null;
+  const inst = viderTenue(slot, p);
+  if (p.equipOrigine) p.equipOrigine[slot] = null;
+  emit('inventaire', { equip: slot });
+  return inst;
+}
 export function rangerMain(p) {
   p = joueur(p); if (!p.equip.arme) return { ok: false, raison: 'Main vide.' };
   const id = p.equip.arme, o = (p.equipOrigine || {}).arme;

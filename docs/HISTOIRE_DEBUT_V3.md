@@ -81,6 +81,12 @@ La piste au milieu des pins, à la tombée du jour, le capot ouvert, et le condu
 t’explique rien : on entend les gens se disputer à voix basse, et l’on comprend qu’il n’y a plus rien à manger. On
 dort dans le fourgon ou par terre à côté. C’est ici qu’on apprend, sans le dire, à marcher, à regarder et à dormir.
 
+*Ajout du 27 oct. 2026 (choix du propriétaire, RETOURS_JOUEUR #66)* : René demande du bois mort pour le tas, près du
+creux, avant la nuit (mission `m_bois`) ; on ramasse les branches au pied des pins, on les pose sur le tas, puis on se
+trouve un coin pour dormir près de lui. On n’allume rien ce soir ; le tas servira au feu et à l’abri du lendemain.
+Autour, chacun fait quelque chose (RETOURS_JOUEUR #63) : Thierry sous le capot, Martine qui compte, Mathis qui joue,
+Sandrine qui le surveille, René qui veille et fait sa ronde, Laura qui ne bouge presque pas.
+
 ### Étape 2 — Manger (jour 2)
 
 Le vieux parle d’un mas en bas du vallon, avec des vignes que personne n’a vendangées et un potager. On y descend : c’est

@@ -135,7 +135,8 @@ export function poserPlacement() {
     message(`${d.nom} : fait.`, 1600);
     if (V && V.placement && !cons.etatConstruction(o.type).faisable) { V.placement = null; message(`${d.nom} : fait. Plus assez de matériaux pour un autre.`, 2600); }
   }, d.outils && d.outils.includes('marteler') ? 7 : 3, d.outils && d.outils.includes('marteler') ? 'clouer' : null);
-  if (V.action) V.action.chantier = chantier;
+  // le chantier se remplit ; au-dessus de la tête, l'anneau qui tourne ; les mains au travail (le marteau, s'il en faut un)
+  if (V.action) Object.assign(V.action, { chantier, anneau: true, geste: d.outils && d.outils.includes('marteler') ? 'marteler' : 'fabriquer', outil: d.outils && d.outils.includes('marteler') ? 'marteau' : null });
   return true;
 }
 // Ce que le rendu dessine : le chantier en cours (il se remplit), sinon le fantôme du placement.

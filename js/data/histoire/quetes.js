@@ -10,8 +10,11 @@ export const QUETES = {
   q_debut: {
     titre: 'Le bois', chapitre: 0, principale: true,
     etapes: {
-      panne:      { objectif: 'Passer la nuit au camp, près du fourgon, sur la piste du bois de la Barben', lieu: 'bois_barben',
-                    pensee: 'Le moteur ne repartira pas ce soir. On va dormir ici, au bord de la piste.' },
+      // le premier soir : du bois mort pour le tas (René le demande), puis un coin pour dormir (RETOURS_JOUEUR #63)
+      bois:       { objectif: 'Ramasser du bois mort au pied des pins et le poser sur le tas, près du creux, avant la nuit', lieu: 'bois_barben',
+                    pensee: 'René veut du bois mort sur le tas, près du creux, avant qu’il fasse noir. Il y a des branches au pied des pins.' },
+      panne:      { objectif: 'Te trouver un coin pour dormir près du camp, là où René veille', lieu: 'bois_barben',
+                    pensee: 'Le moteur ne repartira pas ce soir. Il faut que je me trouve un coin pour dormir, pas loin de René.' },
       vivres:     { objectif: 'Rapporter à manger du mas, en bas du sentier du vallon, et le ranger dans la caisse du camp', lieu: 'bois_barben',
                     pensee: 'Il faut trouver à manger pour tout le monde. René parle d’un mas, en bas du vallon.' },
       camp:       { objectif: 'Monter le camp : un feu dans le creux sous les pins, une ligne de boîtes sur un fil, un abri', lieu: 'bois_barben',

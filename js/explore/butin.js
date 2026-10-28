@@ -9,6 +9,7 @@ import { mod, sfx, message, nomObjet, capitaliser } from './commun.js';
 import { CONSTRUCTIONS, tailleConstruction } from '../data/construction.js';
 import { commandeTransfert, transfertEnCours } from '../ui/transferts.js';
 import { choisirSac, comparaisonSac } from '../ui/sacs.js';
+import { depotIci } from './missions_vue.js';
 
 const boutonTransfert = (attrs, ...contenu) => commandeTransfert(el('button', attrs, ...contenu));
 
@@ -21,7 +22,8 @@ export async function commencerFouille(cle, nom, x, y, rect) {
   const r = await V.canal.fouiller(cle);
   if (!V || r.erreur) return;
   if (r.verrouillee) { message(`${capitaliser(r.nom || nom)} est fermée à clé : il faut casser une vitre.`); return; }
-  V.fouille = { cle, nom: r.nom || nom, items: r.items, duree: Math.max(400, r.dureeMs), p: r.progres || 0, x, y, rect, reveles: -1, tb: 0, tSon: 0, son: null };
+  V.fouille = { cle, nom: r.nom || nom, items: r.items, duree: depotIci(cle) ? 400 : Math.max(400, r.dureeMs),   // on vient y ranger : on ne le fouille pas
+    p: r.progres || 0, x, y, rect, reveles: -1, tb: 0, tSon: 0, son: null };
   ouvrirButin(V.fouille);
   majRevele();
 }
@@ -37,7 +39,9 @@ export function avancerFouille(dt) {
     V.canal.arreterFouille(1);
     if (F.son) F.son.stop();
     V.fouille = null;
-    if (!V.butin || !V.butin.items.length) { message(`Rien d'utile dans ${F.nom}.`); fermerButin(); }
+    // la caisse du camp, le tas de bois : on est venu y ranger quelque chose — la fenêtre s'ouvre sur « Ranger », même vide
+    if (V.butin && depotIci(F.cle)) { V.butin.fini = true; V.butin.ranger = true; rendreButin(); }
+    else if (!V.butin || !V.butin.items.length) { message(`Rien d'utile dans ${F.nom}.`); fermerButin(); }
     else { V.butin.fini = true; rendreButin(); sfx('loot'); }
   }
 }
@@ -100,7 +104,14 @@ export function rendreButin() {
         ul2.append(el('li', { class: tient ? '' : 'plein' }, el('span', { class: 'ex-b-nom' }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null),
           boutonTransfert({ class: 'ex-b', type: 'button', disabled: tient ? null : true, onclick: () => rangerItem(i) }, tient ? 'Ranger' : 'Trop gros')));
       });
-      if (!G.player.inventaire.length) ul2.append(el('li', { class: 'ex-butin-cache' }, 'Ton sac est vide.'));
+      // ce qu'on tient en main ou dans le dos (une branche, sans sac : on la porte à bras)
+      for (const [slot, lib] of [['arme', 'en main'], ['dos', 'dans le dos']]) {
+        const id = G.player.equip[slot]; if (!id || B.sol) continue;
+        const v = inv.volumeDe(id), tient = occ + v <= cap + 1e-6;
+        ul2.append(el('li', { class: tient ? '' : 'plein' }, el('span', { class: 'ex-b-nom' }, nomObjet(id), el('em', {}, ' (' + lib + ')')),
+          boutonTransfert({ class: 'ex-b', type: 'button', disabled: tient ? null : true, onclick: () => rangerTenue(slot) }, tient ? 'Ranger' : 'Trop gros')));
+      }
+      if (!G.player.inventaire.length && !G.player.equip.arme && !G.player.equip.dos) ul2.append(el('li', { class: 'ex-butin-cache' }, 'Ton sac est vide.'));
       h.append(ul2);
     }
   }
@@ -129,6 +140,17 @@ function poserItem(i) {
     B.visibles = B.dejaVus = B.items.length;
     rendreButin();
   }, 80);
+}
+// Ranger ce qu'on tient en main ou dans le dos.
+async function rangerTenue(slot) {
+  if (transfertEnCours()) return;
+  const B = V && V.butin, inv = mod.inv; if (!B || !inv || !inv.sortirTenue) return;
+  const sorti = inv.sortirTenue(slot); if (!sorti) return;
+  const r = await V.canal.ranger(B.cle, sorti);
+  if (r && r.attente) return;
+  if (!r || !r.ok) { inv.tenirInstance(sorti, 'droite'); message('Impossible de le ranger ici.', 1800); rendreButin(); return; }
+  B.items.push({ ...sorti, qty: sorti.qty || 1 }); B.visibles = B.dejaVus = B.items.length;
+  sfx('loot'); rendreButin();
 }
 async function rangerItem(i) {
   if (transfertEnCours()) return;

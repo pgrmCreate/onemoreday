@@ -123,7 +123,8 @@ export function dureeBarreMs(tempsMin) {
 }
 
 // ---------- Fabriquer ----------
-// fabriquer(id, qty = 1, { cible }) — cible (réparation) : 'arme' ou index du sac.
+// fabriquer(id, qty = 1, { cible, minutesEcoulees }) — cible (réparation) : 'arme' ou index du sac ; minutesEcoulees : le
+// temps de jeu déjà passé pendant la barre (fabriqué sur le terrain, l'horloge a tourné) — on ne le compte pas deux fois.
 // Consomme, fait passer le temps (solo : clock.avancer), donne l'XP. → { ok, raison?, obtenu?: {id, qty}, texte }
 export async function fabriquer(id, qty = 1, opts = {}, p) {
   p = normaliserJoueur(joueur(p)); const r = RECIPES.find(x => x.id === id);
@@ -178,7 +179,7 @@ export async function fabriquer(id, qty = 1, opts = {}, p) {
   if (e.poste && e.poste.id === 'feu' && e.poste.source === 'rechaud') consommerGaz(e.tempsMin, p);
   gagnerXps(r.xp, qty, p);
   if (r.outils && r.outils.includes('marteler')) emit('bruit', { rayon: K().BRUIT_S.marteler, source: 'fabrication' });
-  if (G && G.mode === 'solo') clock.avancer(e.tempsMin);
+  if (G && G.mode === 'solo') clock.avancer(Math.max(0, e.tempsMin - Math.floor(opts.minutesEcoulees || 0)));
   emit('inventaire', { fabrique: r.id });
   emit('fabrication', { id: r.id, qty, obtenu });
   emit('toast', { texte: `Fabriqué : ${texte}`, type: 'bon' });

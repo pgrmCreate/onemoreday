@@ -14,6 +14,7 @@ import { demarrerRuees, arreterRuees } from './game/ruees.js';
 import { demarrerBrume, arreterBrume } from './game/brume.js';
 import { demarrerRadio, arreterRadio } from './game/radio.js';
 import { demarrerMissions, arreterMissions } from './game/missions.js';
+import * as missions from './game/missions.js';
 import { demarrerNotifs } from './ui/notif.js';
 import { montrerHUD, majHUD } from './ui/hud.js';
 import { demarrerToasts } from './ui/toast.js';
@@ -202,8 +203,9 @@ export async function nouvelleAventure({ nom, genre, difficulte, mode = 'solo', 
   sauver();
   await flow.cinematique('ouverture');
   await flow.explorer('bois_barben', { entree: 'fourgon' });
-  // pas de « Nouvel objectif » : la pensée de la première étape, une fois qu'on est sur la piste
-  setTimeout(() => quetes.avancer('q_debut', 'panne'), 1800);
+  // pas de « Nouvel objectif » : la pensée de la première étape, une fois qu'on est sur la piste — René veut du bois mort
+  // sur le tas avant la nuit (la mission m_bois compte ce qu'il y a sur le tas), puis on se trouve un coin pour dormir
+  setTimeout(() => { quetes.avancer('q_debut', 'bois'); missions.accepter('m_bois'); }, 1800);
 }
 
 export async function continuer(mode = 'solo', avant = null) {

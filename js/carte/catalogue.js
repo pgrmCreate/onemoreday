@@ -241,6 +241,12 @@ export const OBJETS = {
   debris:     { c: ';', cat: null, bloque: 0, t: [1, 1], nom: 'les débris', decor: 1, bruit: 2.5 },
   brebis_morte: { cat: null, bloque: 0, t: [1, 1], nom: 'la brebis morte', decor: 1 },
   traces_pneus: { cat: null, bloque: 0, t: [4, 2], nom: 'les traces de pneus', decor: 1, sol: 1 },   // deux ornières crantées dans la terre
+  // le début (bois de la Barben) : le tas de bois mort du camp (un conteneur : on y pose les branches), la souche où René
+  // s'assoit, le capot levé du fourgon (posé sur l'avant du véhicule, dessiné par-dessus, tant que Thierry cherche la panne)
+  tas_bois:   { cat: null, bloque: 1, t: [1, 1], nom: 'le tas de bois' },
+  rochers:    { cat: null, bloque: 1, t: [1, 1], nom: 'les pierres' },                    // des pierres de calcaire, dans la nature
+  souche:     { cat: null, bloque: 0, t: [1, 1], tf: [1, 1], nom: 'la souche' },                  // basse : on s'assoit dessus
+  capot_ouvert: { cat: null, bloque: 0, t: [1, 2], nom: 'le capot ouvert' },
   // — anciens noms (props de légende) gardés tels quels —
   haie:       { cat: null, bloque: 1, opaque: 1, t: [1, 1], nom: 'la haie' },
   grille:     { cat: null, bloque: 1, t: [1, 1], nom: 'la grille' },

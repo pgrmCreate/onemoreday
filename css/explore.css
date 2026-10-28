@@ -130,6 +130,11 @@
 /* ---------- Barre d'action (forcer, crocheter, relever…) ---------- */
 .ex-action { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); width: min(340px, 72vw); pointer-events: none; text-align: center; }
 .ex-action-l { font-size: 15px; margin-bottom: 6px; text-shadow: 0 1px 4px #000; letter-spacing: .04em; }
+/* un petit anneau qui tourne devant le libellé : le personnage est occupé (fabriquer, construire, fouiller…) */
+.ex-action-l::before { content: ''; display: inline-block; width: 11px; height: 11px; margin-right: 8px; vertical-align: -1px; border-radius: 50%;
+  border: 2px solid rgba(230,223,204,.22); border-top-color: var(--ex-ambre-c); animation: ex-tourne .8s linear infinite; }
+@keyframes ex-tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ex-action-l::before { animation-duration: 2.4s; } }
 .ex-action-b { height: 7px; background: rgba(0,0,0,.75); border: 1px solid rgba(201,162,39,.45); border-radius: 4px; overflow: hidden; }
 .ex-action-b i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #a8841c, var(--ex-ambre-c)); }
 
