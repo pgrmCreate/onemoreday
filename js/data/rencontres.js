@@ -46,7 +46,7 @@ export const RENCONTRES = [
   {
     id: 'r_meute_ville', poids: 2, type: 'combat', echelle: 'salon', zones: null, nuit: true, dangerMin: 0.2, si: { jourMin: 2 },
     illu: 'rue_nuit', combat: { zombies: ['chien_infecte'] },
-    texte: "Tu entends des grognements dans le noir, puis tu devines un chien, sa silhouette, et enfin ses dents.",
+    texte: "Tu entends des grognements dans le noir, puis tu distingues la silhouette d’un chien, et enfin ses dents.",
   },
   {
     id: 'r_hopital_evades', poids: 4, type: 'combat', echelle: 'salon', zones: ['hopital_zone'], nuit: null, dangerMin: 0,
@@ -66,7 +66,7 @@ export const RENCONTRES = [
   {
     id: 'r_meute_campagne', poids: 2, type: 'combat', echelle: 'region', zones: null, nuit: true, dangerMin: 0, si: { jourMin: 2 },
     illu: 'champ_nuit', combat: { zombies: ['chien_infecte', 'chien_infecte'] },
-    texte: "Deux paires d'yeux brillent dans le noir, à hauteur de genou. Ils ne grognent plus : ils ont faim, et ils t'ont encerclé{|e}.",
+    texte: "Deux chiens te fixent dans le noir, les yeux brillants à hauteur de genou. Ils ne grognent plus : ils ont faim, et ils t'ont encerclé{|e}.",
   },
   {
     id: 'r_fauve_route', poids: 3, type: 'combat', echelle: 'region', zones: ['la_barben_zone'], nuit: null, dangerMin: 0, si: { jourMin: 3 },
@@ -154,7 +154,7 @@ export const RENCONTRES = [
   {
     id: 'r_brouillard', poids: 1, type: 'ambiance', echelle: null, zones: null, nuit: null, dangerMin: 0,
     illu: 'brouillard', effets: { tempsMin: 5 },
-    texte: "Le brouillard monte du canal et avale la route, si bien que tu n'y vois plus à dix mètres. En revanche, tu entends tout, et surtout ce qui n'est pas là.",
+    texte: "Le brouillard monte du canal et avale la route, si bien que tu n'y vois plus à dix mètres. En revanche, tu entends le moindre bruit, et ton imagination fait le reste.",
   },
 ];
 

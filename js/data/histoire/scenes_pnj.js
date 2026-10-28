@@ -38,7 +38,7 @@ export const SCENES_PNJ = {
   },
   helene_debut: {
     illu: 'refuge_donjon', musique: 'calme', orateur: 'Hélène',
-    texte: '« Le lendemain du marché, j’étais à la mairie de Miramas, avec des écoles à fermer et des parents qui hurlaient au téléphone. Le samedi, je suis montée ici, où je suis née, et j’ai trouvé onze personnes qui ne savaient pas quoi faire. » Elle ôte ses lunettes. « Les gendarmes de Miramas sont passés le soir même, en route pour la Durance. Ils nous ont laissé ce qu’ils ne pouvaient pas emporter. J’ai fait boucher la porte Notre-Dame avec tout ce qu’on avait. Elle a huit cents ans, elle n’était plus faite pour fermer. Maintenant, elle ferme. »',
+    texte: '« Le lendemain du marché, j’étais à la mairie de Miramas, avec des écoles à fermer et des parents qui hurlaient au téléphone. Le samedi, je suis montée ici, où je suis née, et j’ai trouvé onze personnes qui ne savaient pas quoi faire. » Elle ôte ses lunettes. « Les gendarmes de Miramas sont passés le soir même, en route pour la Durance. Ils nous ont laissé ce qu’ils ne pouvaient pas emporter. J’ai fait boucher la porte Notre-Dame avec tout ce qu’on avait. Elle a huit cents ans, elle ne fermait plus depuis longtemps. Maintenant, elle ferme. »',
     choix: [retour('helene_parler')],
   },
   helene_radio: {
@@ -71,7 +71,7 @@ export const SCENES_PNJ = {
   },
   fernand_pauvres: {
     illu: 'refuge_place', musique: 'calme', orateur: 'Fernand',
-    texte: '« Parce que c’est ce qu’ils sont. Un mercredi matin, ils sont allés au marché de Salon acheter des tomates, et ils n’ont rien demandé de ce qui leur est arrivé. » Il crache de côté. « Ça n’empêche pas de leur taper sur la tête. Une brebis malade, on l’abat aussi, mais on ne la déteste pas. »\n\nIl lève un doigt noueux.\n\n« Tape à la tête, et tape fort. Quand ils sont plusieurs, ne reste jamais au milieu : recule jusqu’à un mur, ou jusqu’à une porte. Et ne cours pas sans savoir où tu vas, parce qu’eux, ils ne se fatiguent pas. »',
+    texte: '« Parce que c’est ce qu’ils sont. Un mercredi matin, ils sont allés au marché de Salon acheter des tomates, et ils n’avaient rien demandé, eux. » Il crache de côté. « Ça n’empêche pas de leur taper sur la tête. Une brebis malade, on l’abat aussi, mais on ne la déteste pas. »\n\nIl lève un doigt noueux.\n\n« Tape à la tête, et tape fort. Quand ils sont plusieurs, ne reste jamais au milieu : recule jusqu’à un mur, ou jusqu’à une porte. Et ne cours pas sans savoir où tu vas, parce qu’eux, ils ne se fatiguent pas. »',
     choix: [retour('fernand_parler')],
   },
   fernand_radio: {
@@ -94,12 +94,12 @@ export const SCENES_PNJ = {
   },
   ines_message: {
     illu: 'refuge_place', musique: 'calme', orateur: 'Inès',
-    texte: '« Je sais. » Elle croque son biscuit. « Tu sais combien de gens sont venus grâce au message ? Bastien, Karine et Noa, Rudy et Yohan, et toi. Six personnes en deux semaines, dans un pays où il y avait cent mille habitants. »\n\nElle regarde la plaine.\n\n« Soit tout le monde est mort, soit plus personne n’a de piles. Moi, je préfère croire aux piles. »',
+    texte: '« Je sais. » Elle croque son biscuit. « Tu sais combien de gens sont venus grâce au message ? Bastien, Karine et Noa, Rudy et Yohan, et toi. Six personnes en deux semaines, dans un pays où il y avait cent mille habitants. »\n\nElle regarde la plaine.\n\n« Soit tout le monde est mort, soit plus personne n’a de piles. Moi, je préfère me dire que c’est une histoire de piles. »',
     choix: [retour('ines_parler')],
   },
   ines_radio: {
     illu: 'refuge_place', musique: 'calme', orateur: 'Inès',
-    texte: '« Mon père était radioamateur. Il m’a appris le morse presque avant de m’apprendre à lire. » Elle tripote le câble de son casque. « Le 2 septembre, il est allé au marché de Salon acheter des tomates. Je l’ai attendu deux jours avec la radio allumée, et puis j’ai compris.\n\n« Mon poste, c’est celui-là, et l’antenne est tendue sur le toit de la maison. Le jour, je lis le message en direct quand j’ai le temps. La nuit, c’est un enregistrement qui passe toutes les heures, avec un vieux magnétophone, une minuterie de four et beaucoup de chatterton. » Elle a un petit sourire. « Mon père aurait détesté. Mais ça marche. »',
+    texte: '« Mon père était radioamateur. Il m’a appris le morse presque avant de m’apprendre à lire. » Elle tripote le câble de son casque. « Le 2 septembre, il est allé au marché de Salon acheter des tomates. Je l’ai attendu deux jours avec la radio allumée, et puis j’ai compris. »\n\n« Mon poste, c’est celui-là, et l’antenne est tendue sur le toit de la maison. Le jour, je lis le message en direct quand j’ai le temps. La nuit, c’est un enregistrement qui passe toutes les heures, avec un vieux magnétophone, une minuterie de four et beaucoup de chatterton. » Elle a un petit sourire. « Mon père aurait détesté. Mais ça marche. »',
     choix: [retour('ines_parler')],
   },
   ines_helene: {
@@ -109,7 +109,7 @@ export const SCENES_PNJ = {
   },
   ines_autre_radio: {
     illu: 'refuge_place', musique: 'sombre', orateur: 'Inès',
-    texte: 'Inès fronce les sourcils.\n\n« Une autre radio ? Elle m’a interdit le donjon, je n’y suis jamais montée. » Elle réfléchit. « Une nuit, en cherchant des fréquences, je suis tombée sur une femme de l’armée qui parlait avec quelqu’un. Ce quelqu’un répondait « Beauvezer ». J’ai cru que c’était un code militaire, et j’ai changé de fréquence. »\n\nElle te regarde, et elle ne sourit plus.\n\n« Beauvezer, c’est le nom de notre église. »',
+    texte: 'Inès fronce les sourcils.\n\n« Une autre radio ? Elle m’a interdit le donjon, je n’y suis jamais montée. » Elle réfléchit. « Une nuit, en cherchant des fréquences, je suis tombée sur une femme de l’armée qui parlait avec quelqu’un. Son interlocutrice répondait « Beauvezer ». J’ai cru que c’était un code militaire, et j’ai changé de fréquence. »\n\nElle te regarde, et elle ne sourit plus.\n\n« Beauvezer, c’est le nom de notre église. »',
     choix: [retour('ines_parler')],
   },
 
@@ -119,7 +119,7 @@ export const SCENES_PNJ = {
     texte: 'Bastien est à l’infirmerie, en train de faire bouillir des compresses dans une casserole, sur un réchaud de camping. Il a l’air de ne pas avoir dormi depuis le Mercredi.\n\n« Ah, c’est toi. Tout va bien ? Tu n’as mal nulle part ? Montre-moi tes mains. » Il sourit, gêné. « Pardon. C’est devenu un réflexe. »',
     choix: [
       { label: 'Demander des nouvelles de Noa', suivant: 'bastien_noa' },
-      { label: 'Lui demander comment te soigner sans rien', suivant: 'bastien_soins' },
+      { label: 'Lui demander comment se soigner sans matériel', suivant: 'bastien_soins' },
       { label: 'Lui demander comment c’était à l’hôpital, au début', suivant: 'bastien_hopital' },
       { label: 'Lui parler de la radio d’Hélène', si: VUE, suivant: 'bastien_radio' },
       PARTIR,
@@ -132,7 +132,7 @@ export const SCENES_PNJ = {
   },
   bastien_soins: {
     illu: 'refuge_place', musique: 'calme', orateur: 'Bastien',
-    texte: '« D’abord, l’eau : toujours bouillie, même celle du puits. La diarrhée tue plus vite que les morts, ici. » Il compte sur ses doigts. « Une plaie, tu la laves à l’eau propre, tu la désinfectes si tu peux, et tu la couvres. Tu changes le pansement tous les jours, et si ça devient rouge, chaud et que ça sent mauvais, tu viens me voir tout de suite.\n\n« Les morsures, je ne peux rien. Personne ne peut rien. Entre trois heures et trente heures, ça dépend des gens. » Il te regarde. « Si ça t’arrive, dis-le. Ici, on ne te jettera pas dehors : on restera avec toi jusqu’au bout. »',
+    texte: '« D’abord, l’eau : toujours bouillie, même celle du puits. La diarrhée tue plus vite que les morts, ici. » Il compte sur ses doigts. « Une plaie, tu la laves à l’eau propre, tu la désinfectes si tu peux, et tu la couvres. Tu changes le pansement tous les jours, et si ça devient rouge, chaud et que ça sent mauvais, tu viens me voir tout de suite. »\n\n« Pour les morsures, je ne peux rien faire. Personne ne peut rien faire. On meurt au bout de trois à trente heures, ça dépend des gens. » Il te regarde. « Si ça t’arrive, dis-le. Ici, on ne te jettera pas dehors : on restera avec toi jusqu’au bout. »',
     choix: [retour('bastien_parler')],
   },
   bastien_hopital: {
@@ -175,7 +175,7 @@ export const SCENES_PNJ = {
   },
   karine_radio: {
     illu: 'refuge_place', musique: 'sombre', orateur: 'Karine',
-    texte: '« Je m’en fiche, de qui elle parle. » Elle ne lève pas les yeux. « Tant que ma fille a un toit et de l’eau chaude, Hélène peut bien parler au pape. »',
+    texte: '« Je m’en fiche, de savoir à qui elle parle. » Elle ne lève pas les yeux. « Tant que ma fille a un toit et de l’eau chaude, Hélène peut bien parler au pape. »',
     choix: [retour('karine_parler')],
   },
 
@@ -192,12 +192,12 @@ export const SCENES_PNJ = {
   },
   rudy_camion: {
     illu: 'refuge_place', musique: 'calme', orateur: 'Rudy',
-    texte: 'Rudy montre du menton le camion blanc, garé de travers sur la place.\n\n« Un porteur de dix-neuf tonnes. Je faisais Marseille-Lyon pour un transporteur de Rognac, trois fois par semaine. Le 2 septembre, j’étais chargé de couches pour bébés. J’en ai distribué tout un camion sur le parking du Leclerc de Miramas, gratuitement. Les gens pleuraient. Pour des couches. »\n\nIl souffle sur son bout de bois.\n\n« Il reste quarante bornes dans le réservoir. La Durance, par la route, c’est soixante. » Il refait le calcul à voix basse, et il n’arrive toujours pas au bon résultat.',
+    texte: 'Rudy montre du menton le camion blanc, garé de travers sur la place.\n\n« Un porteur de dix-neuf tonnes. Je faisais Marseille-Lyon pour un transporteur de Rognac, trois fois par semaine. Le 2 septembre, j’étais chargé de couches pour bébés. J’en ai distribué tout un camion sur le parking du Leclerc de Miramas, gratuitement. Les gens pleuraient. Pour des couches. »\n\nIl souffle sur son bout de bois.\n\n« Il reste de quoi faire quarante bornes dans le réservoir. La Durance, par la route, c’est soixante. » Il refait le calcul à voix basse, et il n’arrive toujours pas au bon résultat.',
     choix: [retour('rudy_parler')],
   },
   rudy_origine: {
     illu: 'refuge_place', musique: 'calme', orateur: 'Rudy',
-    texte: '« Rognac. Mon ex et mon fils vivent à Lyon, de l’autre côté de tout ça. Il a onze ans. » Il te regarde, comme pour vérifier que tu as compris. « Onze ans, et je ne sais pas s’il est vivant.\n\n« Yohan, je l’ai ramassé sur la nationale. Il faisait du stop avec une truelle dans la main. Il est con comme un balai, mais il ne lâche jamais rien. » Il renifle. « Je l’aime bien, ce gamin. Ne lui dis pas. »',
+    texte: '« Rognac. Mon ex et mon fils vivent à Lyon, de l’autre côté de tout ça. Il a onze ans. » Il te regarde, comme pour vérifier que tu as compris. « Onze ans, et je ne sais pas s’il est vivant. »\n\n« Yohan, je l’ai ramassé sur la nationale. Il faisait du stop avec une truelle dans la main. Il est con comme un balai, mais il ne lâche jamais rien. » Il renifle. « Je l’aime bien, ce gamin. Ne lui dis pas. »',
     choix: [retour('rudy_parler')],
   },
   rudy_radio: {
@@ -221,12 +221,12 @@ export const SCENES_PNJ = {
   },
   fernand_gerard: {
     illu: 'bergerie_crau', musique: 'sombre', orateur: 'Fernand',
-    texte: '« Gérard Pons. On a fait notre première transhumance ensemble, à quatorze ans, jusqu’au col de Larche. Il avait des mains de géant, et il chantait faux. » Fernand sourit à moitié. « Je lui ai vendu mes bêtes il y a six ans, parce que je savais qu’il les aimerait.\n\n« Il les a aimées jusqu’au bout. Tu as vu. »',
+    texte: '« Gérard Pons. On a fait notre première transhumance ensemble, à quatorze ans, jusqu’au col de Larche. Il avait des mains de géant, et il chantait faux. » Fernand sourit à moitié. « Je lui ai vendu mes bêtes il y a six ans, parce que je savais qu’il les aimerait. »\n\n« Il les a aimées jusqu’au bout. Tu as vu. »',
     choix: [retour('fernand_crau_parler')],
   },
   fernand_drailles: {
     illu: 'bergerie_crau', musique: 'calme', orateur: 'Fernand',
-    texte: '« Les drailles, ce sont les chemins des moutons. Ils sont là depuis avant les Romains, larges, droits, avec des murets de chaque côté, et des tas de pierres aux croisements pour qui sait les lire. »\n\nIl montre la plaine du bout de son bâton.\n\n« Dans la Crau, il y a un puits à chaque bergerie, et une bergerie tous les trois kilomètres. L’eau y est bonne, mais fais-la bouillir quand même. Et ne marche jamais la nuit avec une lampe : ici, on la voit à dix kilomètres. »',
+    texte: '« Les drailles, ce sont les chemins des moutons. Ils étaient déjà là avant les Romains, larges, droits, avec des murets de chaque côté, et des tas de pierres aux croisements pour qui sait les lire. »\n\nIl montre la plaine du bout de son bâton.\n\n« Dans la Crau, il y a un puits à chaque bergerie, et une bergerie tous les trois kilomètres. L’eau y est bonne, mais fais-la bouillir quand même. Et ne marche jamais la nuit avec une lampe : ici, on la voit à dix kilomètres. »',
     choix: [retour('fernand_crau_parler')],
   },
   fernand_crau_helene: {
@@ -236,7 +236,7 @@ export const SCENES_PNJ = {
   },
   fernand_dose: {
     illu: 'bergerie_crau', musique: 'calme', orateur: 'Fernand',
-    texte: '« Deux millilitres et demi, une fois par jour, pendant cinq jours, dans la fesse. Gérard a écrit la dose des agneaux au crayon sur le bouchon, et c’est à peu près la même. » Il te regarde par-dessous sa casquette. « Tu le diras à Bastien, mais il le saura avant toi. C’est son métier. Le mien, c’était les brebis. »',
+    texte: '« Deux millilitres et demi, une fois par jour, pendant cinq jours, dans la fesse. Gérard a écrit la dose des agneaux au crayon sur le bouchon, et c’est à peu près la même. » Il te regarde par-dessous sa casquette. « Tu le diras à Bastien, mais il saura mieux que moi. C’est son métier. Le mien, c’était les brebis. »',
     choix: [retour('fernand_crau_parler')],
   },
   fernand_crau_radio: {
@@ -264,12 +264,12 @@ export const SCENES_PNJ = {
   },
   ines_pere: {
     illu: 'poudrerie_parc', musique: 'sombre', orateur: 'Inès',
-    texte: '« Il s’appelait Karim. Il réparait des machines à laver, et le soir, il parlait avec des Japonais et des Brésiliens en morse, depuis le garage. » Elle sourit à peine. « Il disait que la radio, c’est la seule façon de parler à quelqu’un sans savoir s’il t’écoute, et de continuer quand même.\n\n« C’est ce que j’ai fait pendant deux semaines, au Refuge. Parler sans savoir. » Elle hausse les épaules. « Il aurait été content, je crois. Ou il m’aurait dit de mieux articuler. »',
+    texte: '« Il s’appelait Karim. Il réparait des machines à laver, et le soir, il parlait avec des Japonais et des Brésiliens en morse, depuis le garage. » Elle sourit à peine. « Il disait que la radio, c’est la seule façon de parler à quelqu’un sans savoir s’il t’écoute, et de continuer quand même. »\n\n« C’est ce que j’ai fait pendant deux semaines, au Refuge. Parler sans savoir. » Elle hausse les épaules. « Il aurait été content, je crois. Ou il m’aurait dit de mieux articuler. »',
     choix: [retour('ines_pou_parler')],
   },
   ines_pou_helene: {
     illu: 'poudrerie_parc', musique: 'sombre', orateur: 'Inès',
-    texte: 'Inès ne répond pas tout de suite. Elle enroule le fil de cuivre autour de son doigt, si serré que le bout devient blanc.\n\n« Je lui en veux, dit-elle enfin. Je lui en veux tellement que ça me tient chaud. » Elle déroule le fil. « Et si elle était là, je lui demanderais quoi faire, et je ferais exactement ce qu’elle dirait. C’est ça le pire. »',
+    texte: 'Inès ne répond pas tout de suite. Elle enroule le fil de cuivre autour de son doigt, si serré que le bout devient blanc.\n\n« Je lui en veux, dit-elle enfin. Je lui en veux à un point que tu n’imagines pas. » Elle déroule le fil. « Et si elle était là, je lui demanderais quoi faire, et je ferais exactement ce qu’elle dirait. C’est ça le pire. »',
     choix: [retour('ines_pou_parler')],
   },
   ines_boucle: {
@@ -296,12 +296,12 @@ export const SCENES_PNJ = {
   },
   ines_cor_radio: {
     illu: 'cornillon_belvedere', musique: 'calme', orateur: 'Inès',
-    texte: '« Le PC Durance répète le même bulletin matin et soir : le jaune, c’est du chlore, la nuit il descend dans les creux, le jour il s’en va avec le vent et la pluie. Restez en hauteur la nuit, ne dormez jamais en plaine. Il est plus pâle tous les jours, mais il revient chaque nuit sans vent. » Elle consulte son cahier. « Et l’armée continue de faire hurler les sirènes sur des villages, pour pousser les morts. Quand j’entends qu’ils vont le faire, je le note. Passe me voir avant de partir loin.\n\n« Le pont, c’est toujours le mercredi 7, de six heures à sept heures. Ils le répètent comme si on était sourds. »',
+    texte: '« Le PC Durance répète le même bulletin matin et soir : le jaune, c’est du chlore, la nuit il descend dans les creux, le jour il s’en va avec le vent et la pluie. Restez en hauteur la nuit, ne dormez jamais en plaine. Il est plus pâle tous les jours, mais il revient chaque nuit sans vent. » Elle consulte son cahier. « Et l’armée continue de faire hurler les sirènes sur des villages, pour pousser les morts. Quand j’entends qu’ils vont le faire, je le note. Passe me voir avant de partir loin. »\n\n« Le pont, c’est toujours le mercredi 7, de six heures à sept heures. Ils le répètent comme si on était sourds. »',
     choix: [retour('ines_cor_parler')],
   },
   ines_cor_plan: {
     illu: 'cornillon_belvedere', musique: 'calme', orateur: 'Inès',
-    texte: 'Inès te demande ta carte routière, la déplie sur la table et pose le doigt sur Cornillon, puis elle le fait remonter jusqu’à la Durance.\n\n« Mardi 6 octobre, huit heures du soir, on part d’ici. Par les routes hautes, on évite les creux où le jaune s’accumule. Une trentaine de kilomètres, une nuit entière de marche, et on arrive au pont avant l’aube. » Elle relève la tête. « Si tu n’es pas là mardi soir, on part sans toi. C’est la règle d’Hélène : on n’attend personne. Je déteste cette règle, mais elle est juste.\n\n« Et si on le rate, il reste le mercredi 14. Après, c’est fini. »',
+    texte: 'Inès te demande ta carte routière, la déplie sur la table et pose le doigt sur Cornillon, puis elle le fait remonter jusqu’à la Durance.\n\n« Mardi 6 octobre, huit heures du soir, on part d’ici. Par les routes hautes, on évite les creux où le jaune s’accumule. Une trentaine de kilomètres, une nuit entière de marche, et on arrive au pont avant l’aube. » Elle relève la tête. « Si tu n’es pas là mardi soir, on part sans toi. C’est la règle d’Hélène : on n’attend personne. Je déteste cette règle, mais elle est juste. »\n\n« Et si on le rate, il reste le mercredi 14. Après, c’est fini. »',
     choix: [retour('ines_cor_parler')],
   },
   ines_cor_manque: {
@@ -316,7 +316,7 @@ export const SCENES_PNJ = {
   },
   ines_cor_coupee: {
     illu: 'cornillon_belvedere', musique: 'sombre', orateur: 'Inès',
-    texte: 'Inès reste immobile un long moment. Puis elle allume son poste, cherche la fréquence du Refuge, et elle n’entend plus que le souffle.\n\n« Merci », dit-elle. Elle laisse le souffle encore quelques secondes, comme on garde une main dans la sienne, puis elle éteint. « C’était ma voix, tu sais. Elle va me manquer, c’est débile. »',
+    texte: 'Inès reste immobile un long moment. Puis elle allume son poste, cherche la fréquence du Refuge, et elle n’entend plus qu’un grésillement.\n\n« Merci », dit-elle. Elle l’écoute encore quelques secondes, sans se décider à couper, puis elle éteint. « C’était ma voix, tu sais. Elle va me manquer, c’est débile. »',
     choix: [retour('ines_cor_parler')],
   },
   ines_cor_helene_vivante: {
@@ -333,7 +333,7 @@ export const SCENES_PNJ = {
   // ─────────── KARINE ───────────
   karine_cor_parler: {
     illu: 'cornillon_belvedere', musique: 'calme', orateur: 'Karine',
-    texte: 'Karine a installé Noa dans le lit du coin, dans la chambre de la maison de la placette, et elle a déjà trouvé de la farine quelque part : toute la maison sent le pain chaud.\n\n« Entre. Ferme la porte, il y a du courant d’air. »',
+    texte: 'Karine a installé Noa dans le lit du coin, dans la chambre de la maison de la placette, et elle a déjà trouvé de la farine quelque part : toute la maison sent le pain chaud.\n\n« Entre. Ferme la porte, il y a un courant d’air. »',
     choix: [
       { label: 'Demander comment va Noa', si: { flag: 'noa_traitee' }, suivant: 'karine_cor_noa_mieux' },
       { label: 'Demander comment va Noa', si: { pasFlag: 'noa_traitee' }, suivant: 'karine_cor_noa_mal' },
@@ -355,12 +355,12 @@ export const SCENES_PNJ = {
   },
   karine_cor_noa_mieux: {
     illu: 'cornillon_belvedere', musique: 'calme', orateur: 'Karine',
-    texte: '« Mieux. » Karine le dit sèchement, mais elle n’arrive pas à empêcher sa bouche de sourire. « La fièvre est tombée. Elle tousse encore, mais elle a mangé deux tartines ce matin et elle m’a demandé quand on irait voir les moutons. »\n\nPar la porte de la chambre, tu vois Noa assise dans son lit, en train de dessiner sur le mur avec un morceau de charbon.\n\n« Je la laisse faire, dit Karine. Ce n’est pas notre mur. »',
+    texte: '« Mieux. » Karine le dit sèchement, mais elle ne peut pas s’empêcher de sourire. « La fièvre est tombée. Elle tousse encore, mais elle a mangé deux tartines ce matin et elle m’a demandé quand on irait voir les moutons. »\n\nPar la porte de la chambre, tu vois Noa assise dans son lit, en train de dessiner sur le mur avec un morceau de charbon.\n\n« Je la laisse faire, dit Karine. Ce n’est pas notre mur. »',
     choix: [retour('karine_cor_parler')],
   },
   karine_cor_noa_mal: {
     illu: 'cornillon_belvedere', musique: 'sombre', orateur: 'Karine',
-    texte: '« Pas bien. » Karine regarde la porte de la chambre, d’où sort une toux sèche et têtue. « La fièvre monte le soir et retombe le matin, et chaque soir elle monte un peu plus haut. Ici, au moins, l’air est propre. »\n\nElle se tourne vers toi.\n\n« Il lui faut des antibiotiques. Si tu en trouves, n’importe où, dans une pharmacie, une voiture, une maison, rapporte-les-moi avant tout le reste. Je ne te demanderai rien d’autre. »',
+    texte: '« Pas bien. » Karine regarde la porte de la chambre, d’où sort une toux sèche qui ne s’arrête pas. « La fièvre monte le soir et retombe le matin, et chaque soir elle monte un peu plus haut. Ici, au moins, l’air est propre. »\n\nElle se tourne vers toi.\n\n« Il lui faut des antibiotiques. Si tu en trouves, n’importe où, dans une pharmacie, une voiture, une maison, rapporte-les-moi avant tout le reste. Je ne te demanderai rien d’autre. »',
     choix: [retour('karine_cor_parler')],
   },
   karine_cor_soin: {
@@ -370,7 +370,7 @@ export const SCENES_PNJ = {
   },
   karine_cor_rudy: {
     illu: 'cornillon_belvedere', musique: 'sombre', orateur: 'Karine',
-    texte: 'Le visage de Karine se ferme d’un coup.\n\n« Il a ouvert la porte. Ma fille dormait à cent mètres de cette porte. » Elle pétrit une boule de pâte, très fort. « Je sais ce qu’il dit. Qu’il comptait refermer. Je m’en fiche de ce qu’il comptait. »\n\nElle s’arrête, les mains dans la farine.\n\n« Fais ce que tu veux de lui. Mais ne me demande pas de lui pardonner. Pas maintenant. »',
+    texte: 'Le visage de Karine se ferme d’un coup.\n\n« Il a ouvert la porte. Ma fille dormait à cent mètres de cette porte. » Elle pétrit une boule de pâte, très fort. « Je sais ce qu’il dit. Qu’il comptait refermer. Je m’en fiche de ce qu’il comptait faire. »\n\nElle s’arrête, les mains dans la farine.\n\n« Fais ce que tu veux de lui. Mais ne me demande pas de lui pardonner. Pas maintenant. »',
     choix: [retour('karine_cor_parler')],
   },
 
@@ -381,7 +381,7 @@ export const SCENES_PNJ = {
     choix: [
       { label: 'Lui demander ce que fait le chlore', suivant: 'bastien_chlore' },
       { label: 'Lui demander comment il va', suivant: 'bastien_cor_sante' },
-      { label: 'Lui parler de la nuit de la porte', suivant: 'bastien_cor_porte' },
+      { label: 'Lui parler de la nuit de l’attaque', suivant: 'bastien_cor_porte' },
       { label: 'Lui parler du pont', suivant: 'bastien_cor_pont' },
       PARTIR,
     ],
@@ -403,14 +403,14 @@ export const SCENES_PNJ = {
   },
   bastien_cor_pont: {
     illu: 'cornillon_belvedere', musique: 'calme', orateur: 'Bastien',
-    texte: '« Au contrôle, ils cherchent les morsures, pas les poumons. Ils me laisseront passer, avec ma toux, si je leur montre mes bras assez vite. » Il a un petit rire. « J’ai passé trois semaines à regarder les bras des autres, et maintenant c’est mon tour.\n\n« Toi, fais attention à toi d’ici là. Une seule morsure, et ils ne te laisseront pas passer. Il n’y a pas d’exception, et je ne leur en veux même pas. »',
+    texte: '« Au contrôle, ils cherchent les morsures. Ils ne regardent pas l’état des poumons. Ils me laisseront passer, avec ma toux, si je leur montre mes bras assez vite. » Il a un petit rire. « J’ai passé trois semaines à regarder les bras des autres, et maintenant c’est mon tour. »\n\n« Toi, fais attention à toi d’ici là. Une seule morsure, et ils ne te laisseront pas passer. Il n’y a pas d’exception, et je ne leur en veux même pas. »',
     choix: [retour('bastien_cor_parler')],
   },
 
   // ─────────── RUDY ───────────
   rudy_cor_parler: {
     illu: 'cornillon_belvedere', musique: 'sombre', orateur: 'Rudy',
-    texte: 'Rudy est assis dehors, devant la porte de la maison de la placette, son fusil de chasse sur les genoux, et il surveille la route qui monte. Il s’est donné ce poste tout seul. Personne ne vient s’asseoir près de lui.\n\n« Tu veux quoi ? »',
+    texte: 'Rudy est assis dehors, devant la porte de la maison de la placette, son fusil de chasse sur les genoux, et il surveille la route qui monte. Il a décidé tout seul de monter la garde. Personne ne vient s’asseoir près de lui.\n\n« Tu veux quoi ? »',
     choix: [
       { label: 'Lui parler de Yohan', suivant: 'rudy_cor_yohan' },
       { label: 'Lui parler de la porte', suivant: 'rudy_cor_porte' },
@@ -421,22 +421,22 @@ export const SCENES_PNJ = {
   },
   rudy_cor_yohan: {
     illu: 'cornillon_belvedere', musique: 'sombre', orateur: 'Rudy',
-    texte: '« Je l’ai enterré au bord de l’autoroute, avec sa truelle. » Rudy passe le chiffon sur le canon, encore et encore. « Il avait vingt ans. Il voulait monter sa boîte de maçonnerie à Martigues, avec un logo et tout. Il m’avait montré le dessin.\n\n« Il s’est fait mordre en arrachant les sacs de sable de la porte. Pour moi. Pour que je puisse sortir. »',
+    texte: '« Je l’ai enterré au bord de l’autoroute, avec sa truelle. » Rudy passe le chiffon sur le canon, encore et encore. « Il avait vingt ans. Il voulait monter sa boîte de maçonnerie à Martigues, avec un logo et tout. Il m’avait montré le dessin. »\n\n« Il s’est fait mordre en arrachant les sacs de sable de la porte. Pour moi. Pour que je puisse sortir. »',
     choix: [retour('rudy_cor_parler')],
   },
   rudy_cor_porte: {
     illu: 'cornillon_belvedere', musique: 'sombre', orateur: 'Rudy',
-    texte: '« J’ai ouvert pour sortir. Je comptais refermer derrière moi. » Il le dit d’une voix plate, comme quelque chose qu’il s’est répété des centaines de fois. « Je le dirai jusqu’à ma mort, et ça ne changera rien.\n\n« Tu sais ce qui est drôle ? J’avais raison. C’était une souricière. Et c’est moi qui ai ouvert la trappe. »',
+    texte: '« J’ai ouvert pour sortir. Je comptais refermer derrière moi. » Il le dit d’une voix plate, comme quelque chose qu’il s’est répété des centaines de fois. « Je le dirai jusqu’à ma mort, et ça ne changera rien. »\n\n« Tu sais ce qui est drôle ? J’avais raison. C’était une souricière. Et c’est moi qui ai ouvert la trappe. »',
     choix: [retour('rudy_cor_parler')],
   },
   rudy_cor_camion: {
     illu: 'cornillon_belvedere', musique: 'calme', orateur: 'Rudy',
-    texte: '« Vingt litres, c’est quatre-vingts bornes à vide. Avec du monde à l’arrière, disons soixante. Mallemort, par les routes hautes, c’est une trentaine. » Il regarde le camion, garé sur la place. « Pour une fois, on a de la marge.\n\n« Mardi soir, je mets tout le monde sous la bâche, je roule sans phares, et je ne m’arrête pas. Si quelque chose se met devant, tant pis pour lui. »',
+    texte: '« Vingt litres, c’est quatre-vingts bornes à vide. Avec du monde à l’arrière, disons soixante. Mallemort, par les routes hautes, c’est une trentaine. » Il regarde le camion, garé sur la place. « Pour une fois, on a de la marge. »\n\n« Mardi soir, je mets tout le monde sous la bâche, je roule sans phares, et je ne m’arrête pas. Si quelque chose se met devant, tant pis pour lui. »',
     choix: [retour('rudy_cor_parler')],
   },
   rudy_cor_karine: {
     illu: 'cornillon_belvedere', musique: 'sombre', orateur: 'Rudy',
-    texte: '« Elle ne me parle pas. Elle passe à côté de moi comme si j’étais un poteau. » Il hausse les épaules. « Elle a raison. Si j’étais elle, je m’attendrais dans un coin sombre, avec un couteau.\n\n« Mais elle a pris le pain que j’ai rapporté de Lançon. Pour la petite. C’est déjà ça. »',
+    texte: '« Elle ne me parle pas. Elle passe à côté de moi comme si j’étais un poteau. » Il hausse les épaules. « Elle a raison. Si quelqu’un m’avait fait ça, je l’attendrais dans un coin sombre, avec un couteau. »\n\n« Mais elle a pris le pain que j’ai rapporté de Lançon. Pour la petite. C’est déjà ça. »',
     choix: [retour('rudy_cor_parler')],
   },
 
@@ -446,7 +446,7 @@ export const SCENES_PNJ = {
   // Marqueur 'grille_emperi'. Un refuge du monde parmi d'autres : on montre ses bras, puis on entre.
   emp_grille: {
     illu: null, musique: 'tension', orateur: null,
-    texte: 'Au sommet de la montée du Puech, la porte du château de l’Empéri est fermée par une grille doublée de tôles. Tu appelles. Sur le rempart, un garçon d’une quinzaine d’années coiffé d’un casque de vélo se penche, une lampe à la main, et derrière lui apparaît un homme en pull bleu, la cinquantaine, avec des lunettes rafistolées au sparadrap.\n\n« Je suis M. Vidal, professeur d’histoire. Ici, c’est un collège, plus ou moins. » Il parle avec la voix de quelqu’un qui a l’habitude de se faire entendre au fond d’une classe. « Nous avons vingt élèves, de l’eau et des murs. Si tu veux entrer, montre tes bras. Remonte tes manches jusqu’aux épaules, et tourne-les sous la lampe. »',
+    texte: 'Au sommet de la montée du Puech, la porte du château de l’Empéri est fermée par une grille doublée de tôles. Tu appelles. Sur le rempart, un garçon d’une quinzaine d’années coiffé d’un casque de vélo se penche, une lampe à la main, et derrière lui apparaît un homme en pull bleu, la cinquantaine, avec des lunettes rafistolées au sparadrap.\n\n« Je suis M. Vidal, professeur d’histoire. Ici, c’est un collège, plus ou moins. » Il parle avec la voix de quelqu’un qui a l’habitude de se faire entendre au fond d’une classe. « Nous avons vingt élèves, de l’eau et des murs. Si tu veux entrer, montre tes bras. Remonte tes manches jusqu’aux épaules, et montre tes bras de chaque côté sous la lampe. »',
     choix: [
       { label: 'Montrer tes bras sous la lampe', si: { mordu: false }, suivant: 'emp_grille_ok' },
       { label: 'Montrer tes bras sous la lampe', si: { mordu: true }, suivant: 'emp_grille_refus' },
@@ -475,7 +475,7 @@ export const SCENES_PNJ = {
   // ─────────── LA BOÎTE D'AIMÉ (mission m_aime) — à garder telle quelle ───────────
   aime_cache: {
     illu: null, musique: 'calme',
-    texte: 'Au pied du troisième frêne, la terre est plus sombre qu’ailleurs, et quelqu’un l’a tassée du plat de la main. Tu creuses avec les doigts, puis avec une branche, et à une main de profondeur tu touches du métal : une vieille boîte à biscuits, enveloppée dans deux sacs plastique et serrée par un morceau de chambre à air.\n\nDedans, Aimé a rangé ce qu’un pêcheur garde pour les mauvais jours : deux poissons fumés roulés dans du papier journal, une boîte de raviolis et une bouteille d’eau-de-vie.',
+    texte: 'Au pied du troisième frêne, la terre est plus sombre qu’ailleurs, et quelqu’un l’a tassée du plat de la main. Tu creuses avec les doigts, puis avec une branche, et à une dizaine de centimètres de profondeur tu touches du métal : une vieille boîte à biscuits, enveloppée dans deux sacs plastique et serrée par un morceau de chambre à air.\n\nDedans, Aimé a rangé ce qu’un pêcheur garde pour les mauvais jours : deux poissons fumés roulés dans du papier journal, une boîte de raviolis et une bouteille d’eau-de-vie.',
     choix: [
       {
         label: 'Prendre ce qu’il y a dans la boîte',

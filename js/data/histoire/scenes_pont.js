@@ -12,7 +12,7 @@ export const SCENES_PONT = {
   // Marqueur 'bastien_ist' : l'arrière-boutique d'une pharmacie.
   ist_bastien: {
     illu: 'istres_pharmacie', musique: 'sombre', orateur: 'Bastien',
-    texte: 'La pharmacie est au coin d’une rue du centre d’Istres, avec sa croix verte éteinte et sa vitrine étoilée. Derrière le comptoir, la porte de l’arrière-boutique est barricadée de l’intérieur, et tu dois dire ton nom à travers le bois avant qu’on te réponde.\n\n« C’est toi ? » La voix est rauque, cassée, et elle part dans une quinte de toux qui n’en finit pas. « Attends. J’arrive. »\n\nBastien a maigri. Il est assis par terre entre deux étagères de boîtes vides, une couverture de survie sur les épaules, et il respire avec un bruit de soufflet percé. Ses lèvres sont bleues. À côté de lui, il y a un masque à gaz noir de pompier, et deux cartouches filtrantes encore sous plastique.\n\n« La nuit de la porte, je suis sorti par la brèche en cherchant Karine et Noa, et je suis descendu vers l’étang. Le lendemain soir, le jaune m’a rattrapé dans les marais. J’ai couru dedans, en respirant à fond, comme un idiot. » Il rit, et la toux le reprend. « C’est du chlore. Au contact de l’eau des poumons, ça fait de l’acide. Les miens ne s’en remettront pas complètement. »\n\nIl reprend son souffle, longtemps. « Ma sœur n’était plus là. Son appartement était ouvert. » Il pousse le masque vers toi du bout du pied. « Je l’ai pris à la caserne des pompiers d’Istres, avec les cartouches. Une cartouche tient à peu près huit heures dans le jaune, et après, l’odeur revient : c’est qu’il faut la changer. Moi, je ne peux plus le porter, je n’ai plus assez de souffle pour respirer à travers. Prends-le. »',
+    texte: 'La pharmacie est au coin d’une rue du centre d’Istres, avec sa croix verte éteinte et sa vitrine étoilée. Derrière le comptoir, la porte de l’arrière-boutique est barricadée de l’intérieur, et tu dois dire ton nom à travers le bois avant qu’on te réponde.\n\n« C’est toi ? » La voix est rauque, cassée, et elle part dans une quinte de toux qui n’en finit pas. « Attends. J’arrive. »\n\nBastien a maigri. Il est assis par terre entre deux étagères de boîtes vides, une couverture de survie sur les épaules, et il respire avec un bruit de soufflet percé. Ses lèvres sont bleues. À côté de lui, il y a un masque à gaz noir de pompier, et deux cartouches filtrantes encore sous plastique.\n\n« La nuit de l’attaque, je suis sorti par la brèche en cherchant Karine et Noa, et je suis descendu vers l’étang. Le lendemain soir, le jaune m’a rattrapé dans les marais. J’ai couru dedans, en respirant à fond, comme un idiot. » Il rit, et la toux le reprend. « C’est du chlore. Au contact de l’eau des poumons, ça fait de l’acide. Les miens ne s’en remettront pas complètement. »\n\nIl reprend son souffle, longtemps. « Ma sœur n’était plus là. Son appartement était ouvert. » Il pousse le masque vers toi du bout du pied. « Je l’ai pris à la caserne des pompiers d’Istres, avec les cartouches. Une cartouche tient à peu près huit heures dans le jaune, et après, l’odeur revient : c’est qu’il faut la changer. Moi, je ne peux plus le porter, je n’ai plus assez de souffle pour respirer à travers. Prends-le. »',
     choix: [
       {
         label: 'Le ramener à Cornillon par les collines',
@@ -39,13 +39,13 @@ export const SCENES_PONT = {
 
   ist_bastien_2: {
     illu: 'istres_pharmacie', musique: 'calme', orateur: 'Bastien',
-    texte: 'Bastien se relève en s’appuyant à l’étagère, et il reste un moment plié en deux, le temps que sa respiration revienne.\n\n« Par les collines, alors. Le jaune reste en bas, et moi, je marcherai de jour, lentement, comme un vieux. » Il essaie de sourire. « Deux jours, peut-être trois. Pars devant, je ne veux pas que tu m’attendes à chaque virage. »\n\nIl ramasse son sac, puis il s’arrête.\n\n« Noa, elle est… ? » Il ne finit pas sa question. Il a peur de la réponse, et tu le vois.',
+    texte: 'Bastien se relève en s’appuyant à l’étagère, et il reste un moment plié en deux, le temps de reprendre son souffle.\n\n« Par les collines, alors. Le jaune reste en bas, et moi, je marcherai de jour, lentement, comme un vieux. » Il essaie de sourire. « Deux jours, peut-être trois. Pars devant, je ne veux pas que tu m’attendes à chaque virage. »\n\nIl ramasse son sac, puis il s’arrête.\n\n« Noa, elle est… ? » Il ne finit pas sa question. Il a peur de la réponse, et tu le vois.',
     choix: [{ label: 'Lui donner rendez-vous à Cornillon', suivant: '#fin' }],
   },
 
   ist_bastien_3: {
     illu: 'istres_pharmacie', musique: 'sombre', orateur: 'Bastien',
-    texte: '« Tu as raison, dit Bastien. Je ne tiendrais pas vingt kilomètres. » Il remonte la couverture de survie sur ses épaules, et elle crisse comme du papier. « Ici, j’ai un toit et une porte qui ferme. Et il reste des boîtes au fond, que je n’ai pas encore lues. »\n\nIl te regarde ranger le masque dans ton sac.\n\n« Ne cours jamais dans le jaune. Plus tu respires fort, plus il entre. Marche, et retiens ton souffle aussi longtemps que tu peux. »',
+    texte: '« Tu as raison, dit Bastien. Je ne tiendrais pas vingt kilomètres. » Il remonte la couverture de survie sur ses épaules, et elle crisse comme du papier. « Ici, j’ai un toit et une porte qui ferme. Et il reste des boîtes au fond dont je n’ai pas encore lu les étiquettes. »\n\nIl te regarde ranger le masque dans ton sac.\n\n« Ne cours jamais dans le jaune. Plus tu respires fort, plus il entre. Marche, et retiens ton souffle aussi longtemps que tu peux. »',
     choix: [{ label: 'Repartir', suivant: '#fin' }],
   },
 
@@ -53,7 +53,7 @@ export const SCENES_PONT = {
   // Marqueur 'karine_gra' : le vieux moulin de Grans, au bord de la Touloubre.
   gra_karine: {
     illu: 'grans_moulin', musique: 'sombre', orateur: 'Karine',
-    texte: 'Le vieux moulin de Grans est au bord de la Touloubre, à la sortie du village. C’est une grande bâtisse de pierre dont la roue tourne toute seule dans le courant, avec un grincement de bois mouillé. Sur la berge, une dizaine de morts sont alignés et immobiles ; ils regardent tourner la roue, et ils ne te regardent pas.\n\nTu frappes à la petite porte, côté rivière. Un œil apparaît au judas, puis des verrous claquent.\n\nC’est Karine qui ouvre, un couteau à pain à la main. Derrière elle se tient un vieil homme en tablier de meunier, blanc de farine jusqu’aux sourcils, qui serre une fourche.\n\n« C’est bon, Édouard. Je {le|la} connais. » Karine te fait entrer sans un mot de plus.\n\nDans la pièce du fond, Noa est couchée dans le lit du meunier, sous trois couvertures, à la lueur d’une bougie. Elle a les joues rouges et les yeux trop brillants, et elle respire en sifflant.\n\n« La nuit de la porte, on est sorties par la brèche du nord, dit Karine. J’ai couru jusqu’au matin avec elle sur le dos, et Édouard nous a ouvert. Il me livrait la farine, avant. » Elle s’assoit à côté de sa fille. « La fièvre est revenue avant-hier. Il lui faut des antibiotiques, ou Bastien. Ici, elle ne guérira pas toute seule. »',
+    texte: 'Le vieux moulin de Grans est au bord de la Touloubre, à la sortie du village. C’est une grande bâtisse de pierre dont la roue tourne toute seule dans le courant, avec un grincement de bois mouillé. Sur la berge, une dizaine de morts sont alignés et immobiles ; ils regardent tourner la roue, et ils ne te regardent pas.\n\nTu frappes à la petite porte, côté rivière. Un œil apparaît au judas, puis des verrous claquent.\n\nC’est Karine qui ouvre, un couteau à pain à la main. Derrière elle se tient un vieil homme en tablier de meunier, blanc de farine jusqu’aux sourcils, qui serre une fourche.\n\n« C’est bon, Édouard. Je {le|la} connais. » Karine te fait entrer sans un mot de plus.\n\nDans la pièce du fond, Noa est couchée dans le lit du meunier, sous trois couvertures, à la lueur d’une bougie. Elle a les joues rouges et les yeux trop brillants, et elle respire en sifflant.\n\n« La nuit de l’attaque, on est sorties par la brèche du nord, dit Karine. J’ai couru jusqu’au matin avec elle sur le dos, et Édouard nous a ouvert. Il me livrait la farine, avant. » Elle s’assoit à côté de sa fille. « La fièvre est revenue avant-hier. Il lui faut des antibiotiques, ou Bastien. Ici, elle ne guérira pas toute seule. »',
     choix: [
       {
         label: 'Donner les antibiotiques de Gérard',
@@ -110,7 +110,7 @@ export const SCENES_PONT = {
 
   gra_karine_2: {
     illu: 'grans_moulin', musique: 'calme', orateur: 'Karine',
-    texte: 'Plus tard, quand Noa dort enfin sans siffler, Karine vient s’asseoir à côté de toi, près du poêle. Édouard vous a servi une tisane de tilleul dans des bols ébréchés.\n\n« On montera à Cornillon dès qu’elle tiendra debout, dit-elle. Édouard connaît le chemin des collines, il nous accompagnera. Il dit qu’il a quatre-vingts ans et qu’il n’a jamais vu la Durance, alors il viendra jusqu’au pont. »\n\nElle boit une gorgée, et elle te regarde par-dessus le bol.\n\n« Merci. » Elle le dit sèchement, comme on paie une dette, et puis elle détourne les yeux.',
+    texte: 'Plus tard, quand Noa dort enfin sans que sa respiration siffle, Karine vient s’asseoir à côté de toi, près du poêle. Édouard vous a servi une tisane de tilleul dans des bols ébréchés.\n\n« On montera à Cornillon dès qu’elle tiendra debout, dit-elle. Édouard connaît le chemin des collines, il nous accompagnera. Il dit qu’il a quatre-vingts ans et qu’il n’a jamais vu la Durance, alors il viendra jusqu’au pont. »\n\nElle boit une gorgée, et elle te regarde par-dessus le bol.\n\n« Merci. » Elle le dit sèchement, comme on paie une dette, et puis elle détourne les yeux.',
     choix: [{ label: 'Finir ta tisane', suivant: '#fin' }],
   },
 
@@ -118,7 +118,7 @@ export const SCENES_PONT = {
   // Marqueur 'rudy_lan' : la cabine du camion, devant la barrière.
   lan_rudy: {
     illu: 'peage_lancon', musique: 'sombre', orateur: 'Rudy',
-    texte: 'La barrière de péage de Lançon s’étend sur toute la largeur de l’autoroute, avec ses cabines de verre et ses voies bouchées par des voitures abandonnées, portières ouvertes, depuis le premier jour. Le camion de Rudy est là, dans la voie 4, juste devant la seule barrière que quelqu’un a arrachée : il a calé à dix mètres du passage. La bâche est déchirée, et le pare-brise est étoilé de sang séché.\n\nRudy est assis sur le marchepied, à côté de la cabine, un fusil de chasse en travers des genoux. Il te voit venir de loin, et il ne lève pas le fusil.\n\nSur le siège passager, attaché par la ceinture de sécurité et par une sangle de chargement serrée autour de la poitrine, il y a Yohan. Il est mort. Il tourne la tête vers toi en claquant des dents, et la sangle le retient.\n\n« Mordu à la porte, en sortant, dit Rudy sans le regarder. Il ne l’a dit à personne, et il s’est transformé ici, à côté de moi, pendant que je dormais. » Il a les yeux rouges. « Je n’arrive pas à le faire. C’est un gamin. Alors je l’ai attaché. »\n\nIl tend le bras dans la cabine et tapote la jauge du tableau de bord, collée sous la réserve.\n\n« Plus une goutte. J’ai roulé jusqu’ici sur les vapeurs. Avec vingt litres de gasoil, je pourrais emmener tout le monde jusqu’au pont. »\n\nIl te regarde enfin.\n\n« J’ai ouvert pour sortir. Je comptais refermer derrière moi, je te le jure. Mais avec les morts devant le camion… » Il hausse les épaules. « Vas-y. Dis-le. »',
+    texte: 'La barrière de péage de Lançon s’étend sur toute la largeur de l’autoroute, avec ses cabines de verre et ses voies bouchées par des voitures abandonnées, portières ouvertes, depuis le premier jour. Le camion de Rudy est là, dans la voie 4, juste devant la seule barrière que quelqu’un a arrachée : il a calé à dix mètres du passage. La bâche est déchirée, et le pare-brise est fendu en étoile et couvert de sang séché.\n\nRudy est assis sur le marchepied, à côté de la cabine, un fusil de chasse en travers des genoux. Il te voit venir de loin, et il ne lève pas le fusil.\n\nSur le siège passager, attaché par la ceinture de sécurité et par une sangle de chargement serrée autour de la poitrine, il y a Yohan. Il est mort. Il tourne la tête vers toi en claquant des dents, et la sangle le retient.\n\n« Mordu à la porte, en sortant, dit Rudy sans le regarder. Il ne l’a dit à personne, et il s’est transformé ici, à côté de moi, pendant que je dormais. » Il a les yeux rouges. « Je n’arrive pas à le faire. C’est un gamin. Alors je l’ai attaché. »\n\nIl tend le bras dans la cabine et tapote la jauge du tableau de bord, collée sous la réserve.\n\n« Plus une goutte. J’ai roulé jusqu’ici avec ce qui restait au fond du réservoir. Avec vingt litres de gasoil, je pourrais emmener tout le monde jusqu’au pont. »\n\nIl te regarde enfin.\n\n« J’ai ouvert pour sortir. Je comptais refermer derrière moi, je te le jure. Mais avec les morts devant le camion… » Il hausse les épaules. « Vas-y. Dis-le. »',
     choix: [
       {
         label: 'Lui promettre du gasoil',
@@ -166,7 +166,7 @@ export const SCENES_PONT = {
 
   lan_rudy_promesse: {
     illu: 'peage_lancon', musique: 'sombre', orateur: 'Rudy',
-    texte: 'Rudy te regarde comme s’il ne te croyait pas, puis comme s’il avait envie de te croire.\n\n« Du gasoil, pas de l’essence. Les voitures du péage, c’est presque toutes de l’essence, et les camions de la file ont été siphonnés le premier jour. » Il se gratte la barbe. « Essaie la station de l’aire de Lançon, de l’autre côté, ou les engins d’un chantier, ou un tracteur dans une ferme. Il te faut un tuyau et un bidon. Deux jerricans de dix litres, ça pèse lourd, alors prends un bon sac. »\n\nIl se tourne vers Yohan, qui claque des dents dans le vide.\n\n« On t’attend. On n’a pas grand-chose d’autre à faire. »',
+    texte: 'Rudy te regarde comme s’il ne te croyait pas, puis comme s’il avait envie de te croire.\n\n« Du gasoil, pas de l’essence. Les voitures du péage roulent presque toutes à l’essence, et les camions de la file ont été siphonnés le premier jour. » Il se gratte la barbe. « Essaie la station de l’aire de Lançon, de l’autre côté, ou les engins d’un chantier, ou un tracteur dans une ferme. Il te faut un tuyau et un bidon. Deux jerricans de dix litres, ça pèse lourd, alors prends un bon sac. »\n\nIl se tourne vers Yohan, qui claque des dents dans le vide.\n\n« On t’attend. On n’a pas grand-chose d’autre à faire. »',
     choix: [{ label: 'Repartir', suivant: '#fin' }],
   },
 
@@ -178,13 +178,13 @@ export const SCENES_PONT = {
 
   lan_rudy_laisse: {
     illu: 'peage_lancon', musique: 'sombre', orateur: 'Rudy',
-    texte: 'Tu ne dis rien. Tu fais demi-tour, et tu repars entre les voitures du péage.\n\n« C’est ça, crie Rudy dans ton dos. Va le dire aux autres, que tu m’as {vu|vue}. Dis-leur que je suis resté avec le gamin. »\n\nQuand tu te retournes, au bout de la file, il n’a pas bougé. Il est toujours dans sa cabine, le fusil sur les genoux, et à côté de lui, Yohan tourne la tête de droite à gauche, attaché.',
+    texte: 'Tu ne dis rien. Tu fais demi-tour, et tu repars entre les voitures du péage.\n\n« C’est ça, crie Rudy dans ton dos. Va le dire aux autres, que tu m’as vu. Dis-leur que je suis resté avec le gamin. »\n\nQuand tu te retournes, au bout de la file, il n’a pas bougé. Il est toujours dans sa cabine, le fusil sur les genoux, et à côté de lui, Yohan tourne la tête de droite à gauche, attaché.',
     choix: [{ label: 'Partir', suivant: '#fin' }],
   },
 
   lan_rudy_mort: {
     illu: 'peage_lancon', musique: 'mort', orateur: null,
-    texte: 'Tu tends la main vers le fusil. Rudy te regarde faire, et il te le laisse prendre. Il ne dit plus rien.\n\nLe coup résonne contre les cabines de verre du péage et roule le long de l’autoroute, très loin. Tous les morts de la file lèvent la tête.\n\nAprès, il ne reste que Yohan, qui claque des dents contre la sangle, et qui ne comprend pas pourquoi plus personne ne bouge à côté de lui. Tu le fais aussi, parce qu’il n’y a personne d’autre pour le faire.\n\nDans la boîte à gants, tu trouves quelques cartouches, une photo d’un petit garçon sur un manège, et un ticket de péage du 2 septembre.',
+    texte: 'Tu tends la main vers le fusil. Rudy te regarde faire, et il te le laisse prendre. Il ne dit plus rien.\n\nLe coup résonne contre les cabines de verre du péage et roule le long de l’autoroute, très loin. Tous les morts de la file lèvent la tête.\n\nAprès, il ne reste que Yohan, qui claque des dents contre la sangle, et qui ne comprend pas pourquoi plus personne ne bouge à côté de lui. Tu achèves Yohan aussi, parce qu’il n’y a personne d’autre pour le faire.\n\nDans la boîte à gants, tu trouves quelques cartouches, une photo d’un petit garçon sur un manège, et un ticket de péage du 2 septembre.',
     choix: [{ label: 'Partir avant que les morts n’arrivent', suivant: '#fin' }],
   },
 
@@ -192,7 +192,7 @@ export const SCENES_PONT = {
   // Déclencheur : jour 14 (mardi 6 octobre), 20 h, à Cornillon.
   cor_colonne: {
     illu: 'cornillon_belvedere', musique: 'tension', orateur: 'Inès',
-    texte: 'Le mardi 6 octobre, à huit heures du soir, tous ceux de Cornillon sont sur la petite place, devant l’église Saint-Vincent, avec ce qu’ils peuvent porter. Il fait froid et le ciel est clair. En bas, dans la plaine, la brume commence déjà à monter des creux ; elle est plus pâle qu’il y a une semaine, mais elle est toujours là.\n\nInès a son poste sur le dos et son cahier à la main, où elle a recopié la route. Elle compte les gens du regard, comme Hélène le faisait, et cette fois, elle ne s’arrête pas.\n\n« Mallemort, c’est au nord, à une trentaine de kilomètres par les routes hautes. Si on marche toute la nuit, on y sera avant l’aube. » Elle referme son cahier. « Ceux qui sont là sont là. On ne peut plus attendre personne. »',
+    texte: 'Le mardi 6 octobre, à huit heures du soir, tous ceux de Cornillon sont sur la petite place, devant l’église Saint-Vincent, avec ce qu’ils peuvent porter. Il fait froid et le ciel est clair. En bas, dans la plaine, la brume commence déjà à monter des creux ; elle est plus pâle qu’il y a une semaine, mais elle est toujours là.\n\nInès a son poste sur le dos et son cahier à la main, où elle a noté l’itinéraire. Elle compte les gens du regard, comme Hélène le faisait, et cette fois, elle ne s’arrête pas.\n\n« Mallemort, c’est au nord, à une trentaine de kilomètres par les routes hautes. Si on marche toute la nuit, on y sera avant l’aube. » Elle referme son cahier. « Ceux qui sont là sont là. On ne peut plus attendre personne. »',
     choix: [
       {
         label: 'Partir en camion',
@@ -225,7 +225,7 @@ export const SCENES_PONT = {
     texte: 'Il est dix heures du soir, le mardi 6 octobre. Où que tu sois, tu sais qu’à Cornillon, la colonne est partie sans toi il y a deux heures, comme convenu avec Inès : on n’attendrait personne. Ils marchent maintenant vers le nord, vers la Durance, par les routes hautes, et ils seront au pont avant l’aube.\n\nLe pont s’ouvre demain matin à six heures, pendant une heure. Si tu n’es pas déjà au bord de la Durance, il te reste huit heures pour y arriver.',
     choix: [
       {
-        label: 'Y penser, et te remettre en route',
+        label: 'Te remettre en route vers le pont',
         effets: {
           flags: { colonne_partie: true, colonne_sans_toi: true },
           journal: 'La colonne est partie de Cornillon sans moi, ce soir à huit heures, comme convenu. Le pont de Mallemort ouvre demain à six heures, pendant une heure.',
@@ -318,7 +318,7 @@ export const SCENES_PONT = {
 
   pon_place_fin: {
     illu: 'mains_feu', musique: 'sombre', orateur: null,
-    texte: 'Quand tu as demandé à Sabatier de te rayer de la liste pour y remettre son nom, Hélène t’a {regardé|regardée} longtemps. Elle n’a pas discuté. Elle a enlevé ses lunettes, elle les a essuyées sur son gilet, et elle a seulement demandé : « Tu as compté ? » Tu as répondu oui.\n\nMaintenant, elle est de l’autre côté. Toi, tu es sur la rive sud, avec la Durance entre toi et le reste du monde, et tout un pays à traverser chaque jour pour rester {vivant|vivante}.\n\nLe soir tombe. Tu allumes un petit feu sous les platanes, malgré l’ordre de l’armée, parce qu’il n’y a plus personne pour te le reprocher. Il faudra trouver de l’eau demain, et du bois, et un endroit où dormir.\n\nUn jour de plus.',
+    texte: 'Quand tu as demandé à Sabatier de te rayer de la liste pour y remettre son nom, Hélène t’a {regardé|regardée} longtemps. Elle n’a pas discuté. Elle a enlevé ses lunettes, elle les a essuyées sur son gilet, et elle a seulement demandé : « Tu as compté ? » Tu as répondu oui.\n\nMaintenant, elle est de l’autre côté. Toi, tu es sur la rive sud, avec la Durance entre toi et le reste du monde, et tout un pays à traverser chaque jour pour rester {vivant|vivante}.\n\nLa nuit tombe. Tu allumes un petit feu sous les platanes, malgré l’ordre de l’armée, parce qu’il n’y a plus personne pour te le reprocher. Il faudra trouver de l’eau demain, et du bois, et un endroit où dormir.\n\nUn jour de plus.',
     choix: [
       {
         label: 'Continuer',
@@ -404,7 +404,7 @@ export const SCENES_PONT = {
 
   pon_traverser_2: {
     illu: 'camp_refugies', musique: 'calme', orateur: null,
-    texte: 'Sur la rive nord, au camp de Mérindol, on te donne une douche froide sous une tente, des vêtements qui sentent le désinfectant, une couverture, un gobelet de café qui est du vrai café, et un numéro. Toute la journée, une femme avec un mégaphone lit des listes de noms, et de temps en temps, quelqu’un se lève en criant parce qu’il a entendu le sien.\n\nLe soir, quelque part entre les tentes, quelqu’un allume une radio. Une voix de jeune fille, un peu nasillarde, se met à parler, et toutes les têtes se tournent.\n\n« Ici Inès, au camp de Mérindol. Si quelqu’un du pays salonais m’entend encore, de l’autre côté de la Durance : restez en hauteur la nuit, ne dormez pas dans le jaune, et tenez bon. Je recommence ce message tous les soirs à huit heures. »\n\nTu fermes les yeux. Un jour de plus, et puis un autre.',
+    texte: 'Sur la rive nord, au camp de Mérindol, on te fait prendre une douche froide sous une tente, puis on te donne des vêtements qui sentent le désinfectant, une couverture, un gobelet de café qui est du vrai café, et un numéro. Toute la journée, une femme avec un mégaphone lit des listes de noms, et de temps en temps, quelqu’un se lève en criant parce qu’il a entendu le sien.\n\nLe soir, quelque part entre les tentes, quelqu’un allume une radio. Une voix de jeune fille, un peu nasillarde, se met à parler, et toutes les têtes se tournent.\n\n« Ici Inès, au camp de Mérindol. Si quelqu’un du pays salonais m’entend encore, de l’autre côté de la Durance : restez en hauteur la nuit, ne dormez pas dans le jaune, et tenez bon. Je répète ce message tous les soirs à huit heures. »\n\nTu fermes les yeux. Un jour de plus, et puis un autre.',
     choix: [
       {
         label: 'Dormir',
@@ -445,7 +445,7 @@ export const SCENES_PONT = {
 
   pont_rate_2b: {
     illu: 'mains_feu', musique: 'sombre', orateur: null,
-    texte: 'La radio ne dit plus rien de la Durance. Les nuits sans vent, la brume monte encore des terres basses, mais elle est plus pâle chaque soir, et un jour de mistral, elle ne reviendra pas.\n\nIl reste le pays, avec ses villages vides, ses morts qui errent et ses vergers que personne ne récolte. Il reste ce que tu sais faire : trouver de l’eau, du bois, un endroit où dormir, et te lever le lendemain.\n\nEncore un jour.',
+    texte: 'La radio ne dit plus rien de la Durance. Les nuits sans vent, la brume monte encore des terres basses, mais elle est plus pâle chaque soir, et un jour de mistral, elle ne reviendra pas.\n\nIl reste le pays, avec ses villages vides, ses morts qui errent et ses vergers dont personne ne cueille les fruits. Il reste ce que tu sais faire : trouver de l’eau, du bois, un endroit où dormir, et te lever le lendemain.\n\nEncore un jour.',
     choix: [
       {
         label: 'Continuer',

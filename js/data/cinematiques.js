@@ -45,7 +45,7 @@ export const CINEMATIQUES = {
       texte: '« Ici le Refuge de Miramas-le-Vieux. Nous accueillons les survivants. Venez par la route de Saint-Chamas, à la porte Notre-Dame. Montrez vos mains. »' },
     { clip: 'intro_4', decor: 'refuge_porte', camera: { de: { x: 0.5, y: 0.7, zoom: 1.2 }, vers: { x: 0.5, y: 0.4, zoom: 1.05 } }, duree: 7000,
       effets: ['grain', 'lueur_lampe'], anim: [],
-      texte: 'Tu arrives au pied des remparts quand le soleil se couche. En haut, une lampe s’allume et descend sur toi.' },
+      texte: 'Tu arrives au pied des remparts quand le soleil se couche. En haut, une lampe s’allume et son faisceau se braque sur toi.' },
     { clip: 'intro_5', decor: 'mains_levees', camera: { de: { x: 0.5, zoom: 1.05 }, vers: { x: 0.5, zoom: 1.15 } }, duree: 8000,
       effets: ['grain', 'lueur_lampe'], anim: [],
       texte: '« Stop ! Montre tes mains ! » Tu lèves les mains dans le faisceau, puis tu tournes lentement tes avant-bras pour qu’il voie bien qu’il n’y a pas de morsure.', attendre: true },
@@ -89,14 +89,14 @@ export const CINEMATIQUES = {
       texte: 'Elle coule entre les platanes du parc. Et dedans, sans un bruit, quelqu’un marche.' },
     { clip: 'brume_3', decor: 'mains_foulard', camera: { de: { x: 0.5, zoom: 1.0 }, vers: { x: 0.5, zoom: 1.08 } }, duree: 6500,
       effets: ['grain', 'vignette_pulse'], anim: [],
-      texte: 'Tu plaques le foulard mouillé sur ta bouche. Tes yeux pleurent. Il faut monter.', attendre: true },
+      texte: 'Tu plaques le foulard mouillé sur ta bouche. Tes yeux te brûlent et se mettent à pleurer. Il faut gagner les hauteurs.', attendre: true },
   ] },
 
   // ─────────── Acte IV → V : la mer jaune ───────────
   cornillon_aube: { musique: 'calme', plans: [
     { clip: 'cornillon_1', decor: 'cornillon_belvedere', camera: { de: { x: 0.2, zoom: 1.15 }, vers: { x: 0.8, zoom: 1.1 } }, duree: 9500,
       effets: ['grain'], anim: [],
-      texte: 'Du belvédère de Cornillon, la plaine a disparu sous une mer jaune. Seuls en dépassent les clochers, les pylônes et la cheminée d’une usine, et au loin, l’étang qui brille.' },
+      texte: 'Du belvédère de Cornillon, tu vois la brume jaune recouvrir toute la plaine. Seuls les clochers, les pylônes et la cheminée d’une usine en dépassent. Au loin, l’étang brille encore.' },
     { clip: 'cornillon_2', decor: 'mains_carte', camera: { de: { x: 0.5, zoom: 1.0 }, vers: { x: 0.5, zoom: 1.1 } }, duree: 8000,
       effets: ['grain'], anim: [],
       texte: 'Tu déplies sur le muret la carte qu’Inès a trouvée chez le guetteur, et ton doigt suit la route vers le nord, jusqu’à la Durance.', attendre: true },
@@ -122,7 +122,7 @@ export const CINEMATIQUES = {
       texte: 'Les planches du pont résonnent sous tes pas. Derrière toi, le pays salonais reste de l’autre côté de l’eau.' },
     { clip: 'fin_pont_2', decor: 'camp_refugies', camera: { de: { x: 0.2, zoom: 1.15 }, vers: { x: 0.6, zoom: 1.1 } }, duree: 9000,
       effets: ['grain'], anim: [],
-      texte: 'Il y a des tentes, de la soupe chaude et des listes qu’on appelle. Il y a un lendemain, et puis un autre.', attendre: true },
+      texte: 'Il y a des tentes, de la soupe chaude et des listes de noms qu’on lit à voix haute. Il y a un lendemain, et puis un autre.', attendre: true },
   ] },
   fin_place: { musique: 'sombre', plans: [
     { clip: 'fin_place_1', decor: 'durance_pont', camera: { de: { x: 0.6, zoom: 1.2 }, vers: { x: 0.4, zoom: 1.05 } }, duree: 8500,

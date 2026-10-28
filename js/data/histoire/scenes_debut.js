@@ -11,7 +11,7 @@ export const SCENES_DEBUT = {
   // ─────────────────────────── CO-OP : le second joueur ───────────────────────────
   bb_coop: {
     illu: null, musique: 'sombre', orateur: null,
-    texte: 'Ça fait deux jours que le fourgon vous a {ramassé|ramassée}, {coequipier} et toi, au bord de la route de Pélissanne. Six inconnus qui roulaient tous feux éteints se sont serrés à l’arrière pour vous faire de la place, sans poser de questions.\n\nCe soir, pour éviter les morts de la nationale, Thierry a pris une piste de pompiers à travers le bois. Le moteur a toussé au milieu des pins, puis il s’est tu, et personne n’a rien dit pendant un long moment.',
+    texte: 'Ça fait deux jours que les occupants du fourgon se sont arrêtés pour vous prendre avec eux, {coequipier} et toi, au bord de la route de Pélissanne. Six inconnus qui roulaient tous feux éteints se sont serrés à l’arrière pour vous faire de la place, sans poser de questions.\n\nCe soir, pour éviter les morts de la nationale, Thierry a pris une piste de pompiers à travers le bois. Le moteur a toussé au milieu des pins, puis il s’est tu, et personne n’a rien dit pendant un long moment.',
     choix: [{ label: 'Descendre du fourgon', suivant: '#fin' }],
   },
 
@@ -23,7 +23,7 @@ export const SCENES_DEBUT = {
     choix: [
       {
         label: 'Lui demander qui il est', si: { pasFlag: 'rene_presente' },
-        texte: '« René. J’ai été guetteur à la vigie pendant vingt-deux étés, là-haut, sur la crête. Je voyais les fumées avant tout le monde. » Il tapote son genou. « Maintenant, je ne monte plus nulle part. Ils m’ont pris à Pélissanne, avec la petite blessée. Sans eux, je serais encore assis devant ma porte. »',
+        texte: '« René. J’ai été guetteur à la vigie pendant vingt-deux étés, là-haut, sur la crête. Je voyais les fumées avant tout le monde. » Il tapote son genou. « Maintenant, je ne monte plus nulle part. Ils m’ont recueilli à Pélissanne, avec la petite blessée. Sans eux, je serais encore assis devant ma porte. »',
         effets: { flag: 'rene_presente' }, suivant: 'bb_rene',
       },
       {
@@ -33,17 +33,17 @@ export const SCENES_DEBUT = {
       },
       {
         label: 'Parler du bois', si: { quete: ['q_debut', 'bois'] },
-        texte: '« Du bois mort, tout ce que tu trouves au pied des pins, et tu le poses sur le tas, à côté du creux. » Il regarde le ciel qui s’éteint entre les branches. « On n’allumera rien ce soir : un feu, la nuit, ça se voit de loin. Mais demain, on en aura besoin, et ça t’occupera les mains. » Il montre le fourgon du menton. « Il y a un sac de sport à l’arrière. Prends-le : à bras, tu n’en porteras qu’une à la fois. »',
+        texte: '« Ramasse du bois mort au pied des pins et pose-le sur le tas, à côté du creux. » Il regarde le ciel qui s’éteint entre les branches. « On n’allumera rien ce soir : un feu, la nuit, ça se voit de loin. Mais demain, on en aura besoin, et ça t’occupera les mains. » Il montre le fourgon du menton. « Il y a un sac de sport à l’arrière. Prends-le : à la main, tu ne pourras porter qu’une branche à la fois. »',
         suivant: 'bb_rene',
       },
       {
         label: 'Parler du mas', si: { quete: ['q_debut', 'vivres'] },
-        texte: '« Le mas des Arnaud, en bas du sentier. Il y a des vignes que personne n’aura vendangées, un figuier, un puits, et Paulette faisait des conserves pour tout le quartier. » Il se tait un moment. « Ils étaient vieux, tous les deux. S’ils sont encore là, ils ne sont plus eux-mêmes. Prends ce que tu trouves et range-le dans la caisse, près du fourgon. Martine comptera. »',
+        texte: '« Le mas des Arnaud, en bas du sentier. Il doit rester du raisin dans les vignes, et il y a un figuier et un puits. Paulette faisait des conserves pour tout le quartier. » Il se tait un moment. « Ils étaient vieux, tous les deux. S’ils sont encore là, ils ne sont plus eux-mêmes. Prends ce que tu trouves et range-le dans la caisse, près du fourgon. Martine comptera. »',
         suivant: 'bb_rene',
       },
       {
         label: 'Parler du camp', si: { quete: ['q_debut', 'camp'] },
-        texte: '« Le feu, tu le fais dans le creux, sous les trois pins : de la piste, on ne le verra pas. Des branches, tu en coupes dans les buissons, et il y a du bois mort partout. Pour les boîtes, Martine garde les vides dans son sac, et du fil de fer, il y en a sur les vignes du mas et dans la remise. La bâche est à l’arrière du fourgon. » Il a un petit sourire. « Toi, tu construis. Moi, je te regarde, et je critique. »',
+        texte: '« Le feu, tu le fais dans le creux, sous les trois pins : de la piste, on ne le verra pas. Des branches, tu en coupes dans les buissons, et il y a du bois mort partout. Pour les boîtes de conserve, Martine garde les vides dans son sac, et du fil de fer, il y en a sur les vignes du mas et dans la remise. La bâche est à l’arrière du fourgon. » Il a un petit sourire. « Toi, tu construis. Moi, je te regarde, et je critique. »',
         suivant: 'bb_rene',
       },
       { label: 'Parler de la vigie', si: { quete: ['q_debut', 'vigie'] }, suivant: 'bb_rene_vigie' },
@@ -62,7 +62,7 @@ export const SCENES_DEBUT = {
   // ─────────────────────────── LAURA ───────────────────────────
   bb_laura: {
     illu: null, musique: null, orateur: 'Laura',
-    texte: 'La jeune femme est allongée sur une couverture, adossée à un pin, la jambe gauche enroulée dans un tee-shirt noué. Elle a une vingtaine d’années, un sweat de la fac d’Aix, et les lèvres sèches de quelqu’un qui a de la fièvre. Quand tu t’approches, elle tire la couverture sur sa jambe.\n\n« C’est du barbelé, dit-elle avant que tu aies ouvert la bouche. Une clôture, à Pélissanne, en sautant. Je te jure que c’est du barbelé. »',
+    texte: 'La jeune femme est allongée sur une couverture, adossée à un pin, un tee-shirt noué autour de la jambe gauche. Elle a une vingtaine d’années, un sweat de la fac d’Aix, et les lèvres desséchées par la fièvre. Quand tu t’approches, elle tire la couverture sur sa jambe.\n\n« C’est du barbelé, dit-elle avant que tu aies ouvert la bouche. Je me suis accrochée en sautant une clôture, à Pélissanne. Je te jure que c’est du barbelé. »',
     choix: [
       {
         label: 'Regarder sa jambe', si: { pasFlag: 'laura_jambe_vue' },
@@ -88,7 +88,7 @@ export const SCENES_DEBUT = {
         label: 'Descendre au mas',
         effets: {
           quete: ['q_debut', 'vivres'], mission: [['clore', 'm_bois'], ['accepter', 'm_vivres']],
-          journal: 'Le fourgon ne repart pas, et il n’y a plus rien à manger pour sept. René m’envoie au mas des Arnaud, en bas du sentier du vallon : des vignes, un potager, un puits. Je dois ranger ce que je rapporte dans la caisse du camp.',
+          journal: 'Le fourgon ne repart pas, et il ne reste presque rien à manger pour nous sept. René m’envoie au mas des Arnaud, en bas du sentier du vallon : des vignes, un potager, un puits. Je dois ranger ce que je rapporte dans la caisse du camp.',
         },
         suivant: '#fin',
       },
@@ -99,7 +99,7 @@ export const SCENES_DEBUT = {
   // Déclencheur : flag vivres_faits (la mission m_vivres est remplie).
   bb_camp: {
     illu: null, musique: 'calme', orateur: 'René',
-    texte: 'Martine sort tout de la caisse et le range par terre, en rangées, pour compter. Elle compte deux fois, en remuant les lèvres, puis elle remet tout dans la caisse sans rien dire, et elle te serre le bras, très fort, une seconde.\n\nC’est à ce moment-là que Thierry referme le capot, si fort que tout le monde sursaute. Il reste un moment les deux mains posées dessus, la tête baissée. « La pompe est morte, dit-il sans se retourner. Sans pièce, il ne repartira pas. »\n\nPersonne ne répond. Au bout d’un moment, René plante sa canne dans la terre et se relève. « Alors on reste quelques jours, et si on reste, il faut un vrai camp : un feu qu’on ne voie pas de la piste, une ligne de boîtes tout autour, et un abri pour la petite. » Il sort un briquet de sa poche et te le met dans la main. « Le feu, tu le fais dans le creux, sous les trois pins. »',
+    texte: 'Martine sort tout de la caisse et le range par terre, en rangées, pour compter. Elle compte deux fois, en remuant les lèvres, puis elle remet tout dans la caisse sans rien dire, et elle te serre le bras, très fort, une seconde.\n\nC’est à ce moment-là que Thierry referme le capot, si fort que tout le monde sursaute. Il reste un moment les deux mains posées dessus, la tête baissée. « La pompe est morte, dit-il sans se retourner. Sans une pompe de rechange, le fourgon ne repartira pas. »\n\nPersonne ne répond. Au bout d’un moment, René plante sa canne dans la terre et se relève. « Alors on reste quelques jours, et si on reste, il faut un vrai camp : un feu qu’on ne voie pas de la piste, des boîtes de conserve accrochées à un fil tout autour, et un abri pour la petite. » Il sort un briquet de sa poche et te le met dans la main. « Le feu, tu le fais dans le creux, sous les trois pins. »',
     choix: [
       {
         label: 'Prendre le briquet',
@@ -133,11 +133,11 @@ export const SCENES_DEBUT = {
   // Déclencheur : le matin qui suit la nuit des boîtes (7 h - 10 h).
   bb_vigie: {
     illu: null, musique: 'calme', orateur: 'René',
-    texte: 'Au matin, René te tend une bouteille d’eau qu’il a fait bouillir sur le feu, et il te montre le nord, où le pare-feu monte tout droit entre deux murs de pins.\n\n« Il n’y a plus de réseau depuis le 6. Mais là-haut, sur la crête, il y a la vigie des pompiers, avec un poste radio qui marche sur batterie. Si quelqu’un écoute encore, l’armée, les pompiers, n’importe qui, c’est là qu’on l’entendra. » Il frotte son genou. « Moi, je ne monterai pas. Une heure de marche par le pare-feu, et tu ne le quittes pas. »\n\nDerrière lui, Mathis demande s’il peut venir, et sa mère répond non avant qu’il ait fini sa phrase.',
+    texte: 'Au matin, René te tend une bouteille remplie d’eau qu’il a fait bouillir sur le feu, et il te montre le nord, où le pare-feu monte tout droit entre deux murs de pins.\n\n« Il n’y a plus de réseau depuis le 6. Mais là-haut, sur la crête, il y a la vigie des pompiers, avec un poste radio qui marche sur batterie. Si quelqu’un écoute encore, l’armée, les pompiers, n’importe qui, c’est là qu’on l’entendra. » Il frotte son genou. « Moi, je ne monterai pas. Une heure de marche par le pare-feu, et tu ne le quittes pas. »\n\nDerrière lui, Mathis demande s’il peut venir, et sa mère répond non avant qu’il ait fini sa phrase.',
     choix: [
       {
         label: 'Monter à la vigie',
-        effets: { objet: ['bouteille_eau', 1], quete: ['q_debut', 'vigie'], voyage: { vers: 'vigie_barben', indication: true }, journal: 'René m’envoie à la vigie des pompiers, sur la crête, par le pare-feu : il y a là-haut une radio sur batterie. Si quelqu’un écoute encore, on viendra peut-être nous chercher.' },
+        effets: { objet: ['bouteille_eau', 1], quete: ['q_debut', 'vigie'], voyage: { vers: 'vigie_barben', indication: true }, journal: 'René m’envoie à la vigie des pompiers, sur la crête, par le pare-feu : il y a là-haut une radio qui fonctionne sur batterie. Si quelqu’un écoute encore, on viendra peut-être nous chercher.' },
         suivant: '#fin',
       },
       {
@@ -169,7 +169,7 @@ export const SCENES_DEBUT = {
   // Déclencheur : entrée dans la cabine.
   vig_cabine: {
     illu: null, musique: 'calme', orateur: null,
-    texte: 'La cabine est vitrée sur les quatre côtés, et d’ici, tu vois tout le pays. Au sud-ouest, Salon fume encore, une longue traînée grise couchée par le vent. Plus près, le château de la Barben s’accroche à son rocher au-dessus de la Touloubre, et au fond, l’étang de Berre brille comme une tôle.\n\nAu nord, sur une colline pelée, il y a des ruines, un village entier sans toits, avec un morceau de clocher. C’est le Vieux-Vernègues, tombé pendant le tremblement de terre de 1909. Et au-dessus des ruines, en plein jour, monte un filet de fumée mince et droit, comme celle d’un feu qu’on entretient.',
+    texte: 'La cabine est vitrée sur les quatre côtés, et d’ici, tu vois tout le pays. Au sud-ouest, Salon fume encore, une longue traînée grise couchée par le vent. Plus près, le château de la Barben s’accroche à son rocher au-dessus de la Touloubre, et au fond, l’étang de Berre brille comme une tôle.\n\nAu nord, sur une colline pelée, il y a des ruines, un village entier sans toits, avec un morceau de clocher. C’est le Vieux-Vernègues, tombé pendant le tremblement de terre de 1909. Et au-dessus des ruines, en plein jour, monte un mince filet de fumée bien droit, comme celui d’un feu qu’on entretient.',
     choix: [
       { label: 'Regarder la fumée', effets: { flag: 'vigie_vue', journal: 'De la vigie, on voit tout : Salon qui fume, le château de la Barben, l’étang. Au nord, au-dessus des ruines du Vieux-Vernègues, un filet de fumée monte en plein jour, comme d’un feu qu’on entretient.' }, suivant: '#fin' },
     ],
@@ -177,7 +177,7 @@ export const SCENES_DEBUT = {
   // Marqueur 'radio_vigie' (le poste radio de la cabine).
   vig_radio: {
     illu: null, musique: null, orateur: null,
-    texte: 'Le poste radio des pompiers est posé sur la table, un gros boîtier gris avec un combiné au bout d’un fil en spirale. Quand tu appuies sur l’interrupteur, un voyant vert s’allume : la batterie marche.\n\nTu prends le combiné, tu appuies sur le bouton et tu parles. Tu dis où tu es, combien vous êtes, qu’il y a un enfant et une blessée. Personne ne répond. Il n’y a même pas de grésillement, seulement un silence plat, parce que le poste n’entend rien.\n\nTu suis le câble de l’antenne jusqu’à la fenêtre, puis dehors : il a été coupé net, à hauteur d’homme, d’un seul coup de pince.',
+    texte: 'Le poste radio des pompiers est posé sur la table, un gros boîtier gris avec un combiné au bout d’un fil en spirale. Quand tu appuies sur l’interrupteur, un voyant vert s’allume : la batterie est encore chargée.\n\nTu prends le combiné, tu appuies sur le bouton et tu parles. Tu dis où tu es, combien vous êtes, qu’il y a un enfant et une blessée. Personne ne répond. Il n’y a même pas de grésillement, seulement le silence : le poste ne capte rien.\n\nTu suis le câble de l’antenne jusqu’à la fenêtre, puis dehors : il a été coupé net, à hauteur d’homme, d’un seul coup de pince.',
     choix: [
       { label: 'Reposer le combiné', effets: { flag: 'radio_vigie_vue', pensee: 'Quelqu’un a coupé ce câble. Pas le vent.', journal: 'La radio de la vigie ne capte rien : le câble de l’antenne a été coupé net, d’un coup de pince. Personne ne viendra nous chercher.' }, suivant: '#fin' },
     ],
@@ -185,7 +185,7 @@ export const SCENES_DEBUT = {
   // Zone au bout du chemin, une fois la cabine vue.
   vig_redescendre: {
     illu: null, musique: null, orateur: null,
-    texte: 'En bas, le pare-feu redescend vers la piste et vers le camp. Le soleil a déjà bien tourné.',
+    texte: 'En bas, le pare-feu redescend vers la piste et vers le camp. Le soleil est déjà bas.',
     choix: [
       { label: 'Redescendre au camp', effets: { quete: ['q_debut', 'retour'], voyage: { vers: 'bois_barben', indication: true } }, suivant: '#fin' },
       { label: 'Rester encore un peu', suivant: '#fin' },
@@ -214,7 +214,7 @@ export const SCENES_DEBUT = {
     choix: [
       {
         label: 'Lui demander ce qu’il a vu',
-        texte: '« Des lumières, peut-être. Un moteur. » Il secoue la tête et grimace. « Je ne sais plus, je te dis. J’étais au fil, je regardais la piste, et après, j’étais par terre avec la tête qui sonnait. Un mort, sûrement. Qu’est-ce que tu veux que ce soit d’autre ? »',
+        texte: '« Des lumières, peut-être. Un moteur. » Il secoue la tête et grimace. « Je ne sais plus, je te dis. J’étais près du fil d’alarme, je surveillais la piste, et après, j’étais par terre avec la tête qui sonnait. Un mort, sûrement. Qu’est-ce que tu veux que ce soit d’autre ? »',
         suivant: 'bb_rene_apres',
       },
       {
@@ -241,7 +241,7 @@ export const SCENES_DEBUT = {
       {
         label: 'Lui tendre la main',
         texte: 'Il met longtemps à la prendre. Quand il sort enfin des ronces, il se colle contre toi et ne te lâche plus la manche.',
-        effets: { flag: 'mathis_trouve', quete: ['q_debut', 'nuit3'], pensee: 'Sa mère lui a dit de se cacher. Elle savait.', journal: 'J’ai trouvé Mathis caché au fond d’un roncier. Sa mère lui avait dit de ne pas sortir, même si elle l’appelait. Il a entendu des moteurs et des gens qui parlaient fort. Ce n’est pas ce que les morts font.' },
+        effets: { flag: 'mathis_trouve', quete: ['q_debut', 'nuit3'], pensee: 'Sa mère lui a dit de se cacher. Elle savait.', journal: 'J’ai trouvé Mathis caché au fond d’un roncier. Sa mère lui avait dit de ne pas sortir, même si elle l’appelait. Il a entendu des moteurs et des gens qui parlaient fort. Les morts ne font pas ça.' },
         suivant: '#fin',
       },
     ],
@@ -276,7 +276,7 @@ export const SCENES_DEBUT = {
   // Déclencheur : la nuit qui suit le retour (22 h), une fois Mathis retrouvé.
   bb_radio: {
     illu: null, musique: 'sombre', orateur: 'René',
-    texte: 'Il est tard. Mathis s’est endormi contre toi, et Laura gémit doucement dans son sommeil. René a sorti de sa poche un petit transistor qu’il écoute tous les soirs pour la météo, par habitude, même quand il n’y a plus de météo, et il tourne la molette lentement, de grésillement en grésillement.\n\nTout à coup, une voix de jeune fille sort du haut-parleur, faible et un peu nasillarde : « … Ici le Refuge du Vieux-Vernègues. Nous accueillons les survivants. Montez par le chemin du château, jusqu’à la porte de la chapelle. Montrez vos mains. » Puis le message recommence, mot pour mot.\n\nRené lève les yeux vers toi. « Vernègues. Ta fumée de là-haut. »',
+    texte: 'Il est tard. Mathis s’est endormi contre toi, et Laura gémit doucement dans son sommeil. René a sorti de sa poche un petit transistor qu’il écoute tous les soirs pour la météo, par habitude, même quand il n’y a plus de météo, et il tourne la molette lentement, de grésillement en grésillement.\n\nTout à coup, une voix de jeune fille sort du haut-parleur, faible et un peu nasillarde : « … Ici le Refuge du Vieux-Vernègues. Nous accueillons les survivants. Montez par le chemin du château, jusqu’à la porte de la chapelle. Montrez vos mains. » Puis le message recommence, mot pour mot.\n\nRené lève les yeux vers toi. « Vernègues… C’est de là que venait la fumée que tu as vue. »',
     choix: [
       {
         label: 'Partir à l’aube',
@@ -291,7 +291,7 @@ export const SCENES_DEBUT = {
   // Déclencheur : l'aube qui suit la radio.
   bb_depart: {
     illu: null, musique: 'calme', orateur: null,
-    texte: 'À l’aube, vous rassemblez ce qui reste. René coupe une deuxième canne pour Laura, qui ne pose presque plus le pied par terre, et Mathis s’accroche à ta manche sans qu’on le lui demande.\n\nAvant de partir, René regarde longtemps la place vide du fourgon, puis il crache par terre et tourne le dos à la piste. « Une dizaine de kilomètres, par les vignes et le temple de Château-Bas. Avec nous deux, il faudra la journée. »',
+    texte: 'À l’aube, vous rassemblez ce qui reste. René coupe une deuxième canne pour Laura, qui ne pose presque plus le pied par terre, et Mathis s’accroche à ta manche sans qu’on le lui demande.\n\nAvant de partir, René regarde longtemps la place vide du fourgon, puis il crache par terre et tourne le dos à la piste. « Une dizaine de kilomètres, par les vignes et le temple de Château-Bas. Au rythme où Laura et moi marchons, il nous faudra la journée. »',
     choix: [
       { label: 'Partir pour Vernègues', effets: { flag: 'depart_vernegues', voyage: { vers: 'vernegues', indication: true }, journal: 'Nous partons pour le Vieux-Vernègues, à pied, par les vignes et le temple de Château-Bas.' }, suivant: '#fin' },
       { label: 'Prendre encore quelques affaires', suivant: '#fin' },
@@ -318,7 +318,7 @@ export const SCENES_DEBUT = {
   },
   rv_village_neuf: {
     illu: 'plaine_route', musique: 'tension', orateur: null,
-    texte: 'Le village neuf de Vernègues est au pied de la colline, et il est plein de morts. Ils sont une dizaine dans la grand-rue, debout entre les voitures, immobiles, la tête tournée vers quelque chose que tu ne vois pas. Au-dessus des toits, sur la colline, tu reconnais les ruines et le filet de fumée.\n\nRené pose la main sur l’épaule de Mathis. « Par la grand-rue, c’est cinq minutes. Par les vergers, c’est une heure, et Laura ne la tiendra pas. »',
+    texte: 'Le village neuf de Vernègues est au pied de la colline, et il est plein de morts. Ils sont une dizaine dans la grand-rue, debout entre les voitures, immobiles, la tête tournée vers quelque chose que tu ne vois pas. Au-dessus des toits, sur la colline, tu reconnais les ruines et le filet de fumée.\n\nRené pose la main sur l’épaule de Mathis. « Par la grand-rue, c’est cinq minutes. Par les vergers, c’est une heure, et Laura ne tiendra pas une heure de plus. »',
     choix: [
       { label: 'Traverser la grand-rue en silence', effets: { combat: { zombies: ['errant', 'errant'] }, journal: 'Nous avons traversé le village neuf de Vernègues par la grand-rue, au milieu des morts. Deux nous ont vus.' }, suivant: '#fin' },
       { label: 'Contourner par les vergers', effets: { tempsMin: 60, fatigue: -10, journal: 'Nous avons contourné le village neuf de Vernègues par les vergers. Laura a marché une heure de plus, appuyée sur moi.' }, suivant: '#fin' },
@@ -330,7 +330,7 @@ export const SCENES_DEBUT = {
     illu: 'nuit_campagne', musique: 'tension', orateur: null,
     texte: 'Le chemin monte entre les ruines, des murs sans toit où poussent des figuiers. Le soleil se couche quand vous arrivez devant la chapelle, dont la porte est murée de parpaings jusqu’à hauteur d’homme. Une lampe s’allume au-dessus et vous prend en plein visage.\n\n« Stop ! Montrez vos mains ! » C’est une voix d’homme, vieille et rauque. Vous levez les mains, vous remontez vos manches, et vous tournez vos bras dans la lumière, l’un après l’autre. Mathis le fait aussi, très sérieusement, comme s’il avait toujours su qu’il faudrait le faire.\n\nPuis la lampe s’arrête sur la jambe de Laura, et elle ne bouge plus. « Elle, qu’est-ce qu’elle a, à la jambe ? »\n\nÀ côté de toi, René plisse les yeux vers la lumière. « Lucien ? C’est toi, Lucien ? » La lampe tremble un peu. « René… » Puis la voix reprend, plus basse : « René, je ne peux pas laisser entrer quelqu’un avec une jambe comme ça. Tu le sais. »',
     choix: [
-      { label: 'Jurer que c’est du barbelé', effets: { flag: 'laura_quarantaine', journal: 'À la porte du Refuge du Vieux-Vernègues, j’ai juré que la jambe de Laura, c’était du barbelé. On l’a mise en quarantaine dans une cave, seule. René connaît le guetteur de la porte : Lucien, celui de la vigie.' }, suivant: 'rv_porte_barbele' },
+      { label: 'Jurer que c’est du barbelé', effets: { flag: 'laura_quarantaine', journal: 'À la porte du Refuge du Vieux-Vernègues, j’ai juré que Laura s’était blessée avec du barbelé. On l’a mise en quarantaine dans une cave, seule. René connaît le guetteur de la porte : Lucien, celui de la vigie.' }, suivant: 'rv_porte_barbele' },
       { label: 'Entrer, et laisser Laura dehors', effets: { flag: 'laura_dehors', journal: 'À la porte du Refuge du Vieux-Vernègues, on n’a pas voulu de Laura à cause de sa jambe. Je suis {entré|entrée} avec René et Mathis, et je l’ai laissée dehors, assise sur une pierre.' }, suivant: 'rv_porte_dehors' },
       { label: 'Rester dehors avec elle', effets: { flag: 'reste_avec_laura', journal: 'À la porte du Refuge du Vieux-Vernègues, on n’a pas voulu de Laura à cause de sa jambe. René et Mathis sont entrés. Moi, je suis {resté|restée} dehors avec elle, contre le mur de la chapelle.' }, suivant: 'rv_porte_reste' },
     ],
@@ -348,7 +348,7 @@ export const SCENES_DEBUT = {
   },
   rv_porte_reste: {
     illu: 'nuit_campagne', musique: 'sombre', orateur: null,
-    texte: '« Alors je reste avec elle cette nuit », dis-tu. René te regarde longtemps, puis il pousse Mathis vers la porte, et le petit se retourne trois fois avant de disparaître derrière les parpaings.\n\nTu t’assois contre le mur de la chapelle, Laura contre ton épaule, dans le noir qui tombe sur les ruines. Au bout d’un moment, quelqu’un fait descendre au bout d’une corde une couverture et une bouteille d’eau, sans un mot. Il n’y a qu’un mur entre toi et les morts, cette nuit, et tu es du mauvais côté.\n\nLaura finit par s’endormir. Toi, tu penses au fourgon, à Sandrine qui disait le prénom de son fils tout bas, au câble coupé net de la vigie, et à ces traces de pneus trop larges qui repartaient vers l’est. Tu ne sais toujours pas ce qui est arrivé au camp, mais tu sais que ce n’étaient pas les morts.',
+    texte: '« Alors je reste avec elle cette nuit », dis-tu. René te regarde longtemps, puis il pousse Mathis vers la porte, et le petit se retourne trois fois avant de disparaître derrière les parpaings.\n\nTu t’assois contre le mur de la chapelle, Laura contre ton épaule, tandis que la nuit tombe sur les ruines. Au bout d’un moment, quelqu’un fait descendre au bout d’une corde une couverture et une bouteille d’eau, sans un mot. Il n’y a qu’un mur entre toi et les morts, cette nuit, et tu es du mauvais côté.\n\nLaura finit par s’endormir. Toi, tu penses au fourgon, à Sandrine qui disait le prénom de son fils tout bas, au câble coupé net de la vigie, et à ces traces de pneus trop larges qui repartaient vers l’est. Tu ne sais toujours pas ce qui est arrivé au camp, mais tu sais que ce n’étaient pas les morts.',
     choix: [{ label: 'Continuer', effets: { flag: 'fin_debut' }, suivant: '#fin' }],
   },
 };

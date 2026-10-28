@@ -42,12 +42,12 @@ export const ZONES_RUEE = {
 // Ce que dit la radio (une radio portable et des piles dans le sac) quelques heures avant. {quand} : « demain à 6 h »…
 export const RADIO_RUEE = {
   salon: [
-    '« … opération de rabattage sonore sur l’agglomération salonaise, {quand}. Réseau d’alerte et vecteurs aériens. Durée estimée : plus d’une journée. Toute personne encore présente dans la zone… » Le reste se perd dans le souffle.',
+    '« … opération de rabattage sonore sur l’agglomération salonaise, {quand}. Déclenchement des sirènes et survol de drones. Durée estimée : plus d’une journée. Toute personne encore présente dans la zone… » Le reste se perd dans les grésillements.',
     'Une voix d’homme, fatiguée, lit une liste de codes. Puis, en clair : « Rabattage Salon, {quand}. Confirmez les sirènes du centre et de la zone nord. » Quelqu’un répond « Reçu ». Personne ne parle des vivants.',
     '« Ici Lamanon, sur la fréquence des radioamateurs. Si quelqu’un m’entend à Salon : ils vont faire hurler la ville {quand}. Sortez. Montez dans les collines, et ne redescendez pas avant que ça se taise. »',
   ],
   villages: [
-    '« … rabattage de la plaine : Pélissanne, Lamanon, Eyguières, Grans, les axes de la nationale. {quand}. Les vecteurs aériens remonteront vers le nord. » Puis un sifflement, et plus rien.',
+    '« … rabattage de la plaine : Pélissanne, Lamanon, Eyguières, Grans, les axes de la nationale. {quand}. Les drones remonteront vers le nord. » Puis un sifflement, et plus rien.',
     'Sur la fréquence de l’armée, la voix calme d’une femme : « Phase deux du rabattage {quand}. Les villages de la plaine. Restez à l’écart des bourgs et des routes. » Elle répète deux fois, comme pour quelqu’un qui note.',
   ],
 };
@@ -76,10 +76,10 @@ export const JOURNAL_RUEE = {
 // Une radio les annonce (les guetteurs des collines, les drones de l'armée) ; sans radio, on les entend arriver… tard.
 export const RADIO_HORDE = [
   '« Ici les grottes de Calès. Nos guetteurs, sur la falaise, ont vu une colonne de morts, deux cents peut-être, ou plus. Ils vont vers {lieu}, et ils y seront {quand}. Si vous êtes là-bas, partez. »',
-  'Une voix militaire, monocorde : « Contact. Groupe d’éléments, effectif estimé deux cents, axe {lieu}. Arrivée estimée {quand}. Pas d’engagement. » Un bip, puis le souffle.',
+  'Une voix militaire, monocorde : « Contact. Groupe d’éléments, effectif estimé deux cents, axe {lieu}. Arrivée estimée {quand}. Pas d’engagement. » Un bip, puis des grésillements.',
   '« … quelqu’un m’entend ? Je suis sur la route. Il y en a plein la route, ils descendent tous vers {lieu}. Ils y seront {quand}, je pense. Je me cache. Je me cache. »',
 ];
-export const SIGNES_HORDE = 'Au loin, un grondement de voix monte, de plus en plus près. Ce n’est pas un mort : ce sont des centaines.';
+export const SIGNES_HORDE = 'Au loin, un grondement de voix monte, de plus en plus près. Il n’y a pas qu’un mort : ils sont des centaines.';
 export const DEBUT_HORDE = 'La horde arrive sur {lieu}. Les rues se remplissent de morts qui marchent tous dans le même sens.';
 export const FIN_HORDE = 'La horde a quitté {lieu}. Il en reste derrière elle, accrochés aux portes.';
 export const JOURNAL_HORDE = {
@@ -92,8 +92,8 @@ export const JOURNAL_HORDE = {
 // Annoncé une heure avant que le temps change (5 h et 17 h) : de quoi rentrer, s'abriter, faire du feu.
 // Depuis la frappe, le mistral et la pluie chassent la brume jaune : ces bulletins-là sont aussi de bonnes nouvelles.
 export const METEO_RADIO = {
-  pluie: 'Le bulletin enregistré, toujours le même speaker : « … averses en fin de période sur le pays salonais. » Il pleuvra bientôt : mets-toi à l’abri, au sec. La pluie, au moins, lave la brume.',
+  pluie: 'Le bulletin enregistré, toujours le même présentateur : « … averses en fin de période sur le pays salonais. » Il pleuvra bientôt : mets-toi à l’abri, au sec. La pluie, au moins, dissipe la brume.',
   orage: '« … vigilance orange orages sur les Bouches-du-Rhône : pluies intenses, rafales, grêle par endroits. » Un gros orage arrive. Trouve un toit.',
-  mistral: '« … mistral fort, rafales à cent kilomètres-heure dans la vallée du Rhône et sur la Crau. » Le vent va se lever : il couvrira tes pas, il glace, et tant qu’il soufflera, la brume ne restera pas.',
+  mistral: '« … mistral fort, rafales à cent kilomètres-heure dans la vallée du Rhône et sur la Crau. » Le vent va se lever : il couvrira le bruit de tes pas et te glacera jusqu’aux os, mais tant qu’il soufflera, la brume ne restera pas.',
   brouillard: '« … brouillards denses en plaine au lever du jour, visibilité réduite. » On ne verra rien venir.',
 };

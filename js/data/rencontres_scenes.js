@@ -24,7 +24,7 @@ export const SCENES_RENCONTRES = {
   // ═══════════════════════════ SALON ═══════════════════════════
   rv_horde_carrefour: {
     illu: 'carrefour', musique: 'tension', orateur: null,
-    texte: "Le carrefour est noir de monde. Une ambulance est couchée sur le flanc, les portes arrière grandes ouvertes, et autour d’elle, trente morts debout, peut-être plus, oscillent sur place comme un champ de blé mort.\n\nQuelque chose dans l’ambulance les retient là, et tu ne veux pas savoir quoi. Le problème, c’est que ta route passe de l’autre côté.",
+    texte: "Le carrefour est noir de monde. Une ambulance est couchée sur le flanc, les portes arrière grandes ouvertes, et autour d’elle, trente morts debout, peut-être plus, se balancent lentement sur place.\n\nQuelque chose dans l’ambulance les retient là, et tu ne veux pas savoir quoi. Le problème, c’est que ta route passe de l’autre côté.",
     choix: [
       {
         label: 'Contourner par les ruelles (+400 m)',
@@ -53,7 +53,7 @@ export const SCENES_RENCONTRES = {
         label: 'Foncer en longeant les façades',
         test: { skill: 'agilite', difficulte: 2 },
         reussite: {
-          texte: "Tu cours. Des têtes se tournent et des bras se tendent, mais trop lentement. Tu passes, le cœur au bord des lèvres, et tu ne t’arrêtes qu’au bout de la rue.",
+          texte: "Tu cours. Des têtes se tournent et des bras se tendent, mais trop lentement. Tu passes, le cœur battant à tout rompre, et tu ne t’arrêtes qu’au bout de la rue.",
           effets: { sta: -30, xp: { agilite: 8 } }, suivant: FIN,
         },
         echec: {
@@ -77,7 +77,7 @@ export const SCENES_RENCONTRES = {
           effets: { objets: [['conserve_haricots', 1], ['soda', 1]], butin: { table: 'voyage.voiture', n: 1 }, xp: { mecanique: 12 }, tempsMin: 15 }, suivant: FIN,
         },
         echec: {
-          texte: "Ton tournevis ripe, et l’alarme explose dans la rue déserte, stridente et obscène. Une à une, des silhouettes se décollent des murs et viennent vers toi.",
+          texte: "Ton tournevis ripe, et l’alarme explose dans la rue déserte, assourdissante. Une à une, des silhouettes se décollent des murs et viennent vers toi.",
           effets: { bruit: 3, combat: { zombies: ['errant', 'errant'] } }, suivant: COMBAT,
         },
       },
@@ -175,10 +175,10 @@ export const SCENES_RENCONTRES = {
 
   rv_gonfleur_ruelle: {
     illu: 'ruelle', musique: 'sombre', orateur: null,
-    texte: "La ruelle est bouchée par un mort gonflé, coincé entre deux poubelles, le ventre énorme et tendu comme un ballon rempli d’eau. S’il éclate près de toi, ses gaz te rendront malade.\n\nIl t’a senti, et il se retourne lentement, dans un bruit de ventre.",
+    texte: "La ruelle est bouchée par un mort gonflé, coincé entre deux poubelles, le ventre énorme et tendu comme un ballon rempli d’eau. S’il éclate près de toi, ses gaz te rendront malade.\n\nIl t’a senti, et il se retourne lentement, en laissant échapper un gargouillement.",
     choix: [
       {
-        label: 'Le crever à bout de bras',
+        label: 'Le faire éclater à distance',
         si: { ou: [ARME_LONGUE, ARME_DE_TIR] },
         texte: "Tu le perces à distance, et il éclate contre le mur dans un souffle chaud et vert. Tu retiens ta respiration trop tard et tu vomis, mais au moins, tu n’as rien reçu sur toi.",
         effets: { sta: -10, xp: { dexterite: 4 } }, suivant: FIN,
@@ -233,7 +233,7 @@ export const SCENES_RENCONTRES = {
           effets: { detour: 350, xp: { discretion: 6 } }, suivant: FIN,
         },
         echec: {
-          texte: "Un carreau d’arbalète se plante dans le grillage, à dix centimètres de ta tête. « La prochaine est pour toi. » Tu recules.",
+          texte: "Un carreau d’arbalète se plante dans le grillage, à dix centimètres de ta tête. « Le prochain est pour toi. » Tu recules.",
           effets: { sta: -10, demiTour: true }, suivant: FIN,
         },
       },
@@ -310,12 +310,12 @@ export const SCENES_RENCONTRES = {
     texte: "Une ambulance est arrêtée là, le gyrophare éteint et les portes arrière entrouvertes. À l’intérieur, sur le brancard, une forme est sanglée sous un drap, et le drap bouge doucement.\n\nLes casiers, sur les côtés, sont encore fermés.",
     choix: [
       {
-        label: 'Achever la forme d’abord',
+        label: 'Achever le mort sous le drap',
         texte: "Tu appuies le drap sur son visage et tu frappes au travers, une fois, deux fois, jusqu’à ce que le tissu rougisse et ne bouge plus. Ensuite, tu mets longtemps à ouvrir les casiers, parce que tes mains tremblent.",
         effets: { butin: { table: 'voyage.secours', n: 2 }, tempsMin: 10 }, suivant: FIN,
       },
       {
-        label: 'Ouvrir les casiers sans la réveiller',
+        label: 'Ouvrir les casiers sans réveiller le mort',
         test: { skill: 'discretion', difficulte: 1 },
         reussite: {
           texte: "Tu ouvres un casier, puis un deuxième, pendant que le drap se soulève au rythme de quelque chose qui n’est pas une respiration. Tu repars les bras pleins.",
@@ -346,7 +346,7 @@ export const SCENES_RENCONTRES = {
           effets: { sta: -20, pv: -3 }, suivant: FIN,
         },
         echec: {
-          texte: "Dans la fumée, tu perds le trottoir, tu te cognes à une voiture et tu respires la fumée. Quand tu ressors, tes poumons te brûlent, et ton bras aussi.",
+          texte: "Dans la fumée, tu perds de vue le trottoir, tu te cognes à une voiture et tu respires la fumée. Quand tu ressors, tes poumons te brûlent, et ton bras aussi.",
           effets: { pv: -10, sta: -25, blessure: { type: 'brulure', zone: "à l'avant-bras" } }, suivant: FIN,
         },
       },
@@ -365,7 +365,7 @@ export const SCENES_RENCONTRES = {
 
   rv_babyphone: {
     illu: 'facade', musique: 'sombre', orateur: null,
-    texte: "Tu entends une voix d’enfant quelque part dans un immeuble : « Maman ? Maman, t’es où ? »\n\nElle vient d’une fenêtre ouverte au premier étage, et elle se répète, exactement pareille : « Maman ? Maman, t’es où ? »",
+    texte: "Tu entends une voix d’enfant quelque part dans un immeuble : « Maman ? Maman, t’es où ? »\n\nElle vient d’une fenêtre ouverte au premier étage, et elle répète exactement les mêmes mots : « Maman ? Maman, t’es où ? »",
     choix: [
       {
         label: 'Monter voir',
@@ -387,7 +387,7 @@ export const SCENES_RENCONTRES = {
       },
       {
         label: 'Passer vite',
-        texte: "Tu presses le pas, mais la voix te suit longtemps, toujours pareille et toujours à la même hauteur.",
+        texte: "Tu presses le pas, mais la voix te suit longtemps, toujours sur le même ton.",
         effets: {}, suivant: FIN,
       },
     ],
@@ -415,7 +415,7 @@ export const SCENES_RENCONTRES = {
     texte: "Une femme est assise contre la vitrine d’une boulangerie, les mains pressées sur son ventre. Entre ses doigts, tu vois une morsure nette et profonde, déjà noire sur les bords. Elle te suit des yeux, sans peur.\n\n« Approche. Je mords pas. Pas encore. »\n\nElle pousse son sac vers toi du bout du pied.\n\n« Prends-le. Mais avant de partir… fais en sorte que je ne me relève pas. S’il te plaît. »",
     choix: [
       {
-        label: 'Tenir sa main, et faire vite',
+        label: 'Lui tenir la main et faire vite',
         texte: "Elle te serre les doigts une fois, fort, comme pour dire merci, et tu fais ce qu’elle te demande pendant qu’elle regarde le ciel.\n\nDans son sac, il y a une photo d’elle avec un homme et deux enfants, sur une plage. Tu la gardes, parce qu’il faut bien que quelqu’un se souvienne.",
         effets: { objets: [['barre_cereales', 1], ['bouteille_eau', 1], ['photo_famille', 1]], sta: -10, tempsMin: 15, flag: 'rv_derniere_volonte' },
         suivant: FIN,
@@ -448,13 +448,13 @@ export const SCENES_RENCONTRES = {
       {
         label: 'Échanger de l’alcool contre un kit de suture',
         besoin: { objet: 'alcool_fort' },
-        texte: "Ses yeux s’allument quand il voit l’étiquette. « Ça, ça soigne ce que les médocs soignent pas. » Le kit passe la grille, encore sous blister.",
+        texte: "Ses yeux s’allument quand il voit l’étiquette. « Ça, ça soigne ce que les médocs soignent pas. » Il te passe le kit entre les barreaux, encore sous emballage.",
         effets: { objets: [['alcool_fort', -1], ['kit_suture', 1]], tempsMin: 5 }, suivant: 'rv_marchand_grille',
       },
       {
         label: 'Échanger deux conserves contre des piles',
         besoin: { objet: ['conserve_haricots', 2] },
-        texte: "« La bouffe, toujours. » Deux paires de piles roulent sur le trottoir. « Elles sont testées. Enfin, presque. »",
+        texte: "« La bouffe, ça m’intéresse toujours. » Deux paires de piles roulent sur le trottoir. « Elles sont testées. Enfin, presque. »",
         effets: { objets: [['conserve_haricots', -2], ['piles', 2]], tempsMin: 5 }, suivant: 'rv_marchand_grille',
       },
       {
@@ -483,7 +483,7 @@ export const SCENES_RENCONTRES = {
       {
         label: 'Lui donner de l’alcool',
         besoin: { objet: 'alcool_fort' },
-        texte: "Il boit longtemps au goulot. « Ça, c’est un ami. » Il pousse son sac vers toi du pied. « Prends-le, et va-t’en avant que je me transforme. »",
+        texte: "Il boit longtemps au goulot. « Ça, ça fait du bien. » Il pousse son sac vers toi du pied. « Prends-le, et va-t’en avant que je me transforme. »",
         effets: { objets: [['alcool_fort', -1], ['conserve_raviolis', 2]], butin: { table: 'voyage.cadavre', n: 1 }, flag: 'rv_mordu_aide' }, suivant: FIN,
       },
       {
@@ -512,7 +512,7 @@ export const SCENES_RENCONTRES = {
           effets: { butin: { table: 'voyage.voiture', n: 3 }, tempsMin: 30 }, suivant: FIN,
         },
         echec: {
-          texte: "À la quatrième voiture, la ceinture de sécurité retient encore le conducteur, mais plus ses bras. Et deux portières plus loin, une autre s’ouvre.",
+          texte: "À la quatrième voiture, la ceinture de sécurité retient encore le conducteur, mais plus ses bras. Deux voitures plus loin, une portière s’ouvre.",
           effets: { butin: { table: 'voyage.voiture', n: 1 }, tempsMin: 15, combat: { zombies: ['errant', 'errant'], surprise: true } }, suivant: COMBAT,
         },
       },
@@ -543,12 +543,12 @@ export const SCENES_RENCONTRES = {
       },
       {
         label: 'Marcher au milieu du troupeau',
-        texte: "Au milieu des brebis, ton odeur se noie dans la leur, et pour la première fois depuis des jours, plus rien ne te regarde. Le troupeau va à peu près dans ta direction, alors tu te laisses porter.",
+        texte: "Au milieu des brebis, ton odeur se noie dans la leur, et pour la première fois depuis des jours, plus rien ne te regarde. Le troupeau va à peu près dans ta direction, alors tu avances avec lui.",
         effets: { tempsMin: 20, fatigue: 3 }, suivant: FIN,
       },
       {
         label: 'Passer ton chemin',
-        texte: "Tu les laisses brouter la fin du monde.",
+        texte: "Tu les laisses brouter tranquillement et tu reprends la route.",
         effets: {}, suivant: FIN,
       },
     ],
@@ -686,7 +686,7 @@ export const SCENES_RENCONTRES = {
         label: 'Tirer de l’eau',
         test: { chance: 0.85 },
         reussite: {
-          texte: "Le seau remonte en grinçant, plein à ras bord, et tu bois d’abord à longues gorgées froides qui te font mal aux dents.",
+          texte: "Le seau remonte en grinçant, plein à ras bord, et tu bois à grandes gorgées. L’eau est si froide qu’elle te fait mal aux dents.",
           effets: { soif: 30, tempsMin: 10 }, suivant: 'rv_puits_remplir',
         },
         echec: {
@@ -782,7 +782,7 @@ export const SCENES_RENCONTRES = {
 
   rv_campement: {
     illu: 'pinede', musique: 'calme', orateur: null,
-    texte: "Sous des pins, tu trouves un campement : une tente affaissée, un feu éteint aux cendres encore tièdes, et une casserole avec un fond de café.\n\nQui que ce soit, ils sont partis il y a moins d’une heure, à moins qu’ils ne soient pas loin.",
+    texte: "Sous des pins, tu trouves un campement : une tente affaissée, un feu éteint aux cendres encore tièdes, et une casserole avec un fond de café.\n\nLes occupants ont dû partir il y a moins d’une heure. Ils sont peut-être encore dans les parages.",
     choix: [
       {
         label: 'Fouiller vite',
@@ -792,7 +792,7 @@ export const SCENES_RENCONTRES = {
           effets: { butin: { table: 'voyage.campement', n: 2 }, tempsMin: 10 }, suivant: FIN,
         },
         echec: {
-          texte: "Une voix s’élève derrière toi : « Pose ça. » Tu sens un canon froid sur ta nuque, et tu poses ce que tu tenais. Ils te laissent partir les mains vides, et tu comprends que c’est une gentillesse.",
+          texte: "Une voix s’élève derrière toi : « Pose ça. » Tu sens un canon froid sur ta nuque, et tu poses ce que tu tenais. Ils te laissent partir les mains vides, et tu te dis que tu t’en tires à bon compte.",
           effets: { tempsMin: 10, sta: -10 }, suivant: FIN,
         },
       },
@@ -803,7 +803,7 @@ export const SCENES_RENCONTRES = {
       },
       {
         label: 'Passer ton chemin',
-        texte: "Chacun ses cendres.",
+        texte: "Tu laisses leurs affaires et tu poursuis ta route.",
         effets: {}, suivant: FIN,
       },
     ],
@@ -820,7 +820,7 @@ export const SCENES_RENCONTRES = {
       },
       {
         label: 'Repartir',
-        texte: "Tu recules jusqu’à la route, et il ne te quitte pas des yeux, ni du canon.",
+        texte: "Tu recules jusqu’à la route, et il te suit du regard en gardant son fusil pointé sur toi.",
         effets: {}, suivant: FIN,
       },
     ],
@@ -830,7 +830,7 @@ export const SCENES_RENCONTRES = {
     texte: "« Bon. » Il baisse à peine le fusil. « J’ai de l’eau, de l’huile et des olives. J’ai pas de médicaments et pas de cartouches. Tu vois où je veux en venir. »",
     choix: [
       {
-        label: 'Échanger deux cartouches contre eau et huile',
+        label: 'Échanger deux cartouches contre de l’eau et de l’huile',
         besoin: { objet: ['cartouches', 2] },
         texte: "Il les glisse dans la poche de sa veste sans les regarder, et trois bouteilles d’eau et un litre d’huile passent par-dessus le portail.",
         effets: { objets: [['cartouches', -2], ['bouteille_eau', 3], ['huile_olive', 1]] }, suivant: 'rv_mas_fortifie_2',

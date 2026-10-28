@@ -12,13 +12,13 @@ export const QUETES = {
     etapes: {
       // le premier soir : du bois mort pour le tas (René le demande), puis un coin pour dormir (RETOURS_JOUEUR #63)
       bois:       { objectif: 'Ramasser du bois mort au pied des pins et le poser sur le tas, près du creux, avant la nuit', lieu: 'bois_barben',
-                    pensee: 'René veut du bois mort sur le tas, près du creux, avant qu’il fasse noir. Il y a des branches au pied des pins.' },
+                    pensee: 'René m’a demandé de ramasser du bois mort et de le poser sur le tas, près du creux, avant qu’il fasse nuit. Il y a des branches au pied des pins.' },
       panne:      { objectif: 'Te trouver un coin pour dormir près du camp, là où René veille', lieu: 'bois_barben',
                     pensee: 'Le moteur ne repartira pas ce soir. Il faut que je me trouve un coin pour dormir, pas loin de René.' },
-      vivres:     { objectif: 'Rapporter à manger du mas, en bas du sentier du vallon, et le ranger dans la caisse du camp', lieu: 'bois_barben',
+      vivres:     { objectif: 'Rapporter des vivres du mas, en bas du sentier du vallon, et les ranger dans la caisse du camp', lieu: 'bois_barben',
                     pensee: 'Il faut trouver à manger pour tout le monde. René parle d’un mas, en bas du vallon.' },
-      camp:       { objectif: 'Monter le camp : un feu dans le creux sous les pins, une ligne de boîtes sur un fil, un abri', lieu: 'bois_barben',
-                    pensee: 'Si on reste, il faut un vrai camp. Un feu qu’on ne voit pas, des boîtes sur un fil, un abri pour Laura.' },
+      camp:       { objectif: 'Monter le camp : un feu dans le creux sous les pins, des boîtes de conserve accrochées à un fil, un abri', lieu: 'bois_barben',
+                    pensee: 'Si on reste, il faut un vrai camp. Un feu à l’abri des regards, des boîtes sur un fil, un abri pour Laura.' },
       nuit:       { objectif: 'Passer la nuit au camp', lieu: 'bois_barben' },
       vigie:      { objectif: 'Monter à la vigie par le pare-feu, au nord de la piste, et appeler à l’aide avec la radio', lieu: 'vigie_barben',
                     pensee: 'La vigie, en haut du pare-feu. Si la radio marche, quelqu’un viendra peut-être nous chercher.' },
@@ -97,7 +97,7 @@ export const QUETES = {
     etapes: {
       debut:   { objectif: 'Retrouver Rudy et son camion : il voulait prendre l’autoroute à Lançon', lieu: 'lancon' },
       gasoil:  { objectif: 'Rapporter vingt litres de gasoil à Rudy, au péage de Lançon', lieu: 'lancon' },
-      fin:     { objectif: 'Tu as réglé ton compte avec Rudy' },
+      fin:     { objectif: 'Tu as décidé du sort de Rudy' },
     },
   },
 };

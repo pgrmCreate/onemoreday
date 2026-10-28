@@ -274,7 +274,7 @@ fig(n1, 'cal_herve', 35, 15, 'Hervé', S.pere, Math.PI / 2, [
   'Je tiens les comptes : ce qui entre, ce qui sort, qui monte la garde. Ici, rien ne se perd.',
   'On n’a pas fermé la porte aux gens de passage. On leur demande seulement de montrer leurs bras.']);
 fig(n1, 'cal_yasmine', 45, 16, 'Yasmine', S.mere, -Math.PI / 2, [
-  'Le puits est au fond de la grotte, derrière la grille du jardin. L’eau est froide, et elle ne s’arrête pas.']);
+  'Le puits est au fond de la grotte, derrière la grille du jardin. L’eau est froide, et le puits ne tarit pas.']);
 fig(n1, 'cal_aurelien', 30, 22, 'Aurélien', S.ado, 0, [
   'Je monte le bois du cirque. Quarante fagots par jour, et l’hiver n’est pas encore là.']);
 
@@ -285,7 +285,7 @@ n2.lumiere('bougie', 36.5 + DX, 16.5 + DY);
 fig(n2, 'cal_odette', 16, 15, 'Odette', S.vieille, Math.PI / 2, [
   'Chut. Ceux de la garde de nuit dorment encore.']);
 fig(n2, 'cal_timeo', 15, 18, 'Timéo', S.enfant, -Math.PI / 2, [
-  'Mon lit, c’est celui du coin. Avant, c’était une cave à vin, il paraît.']);
+  'Mon lit, c’est celui du coin. Avant, cette pièce servait de cave à vin, il paraît.']);
 fig(n2, 'cal_sandrine', 27, 15, 'Sandrine', S.mere, Math.PI / 2, [
   'Ici, on dort à quatre familles. On s’entend mieux qu’au village, finalement.',
   'Si tu restes pour la nuit, tu prends une couverture dans la caisse, et tu la rends le matin.']);

@@ -58,7 +58,7 @@ const VIE = {
       { a: [42.65, 16.45], dir: PI, geste: 'meca', outil: 'cle', ms: [7000, 13000], poids: 3, sons: { n: ['cle', 'metal', 'metal'], chaque: [800, 2400], vol: 0.85, portee: 16 } },
       { a: [40.3, 17.6], dir: -PI / 2, geste: 'fouille', ms: [3000, 5000], poids: 1, sons: { n: ['metal', 'fouille'], chaque: [900, 1800], vol: 0.55 } },
       { a: [40.85, 14.35], dir: PI / 2, geste: 'verifier', son: 'demarreur', ms: [3200, 4200], poids: 0.8, bulle: ['Démarre, saloperie. Démarre…', 'Allez… allez…'] },
-      { a: [43.7, 15.1], regard: [52, 19], geste: 'bras', ms: [3000, 5000], poids: 0.8, son: 'outil_tombe', bulle: ['On repart dès que je trouve.'] },
+      { a: [43.7, 15.1], regard: [52, 19], geste: 'bras', ms: [3000, 5000], poids: 0.8, son: 'outil_tombe', bulle: ['On repart dès que j’ai trouvé la panne.'] },
     ],
     nuit: { a: [40.6, 17.5], dir: PI / 2 + 0.5, pose: 'assis', ms: [30000, 60000] },
   },
@@ -209,7 +209,7 @@ export default plan({
   // ─── le groupe, avant l'attaque ───
   e.pnj('bb_thierry', 43, 15, { nom: 'Thierry', style: S.thierry, dir: Math.PI,
     vie: VIE.thierry, si: { pasFlag: ['camp_attaque', 'vivres_faits'] },
-    repliques: ['La pompe à gasoil, je te dis. Ou le filtre. Sans outils, va savoir.', 'Démarre, saloperie. Démarre…', 'On repart dès que je trouve. On ne va pas camper ici une semaine.'] });
+    repliques: ['La pompe à gasoil, je te dis. Ou le filtre. Sans outils, va savoir.', 'Démarre, saloperie. Démarre…', 'On repart dès que j’ai trouvé la panne. On ne va pas camper ici une semaine.'] });
   e.pnj('bb_thierry', 40, 17, { nom: 'Thierry', style: S.thierry, dir: Math.PI / 2, vie: VIE.thierry_assis, si: { flag: 'vivres_faits', pasFlag: 'camp_attaque' },
     repliques: ['…', 'La pompe est morte. Laisse-moi.', 'On aurait dû rester sur la nationale.'] });
   e.pnj('bb_martine', 38, 22, { nom: 'Martine', style: S.martine, dir: 0, si: AVANT,

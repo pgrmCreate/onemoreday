@@ -27,7 +27,7 @@ export const RENCONTRES_HISTOIRE = [
   {
     id: 'rh_autoradio', poids: 2, type: 'ambiance', echelle: 'region', zones: null, nuit: null, dangerMin: 0, unique: true,
     si: { flag: 'refuge_fui', pasFlag: 'radio_coupee' }, illu: 'plaine_route',
-    texte: 'Au bord de la route, une voiture est restée portières ouvertes, avec l’autoradio allumé sur ce qui reste de la batterie. En passant, tu entends une voix de jeune fille, faible et grésillante : « … Ici le Refuge de Miramas-le-Vieux. Nous accueillons les survivants… » La voix d’Inès appelle toujours les gens vers un village plein de morts.',
+    texte: 'Au bord de la route, une voiture est restée portières ouvertes, avec l’autoradio encore allumé grâce aux dernières réserves de la batterie. En passant, tu entends une voix de jeune fille, faible et grésillante : « … Ici le Refuge de Miramas-le-Vieux. Nous accueillons les survivants… » La voix d’Inès appelle toujours les gens vers un village plein de morts.',
   },
   // Après la frappe : les traces du chlore, et la règle redite (P10).
   {

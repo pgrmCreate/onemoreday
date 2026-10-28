@@ -175,7 +175,7 @@ export default plan({
   e.lumiere('lanterne', inf.x0 + 4, inf.y0 + 1, { r: 4, i: 0.55 });
   e.pnj('bastien', inf.x0 + 2, inf.y0 + 4, { marqueur: 'bastien' });
   e.pnj('ref_noa', inf.x0 + 1, inf.y0 + 3, { nom: 'Noa', style: S.enfant, dir: Math.PI, si: { pasFlag: ['siege_commence', 'familles_parties'] },
-    repliques: ['(Assise au bord de son lit, elle tousse longtemps, puis elle te regarde.) T’es le nouveau ?', '(Elle a les joues rouges et le souffle qui siffle.) Maman dit que ça va passer.'] });
+    repliques: ['(Assise au bord de son lit, elle tousse longtemps, puis elle te regarde.) C’est toi qui viens d’arriver ?', '(Elle a les joues rouges et le souffle qui siffle.) Maman dit que ça va passer.'] });
 
   // ═══════════ La maison de la radio (Inès) ═══════════
   const rad = e.piece(33, 40, 10, 8, { nom: 'La maison de la radio', sol: 'tomettes', mur: 'pierre', sombre: 1, sansMorts: true, toit: 'tuiles',
@@ -234,14 +234,14 @@ export default plan({
   e.pnj('fernand', 42, 24, { marqueur: 'fernand' });
   e.pnj('karine', sc.x0 + 3, sc.y0 + 2, { marqueur: 'karine' });
   e.pnj('ref_yohan', pass.x0 + 3, pass.y0 + 1, { nom: 'Yohan', style: S.jeune, dir: Math.PI, si: VIVANT,
-    repliques: ['Je t’ai gardé dans ma lampe pendant cinq minutes, l’autre soir. Ne le prends pas mal.', 'La nuit, on tourne sur le rempart : deux heures chacun.'] });
+    repliques: ['L’autre soir, j’ai gardé ma lampe braquée sur toi pendant cinq minutes. Ne le prends pas mal.', 'La nuit, on tourne sur le rempart : deux heures chacun.'] });
   e.pnj('ref_malik', sc.x0 + 7, sc.y0 + 3, { nom: 'Malik', style: S.vieux, dir: Math.PI / 2, si: VIVANT,
     repliques: ['Pois chiches, riz, et ce que Fernand ramène des collines. Ne te plains pas du menu.', 'Avant, j’avais un restaurant à Istres. Trente couverts le midi.'] });
   e.pnj('ref_celine', 31, 28, { nom: 'Céline', style: S.karine, dir: -Math.PI / 2, si: VIVANT,
     repliques: ['Vingt seaux par jour, et on fait bouillir. Toujours.', 'Théo, lâche ce bâton, tu vas te crever un œil !'] });
   e.pnj('ref_theo', 28, 30, { nom: 'Théo', style: S.enfant, dir: 0, si: VIVANT, repliques: ['Tu as tué combien de morts, toi ?', 'Rudy m’a promis de m’apprendre à conduire le camion.'] });
   e.pnj('ref_paul', egl.x0 + 9, egl.y0 + 4, { nom: 'Paul', style: S.vieux, dir: Math.PI / 2, si: VIVANT, repliques: ['Belote ? Non ? Tant pis.', 'Je suis né dans cette rue. Je mourrai dans cette rue, mais pas tout de suite.'] });
-  e.pnj('ref_josette', egl.x0 + 10, egl.y0 + 5, { nom: 'Josette', style: S.vieille, dir: -Math.PI / 2, si: VIVANT, repliques: ['Je tricote des chaussettes pour l’hiver. Il faudra bien un hiver, non ?'] });
+  e.pnj('ref_josette', egl.x0 + 10, egl.y0 + 5, { nom: 'Josette', style: S.vieille, dir: -Math.PI / 2, si: VIVANT, repliques: ['Je tricote des chaussettes pour l’hiver. L’hiver finira bien par arriver, non ?'] });
   e.pnj('ref_agnes', egl.x1 - 2, egl.y0 + 5, { nom: 'Sœur Agnès', style: S.soeur, dir: Math.PI, si: VIVANT,
     repliques: ['La cloche ne sonne plus, sauf pour l’alarme. Même le dimanche.', 'Je prie pour les vivants. Pour les autres, je ne sais plus quoi dire.'] });
 

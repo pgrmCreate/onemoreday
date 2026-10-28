@@ -102,7 +102,7 @@ e.pnj('gra_meunier', 29, 6, { nom: 'Édouard, le meunier', dir: Math.PI / 2,
   style: { manteau: '#5a5040', pantalon: '#2e2a24', cheveux: '#d8d4cc', coiffure: 'court' },
   repliques: ['J’ai quatre-vingts ans, et ce moulin en a trois cents. Il tient mieux que moi.',
     'La roue tourne jour et nuit. Les morts vont la regarder sur l’autre berge, et pendant ce temps, ils ne regardent pas mes fenêtres.',
-    'Je cache qui frappe doucement. Ceux qui cognent, je les laisse dehors.'] });
+    'J’abrite ceux qui frappent doucement à la porte. Ceux qui cognent, je les laisse dehors.'] });
 e.pnj('gra_noa', 28, 4, { nom: 'Noa', si: CACHEES, dir: Math.PI / 2,
   style: { manteau: '#c8a0b0', pantalon: '#3a3440', cheveux: '#3a2414', coiffure: 'long', taille: 0.7 },
   repliques: ['Maman dit qu’il ne faut pas faire de bruit.', 'J’ai chaud et j’ai froid en même temps. C’est bizarre.'] });

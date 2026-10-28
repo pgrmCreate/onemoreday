@@ -43,7 +43,7 @@ export const MISSIONS = {
   // Acceptée au début de la partie (js/main.js) ; close sans un mot le lendemain matin si le tas n'est pas fait (bb_matin).
   m_bois: {
     titre: 'Le tas de bois',
-    resume: 'René veut du bois mort sur le tas, près du creux, avant qu’il fasse noir. Pas de feu ce soir, la lumière se voit de loin, mais demain on en aura besoin.',
+    resume: 'René m’a demandé de ramasser du bois mort et de le poser sur le tas, près du creux, avant qu’il fasse nuit. Pas de feu ce soir, la lumière se voit de loin, mais demain on en aura besoin.',
     etapes: [
       { type: 'deposer', lieu: 'bois_barben', marqueur: 'tas_bois', objets: { ids: ['branche', 'brindilles', 'buche'], n: 5 }, texte: 'Poser du bois mort sur le tas, près du creux',
         libelle: 'Poser du bois sur le tas',
@@ -55,7 +55,7 @@ export const MISSIONS = {
   },
   m_vivres: {
     titre: 'La caisse du camp',
-    resume: 'Il n’y a plus rien à manger pour sept. Je dois rapporter du mas du vallon de quoi tenir quelques jours, et le ranger dans la caisse du camp, près du fourgon.',
+    resume: 'Il ne reste presque rien à manger pour nous sept. Je dois rapporter du mas du vallon de quoi tenir quelques jours, et le ranger dans la caisse du camp, près du fourgon.',
     etapes: [
       { type: 'deposer', lieu: 'bois_barben', marqueur: 'caisse_camp', points: 90, texte: 'Ranger de quoi manger dans la caisse du camp',
         libelle: 'Ranger à manger dans la caisse du camp',
@@ -88,7 +88,7 @@ export const MISSIONS = {
   // ─────────────── TENIR : la garde de la deuxième nuit (acte I, scène ref_garde) ───────────────
   m_garde: {
     titre: 'La garde à la brèche',
-    resume: 'Je monte la garde à la brèche du rempart nord avec Rudy, de neuf heures du soir à deux heures du matin. On ne dort pas, on n’allume pas, et on ne quitte pas son poste.',
+    resume: 'Je monte la garde à la brèche du rempart nord avec Rudy, de neuf heures du soir à deux heures du matin. On ne dort pas, on n’allume aucune lumière, et on ne quitte pas son poste.',
     etapes: [
       { type: 'tenir', lieu: 'miramas_le_vieux', minutes: 300, quitter: 'echec', vagues: { chaqueMin: 35, n: [1, 2], proche: true },
         texte: 'Monter la garde à la brèche jusqu’à deux heures' },
@@ -96,7 +96,7 @@ export const MISSIONS = {
     fin: {
       texte: 'À deux heures, tu entends des pas dans la ruelle, et deux silhouettes sortent du noir : Yohan, son fusil en travers des épaules, et Malik, avec un thermos de tisane qu’il te met dans les mains sans un mot.\n\nRudy se lève en faisant craquer son dos. Il passe devant toi, s’arrête, et il grogne quelque chose qui ressemble à un merci, puis il s’en va dormir sans se retourner.\n\nLa tisane est tiède et trop sucrée. C’est la meilleure chose que tu aies bue depuis trois semaines.',
       effets: { flag: 'garde_faite',
-        journal: 'J’ai tenu la garde à la brèche jusqu’à deux heures, avec Rudy. Yohan et Malik nous ont relevés.' },
+        journal: 'J’ai monté la garde à la brèche jusqu’à deux heures, avec Rudy. Yohan et Malik nous ont relevés.' },
     },
     echec: {
       texte: 'Le lendemain matin, tout le Refuge sait que tu as quitté ton poste pendant la nuit.\n\nUn mort est passé par la brèche pendant que tu n’y étais pas, et il est descendu dans le bas du village. Céline l’a trouvé au matin dans la ruelle du lavoir, en allant chercher du linge. Rudy l’a achevé à coups de marteau, mais il a eu le temps de griffer Céline au bras. Ce n’est qu’une griffure, et Bastien jure qu’une griffure ne transmet rien, mais Céline la regarde toutes les dix minutes, et tout le monde la regarde avec elle.\n\nPersonne ne te dit rien. C’est pire.',
@@ -132,7 +132,7 @@ export const MISSIONS = {
     si: { jourMin: 2 },
     offre: {
       lieu: 'place_de_gaulle', piece: 'Le tabac-presse', pres: 7,
-      texte: 'Sous les platanes de la place du Général-de-Gaulle, le marché du mercredi est resté monté. Les bâches claquent au vent au-dessus des cageots, et les morts se tiennent entre les étals comme s’ils attendaient leur tour.\n\nAu-dessus du tabac-presse, une fenêtre s’entrouvre, et une vieille femme se penche avec un torchon à la main.\n\n« Vous, là ! Je m’appelle Odile. Ça fait des jours que je les regarde tourner sous ma fenêtre. » Elle baisse la voix. « Si vous videz la place, tous, jusqu’au dernier, je vous ouvre ma réserve. Il me reste des conserves et des piles, et je n’ai plus la force de descendre. »',
+      texte: 'Sous les platanes de la place du Général-de-Gaulle, le marché du mercredi est resté monté. Les bâches claquent au vent au-dessus des cageots, et les morts se tiennent entre les étals comme s’ils attendaient leur tour.\n\nAu-dessus du tabac-presse, une fenêtre s’entrouvre, et une vieille femme se penche avec un torchon à la main.\n\n« Vous, là ! Je m’appelle Odile. Ça fait des jours que je les regarde tourner sous ma fenêtre. » Elle baisse la voix. « Si vous débarrassez la place de tous ces morts, jusqu’au dernier, je vous ouvre ma réserve. Il me reste des conserves et des piles, et je n’ai plus la force de descendre. »',
       accepter: 'Promettre de vider la place',
       refuser: 'Passer son chemin',
     },
@@ -142,7 +142,7 @@ export const MISSIONS = {
     ],
     nettoye: 4,
     fin: {
-      texte: 'La porte du tabac s’ouvre sur une chaîne de sécurité, puis la chaîne tombe. Odile te regarde longtemps, comme pour vérifier que tu es bien vivant{|e}, et elle te tend un carton de supermarché.\n\n« Le marché, c’était mon mari qui le tenait, le stand des olives, au fond de la place. » Elle renifle. « Maintenant, je pourrai aller jusqu’à la fontaine. »\n\nPendant quelques jours, la place restera calme : les morts du quartier ne savent pas encore qu’elle est vide.',
+      texte: 'La porte du tabac s’ouvre sur une chaîne de sécurité, puis la chaîne tombe. Odile te regarde longtemps, comme pour vérifier que tu es bien vivant{|e}, et elle te tend un carton de supermarché.\n\n« Mon mari tenait le stand d’olives au fond de la place. » Elle renifle. « Maintenant, je pourrai aller jusqu’à la fontaine. »\n\nPendant quelques jours, la place restera calme : les morts du quartier ne savent pas encore qu’elle est vide.',
       effets: { objets: [['conserve_haricots', 2], ['conserve_thon', 1], ['olives', 1], ['piles', 2], ['allumettes', 1]], xp: { force: 15 },
         journal: 'J’ai vidé la place du Général-de-Gaulle. Odile m’a donné ce qui lui restait, et la place restera calme quelques jours.' },
     },
@@ -269,11 +269,11 @@ export const MISSIONS = {
   // ─────────────── DISCRÉTION, PUIS L'ACTION : le coffre du Leclerc ───────────────
   m_coffre: {
     titre: 'Le coffre de la direction',
-    resume: 'Au Leclerc des Viougues, les morts dorment debout dans les rayons. Le coffre de la direction n’a jamais été vidé, mais il sonne quand on l’ouvre.',
+    resume: 'Au Leclerc des Viougues, les morts dorment debout dans les rayons. Le coffre de la direction n’a jamais été vidé, mais une alarme sonne quand on l’ouvre.',
     si: { jourMin: 2 },
     offre: {
       lieu: 'leclerc', piece: 'L’hypermarché', pres: 3,
-      texte: 'Sur les portes vitrées du Leclerc des Viougues, quelqu’un a écrit au feutre rouge, en lettres capitales : « ILS DORMENT DEBOUT DANS LES RAYONS. NE COUREZ PAS. NE PARLEZ PAS. » En dessous, plus petit : « Le coffre de la direction n’a jamais été vidé. La combinaison est sur le bureau. Il sonne quand on l’ouvre. »\n\nÀ travers la vitre, dans la pénombre des allées, tu vois des dizaines de silhouettes immobiles, la tête basse, entre les gondoles.',
+      texte: 'Sur les portes vitrées du Leclerc des Viougues, quelqu’un a écrit au feutre rouge, en lettres capitales : « ILS DORMENT DEBOUT DANS LES RAYONS. NE COUREZ PAS. NE PARLEZ PAS. » En dessous, plus petit : « Le coffre de la direction n’a jamais été vidé. La combinaison est sur le bureau. Une alarme sonne quand on l’ouvre. »\n\nÀ travers la vitre, dans la pénombre des allées, tu vois des dizaines de silhouettes immobiles, la tête basse, entre les gondoles.',
       accepter: 'Tenter le coffre',
       refuser: 'Ne pas entrer',
     },
@@ -292,7 +292,7 @@ export const MISSIONS = {
         choix: {
           texte: 'Le coffre est scellé dans le mur, sous le bureau. La combinaison est écrite au feutre au dos du sous-main, comme promis. Sur le flanc du coffre, un boîtier gris est vissé, et un fil en part pour monter jusqu’au plafond : c’est la sirène.',
           vite: { label: 'Composer la combinaison et ouvrir tout de suite', bruit: 'la sirène réveillera le magasin',
-            journal: 'J’ai ouvert le coffre du Leclerc à la combinaison, et la sirène a réveillé tout le magasin.' },
+            journal: 'J’ai ouvert le coffre du Leclerc avec la combinaison, et la sirène a réveillé tout le magasin.' },
           silence: { tag: 'visser', ms: 40000, bruitAction: 2, bruit: 'presque sans bruit',
             label: 'Dévisser le boîtier et couper la sirène d’abord', reprendre: 'Finir de couper la sirène', libelle: 'Tu coupes la sirène du coffre',
             sansOutil: 'Pour couper la sirène avant d’ouvrir, il te faudrait de quoi dévisser le boîtier, un tournevis par exemple.',

@@ -59,11 +59,11 @@ export default plan({
   e.entree('cour', 31, 22);
   e.semer('cendres', 30, 18, 3, 3, 3); e.semer('papiers', 20, 13, 23, 12, 4);
   // le camp : M. Vidal au feu, et huit lycéens
-  e.pnj('emp_vidal', 29, 19, { nom: 'M. Vidal', style: S.adulte, dir: 0, repliques: ['Ici, on fait cours tous les matins. L’histoire, surtout : Salon a déjà tenu des sièges.', 'Tu dors où tu veux, mais tu respectes l’ardoise. Les règles sont les mêmes pour tout le monde.', 'Ils avaient quinze ans le jour du Mercredi. Je n’allais pas les laisser seuls au lycée.', 'Une radio, dans la plaine, parle d’un pont sur la Durance. Nous ne sommes pas assez pour traverser tout ça à pied.'] });
-  e.pnj('emp_feu_1', 33, 20, { nom: 'Maëlys', style: S.doudoune, dir: Math.PI, repliques: ['On fait tourner le feu toute la nuit. Deux heures chacun.', 'Si tu as des piles, Vidal te dira merci. Il ne le dit jamais.'] });
+  e.pnj('emp_vidal', 29, 19, { nom: 'M. Vidal', style: S.adulte, dir: 0, repliques: ['Ici, on fait cours tous les matins. L’histoire, surtout : Salon a déjà tenu des sièges.', 'Tu dors où tu veux, mais tu respectes les règles écrites sur l’ardoise. Les règles sont les mêmes pour tout le monde.', 'Ils avaient quinze ans le jour du Mercredi. Je n’allais pas les laisser seuls au lycée.', 'Une radio, dans la plaine, parle d’un pont sur la Durance. Nous ne sommes pas assez pour traverser tout ça à pied.'] });
+  e.pnj('emp_feu_1', 33, 20, { nom: 'Maëlys', style: S.doudoune, dir: Math.PI, repliques: ['On se relaie pour entretenir le feu toute la nuit. Deux heures chacun.', 'Si tu as des piles, Vidal te dira merci. Il ne le dit jamais.'] });
   e.pnj('emp_feu_2', 30, 21, { nom: 'Kylian', style: S.sweat_rouge, dir: -Math.PI / 2, repliques: ['Pois chiches ce soir. Et demain. Et après-demain.', 'Le réchaud ? Plus de gaz depuis lundi.'] });
   e.pnj('emp_feu_3', 33, 18, { nom: 'Sami', style: S.parka, dir: Math.PI * 0.8, repliques: ['Tu viens d’où, toi ? Personne ne monte jusqu’ici.', 'Mon frère est en bas, au lycée. Enfin, il était.'] });
-  e.pnj('emp_table_1', 26, 14, { nom: 'Chloé', style: S.sweat_gris, dir: Math.PI / 2, repliques: ['On épluche ce qu’on trouve. Même les orties.', 'Règle numéro trois : on fait bouillir l’eau. Toujours.'] });
+  e.pnj('emp_table_1', 26, 14, { nom: 'Chloé', style: S.sweat_gris, dir: Math.PI / 2, repliques: ['On cuisine ce qu’on trouve. Même les orties.', 'Règle numéro trois : on fait bouillir l’eau. Toujours.'] });
   e.pnj('emp_table_2', 27, 19, { nom: 'Yanis', style: S.pull, dir: Math.PI / 2, repliques: ['Le couteau, tu le rends quand tu as fini.', 'Vidal note tout, même les patates.'] });
   e.pnj('emp_lecteur', 35, 22, { nom: 'Mathis', style: S.parka, dir: Math.PI, repliques: ['« Le Comte de Monte-Cristo ». J’en suis au tome deux. On a le temps.', 'Chut. Je lis.'] });
   e.pnj('emp_seau', 34, 15, { nom: 'Léa', style: S.sweat_rouge, dir: -Math.PI / 2, repliques: ['Le puits est dans le jardin, derrière la galerie.', 'Vingt seaux par jour. Je les compte.'] });
@@ -80,7 +80,7 @@ export default plan({
   e.escalier('monte', po.x0, po.y0 + 1, 2, 4);
   e.objet('barriere', 33, 35, { w: 2, h: 1, nom: 'la grille de chantier', conteneur: false });
   e.objet('palette', 34, 33, { w: 2, h: 1, nom: 'les palettes', conteneur: false });
-  e.pnj('emp_hugo', 30, 34, { nom: 'Hugo', style: S.casque, dir: Math.PI / 2, repliques: ['On ouvre à qui Vidal dit d’ouvrir.', 'Le sabre ? Il vient du musée. Il coupe encore.'] });
+  e.pnj('emp_hugo', 30, 34, { nom: 'Hugo', style: S.casque, dir: Math.PI / 2, repliques: ['On ouvre seulement aux gens que Vidal nous dit de laisser entrer.', 'Le sabre ? Il vient du musée. Il coupe encore.'] });
   e.pnj('emp_mehdi', 33, 32, { nom: 'Mehdi', style: S.casque, dir: Math.PI / 2, repliques: ['Pas de morsure ? Montre tes bras.', 'La nuit, on entend la ville. Ça ne s’arrête jamais.'] });
 
   // --- la cour Nord, Jardin des Simples (26 × 6, dehors) ---
@@ -106,7 +106,7 @@ export default plan({
     portes: [{ cote: 'e', a: 3, nom: 'la porte du dortoir' }] });
   for (let k = 0; k < 6; k++) { e.objet('matelas', dor.x0 + k * 2, dor.y0, { nom: 'un matelas' }); e.objet('matelas', dor.x0 + k * 2, dor.y1 - 1, { nom: 'un matelas' }); }
   e.semer('papiers', dor.x0, dor.y0 + 2, 12, 4, 3);
-  e.pnj('emp_dortoir', dor.x0 + 6, dor.y0 + 4, { nom: 'Nora', style: S.pull, dir: Math.PI / 2, repliques: ['Chut. Ceux de la nuit dorment.', 'Si Vidal t’accepte, tu auras un matelas. Le dernier, près de la fenêtre.'] });
+  e.pnj('emp_dortoir', dor.x0 + 6, dor.y0 + 4, { nom: 'Nora', style: S.pull, dir: Math.PI / 2, repliques: ['Chut. Ceux qui ont monté la garde cette nuit dorment.', 'Si Vidal t’accepte, tu auras un matelas. Le dernier, près de la fenêtre.'] });
 
   // --- le réfectoire et la salle de classe ---
   const ref = e.piece(6, 21, 14, 8, { nom: 'Le réfectoire', sol: 'tomettes', mur: 'pierre', sombre: 1, sansMorts: true, toit: 'tuiles',

@@ -11,7 +11,7 @@ export const FINS = {
   pont: {
     flag: 'fin_pont', titre: 'De l’autre côté', sousTitre: 'Le pont de Mallemort',
     cinematique: 'fin_pont', scene: 'pon_traverser_2', continuer: false,
-    resume: 'Tu as passé le pont suspendu de Mallemort à l’aube, sur la place qu’Hélène s’était retirée pour toi. De l’autre côté, il y a un camp, une douche froide, des listes qu’on appelle, et le soir, la voix d’Inès à la radio. Tu as gardé en vie ceux que tu as pu, un jour de plus.',
+    resume: 'Tu as passé le pont suspendu de Mallemort à l’aube, grâce à la place qu’Hélène t’avait cédée. De l’autre côté, il y a un camp, une douche froide, des listes de noms qu’on lit à voix haute, et le soir, la voix d’Inès à la radio. Tu as gardé en vie ceux que tu as pu, un jour de plus.',
   },
   place: {
     flag: 'fin_place', titre: 'Sa place', sousTitre: 'La rive sud',
