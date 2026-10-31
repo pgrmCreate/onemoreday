@@ -125,8 +125,13 @@ body:not([data-temps=exploration]) .hud-btn-construire { display: none; }
 .ui-toast-mauvais { border-left-color: var(--ui-rouge); background: rgba(38, 10, 14, .96); } .ui-toast-mauvais .ico { color: #ff5a67; }
 
 /* ---------- Pensées du personnage (js/ui/notif.js) : une ligne discrète en haut, une à la fois ---------- */
+/* Entre les états du corps (à gauche) et le petit panneau d'objectif (à droite) : une pensée n'en recouvre jamais un. */
 .ui-notifs { position: fixed; left: 50%; top: calc(max(10px, env(safe-area-inset-top)) + 54px); transform: translateX(-50%); z-index: 95;
-  width: min(92vw, 560px); display: flex; justify-content: center; pointer-events: none; }
+  width: min(max(56vw, calc(100vw - 320px)), 560px); display: flex; justify-content: center; pointer-events: none; }
+/* tout petit téléphone : plus la place à côté du panneau d'objectif, la pensée passe dessous */
+@media (max-width: 640px) { .ui-notifs { top: calc(max(10px, env(safe-area-inset-top)) + 84px); width: calc(100vw - 116px); } }
+body:has(.ex-coop:not(.cache)) .ui-notifs { top: calc(max(10px, env(safe-area-inset-top)) + 84px); }
+body:has(.ex-guide:not(.cache)) .ui-toasts { top: 90px; }
 .ui-pensee { pointer-events: auto; max-width: 100%; padding: 6px 16px 7px; border-radius: 6px;
   background: radial-gradient(ellipse at center, rgba(8, 8, 8, .62), rgba(8, 8, 8, 0) 78%);
   font-family: var(--ui-f-recit); font-style: italic; font-size: calc(16px * var(--ui-echelle)); line-height: 1.35; text-align: center;

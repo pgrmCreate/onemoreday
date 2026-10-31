@@ -430,6 +430,25 @@ export function guide(lieuId) {
   }
   return '';
 }
+// Le petit panneau de l'écran : le nom de la mission, et le temps qui reste s'il y en a un. Jamais une phrase ; le détail
+// est au journal.
+const compteurCourt = (min) => dureeMots(min).replace('encore ', '');
+export function guideCourt(lieuId) {
+  for (const { m, s, e } of ici(lieuId)) {
+    let compteur = '';
+    if (e.type === 'tenir' || e.type === 'proteger') compteur = compteurCourt(e.minutes - (s.d.compte || 0));
+    else if (e.type === 'attendre') compteur = `${e.heure} h`;
+    else if (e.type === 'atteindre' && s.d.repere) compteur = genrer('repéré{|e}');
+    return { titre: genrer(m.court || m.titre), compteur };
+  }
+  return null;
+}
+// Les objets par terre que réclame une mission de ce lieu : les seuls qui accrochent la lumière.
+export function objetsVoulus(lieuId) {
+  const voulus = new Set();
+  for (const { e } of ici(lieuId)) for (const id of e.ids || (e.objets && e.objets.ids) || []) voulus.add(id);
+  return voulus;
+}
 // Texte de l'étape courante pour le journal (avec l'avancée).
 export function avancee(id) {
   const s = etat(id), m = MISSIONS[id], e = etapeDe(id); if (!e) return '';

@@ -37,7 +37,7 @@ import { lierNature, majRecherche, basculerRecherche, vitesseRecherche, enRecher
 import { lierConstruction, demarrerPlacement, annulerPlacement, tournerPlacement, enPlacement, poserPlacement, viserPlacement, majConstruction, feuxCommeLampes, fantome, grilleToits } from './construction.js';
 import { rueeSim, etatRuee, lieuDansZone, typeActif } from '../game/ruees.js';
 import { lierPlan, chargerMemoire, sauverMemoire, basculerPlan, planOuvert, fermerPlan } from './plan_lieu.js';
-import { lierMissions, majMissions, guideMission, reperesMissions } from './missions_vue.js';
+import { lierMissions, majMissions, guideMission, objetsVoulus, reperesMissions } from './missions_vue.js';
 import { animerPnj } from './pnj_vie.js';
 import { lancerAction } from './interactions.js';
 import { fabriquer, dureeBarreMs } from '../game/crafting.js';
@@ -249,6 +249,8 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null, po
   hud.zoom.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
   hud.zoom.addEventListener('click', () => { if (!V) return; const c = cranZoom(V.zoom); regleZoom(CRANS_ZOOM[(c + 1) % CRANS_ZOOM.length]); });
   hud.plan.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
+  hud.guide.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
+  hud.guide.addEventListener('click', () => { if (mod.panneaux) mod.panneaux.ouvrirPanneau('journal', { onglet: 'objectifs' }); });
   hud.plan.addEventListener('click', () => basculerPlanLieu());
   V.cbt = creerCombatVue({
     canal: V.canal, j: () => V.j, zombies: () => V.zListe, message, sfx, sfxA, vib, inv: mod.inv, player: mod.player, survie: mod.survie, entrees: V.entrees,
@@ -394,7 +396,7 @@ export function sortir() {
   try { mod.audio && mod.audio.setTension && mod.audio.setTension(0); } catch (e) {}
   try { mod.audio && mod.audio.setHorde && mod.audio.setHorde(0); } catch (e) {}
   try { mod.audio && mod.audio.setNature && mod.audio.setNature(null); } catch (e) {}
-  try { mod.audio && mod.audio.setDedans && mod.audio.setDedans(1); } catch (e) {}
+  try { mod.audio && mod.audio.setDedans && mod.audio.setDedans(1); mod.audio && mod.audio.setSouterrain && mod.audio.setSouterrain(false); } catch (e) {}
   v.racine.remove();
   if (!v.arene) emit('lieu:sort', { lieu: v.lieuId });
   V = null;
@@ -649,7 +651,7 @@ function image(t, dt) {
   Sc.pairs = pairs; Sc.zombies = V.zListe; Sc.portes = snap.portes; Sc.sol = snap.sol; Sc.cadavres = snap.cadavres; Sc.pnj = V.pnj;
   Sc.reperesMission = V.reperesMission;     // personnes d'une mission (recalculé avec les PNJ)
   Sc.constructions = snap.constructions || []; Sc.placement = fantome(); Sc.minutes = G.world.minutes;
-  Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.alarmes = feuxAlarme; Sc.objectif = V.objectif || null;
+  Sc.cible = V.cible; Sc.ondes = V.ondes; Sc.lampes = V.lampes; Sc.nLampes = V.nLampes; Sc.alarmes = feuxAlarme; Sc.objectif = V.objectif || null; Sc.solVoulus = V.solVoulus || null;
   const Fo = Sc.fouille;
   if (V.fouille) { Fo.x = V.fouille.x; Fo.y = V.fouille.y; Fo.frac = V.fouille.p; Fo.n = V.fouille.items.length; Sc.fouilleOn = true; }
   else if (V.action) { Fo.x = V.action.x; Fo.y = V.action.y; Fo.frac = V.action.t / V.action.duree; Fo.n = 0; Sc.fouilleOn = true; }
@@ -803,6 +805,7 @@ function attenuationDedans(prof) {
   const D = RX.DEDANS_SON;
   return prof === Infinity ? D.MIN : Math.max(D.MIN, D.ENTREE * Math.exp(-prof / D.DECROIT));
 }
+const SOUS_TERRE = /\b(cave|caves|caveau|sous-sol|crypte|souterrain|grotte)\b/i;
 function tension() {
   if (!mod.audio || !mod.audio.setTension) return;
   let t = 0;
@@ -820,6 +823,9 @@ function tension() {
   // dans un bâtiment : le dehors s'entend de moins en moins à mesure qu'on s'enfonce (portes fermées : presque rien)
   const prof = V.dehorsSon ? 0 : profondeurDedans();
   try { mod.audio.setDedans && mod.audio.setDedans(V.dehorsSon ? 1 : attenuationDedans(prof)); } catch (e) {}
+  // sous terre : l'eau y goutte, et nulle part ailleurs
+  { const ii = icase(V.E, V.j.x, V.j.y), pi = ii >= 0 ? V.E.piece[ii] : -1, Pc = pi >= 0 ? V.niveau.pieces[pi] : null;
+    try { mod.audio.setSouterrain && mod.audio.setSouterrain(SOUS_TERRE.test(V.E.nom || '') || SOUS_TERRE.test((Pc && Pc.nom) || '')); } catch (e) {} }
   // pour la survie : sous un toit = au sec ; toit + murs tout autour (plus de ciel ouvert accessible) = un intérieur
   { const ii = icase(V.E, V.j.x, V.j.y), pi = ii >= 0 ? V.E.piece[ii] : -1, Pc = pi >= 0 ? V.niveau.pieces[pi] : null;
     const pieceExt = Pc ? !!Pc.exterieur : !!V.niveau.exterieur;
@@ -855,7 +861,8 @@ function tension() {
 // encore un repère discret sur place (aucune quête n'en a besoin aujourd'hui).
 function majObjectif() {
   V.objectif = null;
-  V.hud.majGuide(guideMission());     // une mission en cours ici : où on en est, en mots
+  V.hud.majGuide(guideMission());     // une mission en cours ici : son nom, sur le côté (le détail est au journal)
+  V.solVoulus = objetsVoulus();       // seuls les objets qu'elle réclame accrochent la lumière
   if (V.arene) return;
   let best = null;
   for (const [id, q] of Object.entries(QUETES)) {

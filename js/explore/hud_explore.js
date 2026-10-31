@@ -1,6 +1,6 @@
 // ============ Exploration — HUD de l'écran (DOM, mis à jour sans innerHTML à 60 Hz) ============
 // Nom du lieu, message court, invite d'interaction, VITAUX (vie + endurance, lisibles en un coup d'œil), lampe,
-// barre d'action, fenêtre de butin, mains (ce qu'on tient), « Dégage-toi ! », voile rouge, guide d'objectif,
+// barre d'action, fenêtre de butin, mains (ce qu'on tient), « Dégage-toi ! », voile rouge, petit panneau d'objectif,
 // coéquipier (où il est, s'il est à terre), aide des commandes (premières minutes, rappel avec H).
 import { G } from '../core/state.js';
 import { el } from '../core/util.js';
@@ -27,7 +27,7 @@ export function creerHud(racine, { arene = false } = {}) {
     degage: el('div', { class: 'ex-degage cache' }),
     sang: el('div', { class: 'ex-sang' }),
     route: el('button', { class: 'ex-route cache', type: 'button' }, 'Reprendre la route'),
-    guide: el('div', { class: 'ex-guide cache' }, el('i', { class: 'ex-guide-ico' }), el('span')),
+    guide: el('button', { class: 'ex-guide cache', type: 'button', 'aria-label': 'Objectifs' }, el('i', { class: 'ex-guide-ico' }), el('span'), el('em')),
     coop: el('div', { class: 'ex-coop cache' }),
     aide: el('div', { class: 'ex-aide cache' }),
   };
@@ -84,9 +84,10 @@ export function creerHud(racine, { arene = false } = {}) {
       h.lampe.classList.toggle('on', !!la);
       if (la && la.frac != null) fixer('lampe', Math.round(la.frac * 100), (v) => { h.lampe.lastChild.firstChild.style.width = v + '%'; });
     },
-    // Guide d'objectif (ligne discrète en haut) : vers où aller, ici et maintenant.
-    majGuide(txt) {
-      fixer('guide', txt || '', (v) => { h.guide.lastChild.textContent = v; h.guide.classList.toggle('cache', !v); if (v) { h.guide.classList.remove('neuf'); void h.guide.offsetWidth; h.guide.classList.add('neuf'); } });
+    // Petit panneau sur le côté : le nom de la mission et, s'il y en a un, le temps qui reste. Le toucher ouvre le journal.
+    majGuide(g) {
+      fixer('guideT', g ? g.titre : '', (v) => { h.guide.children[1].textContent = v; h.guide.classList.toggle('cache', !v); if (v) { h.guide.classList.remove('neuf'); void h.guide.offsetWidth; h.guide.classList.add('neuf'); } });
+      fixer('guideC', g ? g.compteur : '', (v) => { h.guide.lastChild.textContent = v; });
     },
     // Coéquipier : nom, où il est (étage, lieu), à terre ?
     majCoop(info) {

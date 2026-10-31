@@ -176,7 +176,7 @@ export function creerRendu(cv, niveau) {
       dessinerCadavre(ctx, cd, t, t0 == null ? null : t - t0, ZOMBIES[cd.type]);
     }
     // objets au sol
-    for (const o of S.sol) { if (o.etage !== E.id || !vuCase(o.x, o.y)) continue; dessinerObjetSol(ctx, o, t); }
+    for (const o of S.sol) { if (o.etage !== E.id || !vuCase(o.x, o.y)) continue; dessinerObjetSol(ctx, o, t, !!(S.solVoulus && S.solVoulus.has(o.id))); }
     // portes animées
     for (const p of niveau.portes) {
       if (p.etage !== E.id || p.x < vx0 - 1 || p.x > vx1 + 1 || p.y < vy0 - 1 || p.y > vy1 + 1) continue;

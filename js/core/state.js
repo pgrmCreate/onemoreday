@@ -21,8 +21,8 @@ export function joueurNeuf(nom = 'Sam', genre = 'm') {
     skillXp: {},
     // ramassé{|e} au bord de la route par le fourgon (docs/HISTOIRE_DEBUT_V3.md §3) : on n'a que ce qu'on porte sur soi, ses
     // vêtements, un couteau de poche et une bouteille presque vide ; les affaires du groupe sont dans le fourgon
-    inventaire: [{ id: 'bouteille_vide', qty: 1, eau: { q: 'propre', L: 0.2 } }],
-    equip: { arme: 'couteau_poche', mainG: null, dos: null, tete: null, visage: null, haut: 'tshirt', torse: null, veste: 'coupe_vent', mains: null, poignet: null, jambes: 'jean', pieds: 'baskets', sac: null, ceinture: null, holster: null },
+    inventaire: [{ id: 'couteau_poche', qty: 1 }, { id: 'bouteille_vide', qty: 1, eau: { q: 'propre', L: 0.2 } }],
+    equip: { arme: null, mainG: null, dos: null, tete: null, visage: null, haut: 'tshirt', torse: null, veste: 'coupe_vent', mains: null, poignet: null, jambes: 'jean', pieds: 'baskets', sac: null, ceinture: null, holster: null },
     accesRapide: [],
     blessures: [],
     maladie: null,

@@ -328,5 +328,6 @@ export function reperesMissions() {
   return out;
 }
 
-// ---------- Le guide (ligne discrète en haut) ----------
-export function guideMission() { return V && !V.arene ? M.guide(V.lieuId) : ''; }
+// ---------- Le guide : un petit panneau sur le côté, quelques mots seulement ----------
+export function guideMission() { return V && !V.arene ? M.guideCourt(V.lieuId) : null; }
+export function objetsVoulus() { return V && !V.arene ? M.objetsVoulus(V.lieuId) : null; }

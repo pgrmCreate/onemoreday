@@ -1,6 +1,6 @@
 /* ============ Temps 1 — Exploration (et combat sur place) ============
    Sobre : noir, crème #e6dfcc, ambre #c9a227, sang #8e1b24, bleu coéquipier #7cc8ff. Cibles tactiles ≥ 44 px.
-   Disposition : haut-gauche HUD général (heure, lieu) · haut-centre nom de pièce + guide d'objectif · haut-droite mains + menus
+   Disposition : haut-gauche HUD général (heure, lieu) · haut-centre pensées, puis nom de pièce · haut-droite menus + petit panneau d'objectif
    bas-gauche vitaux · bas-centre invite d'interaction / messages · bas-droite boutons tactiles. */
 .explore {
   --ex-noir: #0b0b0c; --ex-creme: #e6dfcc; --ex-ambre: #c9a227; --ex-ambre-c: #e8c45a; --ex-sang: #8e1b24; --ex-rouge: #d6303e; --ex-bleu: #7cc8ff;
@@ -14,34 +14,30 @@
 
 /* ---------- Nom de pièce / d'étage ---------- */
 .ex-lieu {
-  position: absolute; top: 70px; left: 50%; transform: translateX(-50%); pointer-events: none;
+  position: absolute; top: 128px; left: 50%; transform: translateX(-50%); pointer-events: none;
   font-size: 22px; letter-spacing: .16em; text-transform: uppercase; color: var(--ex-creme);
   text-shadow: 0 2px 10px #000, 0 0 2px #000; opacity: 0; white-space: nowrap;
 }
 .ex-lieu.on { animation: ex-lieu 3s ease-out forwards; }
 @keyframes ex-lieu { 0% { opacity: 0; transform: translate(-50%, 8px); } 14% { opacity: .95; transform: translate(-50%, 0); } 72% { opacity: .95; } 100% { opacity: 0; } }
 
-/* ---------- Guide d'objectif (haut-centre) ---------- */
+/* ---------- Petit panneau d'objectif : sur le côté, sous les menus, quelques mots au plus ---------- */
 .ex-guide {
-  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: min(520px, 46vw);
-  display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 10px; pointer-events: none;
-  background: var(--ex-panneau); border: 1px solid rgba(201,162,39,.4); border-radius: 18px;
-  font-size: 14px; letter-spacing: .03em; color: var(--ex-creme); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 50px); right: max(12px, env(safe-area-inset-right)); z-index: 3; max-width: 136px; min-height: 24px;
+  display: flex; align-items: center; gap: 6px; padding: 2px 8px 2px 7px; border: 0; border-right: 2px solid rgba(201,162,39,.65); border-radius: 3px 0 0 3px;
+  background: rgba(11,11,12,.46); color: rgba(230,223,204,.82); font: inherit; font-size: 11.5px; line-height: 1.2; letter-spacing: .03em; text-align: right; white-space: nowrap; cursor: pointer;
 }
-.ex-guide span { overflow: hidden; text-overflow: ellipsis; }
-.ex-guide-ico { flex: none; width: 10px; height: 10px; border: 2px solid var(--ex-ambre-c); transform: rotate(45deg); }
+.ex-guide::after { content: ''; position: absolute; inset: -10px -6px; }   /* cible tactile sans grossir le panneau */
+.ex-guide span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ex-guide em { flex: none; font-style: normal; color: var(--ex-ambre-c); }
+.ex-guide em:empty { display: none; }
+.ex-guide-ico { flex: none; width: 6px; height: 6px; border: 1.5px solid var(--ex-ambre-c); transform: rotate(45deg); }
 .ex-guide.neuf { animation: ex-guide-neuf 1.6s ease-out; }
-@keyframes ex-guide-neuf { 0% { border-color: var(--ex-ambre-c); box-shadow: 0 0 0 0 rgba(232,196,90,.6); } 40% { box-shadow: 0 0 0 10px rgba(232,196,90,0); } 100% { border-color: rgba(201,162,39,.4); } }
+@keyframes ex-guide-neuf { 0% { background: rgba(201,162,39,.32); } 100% { background: rgba(11,11,12,.46); } }
 
-/* écrans étroits : le guide passe sous la barre du haut (heure, mains, menus) */
-@media (max-width: 1180px) {
-  .ex-guide { top: 62px; max-width: min(560px, 78vw); }
-  .ex-coop { top: 96px; }
-  .ex-lieu { top: 128px; }
-}
 /* ---------- Coéquipier ---------- */
 .ex-coop {
-  position: absolute; top: 46px; left: 50%; transform: translateX(-50%); pointer-events: none;
+  position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 52px); left: 50%; transform: translateX(-50%); pointer-events: none;
   padding: 3px 12px; border-radius: 12px; background: rgba(10,20,30,.72); border: 1px solid rgba(124,200,255,.45);
   color: var(--ex-bleu); font-size: 12.5px; letter-spacing: .04em; white-space: nowrap;
 }
@@ -56,6 +52,14 @@
   opacity: 0; transition: opacity .25s, transform .25s;
 }
 .ex-msg.on { opacity: 1; }
+
+/* Téléphone couché : les pensées tiennent le haut de l'écran, les boutons le bas à droite. Le message et la barre d'action
+   passent en bas à gauche, le seul endroit libre, et le nom du lieu s'efface devant une pensée (il reste en haut à gauche). */
+@media (max-height: 420px) {
+  .ex-msg { left: 60px; bottom: 54px; transform: none; max-width: calc(50vw - 66px); padding: 6px 10px; font-size: 15px; line-height: 1.22; }
+  .ex-action { left: 60px; bottom: 122px; transform: none; width: calc(50vw - 66px); }
+}
+body:has(.ui-pensee.visible) .ex-lieu { visibility: hidden; }
 
 /* ---------- Invite d'interaction (clavier) ---------- */
 .ex-invite {
@@ -164,6 +168,51 @@
 .ex-b:hover { border-color: var(--ex-ambre); }
 .ex-b:disabled { opacity: .35; cursor: default; }
 .ex-b-p { flex: 1; background: rgba(201,162,39,.16); border-color: var(--ex-ambre); color: var(--ex-ambre-c); }
+
+/* ---------- Page de rangement (tas de bois, caisses, meubles, sol) : tout l'écran, deux colonnes, tri par catégorie ---------- */
+.ex-rangement { position: fixed; inset: 0; z-index: 55; display: flex; flex-direction: column; gap: 8px; touch-action: pan-x pan-y; user-select: none; -webkit-user-select: none;
+  padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: var(--ui-fond); color: var(--ui-texte); font-family: var(--ui-f-ui); font-size: 15px; }
+.ex-rangement button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ra-tete { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ra-tete h2 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--ui-ambre); }
+.ra-fermer { flex: none; min-height: 40px; padding: 0 18px; border-radius: 5px; border: 1px solid rgba(230,223,204,.3); background: rgba(230,223,204,.06); }
+.ra-puces { flex: none; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.ra-puces::-webkit-scrollbar { display: none; }
+.ra-puce { flex: none; display: flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 12px; border-radius: 19px; border: 1px solid rgba(230,223,204,.2); background: none; color: rgba(230,223,204,.75) !important; font-size: 14px !important; }
+.ra-puce em { font-style: normal; font-size: 11.5px; color: rgba(230,223,204,.45); }
+.ra-puce.actif { border-color: var(--ui-ambre); background: rgba(201,162,39,.18); color: #e8c45a !important; }
+.ra-puce.actif em { color: inherit; }
+.ra-colonnes { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ra-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid rgba(230,223,204,.14); border-radius: 6px; background: rgba(230,223,204,.025); overflow: hidden; }
+.ra-col-t { position: relative; flex: none; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 7px 12px 9px; border-bottom: 1px solid rgba(230,223,204,.1); font-size: 13px; }
+.ra-col-t > b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; letter-spacing: .04em; }
+.ra-col-t > span { flex: none; color: rgba(230,223,204,.65); }
+.ra-jauge { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(230,223,204,.08); }
+.ra-jauge b { display: block; height: 100%; background: var(--ui-ambre); }
+.ra-jauge.plein b { background: var(--ui-rouge); }
+.ra-liste { flex: 1; min-height: 0; margin: 0; padding: 0; list-style: none; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.ra-ligne { display: flex; align-items: stretch; border-bottom: 1px solid rgba(230,223,204,.07); }
+.ra-ligne.bloque { opacity: .5; }
+.ra-objet { flex: 1; min-width: 0; min-height: 46px; display: flex; align-items: center; gap: 9px; padding: 3px 10px; border: 0; background: none; text-align: left; }
+.ra-objet:not(:disabled):hover, .ra-objet:not(:disabled):active { background: rgba(201,162,39,.12); }
+.ra-ico { flex: none; width: 22px; height: 22px; color: rgba(230,223,204,.6); }
+.ra-ico svg, .ra-ico .ico { display: block; width: 100%; height: 100%; }
+.ra-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ra-nom em { font-style: normal; color: #e8c45a; }
+.ra-nom small { display: block; font-size: 11px; color: rgba(230,223,204,.5); }
+.ra-vol { flex: none; font-size: 12px; color: rgba(230,223,204,.5); }
+.ra-fleche { flex: none; width: 14px; text-align: center; color: var(--ui-ambre); }
+.ra-un { flex: none; width: 44px; border: 0; border-left: 1px solid rgba(230,223,204,.1); background: none; color: rgba(230,223,204,.7) !important; font-size: 14px !important; }
+.ra-un:hover, .ra-un:active { background: rgba(230,223,204,.1); }
+.ra-vide { padding: 20px 12px; text-align: center; font-size: 14px; color: rgba(230,223,204,.45); }
+.ra-tout { flex: none; min-height: 42px; padding: 0 12px; border: 0; border-top: 1px solid rgba(201,162,39,.4); background: rgba(201,162,39,.14); color: #e8c45a !important; font-size: 14px !important; letter-spacing: .03em; }
+.ra-tout:disabled { opacity: .35; }
+/* téléphone couché : on gagne de la hauteur */
+@media (max-height: 420px) {
+  .ex-rangement { gap: 5px; padding-top: max(5px, env(safe-area-inset-top)); padding-bottom: max(5px, env(safe-area-inset-bottom)); }
+  .ra-fermer { min-height: 36px; } .ra-puce { min-height: 34px; } .ra-col-t { padding-top: 4px; padding-bottom: 6px; } .ra-tout { min-height: 36px; }
+}
 
 /* ---------- Ce que l'on tient (bas-gauche, juste à droite du zoom et du plan, collé en bas) ---------- */
 .ex-mains { position: absolute; left: 54px; bottom: max(6px, env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 3px; z-index: 4; opacity: .82; }

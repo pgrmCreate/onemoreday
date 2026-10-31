@@ -533,13 +533,21 @@ export function stingerALHeure(nom, h) {
 }
 function heureMonde() { const m = G && G.world ? G.world.minutes : 720; return (m % 1440) / 60; }
 
+// Ce qui dépend de ce qu'il y a autour, et pas du lieu tout entier : une gouttière ne goutte que sous la pluie, et l'eau ne
+// suinte que sous terre (cave, sous-sol, crypte : explore/vue.js le dit par setSouterrain).
+const SOUS_LA_PLUIE = new Set(['gouttiere']);
+const BRUITS_SOUTERRAIN = [['goutte', 6], ['souffle_couloir', 2], ['eau_egout', 1]];
+let souterrain = false;
+export function setSouterrain(b) { souterrain = !!b; }
+
 // Le pool est recalculé à CHAQUE tirage (l'heure tourne pendant qu'on reste dans un lieu).
 function poolStingers(sc) {
   const nuit = !!(G && estNuit()), h = heureMonde();
   const pool = [...(sc.stingers || [])];
   if (nuit) pool.push(...(sc.stingersNuit || []));
   else pool.push(...(sc.stingersJour || [])); // cigales, fontaine… : le jour seulement
-  return pool.filter(([nom]) => stingerALHeure(nom, h));
+  if (souterrain && pool.length) pool.push(...BRUITS_SOUTERRAIN);   // (pool vide : une cinématique, sans bruits de décor)
+  return pool.filter(([nom]) => stingerALHeure(nom, h) && (!SOUS_LA_PLUIE.has(nom) || pluieType));
 }
 
 function planifierStinger(sc, nuit, cle) {

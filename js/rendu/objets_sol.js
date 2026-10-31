@@ -3,9 +3,9 @@
 // écorce, rameaux secs), une pierre un caillou, une boîte de conserve un cylindre couché avec son étiquette, un couteau un
 // couteau, un jean un jean. Chaque objet a son dessin, sinon celui de sa famille (arme, vêtement selon la partie du corps,
 // nourriture, soin, outil…), peint UNE fois en sprite (cache mesuré en pixels) avec son ombre portée vers le bas-droite,
-// couché selon un angle tiré de sa place ; trois pierres montrent trois cailloux. Un reflet chaud qui respire, à peine, et
-// un éclat de temps en temps disent qu'on peut le ramasser.
-//   dessinerObjetSol(c, o, t)     o = { id, qty, x, y, uid } ou { doc } (un document)
+// couché selon un angle tiré de sa place ; trois pierres montrent trois cailloux. Un objet posé reste un objet posé : seul
+// ce que réclame l'objectif en cours a un reflet chaud qui respire et un éclat de temps en temps (docs/RETOURS_JOUEUR.md #71).
+//   dessinerObjetSol(c, o, t, voulu)     o = { id, qty, x, y, uid } ou { doc } (un document) ; voulu : un objectif le réclame
 //   brancheSeche(c, x0, y0, x1, y1, ep, r, o)   une branche morte (partagée avec le tas de bois du camp, ./objets.js)
 import { TS, canvas, rng, graine, rr, cercle, ellipse, teinte, clamp } from './outils.js';
 import { RES, peutPeindre } from './corps.js';
@@ -419,7 +419,7 @@ function spriteObjet(cle, f, seed, n) {
   while (pxTotal > PX_MAX && cache.size > 1) { const k = cache.keys().next().value; pxTotal -= cache.get(k).px; cache.delete(k); }
   return s;
 }
-// le halo « on peut le ramasser » : une lueur chaude et douce, peinte une fois
+// le halo d'un objet d'objectif : une lueur chaude et douce, peinte une fois
 let halo = null;
 function haloSol() {
   if (halo) return halo;
@@ -438,18 +438,21 @@ export function dessinerIconeObjet(c, id, x, y, R) {
   const k = R / Math.max(8, f.R * 0.85);
   c.drawImage(s.cv, x - s.h * k, y - s.h * k, s.h * 2 * k, s.h * 2 * k);
 }
-export function dessinerObjetSol(c, o, t) {
+export function dessinerObjetSol(c, o, t, voulu = false) {
   const x = o.x * TS, y = o.y * TS;
   const f = o.doc ? DOC : formeObjetSol(o.id);
   const seed = graine((o.doc || o.id) + ':' + Math.round(o.x * 8) + ':' + Math.round(o.y * 8));
   const n = Math.max(1, Math.min(f.n || 1, o.qty || 1));
   // la lueur qui respire, sous l'objet
-  const p = 0.5 + 0.5 * Math.sin(t / 650 + (seed % 100));
-  const Rh = Math.max(12, f.R * 0.95);
-  c.globalAlpha = 0.1 + 0.12 * p; c.drawImage(haloSol(), x - Rh, y - Rh * 0.8, Rh * 2, Rh * 1.6); c.globalAlpha = 1;
+  if (voulu) {
+    const p = 0.5 + 0.5 * Math.sin(t / 650 + (seed % 100));
+    const Rh = Math.max(12, f.R * 0.95);
+    c.globalAlpha = 0.1 + 0.12 * p; c.drawImage(haloSol(), x - Rh, y - Rh * 0.8, Rh * 2, Rh * 1.6); c.globalAlpha = 1;
+  }
   const s = spriteObjet((o.doc ? 'doc:' + o.doc : o.id) + ':' + n + ':' + (seed % 64), f, seed, n);
   if (s) c.drawImage(s.cv, x - s.h, y - s.h, s.h * 2, s.h * 2);
   else { c.fillStyle = '#7a6a4a'; rr(c, x - 5, y - 4, 10, 8, 2); c.fill(); }
+  if (!voulu) return;
   // un éclat, de temps en temps, comme un reflet de lumière sur l'objet
   const ph = ((t + (seed % 4000)) % 4200) / 4200;
   if (ph < 0.08) {

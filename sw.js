@@ -166,6 +166,7 @@ const FICHIERS = [
   './js/data/zombies.js',
   './js/data/zones.js',
   './js/explore/butin.js',
+  './js/explore/rangement.js',
   './js/explore/canal_local.js',
   './js/explore/combat.js',
   './js/explore/combat_lieu.js',

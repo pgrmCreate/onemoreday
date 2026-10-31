@@ -4,6 +4,11 @@
 // gémissement au bout du couloir…), et un MOTIF MUSICAL génératif, rare,
 // propre à l'endroit. La nuit ajoute ses propres bruits.
 // Tout est synthétisé par js/audio.js — les noms de stingers y sont définis.
+// Un bruit doit pouvoir exister LÀ où on est (docs/RETOURS_JOUEUR.md #74) :
+//   - les gouttes : uniquement sous terre (scène « grotte », et caves ou sous-sols par audio.setSouterrain) ;
+//   - la tôle, la ferraille : uniquement là où il y a du métal (ville, gare, triage, magasin, garage, friche) ;
+//   - la gouttière : uniquement sous la pluie (audio.js, SOUS_LA_PLUIE) ;
+//   - dans les bois : le vent, les branches, les bêtes, rien de bâti.
 
 // Musiques de CAMPAGNE paisible : seulement de jour, hors de Salon, dans un lieu peu dangereux.
 // D'abord mélancoliques, puis aussi très calmes une fois les premiers jours passés (DES_JOUR).
@@ -47,7 +52,7 @@ export const SCENES_SONORES = {
   hotel: {
     vent: [300, 0.10, 0.07],
     drones: [[55, 'triangle', 0.034], [82.5, 'sine', 0.026]],
-    stingers: [['craquement', 3], ['vent_rafale', 2], ['volet', 1], ['goutte', 1], ['bois_travaille', 2], ['metal_dilate', 1]],
+    stingers: [['craquement', 3], ['vent_rafale', 2], ['volet', 1], ['bois_travaille', 2], ['metal_dilate', 1]],
     stingersNuit: [['gemissement', 2], ['grattement', 2], ['rat', 1]],
     stingersJour: [['cigales', 3], ['fontaine', 2], ['oiseau_isole', 1]], // place Crousillat, la Fontaine Moussue à deux pas (le jour seulement)
     intervalle: [9, 24],
@@ -56,7 +61,7 @@ export const SCENES_SONORES = {
   interieur: {
     vent: [320, 0.10, 0.07],
     drones: [[55, 'triangle', 0.034], [82.5, 'sine', 0.026]],
-    stingers: [['craquement', 3], ['vent_rafale', 1], ['goutte', 1], ['bois_travaille', 2], ['souffle_couloir', 1]],
+    stingers: [['craquement', 3], ['vent_rafale', 1], ['bois_travaille', 2], ['souffle_couloir', 1]],
     stingersNuit: [['gemissement', 1], ['grattement', 2], ['rat', 1]],
     intervalle: [10, 26],
     musique: { theme: 'interieur' },
@@ -73,7 +78,7 @@ export const SCENES_SONORES = {
   magasin: {
     vent: [260, 0.08, 0.05],
     drones: [[49, 'triangle', 0.032], [98, 'sine', 0.014]],
-    stingers: [['ferraille', 3], ['chariot', 2], ['verre', 2], ['rideau_fer', 2], ['tole', 1], ['craquement', 1], ['goutte', 1], ['chute_gravats', 2], ['metal_dilate', 1]],
+    stingers: [['ferraille', 3], ['chariot', 2], ['verre', 2], ['rideau_fer', 2], ['tole', 1], ['craquement', 1], ['chute_gravats', 2], ['metal_dilate', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1], ['rat', 2]],
     intervalle: [8, 22],
     musique: { theme: 'interieur' },
@@ -81,7 +86,7 @@ export const SCENES_SONORES = {
   eglise: {
     vent: [220, 0.07, 0.04],
     drones: [[41.2, 'sine', 0.040], [82.4, 'sine', 0.020], [123.5, 'sine', 0.010]],
-    stingers: [['pigeons', 2], ['craquement', 2], ['goutte', 2], ['cloche_morte', 1], ['gouttiere', 1], ['souffle_couloir', 2]],
+    stingers: [['pigeons', 2], ['craquement', 2], ['cloche_morte', 1], ['gouttiere', 1], ['souffle_couloir', 2]],
     stingersNuit: [['gemissement', 1], ['hibou', 1]],
     stingersJour: [['oiseau_isole', 1]],
     intervalle: [10, 28],
@@ -90,7 +95,7 @@ export const SCENES_SONORES = {
   musee: {
     vent: [240, 0.08, 0.05],
     drones: [[55, 'sine', 0.034], [110, 'sine', 0.012]],
-    stingers: [['craquement', 4], ['vent_rafale', 1], ['goutte', 1], ['grattement', 1], ['bois_travaille', 2], ['souffle_couloir', 1]],
+    stingers: [['craquement', 4], ['vent_rafale', 1], ['grattement', 1], ['bois_travaille', 2], ['souffle_couloir', 1]],
     stingersNuit: [['gemissement', 1], ['grattement', 2], ['rat', 1]],
     intervalle: [9, 26],
     musique: { theme: 'interieur' },
@@ -98,7 +103,7 @@ export const SCENES_SONORES = {
   gare: {
     vent: [520, 0.16, 0.09],
     drones: [[49, 'triangle', 0.032], [65, 'sine', 0.020]],
-    stingers: [['ferraille', 3], ['corbeau', 2], ['train_loin', 2], ['goutte', 2], ['volet', 1], ['pigeons', 1], ['tole', 2], ['rideau_fer', 1], ['mistral', 1], ['metal_dilate', 2], ['porte_lointaine', 1], ['chute_gravats', 1]],
+    stingers: [['ferraille', 3], ['corbeau', 2], ['train_loin', 2], ['volet', 1], ['pigeons', 1], ['tole', 2], ['rideau_fer', 1], ['mistral', 1], ['metal_dilate', 2], ['porte_lointaine', 1], ['chute_gravats', 1]],
     stingersNuit: [['gemissement', 2], ['grattement', 1], ['insectes_nuit', 1]],
     stingersJour: [['cigales', 2], ['oiseau_isole', 1]],
     intervalle: [7, 19],
@@ -116,7 +121,7 @@ export const SCENES_SONORES = {
   hopital: {
     vent: [200, 0.06, 0.04],
     drones: [[58, 'sine', 0.030], [116, 'sine', 0.012]],
-    stingers: [['neon', 3], ['goutte', 3], ['ferraille', 1], ['gemissement', 1], ['grattement', 1], ['gouttiere', 2], ['souffle_couloir', 2], ['eau_egout', 1]],
+    stingers: [['neon', 3], ['ferraille', 1], ['gemissement', 1], ['grattement', 1], ['gouttiere', 2], ['souffle_couloir', 2]],
     stingersNuit: [['gemissement', 3], ['grattement', 2], ['rat', 2]],
     intervalle: [6, 16],
     musique: { theme: 'interieur' },
@@ -124,7 +129,7 @@ export const SCENES_SONORES = {
   commissariat: {
     vent: [240, 0.08, 0.05],
     drones: [[52, 'triangle', 0.032], [78, 'sine', 0.016]],
-    stingers: [['radio_statique', 2], ['craquement', 2], ['ferraille', 1], ['goutte', 1], ['volet', 1], ['souffle_couloir', 1], ['bois_travaille', 1]],
+    stingers: [['radio_statique', 2], ['craquement', 2], ['ferraille', 1], ['volet', 1], ['souffle_couloir', 1], ['bois_travaille', 1]],
     stingersNuit: [['gemissement', 2], ['grattement', 1], ['rat', 1]],
     intervalle: [8, 22],
     musique: { theme: 'interieur' },
@@ -132,7 +137,7 @@ export const SCENES_SONORES = {
   garage: {
     vent: [300, 0.09, 0.05],
     drones: [[49, 'triangle', 0.032], [98, 'sine', 0.012]],
-    stingers: [['goutte', 3], ['ferraille', 3], ['tole', 2], ['rideau_fer', 1], ['craquement', 1], ['chariot', 1], ['metal_dilate', 2], ['chute_gravats', 1], ['gouttiere', 1]],
+    stingers: [['ferraille', 3], ['tole', 2], ['rideau_fer', 1], ['craquement', 1], ['chariot', 1], ['metal_dilate', 2], ['chute_gravats', 1], ['gouttiere', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1], ['rat', 1]],
     intervalle: [7, 20],
     musique: { theme: 'interieur' },
@@ -140,7 +145,7 @@ export const SCENES_SONORES = {
   mediatheque: {
     vent: [230, 0.07, 0.04],
     drones: [[55, 'sine', 0.032], [110, 'sine', 0.010]],
-    stingers: [['pages', 3], ['craquement', 2], ['goutte', 1], ['pigeons', 1], ['bois_travaille', 1], ['souffle_couloir', 1]],
+    stingers: [['pages', 3], ['craquement', 2], ['pigeons', 1], ['bois_travaille', 1], ['souffle_couloir', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1], ['rat', 2]],
     intervalle: [9, 24],
     musique: { theme: 'interieur' },
@@ -148,7 +153,7 @@ export const SCENES_SONORES = {
   cinema: {
     vent: [150, 0.05, 0.03],
     drones: [[41.2, 'sine', 0.044], [55, 'sine', 0.020]],
-    stingers: [['craquement', 2], ['grattement', 2], ['goutte', 1], ['mouches', 1], ['souffle_couloir', 2], ['bois_travaille', 1]],
+    stingers: [['craquement', 2], ['grattement', 2], ['mouches', 1], ['souffle_couloir', 2], ['bois_travaille', 1]],
     stingersNuit: [['gemissement', 2], ['rat', 2]],
     intervalle: [8, 20],
     musique: { theme: 'interieur' },
@@ -156,11 +161,31 @@ export const SCENES_SONORES = {
   region: {
     vent: [640, 0.20, 0.05],
     drones: [[49, 'triangle', 0.026], [73.5, 'sine', 0.018]],
-    stingers: [['vent_rafale', 4], ['mistral', 3], ['rapace', 2], ['corbeau', 2], ['branche', 2], ['ferraille', 1], ['chien', 1], ['bourrasque_sifflante', 3], ['chute_gravats', 1]],
+    stingers: [['vent_rafale', 4], ['mistral', 3], ['rapace', 2], ['corbeau', 2], ['branche', 2], ['chien', 1]],
     stingersNuit: [['hibou', 2], ['gemissement', 1], ['chien', 1], ['insectes_nuit', 3]],
     stingersJour: [['cigales', 4], ['oiseau_isole', 3]], // la garrigue salonaise en plein cagnard
     intervalle: [8, 20],
     musique: { theme: 'exploration' }, // la route est longue — même thème que la rue (campagne seulement si EXPLORATION_CALME le permet)
+  },
+  // Les bois et les collines : le vent dans les pins, les branches, les bêtes. Rien de bâti à des kilomètres.
+  foret: {
+    vent: [520, 0.15, 0.05],
+    drones: [[49, 'triangle', 0.024], [73.5, 'sine', 0.016]],
+    stingers: [['vent_rafale', 3], ['branche', 4], ['corbeau', 2], ['rapace', 1]],
+    stingersNuit: [['hibou', 3], ['gemissement', 1], ['insectes_nuit', 3]],
+    stingersJour: [['cigales', 3], ['oiseau_isole', 4]],
+    intervalle: [9, 22],
+    musique: { theme: 'exploration' },
+  },
+  // Dehors, mais au milieu de hangars et de carcasses : l'usine, l'aérodrome.
+  friche: {
+    vent: [600, 0.18, 0.06],
+    drones: [[49, 'triangle', 0.026], [73.5, 'sine', 0.018]],
+    stingers: [['vent_rafale', 3], ['mistral', 2], ['corbeau', 2], ['ferraille', 2], ['tole', 2], ['metal_dilate', 1], ['chute_gravats', 1], ['bourrasque_sifflante', 2]],
+    stingersNuit: [['hibou', 1], ['gemissement', 2], ['insectes_nuit', 2]],
+    stingersJour: [['cigales', 3], ['oiseau_isole', 1]],
+    intervalle: [8, 20],
+    musique: { theme: 'exploration' },
   },
   village: {
     vent: [420, 0.12, 0.05],
@@ -183,10 +208,19 @@ export const SCENES_SONORES = {
   sombre: {
     vent: [240, 0.12, 0.07],
     drones: [[41.2, 'sine', 0.050], [61.8, 'sine', 0.030]],
-    stingers: [['goutte', 3], ['grattement', 2], ['gemissement', 2], ['craquement', 1], ['souffle_couloir', 2], ['eau_egout', 1], ['bois_travaille', 1], ['rat', 1]],
+    stingers: [['grattement', 2], ['gemissement', 2], ['craquement', 1], ['souffle_couloir', 2], ['bois_travaille', 1], ['rat', 1]],
     stingersNuit: [['gemissement', 2]],
     intervalle: [6, 15],
     musique: { theme: 'mort' }, // un glas discret, beaucoup de silence
+  },
+  // Sous la terre : le seul endroit où l'eau goutte.
+  grotte: {
+    vent: [240, 0.12, 0.07],
+    drones: [[41.2, 'sine', 0.050], [61.8, 'sine', 0.030]],
+    stingers: [['goutte', 5], ['souffle_couloir', 2], ['eau_egout', 1], ['grattement', 1]],
+    stingersNuit: [['gemissement', 1]],
+    intervalle: [6, 15],
+    musique: { theme: 'mort' },
   },
   train: {
     vent: [700, 0.22, 1.6],
@@ -200,8 +234,10 @@ export const SCENES_SONORES = {
 };
 
 // ---------- Scènes « cinématiques » (refonte v3) : le lit d'une scène existante + un thème ----------
-SCENES_SONORES.titre   = { ...SCENES_SONORES.sombre, musique: { theme: 'titre' } };
-SCENES_SONORES.calme   = { ...SCENES_SONORES.interieur, musique: { theme: 'lent' } };        // scènes lentes, moments suspendus
-SCENES_SONORES.tension = { ...SCENES_SONORES.rue, musique: { theme: 'exploration' } };   // cinématiques tendues : mystère, pas d'action
-SCENES_SONORES.mort    = { ...SCENES_SONORES.sombre, stingers: [['vent_rafale', 1]], musique: { theme: 'deces' } };
-SCENES_SONORES.combat  = { ...SCENES_SONORES.sombre };
+// Ces scènes sont des humeurs, pas des lieux : une cinématique peut se passer n'importe où, donc aucun bruit de décor.
+const SANS_DECOR = { stingers: [], stingersNuit: [], stingersJour: [] };
+SCENES_SONORES.titre   = { ...SCENES_SONORES.sombre, ...SANS_DECOR, musique: { theme: 'titre' } };
+SCENES_SONORES.calme   = { ...SCENES_SONORES.interieur, ...SANS_DECOR, musique: { theme: 'lent' } };        // scènes lentes, moments suspendus
+SCENES_SONORES.tension = { ...SCENES_SONORES.rue, ...SANS_DECOR, musique: { theme: 'exploration' } };   // cinématiques tendues : mystère, pas d'action
+SCENES_SONORES.mort    = { ...SCENES_SONORES.sombre, ...SANS_DECOR, stingers: [['vent_rafale', 1]], musique: { theme: 'deces' } };
+SCENES_SONORES.combat  = { ...SCENES_SONORES.sombre, ...SANS_DECOR };
