@@ -56,7 +56,9 @@ export const REGLAGES = {
     MS_PAR_MINUTE: 2381,        // 2 381 ms réelles = 1 minute de jeu → une journée ≈ 57 min réelles
                                 //   (encore 30 % plus lent qu'en v3 : 1 667 ms / 0,7).
                                 //   ↑ = le monde vieillit moins vite (moins de repas, de piles) ; ↓ = plus pressant.
-    DEPART_MINUTES: 1110,       // la partie commence le jour 1 à 18 h 30 : on arrive à la porte du Refuge au coucher du soleil.
+    DEPART_MINUTES: 1110,       // la partie commence le jour 1 à 18 h 30 : le moteur s'arrête à la tombée du jour.
+    TENUE_DEBUT: 1185,          // le premier soir, l'horloge s'arrête à 19 h 45 (G.world.horlogeTenue) tant qu'on n'a pas fini
+                                //   les objectifs et dormi : on ne peut pas tomber dans la nuit en plein didacticiel.
     DATE_JOUR1: [2026, 9, 23],  // le jour 1 est le mercredi 23 septembre 2026 (docs/HISTOIRE.md : trois semaines après le Mercredi).
     HEURES: {                   // courbe de lumière (clock.lumiereJour) : 0 la nuit, rampe, 1 le jour
       AUBE: 6,                  //   6 h → la lumière commence à monter
@@ -76,8 +78,8 @@ export const REGLAGES = {
       panneau: 0,               // inventaire / corps / fabrication ouverts : pause en solo (écran plein sur mobile).
     },
     VOYAGE_ACCELERE: 4,         // bouton « Accélérer » du voyage (solo) : ×4.
-    FABRICATION_ACCELERE: 10,   // pendant une barre de fabrication (solo), l'horloge tourne ×10 :
-                                //   une recette de 30 min dure 5 s réelles (le monde, lui, avance de 30 min).
+    FABRICATION_ACCELERE: 2,    // un geste chronométré passe 2 fois plus vite que l'horloge : une recette de 5 min dure 6 s
+                                //   réelles (le monde, lui, avance de 5 min). Bornes : craft.BARRE_MIN_MS, BARRE_MAX_MS.
     SOMMEIL_ACCELERE: 90,       // dormir 8 h dure ~5 s réelles (solo, ou co-op quand les deux dorment).
     ATTENDRE_OPTIONS: [15, 30, 60, 120], // durées proposées par « Attendre » (min), accéléré ×FABRICATION_ACCELERE.
   },
@@ -581,7 +583,10 @@ export const REGLAGES = {
       REPU: 0.8,                // estomac rempli à 80 % : « Repu·e » (état positif).
       BOUCHEE: 3,               // moins de 3 points de place : on ne peut plus rien avaler.
       // Manger prend du temps (action chronométrée, interrompue en bougeant : on garde le reste).
-      MS_BASE: 1800, MS_PAR_POINT: 230, MS_MIN: 2200, MS_MAX: 12000,   // une conserve de 20 points ≈ 6,4 s réelles
+      // Le temps vient de ce qu'on AVALE (le poids), pas des calories : une conserve de 450 g se mange plus lentement qu'un
+      // paquet de chips de 150 g. Conserve ≈ 16 s (ouverture comprise), chips ≈ 6,5 s, barre de céréales ≈ 4 s.
+      MS_BASE: 3000, MS_PAR_KG: 24000, MS_OUVRIR: 2500, MS_MIN: 3500, MS_MAX: 22000,
+      MS_BOIRE: 3500, MS_GORGEE: 2000,   // boire une boisson entière, une gorgée (ou avaler un comprimé)
       MIN_HORS_EXPLORATION: 5,  // manger sur la carte ou en voyage : 5 minutes passent
       NAUSEE_REGEN: 0.5,
       TOURNE_RISQUE: 0.5,       // entamé depuis plus de `perissable` h (items) : 50 % d'intoxication.
@@ -631,6 +636,7 @@ export const REGLAGES = {
     SOMMEIL: {
       FATIGUE_PAR_MIN: 0.22,    // 8 h de sommeil ≈ +105 fatigue.
       FATIGUE_MAX_POUR_DORMIR: 80, // on ne peut dormir que si fatigue < 80.
+      SOL_SI_FATIGUE: 15,       // à même le sol, seulement si l'on est épuisé·e (fatigue < 15) : sinon il faut un couchage, même de feuilles.
       DUREES: [2, 4, 6, 8, 10], // heures proposées.
       NATUREL_MAX_MIN: 960,     // garde-fou : sommeil haché, réveil après au plus 16 h.
       ALARME_MIN: 15,
@@ -651,7 +657,7 @@ export const REGLAGES = {
       },
       // la catégorie de chaque couchage (objets de plan et constructions) ; un plan peut la forcer : { couchage: 'moyen' }
       COUCHAGES: {
-        fauteuil: 'mauvais', canape: 'mauvais', brancard: 'mauvais', abri_branches: 'mauvais',
+        fauteuil: 'mauvais', canape: 'mauvais', brancard: 'mauvais', abri_branches: 'mauvais', lit_feuilles: 'mauvais',
         lit_fortune: 'moyen', lit_camp: 'moyen', matelas: 'moyen',
         lit: 'correct', lit_simple: 'correct', lit_hopital: 'correct',
       },
@@ -819,6 +825,9 @@ export const REGLAGES = {
     BRUIT_S: { defaut: 1, marteler: 4 }, // rayon de bruit par seconde de fabrication (4 si la recette demande 'marteler').
     QUALITE: { base: 0.8, parNiveau: 0.1, max: 1.2 }, // durabilité du résultat × (0,8 + 0,1 × (niveau − requis)), max ×1,2.
     LECTURE_MIN: 30,            // lire un livre : 30 min (accéléré), il faut de la lumière.
+    BARRE_MIN_MS: 4000,         // un geste de fabrication dure au moins 4 s réelles…
+    BARRE_MAX_MS: 30000,        // … et au plus 30 s, même pour une recette de plusieurs heures.
+    CONSTRUCTION_MS_PAR_MIN: 600, // construire : 0,6 s réelle par minute de jeu (un toit de bâche, 20 min : 12 s).
     GAZ_MIN_PAR_CARTOUCHE: 180, // un réchaud consomme 1 cartouche toutes les 180 min de cuisson.
     FEU_CAMP_MIN: 120,          // un feu de camp brûle 2 h.
     REPARATION: { plafond: 0.1, plancher: 0.5 }, // chaque réparation baisse la durabilité max de 10 % (jamais sous 50 %).

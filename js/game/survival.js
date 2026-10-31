@@ -339,7 +339,7 @@ export function etatsCorps(p) {
 const fmtKg = (k) => `${(Math.round(k * 10) / 10).toString().replace('.', ',')} kg`;
 
 // ---------- Soins ----------
-function dureeSoin(action, p) {
+export function dureeSoin(action, p) {
   const base = (S().SOINS[action] || { min: 1 }).min;
   return Math.max(1, Math.round(base * (1 - REGLAGES.competences.EFFETS.medecine.vitesse * niveau('medecine', p))));
 }
@@ -504,8 +504,14 @@ export function pointsPrevus(entree, p, opts = {}) {
   const bonus = opts.forcer ? R.FORCER_POINTS : 0;
   return Math.max(0, Math.min(dispo, Math.max(0, 100 - p.faim) + bonus, placeEstomac(p) + bonus));
 }
-// Durée d'un repas (ms réelles) : on mange bouchée après bouchée.
-export function dureeRepas(pts) { const R = RP(); return Math.round(Math.max(R.MS_MIN, Math.min(R.MS_MAX, R.MS_BASE + R.MS_PAR_POINT * Math.max(0, pts)))); }
+// Durée d'un repas (ms réelles) : on mange bouchée après bouchée, et le temps dépend de ce qu'on avale (le poids), plus
+// le temps d'ouvrir la boîte. pts : ce qu'on va caler (une conserve entamée, un repas arrêté par l'estomac : moins long).
+export function dureeRepas(entree, pts) {
+  const R = RP(), d = ITEMS[entree.id] || {}, reste = entree.reste ?? 1, dispo = pointsAliment(entree.id, reste);
+  const part = reste * (dispo > 0 ? Math.min(1, Math.max(0, pts) / dispo) : 1);
+  const ouvrir = d.besoinOuvre && entree.reste == null && entree.ouvert == null ? R.MS_OUVRIR : 0;
+  return Math.round(Math.max(R.MS_MIN, Math.min(R.MS_MAX, R.MS_BASE + ouvrir + R.MS_PAR_KG * (d.poids || 0.2) * part)));
+}
 
 // mangerObjet(entree, p, { forcer, maxPoints }) : mange UN exemplaire (du sac, d'un meuble ou du sol) — l'appelant le retire /
 //   le remplace. maxPoints : on s'est arrêté·e en route (repas interrompu). entree = { id, reste?, ouvert? }.
@@ -683,7 +689,8 @@ function risqueMaladie(p, r) {
 }
 
 // ---------- Sommeil ----------
-// dormir(heures, { sur, danger, mortsPresents, piege }) : fait passer le temps (accéléré).
+// dormir(heures, { sur, danger, mortsPresents, piege, ignorerPlafond }) : fait passer le temps (accéléré).
+// ignorerPlafond : la première nuit dure jusqu'au matin même sur un mauvais couchage (on ne récupère pas plus pour autant).
 // sur = pièce barricadée / refuge ; sinon intrusion (4 % + 10 % × danger)/h si des morts sont dans le niveau.
 // → { ok, dormi (min), interrompu, raison? }
 export function dormir(heures, opts = {}) {
@@ -693,7 +700,7 @@ export function dormir(heures, opts = {}) {
   if (G.mode !== 'solo' && !opts.force) return { ok: false, raison: 'À deux, vous devez décider ensemble de dormir.' };
   // le couchage : par terre si rien n'est dit (évanouissement…)
   const cat = opts.couchage || 'sol', CO = parametresCouchage(cat);
-  if (p.fatigue >= CO.plafond - 0.5) return { ok: false, plafond: true, raison: cat === 'sol' ? 'Tu n’arrives pas à dormir ici : tu n’es pas assez {fatigué|fatiguée} pour un sol aussi dur.' : 'Tu n’arrives pas à dormir ici : tu n’es pas assez {fatigué|fatiguée}.' };
+  if (p.fatigue >= CO.plafond - 0.5 && !opts.ignorerPlafond) return { ok: false, plafond: true, raison: cat === 'sol' ? 'Tu n’arrives pas à dormir ici : tu n’es pas assez {fatigué|fatiguée} pour un sol aussi dur.' : 'Tu n’arrives pas à dormir ici : tu n’es pas assez {fatigué|fatiguée}.' };
   couchageEnCours = cat;
   bruitEnCours = opts.bruit || 0;
   const sur = opts.sur ?? contexte.lieuSur;
@@ -705,7 +712,7 @@ export function dormir(heures, opts = {}) {
     for (let h = 0; h < heures && !p.mort; h++) {
         const bloc = Math.min(60, total - dormi, opts.respecterBloc ? Infinity : minutesRepos(p, cat, bruitEnCours)); if (bloc <= 0) break;
       clock.avancer(bloc); dormi += bloc;
-      if (p.fatigue >= CO.plafond - 0.01) break;
+      if (p.fatigue >= CO.plafond - 0.01 && !opts.ignorerPlafond) break;
         if (risque && Math.random() < 1 - Math.pow(1 - risque, bloc / 60)) { interrompu = true; break; }
     }
   } finally { setActivite('normal'); bruitEnCours = 0; }
@@ -718,7 +725,7 @@ export function dormir(heures, opts = {}) {
     emit('toast', { texte: piege ? 'Des bouteilles s\'entrechoquent : quelque chose est entré.' : 'Un râle, tout près. Tu te réveilles trop tard.', type: 'mauvais' });
   } else if (!opts.silencieux) emit('toast', { texte: `Tu as dormi ${Math.round(dormi / 60)} h.`, type: 'info' });
   emit('survie', { dormi });
-  return { ok: true, dormi, interrompu, couchage: cat, plafond: p.fatigue >= CO.plafond - 0.01, courbatures: !!(cb && dormi >= cb.apresH * 60) };
+  return { ok: true, dormi, interrompu, couchage: cat, plafond: !opts.ignorerPlafond && p.fatigue >= CO.plafond - 0.01, courbatures: !!(cb && dormi >= cb.apresH * 60) };
 }
 
 // ---------- Branchement sur l'horloge ----------

@@ -72,11 +72,32 @@ export function peindreSol(c, niv, E, x0, y0, x1, y1) {
 // Détails du terrain, déterministes (hash de la petite case) : le sol cesse d'être une texture qui se répète.
 //   - au pied des murs, dehors : herbes folles (vertes sur sol frais, paille sur sol sec), mousse sur les pavés ;
 //   - herbe : touffes plus hautes, quelques fleurs ; herbe sèche : brins de paille ;
-//   - terre, sable, gravier, boue : cailloux avec leur ombre ;
+//   - terre, sable, gravier, boue : de vraies petites pierres, avec leur ombre et leur reflet ; chaque matière a les siennes
+//     (CAILLOUTIS) : gravier serré et anguleux, gros cailloux clairs, sable stabilisé à peine semé ;
 //   - bitume, béton, trottoir : fissures, taches d'huile, mégots et papiers ;
 //   - dedans : moutons de poussière et petits débris, rares.
 const SEC = new Set(SOLS_IDS.map((id, i) => i).filter(i => ['herbe_seche', 'terre', 'sable', 'gravier'].includes(FAMILLES[i])));
 const MATS = Object.fromEntries(SOLS_IDS.map((id, i) => [i, FAMILLES[i]]));   // les variantes ont les détails de leur famille
+// Les pierres de chaque sol (id de js/carte/catalogue.js, sinon sa famille) : chance par petite case, nombre, taille (px), teintes.
+const CALCAIRE = [[186, 178, 162], [168, 160, 144], [150, 142, 126], [200, 192, 176], [132, 122, 106]];
+const CAILLOUTIS = {
+  gravier:   { chance: 1, n: [4, 8], t: [1.3, 2.9], coul: CALCAIRE, anguleux: true },
+  cailloux:  { chance: 1, n: [2, 4], t: [2.8, 6], coul: [[196, 188, 172], [176, 168, 150], [210, 202, 186], [156, 146, 128]] },
+  stabilise: { chance: 0.42, n: [1, 3], t: [1, 2.2], coul: [[190, 172, 136], [168, 150, 116], [204, 188, 152]], anguleux: true },
+  terre:     { chance: 0.2, n: [1, 3], t: [1.2, 3], coul: [[150, 138, 118], [128, 118, 100], [168, 156, 134]] },
+  sable:     { chance: 0.12, n: [1, 2], t: [1, 2], coul: [[186, 168, 130], [168, 150, 114]] },
+  boue:      { chance: 0.12, n: [1, 2], t: [1.2, 2.6], coul: [[112, 104, 90], [96, 88, 76]] },
+};
+// Une petite pierre posée au sol : l'ombre portée (le soleil vient du haut-gauche), le corps, un reflet.
+function pierreSol(c, x, y, t, coul, anguleux, r) {
+  const n = anguleux ? 5 : 8, a0 = r() * 6.28, f = 0.86 + r() * 0.28, pts = [];
+  for (let k = 0; k < n; k++) { const a = a0 + k / n * 6.28, d = t * (anguleux ? 0.7 + r() * 0.5 : 0.84 + r() * 0.24); pts.push([x + Math.cos(a) * d, y + Math.sin(a) * d * 0.8]); }
+  c.fillStyle = 'rgba(8,6,4,0.5)'; ellipse(c, x + t * 0.3 + 0.5, y + t * 0.36 + 0.5, t * 1.08, t * 0.86, 0); c.fill();
+  c.beginPath(); pts.forEach((p, k) => (k ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); c.closePath();
+  c.fillStyle = `rgb(${coul[0] * f | 0},${coul[1] * f | 0},${coul[2] * f | 0})`; c.fill();
+  c.strokeStyle = 'rgba(14,11,8,0.45)'; c.lineWidth = 0.5; c.stroke();
+  c.fillStyle = 'rgba(255,250,235,0.34)'; ellipse(c, x - t * 0.28, y - t * 0.26, t * 0.42, t * 0.3, 0.4); c.fill();
+}
 function brins(c, x, y, n, l, a0, ecart, couls, r) {
   c.lineCap = 'round';
   for (let k = 0; k < n; k++) {
@@ -118,15 +139,12 @@ function details(c, E, X0, Y0, X1, Y1) {
       case 'herbe_seche':
         if (hh < 0.24) brins(c, px + r() * TF, py + r() * TF, 5 + (r() * 4 | 0), 4 + r() * 4, -Math.PI / 2 + (r() - 0.5), 2.8, ['#9a8650', '#b09a62', '#7a6a3a'], r);
         break;
-      case 'terre': case 'sable': case 'gravier': case 'boue':
-        if (hh < (mat === 'gravier' ? 0.3 : 0.16)) for (let k = 0, n = 1 + (r() * 3 | 0); k < n; k++) {
-          const cx = px + r() * TF, cy = py + r() * TF, t = 1 + r() * (mat === 'gravier' ? 1.6 : 2.6), f = 0.75 + r() * 0.5;
-          c.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(c, cx + 0.8, cy + 0.9, t, t * 0.75, 0); c.fill();
-          c.fillStyle = mat === 'sable' ? `rgb(${178 * f | 0},${160 * f | 0},${122 * f | 0})` : `rgb(${128 * f | 0},${120 * f | 0},${106 * f | 0})`;
-          ellipse(c, cx, cy, t, t * 0.75, r() * 3); c.fill();
-          c.fillStyle = 'rgba(255,245,220,0.18)'; ellipse(c, cx - t * 0.3, cy - t * 0.3, t * 0.4, t * 0.3, 0); c.fill();
-        }
+      case 'terre': case 'sable': case 'gravier': case 'boue': {
+        const G = CAILLOUTIS[SOLS_IDS[s]] || CAILLOUTIS[mat];
+        if (hh < G.chance) for (let k = 0, n = G.n[0] + (r() * (G.n[1] - G.n[0] + 1) | 0); k < n; k++)
+          pierreSol(c, px + r() * TF, py + r() * TF, G.t[0] + r() * (G.t[1] - G.t[0]), G.coul[(r() * G.coul.length) | 0], !!G.anguleux, r);
         break;
+      }
       case 'bitume': case 'beton': case 'trottoir':
         if (hh < 0.045) {
           c.strokeStyle = 'rgba(12,11,10,0.55)'; c.lineWidth = 0.9; c.beginPath();
@@ -291,7 +309,7 @@ export function dessinerDecal(c, dc) {
     case 'passage_pieton': { c.fillStyle = 'rgba(210,205,190,0.5)'; for (let k = -2; k <= 2; k++) c.fillRect(k * TS * 0.4 - TS * 0.12, -R, TS * 0.24, R * 2); break; }
     case 'plaque_egout': { c.fillStyle = '#1e1e1f'; cercle(c, 0, 0, TS * 0.32); c.fill(); c.strokeStyle = 'rgba(120,120,120,0.35)'; c.lineWidth = 1; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(-TS * 0.25, k * 4); c.lineTo(TS * 0.25, k * 4); c.stroke(); } break; }
     case 'traces': { for (let k = 0; k < 6; k++) { c.fillStyle = 'rgba(40,6,8,0.55)'; ellipse(c, k * 9, (k % 2 ? 4 : -4), 3, 1.8); c.fill(); } break; }
-    case 'gravillons': { for (let k = 0; k < 20; k++) { c.fillStyle = `rgba(${120 + r() * 40},${115 + r() * 40},${100 + r() * 30},0.8)`; cercle(c, (r() - 0.5) * R * 2, (r() - 0.5) * R * 2, 1 + r()); c.fill(); } break; }
+    case 'gravillons': { for (let k = 0; k < 18; k++) pierreSol(c, (r() - 0.5) * R * 2, (r() - 0.5) * R * 2, 1.2 + r() * 1.8, CALCAIRE[(r() * CALCAIRE.length) | 0], true, r); break; }
     case 'herbes': { c.lineWidth = 1; for (let k = 0; k < 16; k++) { const sx = (r() - 0.5) * R * 2, sy = (r() - 0.5) * R; c.strokeStyle = r() < 0.5 ? '#3e522a' : '#5a743a'; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + (r() - 0.5) * 4, sy - 3 - r() * 5); c.stroke(); } break; }
     default: break;
   }

@@ -42,8 +42,12 @@ function tic() {
 }
 
 // Fait passer n minutes d'un coup (sommeil, fabrication, attente, scène « tempsMin »).
+// Le premier soir (G.world.horlogeTenue : la minute où elle s'arrête), l'heure ne passe pas ce cap tant qu'on n'a pas dormi :
+// js/game/sommeil.js la libère en s'endormant.
 export function avancer(n) {
-  if (!G || n <= 0) return;
+  if (!G) return;
+  if (G.world.horlogeTenue != null) n = Math.min(n, G.world.horlogeTenue - G.world.minutes);
+  if (n <= 0) return;
   const avantJour = jour();
   G.world.minutes += n;
   emit('minute', { delta: n });

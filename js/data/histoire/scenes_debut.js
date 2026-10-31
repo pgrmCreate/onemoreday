@@ -27,13 +27,23 @@ export const SCENES_DEBUT = {
         effets: { flag: 'rene_presente' }, suivant: 'bb_rene',
       },
       {
+        label: 'Lui demander quoi faire', si: { quete: ['q_debut', 'fourgon'] },
+        texte: '« Commence par l’arrière du fourgon. Il y a le vieux sac d’école du petit, et Sandrine dit que tu peux le prendre, et une bâche que Thierry garde pour ses chantiers. » Il regarde le jour qui baisse entre les pins. « Fouille, prends ce qui peut servir, et tu reviendras me voir. Sans sac, tu ne porteras pas grand-chose. »',
+        suivant: 'bb_rene',
+      },
+      {
         label: 'Parler du fourgon', si: { pasFlag: 'vivres_faits' },
         texte: '« Thierry dit que c’est la pompe, ou le filtre. » René hausse les épaules. « Moi, je dis qu’il n’y a plus de gasoil propre nulle part depuis trois semaines, et qu’il a rempli son réservoir avec n’importe quoi. Ce soir, on dort ici. J’ai tendu un fil en travers de la piste : si quelque chose passe, on l’entendra. »',
         suivant: 'bb_rene',
       },
       {
         label: 'Parler du bois', si: { quete: ['q_debut', 'bois'] },
-        texte: '« Ramasse du bois mort au pied des pins et pose-le sur le tas, à côté du creux. » Il regarde le ciel qui s’éteint entre les branches. « On n’allumera rien ce soir : un feu, la nuit, ça se voit de loin. Mais demain, on en aura besoin, et ça t’occupera les mains. » Il montre le fourgon du menton. « Il y a un sac de sport à l’arrière. Prends-le : à la main, tu ne pourras porter qu’une branche à la fois. »',
+        texte: '« Ramasse du bois mort au pied des pins et pose-le sur le tas, à côté du creux. » Il regarde le ciel qui s’éteint entre les branches. « On n’allumera rien ce soir : un feu, la nuit, ça se voit de loin. Mais demain, on en aura besoin, et ça t’occupera les mains. »',
+        suivant: 'bb_rene',
+      },
+      {
+        label: 'Parler de la nuit', si: { quete: ['q_debut', 'coin'] },
+        texte: '« Tends ta bâche sur quatre branches, liées avec des fibres. Il y en a sur les buissons, tu n’as qu’à en couper un. » Il tapote la terre du bout de sa canne. « Et ne couche pas là-dessus : le sol te prend toute ta chaleur, et tu ne fermeras pas l’œil. Ramasse des feuilles, fais-t’en un lit sous la bâche. Ce n’est pas grand-chose, mais tu dormiras. »',
         suivant: 'bb_rene',
       },
       {
@@ -43,7 +53,7 @@ export const SCENES_DEBUT = {
       },
       {
         label: 'Parler du camp', si: { quete: ['q_debut', 'camp'] },
-        texte: '« Le feu, tu le fais dans le creux, sous les trois pins : de la piste, on ne le verra pas. Des branches, tu en coupes dans les buissons, et il y a du bois mort partout. Pour les boîtes de conserve, Martine garde les vides dans son sac, et du fil de fer, il y en a sur les vignes du mas et dans la remise. La bâche est à l’arrière du fourgon. » Il a un petit sourire. « Toi, tu construis. Moi, je te regarde, et je critique. »',
+        texte: '« Le feu, tu le fais dans le creux, sous les trois pins : de la piste, on ne le verra pas. Des branches, tu en coupes dans les buissons, et il y a du bois mort partout. Pour les boîtes de conserve, Martine garde les vides dans son sac, et du fil de fer, il y en a sur les vignes du mas et dans la remise. Dans cette remise, il doit aussi rester une vieille bâche, pour l’abri. » Il a un petit sourire. « Toi, tu construis. Moi, je te regarde, et je critique. »',
         suivant: 'bb_rene',
       },
       { label: 'Parler de la vigie', si: { quete: ['q_debut', 'vigie'] }, suivant: 'bb_rene_vigie' },
@@ -82,7 +92,7 @@ export const SCENES_DEBUT = {
   // Déclencheur : jour 2, 7 h, pendant l'étape « panne ».
   bb_matin: {
     illu: null, musique: 'calme', orateur: 'René',
-    texte: 'Le jour se lève gris et froid sur les pins. Thierry est déjà sous le capot, et à côté de la caisse, Martine compte à voix basse ce qui reste : un demi-paquet de biscuits et une boîte de thon, pour sept.\n\nRené vient s’asseoir près de toi en grimaçant à cause de son genou. « En bas du sentier, dans le vallon, il y a le mas des Arnaud, avec des vignes, un puits et un potager. Je viendrais bien, mais je te ralentirais. » Il regarde le gamin qui joue avec un bâton près du fourgon. « Rapporte ce que tu peux, et range-le dans la caisse. »',
+    texte: 'Tu te réveilles {courbé|courbée} sur tes feuilles, le dos raide, avec le jour qui se lève gris et froid sur les pins. Thierry est déjà sous le capot, et à côté de la caisse, Martine compte à voix basse ce qui reste : un demi-paquet de biscuits et une boîte de thon, pour sept.\n\nRené vient s’asseoir près de toi en grimaçant à cause de son genou. « En bas du sentier, dans le vallon, il y a le mas des Arnaud, avec des vignes, un puits et un potager. Je viendrais bien, mais je te ralentirais. » Il regarde le gamin qui joue avec un bâton près du fourgon. « Rapporte ce que tu peux, et range-le dans la caisse. »',
     choix: [
       {
         label: 'Descendre au mas',

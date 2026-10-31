@@ -7,9 +7,11 @@ import * as player from '../../game/player.js';
 import * as inv from '../../game/inventory.js';
 import { toast } from '../toast.js';
 import { ouvrirSommeil } from '../../game/sommeil.js';
-import { el, icoEl, onglets, jauge, bouton, avecScroll, vide, g } from './commun.js';
+import { el, icoEl, onglets, jauge, bouton, avecScroll, vide, g, paire, demanderGeste } from './commun.js';
 
 let etat = { onglet: 'etat', zone: null };
+// Se soigner prend le temps du geste : 1 min de jeu = 1,2 s réelle (une suture : 18 s), jamais moins de 1,5 s.
+const dureeGeste = (action, p) => Math.max(1500, Math.min(REGLAGES.craft.BARRE_MAX_MS, surv.dureeSoin(action, p) * REGLAGES.temps.MS_PAR_MINUTE / REGLAGES.temps.FABRICATION_ACCELERE));
 
 export function monter(racine, opts = {}) {
   if (opts.onglet) etat.onglet = opts.onglet;
@@ -45,23 +47,26 @@ function resumeVital(p) {
 
 // ---------- Silhouette ----------
 // Zones : [zone, vue ('f' face / 'd' dos / 'fd' les deux), forme SVG (repère 0..100 × 0..210, décalée de +110 pour le dos)]
+// Les membres ne sont tracés qu'à gauche : paire() en fait le côté droit, et les deux bras sont forcément identiques.
+const P = (d) => paire(d, 50);
 const FORMES = [
-  ['à la tête', 'fd', 'M38 8 Q50 -2 62 8 L62 17 L38 17 Z'],
-  ['au visage', 'f', 'M38 17 L62 17 Q62 34 50 36 Q38 34 38 17 Z'],
-  ['au cou', 'fd', 'M44 36 L56 36 L57 45 L43 45 Z'],
-  ['à l\'épaule', 'fd', 'M27 47 Q34 44 42 45 L40 56 L25 58 Z M73 47 Q66 44 58 45 L60 56 L75 58 Z'],
-  ['au torse', 'f', 'M40 50 L60 50 L64 76 L36 76 Z'],
-  ['au flanc', 'f', 'M33 58 L40 56 L36 94 L31 92 Z M67 58 L60 56 L64 94 L69 92 Z'],
-  ['au ventre', 'f', 'M36 76 L64 76 L64 100 L36 100 Z'],
-  ['dans le dos', 'd', 'M36 50 L64 50 L66 100 L34 100 Z'],
-  ['au bras', 'fd', 'M25 58 L32 58 L29 86 L21 85 Z M75 58 L68 58 L71 86 L79 85 Z'],
-  ['à l\'avant-bras', 'fd', 'M21 86 L29 87 L26 112 L18 110 Z M79 86 L71 87 L74 112 L82 110 Z'],
-  ['à la main', 'fd', 'M18 111 L26 113 L25 124 L15 122 Z M82 111 L74 113 L75 124 L85 122 Z'],
-  ['à la cuisse', 'fd', 'M35 101 L49 101 L48 138 L36 138 Z M65 101 L51 101 L52 138 L64 138 Z'],
-  ['au genou', 'fd', 'M36 139 L48 139 L48 150 L36 150 Z M64 139 L52 139 L52 150 L64 150 Z'],
-  ['au mollet', 'fd', 'M36 151 L48 151 L47 182 L38 182 Z M64 151 L52 151 L53 182 L62 182 Z'],
-  ['à la cheville', 'fd', 'M38 183 L47 183 L47 191 L38 191 Z M62 183 L53 183 L53 191 L62 191 Z'],
-  ['au pied', 'fd', 'M37 192 L48 192 L49 202 L33 202 Z M63 192 L52 192 L51 202 L67 202 Z'],
+  ['à la tête', 'f', 'M37 13 Q37 0 50 0 Q63 0 63 13 L63 16 L37 16 Z'],
+  ['à la tête', 'd', 'M37 13 Q37 0 50 0 Q63 0 63 13 L63 16 Q63 30 56 35 Q50 38 44 35 Q37 30 37 16 Z'],
+  ['au visage', 'f', 'M37 16 L63 16 Q63 30 56 35 Q50 38 44 35 Q37 30 37 16 Z'],
+  ['au cou', 'fd', 'M45 36 Q50 39 55 36 L56 44 L44 44 Z'],
+  ['à l\'épaule', 'fd', P('M44 44.5 L41 45 Q31 46 27 54 L26.5 60 L38 60 L38 46 Z')],
+  ['au torse', 'f', 'M38 46 L44 45 L56 45 L62 46 L63 74 L37 74 Z'],
+  ['au flanc', 'f', P('M32 60 L38 60 L37 74 L38 98 L34 98 Q33 80 32 60 Z')],
+  ['au ventre', 'f', 'M37 74 L63 74 L62 98 L38 98 Z'],
+  ['dans le dos', 'd', 'M38 46 L44 45 L56 45 L62 46 L62 60 L68 60 L67 80 L66 98 L34 98 L33 80 L32 60 L38 60 Z'],
+  ['au bras', 'fd', P('M26.5 60.5 L31.5 60.5 L29 86 L21.5 85 Z')],
+  ['à l\'avant-bras', 'fd', P('M21.5 86 L29 87 L25.5 111 L18.5 110 Z')],
+  ['à la main', 'fd', P('M18.5 111 L25.5 112 L25 120 Q23 126 19 125 Q15 123 16 116 Z')],
+  ['à la cuisse', 'fd', P('M34 99 L49 99 L48 138 L36.5 138 Q34 120 34 99 Z')],
+  ['au genou', 'fd', P('M36.5 139 L48 139 L47.5 150 L37 150 Z')],
+  ['au mollet', 'fd', P('M37 151 L47.5 151 L46.5 182 L39 182 Q35.5 165 37 151 Z')],
+  ['à la cheville', 'fd', P('M39 183 L46.5 183 L46.5 191 L39 191 Z')],
+  ['au pied', 'fd', P('M39 192 L46.5 192 L48 200 Q47 203 44 203 L35 203 Q33 200 39 192 Z')],
 ];
 function classeZone(p, zone) {
   const w = p.blessures.filter(b => b.zone === zone); if (!w.length) return '';
@@ -128,7 +133,11 @@ function listeBlessures(col, p, racine) {
     for (const s of surv.soinsPossibles(p, i)) {
       const lab = s.objet ? `${s.label} — ${inv.nomObjet(s.objet)}` : s.label;
       acts.append(bouton({ label: lab, icone: NOM_ACTION_ICONE[s.action] || 'soin', cls: s.urgent && s.ok ? 'principal' : 'second', disabled: !s.ok, raison: s.raison,
-        onclick: () => { const r = surv.soigner(p, i, s.objet || 'cauteriser'); if (!r.ok) toast(r.raison, 'alerte'); dessiner(racine); } }));
+        onclick: () => demanderGeste(`${s.label}…`, dureeGeste(s.action, p), () => {
+          const k = p.blessures.indexOf(b), r = k < 0 ? { ok: false, raison: 'Cette plaie a changé.' } : surv.soigner(p, k, s.objet || 'cauteriser');
+          if (!r.ok) toast(r.raison, 'alerte'); else if (r.texte) toast(r.texte, 'info');
+          if (racine.isConnected) dessiner(racine);
+        }, { son: 'soin' }) }));
     }
     carte.append(acts);
     col.append(carte);
@@ -138,7 +147,10 @@ function prisesGlobales(p, racine) {
   const ids = [...new Set(p.inventaire.map(x => x.id))].filter(id => ['antibio', 'antidouleur', 'vitamines', 'tisane', 'charbon'].includes(surv.actionSoin(id)));
   if (!ids.length) return el('div');
   const n = el('div', { class: 'co-prises' }, el('h3', { class: 'pn-section' }, 'Prendre'));
-  for (const id of ids) n.append(bouton({ label: `${ITEMS[id].nom} (${inv.countItem(id)})`, icone: 'calme', cls: 'second', onclick: () => { const r = surv.soigner(p, -1, id); if (!r.ok) toast(r.raison, 'alerte'); dessiner(racine); } }));
+  for (const id of ids) n.append(bouton({ label: `${ITEMS[id].nom} (${inv.countItem(id)})`, icone: 'calme', cls: 'second', onclick: () => demanderGeste(`${ITEMS[id].nom}…`, dureeGeste(surv.actionSoin(id), p), () => {
+    const r = surv.soigner(p, -1, id); if (!r.ok) toast(r.raison, 'alerte'); else if (r.texte) toast(r.texte, 'info');
+    if (racine.isConnected) dessiner(racine);
+  }) }));
   return n;
 }
 

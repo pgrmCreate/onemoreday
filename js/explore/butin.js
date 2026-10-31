@@ -78,7 +78,7 @@ export function rendreButin() {
     ul.append(el('li', { class: (tient ? '' : 'plein') + (i >= (B.dejaVus || 0) ? ' neuf' : '') }, boutonTransfert({ class: 'ex-b-nom', type: 'button', onclick: () => (portable ? porterItem(i) : prendreItem(i)) }, nomObjet(it.id), it.qty > 1 ? el('em', {}, ' ×' + it.qty) : null, el('span', { class: 'sac-ecart' }, comparaisonSac(it.id))),
       portable ? boutonTransfert({ class: 'ex-b', type: 'button', onclick: () => porterItem(i) }, libPorter) : null,
       libConso ? boutonTransfert({ class: 'ex-b', type: 'button', onclick: () => consommerItem(i) }, libConso) : null,
-      boutonTransfert({ class: 'ex-b', type: 'button', disabled: tient ? null : true, title: tient ? null : (inv.raisonPlace && inv.raisonPlace(it.id)) || 'Plus de place', onclick: () => prendreItem(i) }, tient ? 'Prendre' : (inv.estPetit && !inv.estPetit(it.id) && !G.player.equip.sac ? 'Trop gros' : 'Sac plein'))));
+      boutonTransfert({ class: 'ex-b', type: 'button', disabled: tient ? null : true, title: tient ? null : (inv.raisonPlace && inv.raisonPlace(it.id)) || 'Plus de place', onclick: () => prendreItem(i) }, tient ? 'Prendre' : (inv.estPetit && !inv.estPetit(it.id) && !inv.capacites().sac ? 'Trop gros' : 'Sac plein'))));
   }
   B.dejaVus = Math.min(B.visibles, B.items.length);
   const reste = B.items.length - B.visibles;

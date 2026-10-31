@@ -22,10 +22,13 @@ export function normaliserJoueur(p) {
   p.skillXp = p.skillXp || {};
   for (const [s, xp] of Object.entries(C().DEPART || {})) if (p.skillXp[s] == null) p.skillXp[s] = xp;
   p.inventaire = p.inventaire || [];
-  p.equip = Object.assign({ arme: null, mainG: null, dos: null, tete: null, visage: null, haut: null, torse: null, veste: null, mains: null, poignet: null, jambes: null, pieds: null, sac: null, ceinture: null, holster: null, lampe: null }, p.equip || {});
+  p.equip = Object.assign({ arme: null, mainG: null, dos: null, tete: null, visage: null, haut: null, torse: null, veste: null, mains: null, poignet: null, jambes: null, pieds: null, sac: null, sacoche: null, ceinture: null, holster: null, lampe: null }, p.equip || {});
   // vieilles sauvegardes : un seul emplacement « torse » → chaque vêtement rejoint sa couche (haut, pull, veste)
   const t = p.equip.torse, ct = t && CLOTHES[t];
   if (ct && ct.slot !== 'torse') { p.equip.torse = null; if (!p.equip[ct.slot]) p.equip[ct.slot] = t; else p.inventaire.push({ id: t, qty: 1 }); }
+  // vieilles sauvegardes : une sacoche portée à la place du sac rejoint son emplacement à elle
+  const sc = CLOTHES[p.equip.sac];
+  if (sc && sc.slot === 'sacoche') { if (!p.equip.sacoche) p.equip.sacoche = p.equip.sac; else p.inventaire.push({ id: p.equip.sac, qty: 1 }); p.equip.sac = null; }
   // poids du corps (kg) : la référence dépend du genre ; on part de son poids de forme
   if (p.poidsRef == null) p.poidsRef = (S().CORPS || {}).REF ? S().CORPS.REF[p.genre === 'f' ? 'f' : 'm'] : 72;
   if (p.poidsCorps == null) p.poidsCorps = p.poidsRef;
@@ -75,7 +78,7 @@ export function gagnerXps(obj, mult = 1, p) { for (const [s, n] of Object.entrie
 // Agilité effective = niveau + bonus/malus des vêtements (baskets +1, sac de randonnée −1…).
 export function agiliteEffective(p) {
   p = joueur(p); let a = niveau('agilite', p);
-  for (const slot of ['tete', 'haut', 'torse', 'veste', 'mains', 'jambes', 'pieds', 'sac', 'ceinture', 'holster']) {
+  for (const slot of ['tete', 'haut', 'torse', 'veste', 'mains', 'jambes', 'pieds', 'sac', 'sacoche', 'ceinture', 'holster']) {
     const c = CLOTHES[p.equip[slot]]; if (c && c.agilite) a += c.agilite;
   }
   return Math.max(0, a);

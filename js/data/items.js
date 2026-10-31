@@ -754,6 +754,10 @@ export const ITEMS = {
     nom: 'Fibres végétales', type: 'materiau', poids: 0.1, espace: 0, volume: 0.4,
     desc: 'De l\'herbe sèche et des tiges d\'ortie, battues et effilées. Tressées, elles font une ficelle qui tient.',
   },
+  feuilles: {
+    nom: 'Brassée de feuilles', type: 'materiau', poids: 0.2, espace: 1, volume: 1.5,
+    desc: 'Des feuilles mortes, sèches et craquantes, ramassées au pied des buissons. Assez pour ne pas coucher sur la terre.',
+  },
   cannes: {
     nom: 'Cannes de Provence', type: 'materiau', poids: 0.5, espace: 2, volume: 3, long: true,
     desc: 'Des roseaux géants coupés au bord d\'un fossé, droits et creux. Une palissade, une lance légère, des tuteurs.',

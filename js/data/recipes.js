@@ -13,7 +13,7 @@
 //   poste         null (à la main, n'importe où) | 'etabli' (à ≤ 1,5 case d'une table / d'un bureau / d'une machine ;
 //                 un vrai établi : temps × 0,7) | 'feu' (feu de camp allumé, réchaud avec gaz, cheminée).
 //   skill         { competence: niveau } requis (toutes les clés), ou null.
-//   tempsMin      minutes de jeu (barre réelle = tempsMin × MS_PAR_MINUTE / FABRICATION_ACCELERE : 30 min → 5 s).
+//   tempsMin      minutes de jeu (barre réelle = tempsMin × MS_PAR_MINUTE / FABRICATION_ACCELERE : 5 min → 6 s).
 //   xp            { competence: n } gagnés à la fin.
 //   connue        true : visible et faisable dès le début.
 //   apprise_par   NOUVEAU — [ids d'objets type 'livre'] : lire l'un d'eux apprend la recette.

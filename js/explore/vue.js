@@ -203,13 +203,24 @@ export async function entrer({ lieuId, entree, arene = null, venantDe = null, po
     import('../ui/panels/index.js').then(m => { if (m.panneauOuvert()) m.fermerPanneau(); }).catch(() => {});
     if (V.action) couperAction();
     const v = V, debut = G.world.minutes;
-    lancerAction(`${d.nom}…`, Math.max(2500, dureeBarreMs(d.tempsMin)), v.j.x, v.j.y, async () => {   // assez long pour voir ses mains faire
+    lancerAction(`${d.nom}…`, dureeBarreMs(d.tempsMin), v.j.x, v.j.y, async () => {   // assez long pour voir ses mains faire
       const res = await fabriquer(d.id, d.qty, { cible: d.cible, minutesEcoulees: G.world.minutes - debut });
       if (V !== v) return;
       if (!res.ok) message(res.raison || 'Impossible.', 2600);
       else { sfx('loot'); message(`Fabriqué : ${res.texte}.`, 2200); }
     }, 0, d.marteler ? 'clouer' : 'craft', d.marteler ? 1600 : 2300);
     if (V.action) Object.assign(V.action, { anneau: true, objet: d.objet || null, geste: d.marteler ? 'marteler' : 'fabriquer', outil: d.marteler ? 'marteau' : null });
+  }));
+
+  // Un geste demandé depuis un panneau (boire, soigner une plaie) : on revient sur le terrain, la barre court ; bouger, un
+  // mort qui approche : on s'arrête, rien n'est consommé. d = { label, ms, fin, son?, geste? } ; d.pris = true si l'on s'en charge.
+  V.off.push(on('geste:demande', (d) => {
+    if (!V || V.arene || V.occupe || G.player.agonie || !d || V.fouille) return;
+    d.pris = true;
+    import('../ui/panels/index.js').then(m => { if (m.panneauOuvert()) m.fermerPanneau(); }).catch(() => {});
+    if (V.action) couperAction();
+    lancerAction(d.label, d.ms, V.j.x, V.j.y, d.fin, 0, d.son || null, 1800);
+    if (V.action && d.geste) V.action.geste = d.geste;
   }));
 
   // rendu + entrées
@@ -565,8 +576,8 @@ function image(t, dt) {
   for (let q = 0; q < V.nLampes; q++) lumJ = Math.max(lumJ, lumiereLampe(V.lampes[q], j.x, j.y) * 0.5);
   j.lumiere = Math.min(1, lumJ);
   V.canal.majJoueur({ x: j.x, y: j.y, etage: j.etage, dir: j.dir, allure: j.allure, lumiere: j.lumiere, lampe: !!la, lampeSource: la ? la.id : null });
-  { const sac = (G.player.equip && G.player.equip.sac) || null, dos = (G.player.equip && G.player.equip.dos) || null;   // le coéquipier voit ton sac et ce que tu portes dans le dos
-    if (sac !== V._sacEnvoye || dos !== V._dosEnvoye) { V._sacEnvoye = sac; V._dosEnvoye = dos; V.canal.majJoueur({ sac, dos }); }
+  { const sac = (G.player.equip && G.player.equip.sac) || null, dos = (G.player.equip && G.player.equip.dos) || null, sacoche = (G.player.equip && G.player.equip.sacoche) || null;   // le coéquipier voit ton sac, ta sacoche et ce que tu portes dans le dos
+    if (sac !== V._sacEnvoye || dos !== V._dosEnvoye || sacoche !== V._sacocheEnvoyee) { V._sacEnvoye = sac; V._dosEnvoye = dos; V._sacocheEnvoyee = sacoche; V.canal.majJoueur({ sac, dos, sacoche }); }
     // co-op : le coéquipier te voit habillé comme tu l'es (vêtements, coiffure)
     const st = styleJoueur();
     if (st !== V._styleEnvoye && G.mode !== 'solo') { V._styleEnvoye = st; V.canal.majJoueur({ style: { manteau: st.manteau, col: st.col, bras: st.bras, pantalon: st.pantalon, cheveux: st.cheveux, coiffure: st.coiffure, vet: st.vet, carrure: st.carrure } }); } }
@@ -661,7 +672,7 @@ const COUL_JAMBES = { jean: '#2e3e5a', jogging: '#3a3a40', pantalon_cargo: '#4a4
 let styleCache = null, styleCle = '';
 function styleJoueur() {
   const p = G.player, e = p.equip || {};
-  const cle = `${e.haut || ''}|${e.torse || ''}|${e.veste || ''}|${e.jambes || ''}|${e.sac || ''}|${e.dos || ''}|${p.genre || ''}`;
+  const cle = `${e.haut || ''}|${e.torse || ''}|${e.veste || ''}|${e.jambes || ''}|${e.sac || ''}|${e.sacoche || ''}|${e.dos || ''}|${p.genre || ''}`;
   if (cle === styleCle && styleCache) return styleCache;
   styleCle = cle;
   const couches = [e.veste, e.torse, e.haut].filter(Boolean);
@@ -671,7 +682,7 @@ function styleJoueur() {
   styleCache = {
     manteau, col: dessous ? COUL_VET[dessous] || null : null, bras: longues ? null : '#b89378',
     pantalon: COUL_JAMBES[e.jambes] || '#2a2c30', cheveux: p.genre === 'f' ? '#3a2416' : '#241a12', peau: '#b89378',
-    coiffure: p.genre === 'f' ? 'long' : 'court', sac: e.sac || false, dos: e.dos || null,
+    coiffure: p.genre === 'f' ? 'long' : 'court', sac: e.sac || false, sacoche: e.sacoche || false, dos: e.dos || null,
     vet: dessus || 'tshirt', carrure: p.genre === 'f' ? 0.93 : 1,       // la forme du vêtement du dessus (ses détails), la carrure
   };
   return styleCache;

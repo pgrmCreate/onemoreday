@@ -11,7 +11,7 @@ import * as surv from '../../game/survival.js';
 import * as craft from '../../game/crafting.js';
 import { iconeObjet } from '../icons.js';
 import { lireMontre, lireCalendrier } from '../../game/temps_connu.js';
-import { el, icoEl, onglets, jauge, bouton, avecScroll, vide, fmtKg, fmtL, pct, g } from './commun.js';
+import { paire, demanderGeste, el, icoEl, onglets, jauge, bouton, avecScroll, vide, fmtKg, fmtL, pct, g } from './commun.js';
 import { commandeTransfert, transfertEnCours } from '../transferts.js';
 import { choisirSac, comparaisonSac } from '../sacs.js';
 
@@ -99,7 +99,7 @@ function ligneObjet({ index, it, def: d }, p, actif, onclick) {
   if (it.qty > 1) nom.append(el('em', { class: 'inv-qty' }, `×${it.qty}`));
   if (it.reste != null) nom.append(el('em', { class: 'inv-qty' }, surv.aTourne(it) ? ' (entamé, a tourné)' : ' (entamé)'));
   const sous = el('span', { class: 'inv-meta' }, metaObjet(it, d || {}));
-  if (inv.slotDe(it.id) === 'sac') sous.append(el('span', { class: 'sac-ecart' }, `Vide · ${comparaisonSac(it.id, p)}`));
+  if (inv.estSac(it.id)) sous.append(el('span', { class: 'sac-ecart' }, `Vide · ${comparaisonSac(it.id, p)}`));
   const txt = el('span', { class: 'inv-txt' }, nom, sous);
   b.append(ic, txt);
   const u = inv.etatUsure(it);
@@ -111,15 +111,15 @@ function ligneObjet({ index, it, def: d }, p, actif, onclick) {
 // Le sac porté, en PETIT (une pastille en tête de la liste) : la place va à la liste des objets.
 // Toucher la pastille ouvre l'emplacement « Sac » de l'équipement.
 function enteteSac(p, racine, api) {
-  const sac = inv.sacPorte(p);
+  const sacoche = inv.sacPorte(p, 'sacoche'), sac = inv.sacPorte(p) || sacoche;
   const b = inv.bilan(p);
   const titre = sac
-    ? `${sac.nom} — sac : ${fmtL(b.sac.utilise)} / ${fmtL(b.sac.max)} · poches : ${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)} · +${sac.portage} kg portables`
+    ? `${sacoche && sacoche !== sac ? `${sac.nom} + ${sacoche.nom}` : sac.nom} — sac : ${fmtL(b.sac.utilise)} / ${fmtL(b.sac.max)} · poches : ${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)}`
     : `Pas de sac : tes poches seulement (${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)}), et seulement les petits objets.`;
   return el('button', { type: 'button', class: 'inv-sac-mini' + (sac ? '' : ' sans'), title: titre, 'aria-label': titre,
     onclick: () => { etat.onglet = 'equip'; etat.sel = { zone: 'slot', ref: 'sac' }; dessiner(racine, api); } },
     icoEl('sac'),
-    el('span', {}, el('strong', {}, sac ? sac.nom : 'Pas de sac'),
+    el('span', {}, el('strong', {}, sac ? (sacoche && sacoche !== sac ? `${sac.nom} + sacoche` : sac.nom) : 'Pas de sac'),
       el('em', {}, sac ? `${fmtL(b.sac.utilise)} / ${fmtL(b.sac.max)}` : `poches ${fmtL(b.poches.utilise)} / ${fmtL(b.poches.max)}`)));
 }
 // Les types d'objets du sac (Tout, Soins, Nourriture…) : une colonne verticale à gauche, qui défile de haut en bas
@@ -182,8 +182,8 @@ function listeTri(col, p, racine, api) {
 
 // ---------- Onglet Équipement (paper-doll) ----------
 const GAUCHE = ['tete', 'visage', 'haut', 'torse', 'veste', 'mains', 'poignet', 'jambes', 'pieds'];
-const DROITE = ['arme', 'mainG', 'dos', 'lampe', 'sac', 'ceinture', 'holster'];
-const ICONE_SLOT = { tete: 'tete', visage: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', poignet: 'montre', jambes: 'jambes', pieds: 'pieds', arme: 'main_arme', mainG: 'main_arme', dos: 'sac', lampe: 'lampe', sac: 'sac', ceinture: 'ceinture', holster: 'holster' };
+const DROITE = ['arme', 'mainG', 'dos', 'lampe', 'sac', 'sacoche', 'ceinture', 'holster'];
+const ICONE_SLOT = { tete: 'tete', visage: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', poignet: 'montre', jambes: 'jambes', pieds: 'pieds', arme: 'main_arme', mainG: 'main_arme', dos: 'sac', lampe: 'lampe', sac: 'sac', sacoche: 'sac', ceinture: 'ceinture', holster: 'holster' };
 function caseSlot(slot, p, racine, api) {
   const m = inv.mains(p);
   let id = p.equip[slot];
@@ -206,19 +206,26 @@ function caseSlot(slot, p, racine, api) {
   }
   return b;
 }
+// Une seule moitié est tracée, l'autre en miroir : les deux bras sont identiques. Le sac passe DERRIÈRE le corps (on ne
+// voit que ses bords et ses bretelles), la sacoche pend à la hanche, sa sangle en travers de la poitrine.
+const AXE = 60;
+const BRAS = 'M38 48 Q30 50 28 60 L22 98 L30 100 L40 72 Z', AVANT_BRAS = 'M22 99 L18 124 Q17 132 21 134 Q26 135 26 128 L30 101 Z';
+const PIED = 'M44 180 L56 180 L57 204 Q50 208 40 205 Q40 194 44 180 Z', BRETELLE = 'M49 45 Q45 62 47 86';
 function silhouette(p) {
   const couleur = (slot) => (slot === 'torse' ? ['haut', 'torse', 'veste'].some(s => p.equip[s]) : p.equip[slot]) ? 'porte' : '';
   return el('div', { class: 'eq-silhouette', html: `<svg viewBox="0 0 120 220" aria-hidden="true">
     <g class="eq-corps">
-      <ellipse class="${couleur('tete')}" cx="60" cy="24" rx="15" ry="17"/>
-      <path class="${couleur('torse')}" d="M40 50 Q60 44 80 50 L88 58 L84 112 Q60 118 36 112 L32 58 Z"/>
-      <path class="${couleur('torse')}" d="M32 58 L22 100 L26 104 L38 70 Z M88 58 L98 100 L94 104 L82 70 Z"/>
-      <path class="${couleur('mains')}" d="M22 102 L14 132 L22 134 L28 106 Z M98 102 L106 132 L98 134 L92 106 Z"/>
-      <path class="${couleur('jambes')}" d="M37 112 Q60 118 83 112 L80 176 L64 176 L60 130 L56 176 L40 176 Z"/>
-      <path class="${couleur('pieds')}" d="M40 178 L56 178 L57 204 L36 206 Z M64 178 L80 178 L84 206 L63 204 Z"/>
-      ${p.equip.sac ? '<path class="porte sac" d="M84 60 L100 66 L100 108 L86 110 Z"/>' : ''}
-      ${p.equip.poignet ? '<path class="porte" d="M15 124 L24 126.5 L23.2 130 L14.2 127.5 Z"/>' : ''}
-      ${p.equip.ceinture ? '<path class="porte ceint" d="M36 106 Q60 112 84 106 L84 112 Q60 118 36 112 Z"/>' : ''}
+      ${p.equip.sac ? '<path class="porte sac" d="M42 46 L78 46 Q88 48 88 60 L87 104 Q60 112 33 104 L32 60 Q32 48 42 46 Z"/>' : ''}
+      <ellipse class="${couleur('tete')}" cx="60" cy="22" rx="13" ry="16"/>
+      <path class="${couleur('torse')}" d="M54 36 L66 36 L67 44 Q78 45 82 52 L80 88 Q79 100 80 110 L40 110 Q41 100 40 88 L38 52 Q42 45 53 44 Z"/>
+      <path class="${couleur('torse')}" d="${paire(BRAS, AXE)}"/>
+      <path class="${couleur('mains')}" d="${paire(AVANT_BRAS, AXE)}"/>
+      <path class="${couleur('jambes')}" d="M40 110 L80 110 L82 130 L76 178 L64 178 L61 128 L59 128 L56 178 L44 178 L38 130 Z"/>
+      <path class="${couleur('pieds')}" d="${paire(PIED, AXE)}"/>
+      ${p.equip.sac ? `<path class="porte bretelle" d="${paire(BRETELLE, AXE)}"/>` : ''}
+      ${p.equip.poignet ? '<path class="porte" d="M19.6 113 L28 115 L27 119 L18.8 117 Z"/>' : ''}
+      ${p.equip.ceinture ? '<path class="porte ceint" d="M40 104 L80 104 L80 110 L40 110 Z"/>' : ''}
+      ${p.equip.sacoche ? '<path class="porte bretelle" d="M72 45 L46 106"/><path class="porte sac" d="M33 104 Q33 101 36 101 L50 101 Q53 101 53 104 L53 118 Q53 122 49 122 L37 122 Q33 122 33 118 Z"/>' : ''}
     </g></svg>` });
 }
 function poupee(col, p, racine, api) {
@@ -277,7 +284,7 @@ function statsObjet(id, it, p) {
     const c = CLOTHES[id];
     if (c.protection) rows.push(['Protection', `${c.protection}`]);
     if (c.chaleur) rows.push(['Chaleur', `+${c.chaleur}`]);
-    if (c.slot === 'sac') rows.push(['Contenance', comparaisonSac(id, p)], ['Ton sac porté', p.equip.sac ? inv.nomObjet(p.equip.sac) : 'Aucun']);
+    if (inv.estSac(id)) rows.push(['Contenance', comparaisonSac(id, p)], [c.slot === 'sacoche' ? 'Ta sacoche' : 'Ton sac porté', p.equip[c.slot] ? inv.nomObjet(p.equip[c.slot]) : 'Aucun']);
     else if (c.espace) rows.push(['Poches', `+${fmtL(c.espace)}`]);
     if (c.portage) rows.push(['Charge en plus', `+${fmtKg(c.portage)}`]);
     if (c.accesRapide) rows.push(['Accès rapide', `+${c.accesRapide}`]);
@@ -318,8 +325,10 @@ function actionsSac(index, it, p, racine, api) {
     else if (forcer) a.push({ label: repu ? g('Manger quand même (tu es repu{|e})') : 'Manger quand même (tu n\'as plus faim)', icone: 'manger', f: manger });
     else a.push({ label: 'Manger', icone: 'manger', disabled: true, raison: v.raison, f: () => {} });
   }
-  if (d.type === 'boisson') a.push({ label: 'Boire', icone: 'boire', principal: true, f: () => res(surv.boire(it.id)) });
-  if (it.eau && it.eau.L > 0) a.push({ label: 'Boire une gorgée', icone: 'boire', principal: true, f: () => res(surv.boire(index)) });
+  // boire prend quelques secondes : comme manger, le geste se joue dans le monde
+  const P_ = REGLAGES.survie.REPAS;
+  if (d.type === 'boisson') a.push({ label: 'Boire', icone: 'boire', principal: true, f: () => demanderGeste(`Tu bois : ${d.nom.toLowerCase()}…`, P_.MS_BOIRE, () => res(surv.boire(it.id)), { geste: 'manger' }) });
+  if (it.eau && it.eau.L > 0) a.push({ label: 'Boire une gorgée', icone: 'boire', principal: true, f: () => demanderGeste('Tu bois une gorgée…', P_.MS_GORGEE, () => { const k = p.inventaire.indexOf(it); res(k < 0 ? { ok: false } : surv.boire(k)); }, { geste: 'manger' }) });
   if (d.contenance) {
     const src = surv.contexteSurvie().sourceEau;
     if (src) a.push({ label: `Remplir (${src === 'propre' ? 'eau propre' : 'eau croupie'})`, icone: 'remplir', f: () => import('../../explore/construction.js').then(m => m.remplirAuPointEau(index)).then(res) });
@@ -327,7 +336,7 @@ function actionsSac(index, it, p, racine, api) {
   }
   if (d.type === 'soin') {
     const act = surv.actionSoin(it.id);
-    if (['antibio', 'antidouleur', 'vitamines', 'tisane', 'charbon'].includes(act)) a.push({ label: 'Prendre', icone: 'soin', principal: true, f: () => res(surv.soigner(p, -1, it.id)) });
+    if (['antibio', 'antidouleur', 'vitamines', 'tisane', 'charbon'].includes(act)) a.push({ label: 'Prendre', icone: 'soin', principal: true, f: () => demanderGeste(`${d.nom}…`, P_.MS_GORGEE, () => res(surv.soigner(p, -1, it.id)), { geste: 'manger' }) });
     else a.push({ label: p.blessures.length ? 'Soigner une plaie' : 'Aucune plaie à soigner', icone: 'soin', principal: !!p.blessures.length, disabled: !p.blessures.length, f: () => api.ouvrir('corps') });
   }
   if (d.type === 'livre') a.push({ label: p.livresLus.includes(it.id) ? 'Relire' : 'Lire', icone: 'lire', principal: true, f: () => res(craft.lire(index)) });

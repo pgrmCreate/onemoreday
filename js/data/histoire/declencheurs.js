@@ -13,8 +13,8 @@ export const DECLENCHEURS = [
   // ═══════════════════════ LE DÉBUT — LE BOIS (docs/HISTOIRE_DEBUT_V3.md) ═══════════════════════
   // La cinématique 'ouverture' (trois phrases sur un écran noir) est jouée à la création de la partie, puis on arrive sur
   // la piste, à côté du fourgon (explorer('bois_barben', { entree: 'fourgon' })) : on joue tout de suite, sans scène.
-  // le matin du jour 2 : il n'y a plus rien à manger, René parle du mas (le tas de bois du premier soir, fait ou pas)
-  { quand: 'heure', jourMin: 2, heure: 7, si: { ou: [{ quete: ['q_debut', 'bois'] }, { quete: ['q_debut', 'panne'] }] }, scene: 'bb_matin' },
+  // le matin du jour 2, au réveil : il n'y a plus rien à manger, René parle du mas (bois, panne : les anciennes parties)
+  { quand: 'heure', jourMin: 2, heure: 7, si: { ou: [{ quete: ['q_debut', 'dormir'] }, { quete: ['q_debut', 'bois'] }, { quete: ['q_debut', 'panne'] }] }, scene: 'bb_matin' },
   // la caisse est assez pleine : le fourgon ne repartira pas, on monte le camp
   { quand: 'flag', flag: 'vivres_faits', scene: 'bb_camp' },
   // le soir, une fois le camp monté : les boîtes sonnent

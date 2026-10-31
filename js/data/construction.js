@@ -192,6 +192,11 @@ export const CONSTRUCTIONS = {
     skill: { construction: 2 }, tempsMin: 60, xp: { construction: 10 },
     desc: 'Un tonneau cerclé de fil de fer et doublé d\'une bâche. 60 litres de pluie qui attendent la soif.',
   },
+  lit_feuilles: {
+    nom: 'Lit de feuilles', cat: 'survie', t: [1, 2], bloque: 0, opaque: 0, pv: 15, lit: true, dessin: 'lit_feuilles', plat: true,
+    ingredients: [{ id: 'feuilles', qty: 4 }, { id: 'branche', qty: 2 }], outils: [], skill: null, tempsMin: 15, xp: { construction: 2 },
+    desc: 'Deux branches pour tenir un tas de feuilles mortes. Un lit vraiment nul, mais un lit : on ne dort plus sur la terre.',
+  },
   abri_branches: {
     nom: 'Abri de branches', cat: 'survie', t: [2, 2], bloque: 1, opaque: 1, pv: 90, lit: true, dessin: 'abri_branches',
     ingredients: [{ id: 'branche', qty: 10 }, { id: 'fibres', qty: 4 }, { id: 'bache_plastique', qty: 1 }], outils: [], skill: null, tempsMin: 60, xp: { construction: 6 },
@@ -224,7 +229,7 @@ export const RECOLTES = {
              cueillette: { id: 'figues', qty: 2, mois: [8, 9, 10] } },
   amandier: { geste: 'Abattre', outil: 'abattre', ms: 22000, rendu: { buche: 2, branche: 4, brindilles: 2 }, souche: true, bruit: 8,
              cueillette: { id: 'amandes', qty: 2, mois: [8, 9] } },
-  buisson: { geste: 'Couper', outil: 'elaguer', mainsNues: 2.2, ms: 7000, rendu: { branche: 2, brindilles: 2, fibres: 2 }, bruit: 2,
+  buisson: { geste: 'Couper', outil: 'elaguer', mainsNues: 2.2, ms: 7000, rendu: { branche: 2, brindilles: 2, fibres: 2, feuilles: 2 }, bruit: 2,
              cueillette: { id: 'mures', qty: 2, mois: [8, 9] } },
   roncier: { geste: 'Couper', outil: 'elaguer', mainsNues: 3, ms: 8000, rendu: { branche: 1, brindilles: 3, fibres: 1 }, bruit: 2,
              cueillette: { id: 'mures', qty: 3, mois: [8, 9] } },
@@ -241,7 +246,7 @@ export const RECOLTES = {
   agave:   { geste: 'Couper', outil: 'couper', mainsNues: 3, ms: 6000, rendu: { fibres: 4 }, bruit: 1 },
   figuier_barbarie: { geste: 'Couper', outil: 'couper', mainsNues: 3, ms: 6000, rendu: { fibres: 1 }, bruit: 1,
              cueillette: { id: 'fruits_sauvages', qty: 2, mois: [8, 9, 10] } },
-  haie:    { geste: 'Couper', outil: 'elaguer', mainsNues: 2.5, ms: 9000, rendu: { branche: 2, brindilles: 3 }, bruit: 2 },
+  haie:    { geste: 'Couper', outil: 'elaguer', mainsNues: 2.5, ms: 9000, rendu: { branche: 2, brindilles: 3, feuilles: 2 }, bruit: 2 },
   // un rang de vigne : on l'arrache pour ses sarments et son fil de fer ; en septembre, on y cueille les grappes oubliées
   vigne:   { geste: 'Arracher', outil: 'couper', mainsNues: 2.5, ms: 9000, rendu: { branche: 2, brindilles: 2, fil_de_fer: 1 }, bruit: 2,
              cueillette: { id: 'raisin', qty: 2, mois: [8, 9, 10] } },

@@ -340,6 +340,7 @@ body:not([data-temps=exploration]) .hud-btn-construire { display: none; }
 .eq-corps > * { fill: #19171b; stroke: rgba(230, 223, 204, .28); stroke-width: 1.2; }
 .eq-corps .porte { fill: #3a3326; stroke: var(--ui-ambre); }
 .eq-corps .sac { fill: #2b2a22; } .eq-corps .ceint { fill: #4a3b1c; }
+.eq-corps .bretelle { fill: none; stroke-width: 2.6; stroke-linecap: round; }
 .eq-rapide { margin-top: 4px; }
 .eq-rapide-cases { display: flex; gap: 6px; flex-wrap: wrap; }
 .eq-rapide-case { flex: 1 1 120px; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 10px; border: 1px solid var(--ui-bord-fort); border-radius: var(--ui-rayon); background: var(--ui-fond-3); font-size: var(--ui-t-s); text-align: left; }

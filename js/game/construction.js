@@ -3,6 +3,7 @@
 // le placement à l'écran : js/explore/construction.js.
 import { G } from '../core/state.js';
 import { CONSTRUCTIONS, CATS_CONSTRUCTION, DEMONTABLES } from '../data/construction.js';
+import { REGLAGES } from '../data/reglages.js';
 import { ITEMS } from '../data/items.js';
 import * as inv from './inventory.js';
 import { niveau as nivComp, gagnerXps, nomCompetence } from './player.js';
@@ -38,9 +39,9 @@ export function confirmerConstruction(type, p) {
 export const rendreMateriaux = (pris, p) => inv.rendreIngredients(pris, p);
 // Ce que rend un démontage (construction ou meuble) : dans le sac, le reste au sol.
 export function recevoir(liste, p) { p = joueur(p); for (const x of liste || []) if (x.qty > 0) inv.addItem(x.id, x.qty, {}, p); }
-// Durée réelle d'une construction (ms) : 30 min de jeu ≈ 5 s, −8 % par niveau de Construction.
+// Durée réelle d'une construction (ms) : 20 min de jeu = 12 s, −8 % par niveau de Construction.
 export function dureeConstructionMs(type, p) {
   const d = CONSTRUCTIONS[type]; if (!d) return 3000;
-  return Math.max(1500, (d.tempsMin || 20) * 170 * Math.max(0.5, 1 - 0.08 * nivComp('construction', joueur(p))));
+  return Math.max(3000, (d.tempsMin || 20) * REGLAGES.craft.CONSTRUCTION_MS_PAR_MIN * Math.max(0.5, 1 - 0.08 * nivComp('construction', joueur(p))));
 }
 export const peutDemonterMeuble = (type, p) => !!DEMONTABLES[type] && (inv.hasTag('marteler', joueur(p)) || inv.hasTag('forcer', joueur(p)));

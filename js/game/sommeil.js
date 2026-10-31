@@ -1,14 +1,15 @@
 // ============ Dormir — réveil naturel ou alarme de montre digitale, seul ou à deux ============
 // ouvrirSommeil({ couchage: { type, nom, force } }) : réveil naturel et alarme si équipée, avec l'état du lieu
 // (sûr ou non) et le COUCHAGE (par terre, mauvais, moyen, vrai lit : docs/GAMEPLAY.md §5.7) — sans couchage : par terre.
-// Règles (REGLAGES.survie.SOMMEIL) : on ne dort que si la fatigue est < 80 ; impossible si des morts te cherchent ;
+// Règles (REGLAGES.survie.SOMMEIL) : on ne dort que si la fatigue est < 80 ; à même le sol, seulement épuisé·e ;
+// impossible si des morts te cherchent ;
 // lieu non sûr (porte ouverte, morts dans le lieu) = risque d'intrusion à chaque heure → réveil en sursaut, combat.
 // Une pièce dont toutes les portes sont fermées et sans mort dedans est sûre. Le couchage fixe ce qu'on récupère.
 // À DEUX : le sommeil se décide ensemble — l'un propose, l'autre accepte (bandeau), et l'horloge file pour les deux,
 // tant que les DEUX dorment (REGLAGES.coop.SOMMEIL_COMMUN) : l'hôte, qui tient l'heure, dort heure par heure et envoie
 // chaque bloc dormi ; l'invité le dort à son tour et répond. Le premier réveillé (plafond du couchage, intrusion, mort,
 // liaison perdue) arrête le sommeil des deux : personne ne compte d'heures que l'autre n'a pas vécues.
-import { G, genrer, getFlag } from '../core/state.js';
+import { G, genrer, getFlag, setFlag } from '../core/state.js';
 import { refugeHabite, pieceProtegee, condition } from '../explore/refuge.js';
 import { emit, on } from '../core/bus.js';
 import * as clock from '../core/clock.js';
@@ -19,13 +20,18 @@ import { dormir, categorieCouchage, commencerRepos, finirRepos } from './surviva
 import { icase } from '../carte/catalogue.js';
 import * as flow from './flow.js';
 import { inviter } from '../ui/invitations.js';
-import { aUneAlarme, planNaturel, planSommeil, premierReveil, prochaineAlarme, minutesRepos, bruitSommeil, mortAudible, PHRASES_REVEIL } from './sommeil_regles.js';
+import { aUneAlarme, planNaturel, planSommeil, premierReveil, prochaineAlarme, minutesRepos, bruitSommeil, mortAudible, PHRASES_REVEIL, matinSuivant, solRefuse } from './sommeil_regles.js';
+import { etape as etapeQuete } from './quetes.js';
 import { meteoCourante } from '../travel/rencontres_voyage.js';
 import { intensiteRuee } from './ruees.js';
 import { ligneLibre, obstaclesSon } from '../explore/physique.js';
 import { CONSTRUCTIONS, tailleConstruction } from '../data/construction.js';
 
 const SO = () => REGLAGES.survie.SOMMEIL;
+// Le premier soir (docs/HISTOIRE_DEBUT_V3.md) : tant que les objectifs ne sont pas remplis, on ne dort pas ; ensuite, René
+// veille et l'on dort jusqu'au matin, sur n'importe quel couchage. Les réveils et le plafond du couchage ne comptent pas.
+const premierSoir = () => !!getFlag('debut_guide');
+const pretADormir = () => etapeQuete('q_debut') === 'dormir';
 // { proposer(plan, id), accepter(plan, id), refuser(raison, id), envoyer(msg), hote(), pairNom() } branché par js/net/coop.js ;
 // débranché (null) quand la partie à deux s'arrête : ce qui était en cours est abandonné
 let coop = null;
@@ -157,9 +163,10 @@ function texteProjet(plan) {
 let fen = null;
 export async function ouvrirSommeil({ couchage = null } = {}) {
   if (enCours || fen || !G) return;
+  if (premierSoir() && !pretADormir()) { emit('mission:notif', { type: 'pensee', texte: 'Pas encore. Il y a trop à faire avant la nuit.' }); return; }
   const g = G, sit = await situation();
   if (G !== g || fen || enCours) return;
-  const p = g.player, type = couchage?.type, force = couchage?.force;
+  const p = g.player, type = couchage?.type, force = couchage?.force, guide = premierSoir();
   const sansSac = force || (type && SO().COUCHAGES[type]) || 'sol';
   const C = couchage ? { categorie: categorieCouchage(type, force), nom: couchage.nom || null } : couchageIci(sit.V);
   const avecSac = C.categorie === 'moyen' && (sansSac === 'sol' || sansSac === 'mauvais');
@@ -167,16 +174,17 @@ export async function ouvrirSommeil({ couchage = null } = {}) {
   fen = el('div', { class: 'som-fond', onclick: e => { if (e.target === fen) fermer(); } });
   const boite = el('div', { class: 'som-boite', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Dormir' });
   fen.append(boite);
-  const fat = Math.round(p.fatigue ?? 100), ambiance = ambianceSommeil(sit);
+  const fat = Math.round(p.fatigue ?? 100), ambiance = ambianceSommeil(sit), parTerre = solRefuse(C.categorie, p.fatigue);
   boite.append(el('h3', {}, C.nom ? `Dormir : ${C.nom}` : 'Dormir'),
     el('p', { class: 'som-etat' }, fat >= SO().FATIGUE_MAX_POUR_DORMIR ? 'Tu n’as pas sommeil.' : fat < 25 ? 'Tu tombes de sommeil.' : 'Tu as besoin de dormir.'),
-    el('p', { class: 'som-couchage som-' + C.categorie }, genrer(texteCouchage(C, avecSac))));
-  boite.append(el('p', { class: !sit.ok || !sit.sur ? 'som-alerte' : 'som-sur' }, !sit.ok ? sit.raison : sit.sur
-    ? 'Tu es à l’abri.' : `Le lieu est exposé (${sit.raisonRisque || 'des morts rôdent'}). Ferme les portes ou barricade-toi.`));
+    parTerre ? null : el('p', { class: 'som-couchage som-' + C.categorie }, genrer(texteCouchage(C, avecSac))));
+  if (parTerre) boite.append(el('p', { class: 'som-alerte' }, genrer('Tu ne t’allonges pas à même le sol tant que tu tiens debout : il te faut un couchage, même un lit de feuilles. Ici, seul{|e} l’épuisement te ferait dormir.')));
+  boite.append(el('p', { class: !sit.ok || !(sit.sur || guide) ? 'som-alerte' : 'som-sur' }, !sit.ok ? sit.raison : guide
+    ? 'René veille sur le camp.' : sit.sur ? 'Tu es à l’abri.' : `Le lieu est exposé (${sit.raisonRisque || 'des morts rôdent'}). Ferme les portes ou barricade-toi.`));
   boite.append(el('p', {}, ambiance.sources.length ? `Tu entends ${ambiance.sources.join(' et ')}. Ton sommeil risque d’être haché.` : 'Les alentours sont calmes.'));
-  boite.append(el('p', {}, 'Sans alarme, tu dors jusqu’à ne plus pouvoir récupérer sur ce couchage.'));
+  boite.append(el('p', {}, guide ? 'Tu dormiras jusqu’au matin.' : 'Sans alarme, tu dors jusqu’à ne plus pouvoir récupérer sur ce couchage.'));
   if (G.mode !== 'solo') boite.append(el('p', { class: 'som-coop' }, 'Vous devez accepter de dormir ensemble. Le premier réveillé réveille l’autre.'));
-  const peut = sit.ok && fat < SO().FATIGUE_MAX_POUR_DORMIR;
+  const peut = sit.ok && fat < SO().FATIGUE_MAX_POUR_DORMIR && !parTerre;
   const lancer = async plan => {
     if (G !== g) { fermer(); return; }
     if (plan.alarme != null && !aUneAlarme(p)) { erreur.textContent = 'Enfile ta montre digitale pour régler une alarme.'; return; }
@@ -184,6 +192,7 @@ export async function ouvrirSommeil({ couchage = null } = {}) {
     if (G !== g || enCours) return;
     if (!frais.ok) { erreur.textContent = frais.raison; return; }
     if (p.fatigue >= SO().FATIGUE_MAX_POUR_DORMIR) { erreur.textContent = 'Tu n’as plus sommeil.'; return; }
+    if (solRefuse(C.categorie, p.fatigue)) { erreur.textContent = 'Il te faut un couchage.'; return; }
     fermer(); demander(plan, frais, C.categorie);
   };
   const erreur = el('p', { class: 'som-alerte', role: 'status' });
@@ -239,6 +248,8 @@ export function invitation(nom, offre, id) {
       const couchage = couchageIci(sit.V);
       const pl = auPlafond(couchage.categorie);
       if (pl || G.player.fatigue >= SO().FATIGUE_MAX_POUR_DORMIR) { non('repose'); return; }
+      // le premier soir, on s'allonge à côté de l'autre : il n'a fallu qu'un coin pour deux
+      if (solRefuse(couchage.categorie, G.player.fatigue) && !premierSoir()) { emit('toast', { texte: 'Il te faudrait un couchage pour dormir ici.', type: 'alerte' }); non('impossible'); return; }
       c.accepter(plan, id); lancerApresAccord(plan, couchage.categorie);
     } }, 'Dormir aussi'), el('button', { class: 'btn', type: 'button', onclick: () => { if (repondre()) non('refus'); } }, 'Pas maintenant'));
   invitee = inv;
@@ -308,20 +319,24 @@ async function executer(plan, sit, couchage = 'sol', alarmeLocale = false) {
   if (hote) s.sid = nouvelId();
   const V = sit.V || null, vitesse = clock.getVitesse();
   clock.setVitesse(0); // chaque minute du sommeil vient des blocs, pas du timer entre deux réponses réseau.
+  // la première nuit : l'horloge repart, et l'on dort jusqu'au matin (René veille)
+  const guide = premierSoir(), matin = guide ? matinSuivant(clock.minutes()) : null;
+  if (guide) delete g.world.horlogeTenue;
   if (V) { V.occupe = true; V.entrees.actif(false); V.canal.majJoueur({ allure: 'immobile' }); }
   const voile = el('div', { class: 'som-voile' }, el('div', { class: 'som-t' }, 'Tu dors…'), el('div', { class: 'som-h' }));
   document.body.append(voile); requestAnimationFrame(() => voile.classList.add('on'));
   let dormi = 0, interrompu = false, plafond = false, autre = null, abandon = false, alarme = false, bruitReveil = false;
   const sources = new Set();
   const restant = () => {
+    if (guide) return Math.max(0, matin - clock.minutes());
     if (alarmeProche(V)) { bruitReveil = true; return 0; }
     return Math.max(0, Math.min(SO().NATUREL_MAX_MIN - dormi, minutesRepos(g.player, couchage, ambianceSommeil(sit).niveau),
       plan.alarme == null ? Infinity : plan.alarme - clock.minutes()));
   };
   const dormirBloc = n => {
     const b = ambianceSommeil(sit); b.sources.forEach(x => sources.add(x));
-    const r = dormir(n / 60, { force: true, silencieux: true, sur: sit.sur, danger: sit.danger,
-      mortsPresents: sit.mortsPresents, couchage, sansCourbatures: true, bruit: b.niveau, respecterBloc: true });
+    const r = dormir(n / 60, { force: true, silencieux: true, sur: guide || sit.sur, danger: sit.danger,
+      mortsPresents: sit.mortsPresents, couchage, sansCourbatures: true, bruit: b.niveau, respecterBloc: true, ignorerPlafond: guide });
     dormi += r.dormi || 0; interrompu = !!r.interrompu; plafond = !!r.plafond;
     alarme = plan.alarme != null && clock.minutes() >= plan.alarme;
     voile.lastChild.textContent = texteHorloge();
@@ -383,6 +398,7 @@ async function executer(plan, sit, couchage = 'sol', alarmeLocale = false) {
   }
   if (G === g && V && flow.tempsCourant() === 'exploration') { V.occupe = false; if (!V.enPause) V.entrees.actif(true); }
   if (abandon || G !== g) return;
+  if (guide && dormi) setFlag('debut_guide', false);    // le temps reprend son cours normal : le joueur est libre
   const cb = finSommeil(couchage, dormi);
   const duree = heureConnue() ? fmtDuree(dormi) : dormi < 60 ? 'un peu' : dormi < 240 ? 'quelques heures' : 'longtemps';
   let texte = !dormi ? 'Tu n’arrives pas à trouver le sommeil.' : `Tu as dormi ${duree}${ICI[couchage] ? ' ' + ICI[couchage] : ''}.`;

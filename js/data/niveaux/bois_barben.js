@@ -8,8 +8,8 @@
 // Organisation (96 × 84 unités, nord en haut) :
 //   - LA PISTE DFCI (y 15..22) traverse le bois d'ouest en est ; ses deux bouts sont fermés tant que dure le début
 //     (le conducteur attend que le fourgon reparte ; personne ne veut marcher de nuit sur la piste) ;
-//   - LE FOURGON (x 38..41, y 15..16), arrêté au milieu de la piste : l'arrière est plein des affaires du groupe
-//     (marqueur `fourgon`) ; le fil que René a tendu en travers de la piste, avec deux boîtes ;
+//   - LE FOURGON (x 38..41, y 15..16), arrêté au milieu de la piste : à l'arrière (marqueur `fourgon`), toujours un sac
+//     d'écolier et une bâche, et un peu de bric-à-brac tiré au sort ; le fil que René a tendu en travers de la piste ;
 //   - LE CAMP, au sud de la piste (autour de x 43, y 24) : la caisse du camp (marqueur `caisse_camp`, vide au départ),
 //     la poubelle du groupe (les boîtes vides), le creux où faire un feu, du bois mort au pied des pins, des buissons à
 //     couper ; René veille : on y dort en sûreté (meta veille) ;
@@ -172,7 +172,7 @@ export default plan({
 
   // ======================= Le fourgon, et le fil de René =======================
   e.objet('camionnette', 38, 15, { nom: 'le fourgon de Thierry', couleur: '#e8e6e0', marqueur: 'fourgon', si: AVANT,
-    conteneur: { nom: 'l’arrière du fourgon', items: [{ id: 'sac_sport', qty: 1 }, { id: 'bache_plastique', qty: 1 }, { id: 'corde', qty: 1 }, { id: 'bouteille_vide', qty: 2 }], table: null } });
+    conteneur: { nom: 'l’arrière du fourgon', items: [{ id: 'sac_a_dos', qty: 1 }, { id: 'bache_plastique', qty: 1 }], table: 'fourgon.voiture' } });
   // le capot levé, tant que Thierry cherche la panne (il le referme quand il comprend que la pompe est morte : bb_camp)
   e.objet('capot_ouvert', 41, 15, { nom: 'le capot du fourgon', couleur: '#e8e6e0', si: { pasFlag: ['vivres_faits', 'camp_attaque'] },
     message: 'Le capot est levé sur un moteur noir de cambouis. Thierry a démonté la moitié de ce qu’il pouvait démonter avec trois clés et un tournevis, et il a les mains noires jusqu’aux coudes.' });
@@ -199,8 +199,13 @@ export default plan({
   e.objet('rochers', 48, 30, { nom: 'les pierres du creux', message: 'Un creux de terre sous trois gros pins, à l’abri de la piste. Un feu, là, ne se verrait pas de loin.' });
   e.objetSol('pierre', 45, 30, 3); e.objetSol('pierre', 49, 27, 3); e.objetSol('pierre', 44, 27, 2); e.objetSol('pierre', 48, 26, 2);
   // le bois mort au pied des pins
-  for (const [x, y, q] of [[35, 25, 2], [39, 29, 2], [51, 24, 1], [33, 21, 1], [47, 32, 2], [53, 27, 1]]) e.objetSol('branche', x, y, q);
+  for (const [x, y, q] of [[35, 25, 2], [39, 29, 2], [51, 24, 1], [33, 21, 1], [47, 32, 2], [53, 27, 1], [41, 33, 2], [34, 31, 1]]) e.objetSol('branche', x, y, q);
   e.objetSol('brindilles', 41, 30, 3); e.objetSol('brindilles', 52, 22, 2);
+  // ce qu'il faut pour un coin de nuit : des feuilles mortes au pied des buissons, des fibres
+  for (const [x, y, q] of [[34, 26, 2], [39, 31, 2], [50, 26, 2], [53, 31, 2], [37, 33, 2]]) e.objetSol('feuilles', x, y, q);
+  e.objetSol('fibres', 35, 29, 2); e.objetSol('fibres', 51, 31, 2);
+  // des pierres sur la piste et sur le talus : le gravier se ramasse
+  for (const [x, y, q] of [[32, 19, 2], [46, 20, 2], [55, 22, 2], [26, 18, 1], [36, 21, 1], [52, 20, 1], [60, 13, 2], [62, 6, 2], [59, 10, 1]]) e.objetSol('pierre', x, y, q);
   // des buissons et des ronciers autour du camp : des branches, des fibres (et des mûres)
   for (const [x, y, t] of [[33, 24, 'buisson'], [34, 28, 'buisson'], [38, 32, 'buisson'], [52, 30, 'buisson'], [54, 25, 'buisson'], [50, 33, 'buisson'],
     [31, 27, 'roncier'], [30, 30, 'roncier'], [29, 31, 'roncier'], [55, 29, 'romarin'], [36, 33, 'romarin'], [42, 34, 'buisson']]) e.objet(t, x, y);
@@ -285,6 +290,7 @@ export default plan({
   e.objet('etabli_meuble', re.x0, re.y0, { nom: 'l’établi', conteneur: { nom: 'l’établi', items: [{ id: 'marteau', qty: 1 }, { id: 'clous', qty: 6 }], table: null } });
   e.objetSol('fil_de_fer', re.x0 + 3, re.y0 + 2, 2);
   e.objet('palette', re.x1, re.y1, { nom: 'les caisses de vendange' });
+  e.objetSol('bache_plastique', re.x0 + 1, re.y1, 1);    // la bâche de l'abri de Laura : celle du fourgon sert au premier soir
 
   // ─── la cour, le puits, le figuier, le potager ───
   e.solRect('terre', 41, 64, 24, 9);

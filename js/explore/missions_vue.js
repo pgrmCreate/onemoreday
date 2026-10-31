@@ -198,6 +198,7 @@ export function majMissions(dt) {
         break;
       }
       case 'deposer': if (lieu) deposer(id, s, e); break;
+      case 'prendre': if (lieu) prendre(id, e); break;
       case 'construire': {
         if (!lieu) break;
         const manque = M.constructionsManquantes(e, snap.constructions || []);
@@ -244,6 +245,19 @@ function deposer(id, s, e) {
     const f = Math.min(1, pts / ((e.objets ? e.objets.n : e.points) || 1));
     if (s.d.f !== f) { s.d.f = f; M.majAvancee(id); }
     if (f >= 1) M.reussirEtape(id);
+  }, () => { lectureCaisse = false; });
+}
+// Prendre : on a les objets sur soi ; ou bien (à deux, l'autre a pu en prendre un) le conteneur est fouillé jusqu'au bout
+// et ils n'y sont plus.
+function prendre(id, e) {
+  const p = G.player, surSoi = (x) => p.inventaire.some(it => it.id === x) || Object.values(p.equip).includes(x);
+  if (e.ids.every(surSoi)) { M.reussirEtape(id); return; }
+  const mk = V.niveau.marqueurs[e.marqueur], st = mk && mk.meuble && V.snap.conteneurs[mk.meuble];
+  if (!st || (st.progres || 0) < 1 || lectureCaisse || !V.canal.contenu) return;
+  lectureCaisse = true;
+  V.canal.contenu(mk.meuble).then((items) => {
+    lectureCaisse = false;
+    if (V && M.etapeDe(id) === e && !(items || []).some(it => e.ids.includes(it.id))) M.reussirEtape(id);
   }, () => { lectureCaisse = false; });
 }
 // Tout le monde se réveille dans la pièce (ou le lieu) et vient vers toi.

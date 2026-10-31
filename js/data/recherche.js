@@ -47,7 +47,7 @@ export const CATEGORIE_SOL = {
 const R1 = { rang: 1 }, R2 = { rang: 2 }, R3 = { rang: 3 };
 export const TABLES_RECHERCHE = {
   nature: [
-    ['brindilles', 24, 2], ['branche', 15], ['pierre', 16], ['fibres', 14, 2], ['canette_vide', 3], ['sac_plastique', 2],
+    ['brindilles', 24, 2], ['branche', 15], ['pierre', 16], ['fibres', 14, 2], ['feuilles', 14, 2], ['canette_vide', 3], ['sac_plastique', 2],
     ['mures', 10, 1, { mois: [8, 9] }],
     ['herbes_simples', 6, 1, R1], ['cannes', 3, 1, R1], ['escargots', 8, 1, { rang: 1, pluie: true }],
     ['amandes', 3, 1, { rang: 1, mois: [8, 9] }], ['fruits_sauvages', 3, 1, { rang: 1, mois: [7, 8, 9] }],

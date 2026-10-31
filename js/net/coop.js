@@ -792,6 +792,7 @@ export function deposerAffaires() {
   for (const sl of SLOTS_TENUS) if (p.equip[sl]) tas.push({ id: p.equip[sl], qty: 1, ...((p.equipEtat || {})[sl] || {}) });
   if (p.equip.lampe && p.equip.lampe !== p.equip.mainG) tas.push({ id: p.equip.lampe, qty: 1, ...((p.equipEtat || {}).lampe || {}) });
   if (p.equip.sac) tas.push({ id: p.equip.sac, qty: 1 });
+  if (p.equip.sacoche) tas.push({ id: p.equip.sacoche, qty: 1 });
   let n = 0;
   tas.forEach((it, k) => {
     const a = k * 2.4, r = 0.25 + 0.12 * Math.sqrt(k);

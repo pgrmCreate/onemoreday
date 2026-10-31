@@ -279,20 +279,23 @@ export const CLOTHES = {
   // Sans sac : les poches, les bras, et c'est tout. Chaque sac donne de l'ESPACE
   // (emplacements) et du PORTAGE (kg en plus). Le joueur les découvre en fouillant :
   // chaque type de lieu a les siens (cartable au lycée, valise à la gare, hotte au village…).
+  // Deux emplacements qui se CUMULENT (docs/GAMEPLAY.md §8) : le sac qu'on porte (slot 'sac') et, en bonus, une sacoche
+  // à la hanche (slot 'sacoche') : quelques litres de plus, jamais de quoi remplacer un vrai sac.
+  // Échelle du slot 'sac' : petits ≤ 12 L (l'écolier en haut), moyens 14-30 L, grands 35 L et plus.
   cabas_courses: {
-    nom: 'Cabas de courses', slot: 'sac', poids: 0.2, espace: 3, contenance: 12, protection: 0, chaleur: 0, portage: 2,
+    nom: 'Cabas de courses', slot: 'sac', poids: 0.2, espace: 3, contenance: 10, protection: 0, chaleur: 0, portage: 2,
     desc: 'Un cabas réutilisable « préservons la planète ». La planète a d\'autres soucis, mais il porte encore.',
   },
   sac_fortune: {
-    nom: 'Sac de fortune', slot: 'sac', poids: 0.3, espace: 3, contenance: 12, protection: 0, chaleur: 0, portage: 2, tissu: 2,
+    nom: 'Sac de fortune', slot: 'sac', poids: 0.3, espace: 3, contenance: 10, protection: 0, chaleur: 0, portage: 2, tissu: 2,
     desc: 'Des chiffons cousus à la corde. Moche, fragile, mais des poches sont des poches.',
   },
   sacoche: {
-    nom: 'Sacoche en bandoulière', slot: 'sac', poids: 0.5, espace: 4, contenance: 10, protection: 0, chaleur: 0, portage: 3,
+    nom: 'Sacoche en bandoulière', slot: 'sacoche', poids: 0.5, espace: 2, contenance: 5, protection: 0, chaleur: 0, portage: 1.5,
     desc: 'Petite mais pratique. Elle bat contre la hanche quand tu cours.',
   },
   sac_a_dos: {
-    nom: 'Sac à dos d\'écolier', slot: 'sac', poids: 0.9, espace: 6, contenance: 20, protection: 0, chaleur: 0, portage: 5,
+    nom: 'Sac à dos d\'écolier', slot: 'sac', poids: 0.9, espace: 4, contenance: 12, protection: 0, chaleur: 0, portage: 3,
     desc: 'Un cartable à bretelles, des initiales au feutre sur le rabat. Le cartable de la fin du monde.',
   },
   sac_randonnee: {
@@ -304,11 +307,11 @@ export const CLOTHES = {
     desc: 'Un sac de paquetage de la base aérienne 701. Sanglé serré, il porte une maison — et garde un objet à portée de main.',
   },
   sac_banane: {
-    nom: 'Sac banane', slot: 'sac', poids: 0.2, espace: 2, contenance: 2, protection: 0, chaleur: 0, portage: 1, accesRapide: 1,
+    nom: 'Sac banane', slot: 'sacoche', poids: 0.2, espace: 1, contenance: 2, protection: 0, chaleur: 0, portage: 0.5, accesRapide: 1,
     desc: 'Ridicule il y a un mois. Aujourd\'hui : deux litres de plus, et un objet toujours sous la main.',
   },
   tote_bag: {
-    nom: 'Tote bag en toile', slot: 'sac', poids: 0.15, espace: 2, contenance: 10, protection: 0, chaleur: 0, portage: 1, tissu: 1,
+    nom: 'Tote bag en toile', slot: 'sac', poids: 0.15, espace: 2, contenance: 8, protection: 0, chaleur: 0, portage: 1, tissu: 1,
     desc: '« Lire, c\'est vivre deux fois. » Imprimé sur une toile fine qui ne supportera pas grand-chose.',
   },
   sac_enfant: {
@@ -316,7 +319,7 @@ export const CLOTHES = {
     desc: 'Une tête de lapin en peluche, des bretelles trop courtes. Tu évites de te demander à qui il était.',
   },
   sac_main: {
-    nom: 'Sac à main', slot: 'sac', poids: 0.5, espace: 3, contenance: 6, protection: 0, chaleur: 0, portage: 2,
+    nom: 'Sac à main', slot: 'sacoche', poids: 0.5, espace: 2, contenance: 4, protection: 0, chaleur: 0, portage: 1,
     desc: 'Cuir verni, fermoir doré. Il contenait un rouge à lèvres et des clés. Il contiendra des piles.',
   },
   sac_trail: {
@@ -324,32 +327,32 @@ export const CLOTHES = {
     desc: 'Collé au dos, il ne ballotte pas. Peu de place, mais tu cours avec comme sans.',
   },
   sac_jute: {
-    nom: 'Sac de jute', slot: 'sac', poids: 0.4, espace: 4, contenance: 30, protection: 0, chaleur: 0, portage: 2, tissu: 2,
+    nom: 'Sac de jute', slot: 'sac', poids: 0.4, espace: 4, contenance: 22, protection: 0, chaleur: 0, portage: 2, tissu: 2,
     desc: 'Un ancien sac à pommes de terre, noué d\'une ficelle en guise de bretelle. Ça gratte, ça tient.',
   },
   // Sac de fortune noué (js/data/recipes.js : r_baluchon, r_baluchon_couverture) : un drap suffit.
   baluchon: {
-    nom: 'Baluchon', slot: 'sac', poids: 0.5, espace: 3, contenance: 12, protection: 0, chaleur: 0, portage: 1, tissu: 4,
+    nom: 'Baluchon', slot: 'sac', poids: 0.5, espace: 3, contenance: 10, protection: 0, chaleur: 0, portage: 1, tissu: 4,
     desc: "Un drap noué aux quatre coins, passé sur l'épaule. Tout s'y entasse en boule et il faut le dénouer pour retrouver quoi que ce soit, mais il porte.",
   },
   musette: {
-    nom: 'Musette de l\'armée', slot: 'sac', poids: 0.6, espace: 4, contenance: 15, protection: 0, chaleur: 0, portage: 4,
+    nom: 'Musette de l\'armée', slot: 'sacoche', poids: 0.6, espace: 3, contenance: 7, protection: 0, chaleur: 0, portage: 2,
     desc: 'Toile kaki, boucles en laiton, un numéro de matricule effacé. Elle a déjà fait une guerre.',
   },
   sac_isotherme: {
-    nom: 'Sac isotherme', slot: 'sac', poids: 0.6, espace: 4, contenance: 15, protection: 0, chaleur: 0, portage: 3,
+    nom: 'Sac isotherme', slot: 'sac', poids: 0.6, espace: 4, contenance: 14, protection: 0, chaleur: 0, portage: 3,
     desc: 'Le sac des pique-niques en Camargue. Le froid ne tient plus, mais les compartiments, si.',
   },
   sac_ordinateur: {
-    nom: 'Sacoche d\'ordinateur', slot: 'sac', poids: 0.8, espace: 4, contenance: 12, protection: 0, chaleur: 0, portage: 3,
+    nom: 'Sacoche d\'ordinateur', slot: 'sacoche', poids: 0.8, espace: 2, contenance: 6, protection: 0, chaleur: 0, portage: 1.5,
     desc: 'Rembourrée, pleine de poches pour des câbles qui ne servent plus à rien.',
   },
   sacoche_facteur: {
-    nom: 'Sacoche de facteur', slot: 'sac', poids: 0.7, espace: 5, contenance: 18, protection: 0, chaleur: 0, portage: 4,
+    nom: 'Sacoche de facteur', slot: 'sacoche', poids: 0.7, espace: 3, contenance: 8, protection: 0, chaleur: 0, portage: 2,
     desc: 'Jaune et bleue, encore pleine de lettres jamais distribuées. Tu les vides. Tu en gardes une.',
   },
   gibeciere: {
-    nom: 'Gibecière de chasseur', slot: 'sac', poids: 0.9, espace: 5, contenance: 18, protection: 0, chaleur: 0, portage: 5,
+    nom: 'Gibecière de chasseur', slot: 'sacoche', poids: 0.9, espace: 3, contenance: 8, protection: 0, chaleur: 0, portage: 2.5,
     desc: 'Cuir épais et filet à gibier. Elle sent la poudre et la garrigue.',
   },
   cartable_cuir: {
@@ -357,11 +360,11 @@ export const CLOTHES = {
     desc: 'Le cartable d\'un professeur, usé aux coins. Solide comme on n\'en fait plus.',
   },
   sac_photo: {
-    nom: 'Sac de photographe', slot: 'sac', poids: 0.9, espace: 5, contenance: 14, protection: 0, chaleur: 0, portage: 4, accesRapide: 1,
+    nom: 'Sac de photographe', slot: 'sacoche', poids: 0.9, espace: 2, contenance: 6, protection: 0, chaleur: 0, portage: 2, accesRapide: 1,
     desc: 'Compartiments réglables et ouverture sur le côté : ce que tu ranges là sort en une seconde.',
   },
   sac_sport: {
-    nom: 'Sac de sport', slot: 'sac', poids: 0.8, espace: 7, contenance: 35, protection: 0, chaleur: 0, portage: 5,
+    nom: 'Sac de sport', slot: 'sac', poids: 0.8, espace: 7, contenance: 30, protection: 0, chaleur: 0, portage: 5,
     desc: 'Un polochon de club de foot, porté en bandoulière. Il cogne la jambe, mais il avale tout.',
   },
   sac_voyage: {
@@ -411,7 +414,7 @@ export const CLOTHES = {
 
 export const SLOTS = {
   tete: 'Tête', visage: 'Visage', haut: 'Haut', torse: 'Pull', veste: 'Veste', mains: 'Mains', poignet: 'Poignet',
-  jambes: 'Jambes', pieds: 'Pieds', sac: 'Sac',
+  jambes: 'Jambes', pieds: 'Pieds', sac: 'Sac', sacoche: 'Sacoche',
   ceinture: 'Ceinture', holster: 'Holster',
 };
 

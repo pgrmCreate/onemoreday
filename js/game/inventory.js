@@ -2,7 +2,7 @@
 // Règles : GAMEPLAY §8 (poids + volume, mains, dos), §2.5 (lumière et piles), §6.1 (réparation), REGLAGES.inventaire.
 // Forme : G.player.inventaire = [{ id, qty, dur?, durMax?, eau?: { q: 'propre'|'croupie', L } }]   (sac + poches)
 //         G.player.equip = { arme (= MAIN DROITE), mainG (main gauche), dos, tete, haut, torse (pull), veste, mains, poignet (montre), jambes, pieds,
-//                            sac, ceinture, holster, lampe } (ids)
+//                            sac, sacoche, ceinture, holster, lampe } (ids)
 //         G.player.deuxMains = true quand l'objet de la main droite est tenu à DEUX mains (main gauche libre).
 //         G.player.equipEtat = { arme|mainG|dos: { dur, durMax, balles, eau… } (l'instance), lampe: { charge, allumee } }
 //         G.player.accesRapide = [ids] — objets du sac accrochés à la ceinture / au holster / au gilet.
@@ -18,7 +18,8 @@ import { niveau } from './player.js';
 
 const I = () => REGLAGES.inventaire;
 const joueur = (p) => p || (G && G.player);
-export const SLOTS_VETEMENT = ['tete', 'visage', 'haut', 'torse', 'veste', 'mains', 'poignet', 'jambes', 'pieds', 'sac', 'ceinture', 'holster'];
+export const SLOTS_VETEMENT = ['tete', 'visage', 'haut', 'torse', 'veste', 'mains', 'poignet', 'jambes', 'pieds', 'sac', 'sacoche', 'ceinture', 'holster'];
+export const SLOTS_SACS = ['sac', 'sacoche'];                 // le sac porté et la sacoche se cumulent
 export const SLOTS_TENUS = ['arme', 'mainG', 'dos'];          // ce qu'on tient / porte sanglé (instances)
 export const NOMS_SLOTS = { ...SLOTS, arme: 'Main droite', mainG: 'Main gauche', dos: 'Dans le dos', lampe: 'Lampe' };
 
@@ -121,7 +122,7 @@ export function volumeDe(id) {
   if (c) {
     if (c.volume != null) return c.volume;
     const plie = 0.5 + 2.5 * (c.poids || 0);
-    return Math.round((c.slot === 'sac' ? Math.max(plie, 0.15 * contenanceSac(id)) : plie) * 10) / 10;
+    return Math.round((SLOTS_SACS.includes(c.slot) ? Math.max(plie, 0.15 * contenanceSac(id)) : plie) * 10) / 10;
   }
   const d = def(id); if (!d) return 0;
   if (d.volume != null) return d.volume;
@@ -132,12 +133,12 @@ export const estLong = (id) => { const d = def(id); return !!(d && d.long); };
 export const estEncombrant = (id) => { const d = def(id); return !!(d && d.encombrant); };
 // Petit objet : il entre dans une poche.
 export const estPetit = (id) => volumeDe(id) <= I().POCHE_MAX_L;
-export function contenanceSac(id) { const c = CLOTHES[id]; if (!c || c.slot !== 'sac') return 0; return c.contenance ?? Math.round((c.espace || 0) * I().CONTENANCE_PAR_ESPACE); }
-// Capacités : poches (petits objets) + sac (tout).
+export function contenanceSac(id) { const c = CLOTHES[id]; if (!c || !SLOTS_SACS.includes(c.slot)) return 0; return c.contenance ?? Math.round((c.espace || 0) * I().CONTENANCE_PAR_ESPACE); }
+// Capacités : poches (petits objets) + sac et sacoche (tout).
 export function capacites(p) {
   p = joueur(p); let poches = I().POCHES_L;
-  for (const s of SLOTS_VETEMENT) { const c = CLOTHES[p.equip[s]]; if (c && c.slot !== 'sac' && c.espace) poches += c.espace; }
-  const sac = contenanceSac(p.equip.sac);
+  for (const s of SLOTS_VETEMENT) { const c = CLOTHES[p.equip[s]]; if (c && !SLOTS_SACS.includes(c.slot) && c.espace) poches += c.espace; }
+  const sac = contenanceSac(p.equip.sac) + contenanceSac(p.equip.sacoche);
   return { poches, sac, total: poches + sac };
 }
 // Occupation : les petits objets vont d'abord dans les poches, le reste (et tout ce qui est gros) au sac.
@@ -169,7 +170,7 @@ export function raisonPlace(id, p) {
   p = joueur(p);
   if (combienTient(id, 1, p) >= 1) return null;
   if (estEncombrant(id)) return 'Trop encombrant pour un sac : ça se porte à deux mains.';
-  if (!estPetit(id) && !p.equip.sac) return estLong(id) ? 'Trop grand pour tes poches : à porter en main ou dans le dos.' : 'Trop gros pour tes poches : il te faut un sac.';
+  if (!estPetit(id) && !capacites(p).sac) return estLong(id) ? 'Trop grand pour tes poches : à porter en main ou dans le dos.' : 'Trop gros pour tes poches : il te faut un sac.';
   return 'Plus de place dans ton sac.';
 }
 // Compatibilité (anciens appels en « emplacements ») : tout est désormais en litres.
@@ -353,12 +354,14 @@ export function finirTri() {
 }
 
 // ---------- Sac porté ----------
-export function sacPorte(p) { p = joueur(p); const id = p.equip.sac; const c = id && CLOTHES[id]; return c ? { id, nom: c.nom, espace: contenanceSac(id), contenance: contenanceSac(id), portage: c.portage || 0 } : null; }
+export function sacPorte(p, slot = 'sac') { p = joueur(p); const id = p.equip[slot]; const c = id && CLOTHES[id]; return c ? { id, nom: c.nom, espace: contenanceSac(id), contenance: contenanceSac(id), portage: c.portage || 0 } : null; }
+export const estSac = (id) => SLOTS_SACS.includes(slotDe(id));
 
 // Un aperçu ne touche ni le joueur, ni le sol, ni le bus. Le même plan est appliqué après confirmation.
 export function prevoirSac(id, p, index = null) {
   p = joueur(p);
-  if (slotDe(id) !== 'sac') return null;
+  if (!estSac(id)) return null;
+  const slot = slotDe(id);
   const copie = { ...p, inventaire: p.inventaire.map(it => ({ ...it })), equip: { ...p.equip }, accesRapide: [...p.accesRapide] };
   const origines = new Map(copie.inventaire.map((it, i) => [it, p.inventaire[i]]));
   if (index != null) {
@@ -366,9 +369,9 @@ export function prevoirSac(id, p, index = null) {
     if (!it || it.id !== id) return null;
     if ((it.qty || 1) > 1) it.qty--; else copie.inventaire.splice(index, 1);
   }
-  const ancien = p.equip.sac;
+  const ancien = p.equip[slot];
   const empreinte = JSON.stringify([id, copie.inventaire, copie.equip, copie.accesRapide]);
-  copie.equip.sac = id;
+  copie.equip[slot] = id;
   nettoyerAccesRapide(copie);
   const volume = occupation(copie).total;
   const surplus = [];
@@ -387,19 +390,19 @@ export function prevoirSac(id, p, index = null) {
     it.qty = (it.qty || 1) - n; if (!it.qty) copie.inventaire.splice(best, 1);
   }
   const garderPossible = !surplus.length && (!ancien || combienTient(ancien, 1, copie) >= 1);
-  return { id, ancien, empreinte, volume, surplus, garderPossible, inventaire: copie.inventaire, sources: copie.inventaire.map(it => origines.get(it)), accesRapide: copie.accesRapide };
+  return { id, slot, ancien, empreinte, volume, surplus, garderPossible, inventaire: copie.inventaire, sources: copie.inventaire.map(it => origines.get(it)), accesRapide: copie.accesRapide };
 }
 function changerSac(id, p, index, choix) {
   const plan = prevoirSac(id, p, index);
   if (!plan || !choix || !['poser', 'garder'].includes(choix.ancien)) return { ok: false, raison: 'Compare les deux sacs avant de changer.' };
   if (choix.empreinte !== plan.empreinte) return { ok: false, raison: 'Tes affaires ont changé. Compare les sacs à nouveau.' };
   if (choix.ancien === 'garder' && !plan.garderPossible) return { ok: false, raison: 'L’ancien sac ne tient pas avec tes affaires.' };
-  const ancien = plan.ancien ? { id: plan.ancien, qty: 1, ...(p.equipEtat.sac || {}) } : null;
+  const slot = plan.slot, ancien = plan.ancien ? { id: plan.ancien, qty: 1, ...(p.equipEtat[slot] || {}) } : null;
   // Garder le tableau et les instances qui restent : une action en cours peut encore les référencer.
   const restants = plan.inventaire.map((it, i) => { const source = plan.sources[i]; source.qty = it.qty; return source; });
   p.inventaire.splice(0, p.inventaire.length, ...restants);
-  p.equip.sac = id;
-  delete p.equipEtat.sac;
+  p.equip[slot] = id;
+  delete p.equipEtat[slot];
   p.accesRapide = plan.accesRapide;
   if (ancien && choix.ancien === 'garder') p.inventaire.push(ancien);
   const poses = [...plan.surplus, ...(ancien && choix.ancien === 'poser' ? [ancien] : [])];
@@ -407,8 +410,8 @@ function changerSac(id, p, index, choix) {
     if (p.position && p.position.mode !== 'lieu') mettreATrier(it);
     else { try { sol.deposer(it); } catch (e) { mettreATrier(it); } }
   }
-  emit('inventaire', { equip: 'sac', sol: !!poses.length });
-  return { ok: true, slot: 'sac', poses };
+  emit('inventaire', { equip: slot, sol: !!poses.length });
+  return { ok: true, slot, poses };
 }
 
 // ---------- Mains et dos ----------
@@ -545,7 +548,7 @@ export function porterObjet(item, p, ou = null, choixSac = null) {
   const { id, qty, ...inst } = item;
   const d = def(id);
   let r;
-  if (slotDe(id) === 'sac' && p.equip.sac) {
+  if (estSac(id) && p.equip[slotDe(id)]) {
     r = changerSac(id, p, null, choixSac);
     if (r.ok && (qty || 1) > 1) addItem(id, qty - 1, inst, p, { siPlein: 'tri' });
     return r;
@@ -586,7 +589,7 @@ export function slotDe(id) {
 export function equiper(index, p, choixSac = null) {
   p = joueur(p); const it = p.inventaire[index]; if (!it) return { ok: false, raison: 'Objet introuvable.' };
   const slot = slotDe(it.id); if (!slot) return { ok: false, raison: 'Ça ne se porte pas.' };
-  if (slot === 'sac' && p.equip.sac) return changerSac(it.id, p, index, choixSac);
+  if (estSac(it.id) && p.equip[slot]) return changerSac(it.id, p, index, choixSac);
   if (slot === 'arme') return tenir(index, 'droite', p);
   if (slot === 'lampe' && lampeTenue(it.id)) {
     if (p.deuxMains) return { ok: false, raison: 'Tes deux mains tiennent déjà l\'arme. Prends une frontale, ou passe l\'arme à une main.' };
@@ -604,7 +607,7 @@ export function equiper(index, p, choixSac = null) {
   // un sac plus petit (ou un vêtement sans poches) : ce qui ne tient plus tombe par terre
   const tombes = deborder(p);
   if (ancien) addItem(ancien.id, 1, ancien.inst, p);
-  avertirDebordement(tombes, slot === 'sac' ? 'Ton nouveau sac est plus petit' : 'Moins de poches');
+  avertirDebordement(tombes, SLOTS_SACS.includes(slot) ? 'Ton nouveau sac est plus petit' : 'Moins de poches');
   nettoyerAccesRapide(p);
   emit('inventaire', { equip: slot });
   return { ok: true, slot };
@@ -654,7 +657,7 @@ export function desequiper(slot, p, silencieux = false) {
     // sans ce sac (ou ce vêtement à poches), le surplus tombe d'abord ; puis on range ce qu'on vient d'ôter
     const tombes = deborder(p);
     addItem(id, 1, inst, p);
-    avertirDebordement(tombes, slot === 'sac' ? 'Sans sac' : 'Moins de poches');
+    avertirDebordement(tombes, slot === 'sac' ? 'Sans sac' : slot === 'sacoche' ? 'Sans sacoche' : 'Moins de poches');
   }
   nettoyerAccesRapide(p);
   if (!silencieux) emit('inventaire', { desequip: slot });
@@ -685,7 +688,7 @@ export function protectionZone(zone, p) {
 // ---------- Accès rapide ----------
 export function accesRapideMax(p) {
   p = joueur(p); let n = 0;
-  for (const s of ['ceinture', 'holster', 'torse', 'veste', 'sac']) { const c = CLOTHES[p.equip[s]]; if (c && c.accesRapide) n += c.accesRapide; }
+  for (const s of ['ceinture', 'holster', 'torse', 'veste', 'sac', 'sacoche']) { const c = CLOTHES[p.equip[s]]; if (c && c.accesRapide) n += c.accesRapide; }
   return Math.min(n, I().ACCES_RAPIDE_MAX);
 }
 function nettoyerAccesRapide(p) {

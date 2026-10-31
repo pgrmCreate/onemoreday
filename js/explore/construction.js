@@ -282,7 +282,7 @@ export function libelleConstruction(c) {
   const d = defDe(c); if (!d) return null;
   if (d.contenance) return `Ouvrir ${le(c)}${c.n ? ` (${c.n} objet${c.n > 1 ? 's' : ''})` : ' (vide)'}`;
   if (d.porte) return c.ouverte ? 'Fermer la porte' : 'Ouvrir la porte';
-  if (d.lit) return 'Dormir dans le lit';
+  if (d.lit) return c.type === 'lit_feuilles' ? 'Dormir sur le lit de feuilles' : 'Dormir dans le lit';
   if (d.poste === 'etabli') return 'Fabriquer à l\'établi';
   if (d.feu) return feuAllume(c) ? `Remettre du bois (${String(Math.round((c.feuJusqua - minutes()) / 60 * 10) / 10).replace('.', ',')} h restantes)` : d.feu.petit && !d.poste ? 'Rallumer la torche' : 'Rallumer le feu';
   if (d.eau) { const L = eauRecuperee(c); return L < 0.1 ? 'Récupérateur : vide (il attend la pluie)' : besoinEau() ? `Boire l'eau de pluie (${L.toString().replace('.', ',')} L)` : `Remplir tes contenants (${L.toString().replace('.', ',')} L)`; }
@@ -383,7 +383,7 @@ export function secondairePorte(p, s) {
   // geste secondaire : proposé seulement quand on a de quoi (2 planches, 4 clous, un marteau)
   if (!(compter('planche') >= 2 && compter('clous') >= 4 && mod.inv && mod.inv.hasTag('marteler'))) return null;
   return { libelle: 'Barricader la porte', f: () => {
-    lancerAction('Barricader la porte…', REGLAGES.exploration.PORTES.BARRICADER_MIN * 170, p.x + 0.5, p.y + 0.5, async () => {
+    lancerAction('Barricader la porte…', REGLAGES.exploration.PORTES.BARRICADER_MIN * REGLAGES.craft.CONSTRUCTION_MS_PAR_MIN, p.x + 0.5, p.y + 0.5, async () => {
       const r = await V.canal.porte(p.cle, 'barricader');
       if (!r || !r.ok) { message(r && r.raison === 'occupee' ? 'Quelque chose bloque la porte.' : 'Impossible.'); return; }
       mod.inv.removeItem('planche', 2); mod.inv.removeItem('clous', 4);

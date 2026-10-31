@@ -173,6 +173,24 @@ function sacArriere(c, S, bal, m, ph) {
   }
   c.restore();
 }
+// La sacoche (deuxième emplacement, en plus du sac) : elle pend à la hanche droite, sa sangle en travers du torse ; la
+// banane reste à la taille.
+function sacocheHanche(c, S, bal, m, ph) {
+  const sw = Math.sin(ph) * 0.8 * m, L = Math.min(S.l, 12), ep = Math.max(3.4, S.p * 0.55);
+  c.save(); c.translate(0, bal * 0.6); c.lineCap = 'round';
+  c.strokeStyle = S.port === 'banane' ? '#1a1a1a' : teinte(S.coul, 0.65); c.lineWidth = 1.5;
+  c.beginPath();
+  if (S.port === 'banane') { c.moveTo(-6, -9); c.quadraticCurveTo(7, 0, -6, 9); }
+  else { c.moveTo(-5, -9.5); c.quadraticCurveTo(4, -2, -1, 9 + sw * 0.3); }
+  c.stroke();
+  const x0 = -L / 2 - 0.5, y0 = (S.port === 'banane' ? -ep / 2 + 7 : 9) + sw * 0.5;
+  c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, x0 + 0.5, y0 + 1, L, ep, 1.6); c.fill();
+  c.fillStyle = teinte(S.coul, 1.05); rr(c, x0, y0, L, ep, 1.6); c.fill();
+  c.fillStyle = teinte(S.coul, 0.72); rr(c, x0, y0, L * 0.55, ep, 1.6); c.fill();
+  if (S.bande) { c.fillStyle = S.bande; c.fillRect(x0 + L * 0.6, y0 + 0.4, 1.1, ep - 0.8); }
+  c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 0.7; rr(c, x0, y0, L, ep, 1.6); c.stroke();
+  c.restore();
+}
 // Ce qui passe DEVANT le torse : bretelles, sangle en travers, sac porté à l'épaule ou à la main, banane, flasques.
 function sacAvant(c, S, bal, m, ph) {
   const sw = Math.sin(ph) * 0.8 * m;
@@ -232,7 +250,7 @@ function objetDos(c, id, sac, bal) {
 // ---------- Vivants ----------
 // P = { manteau, col (couleur de la couche de dessous), bras (manches courtes : couleur de peau), pantalon, chaussures, peau,
 //       cheveux, coiffure: 'court'|'long'|'chauve'|'capuche', vet (id du vêtement du dessus : sa forme et ses détails),
-//       carrure, sac: id du sac porté (SACS) | true (sac à dos) | false, dos: id de l'objet sanglé dans le dos, taille, contour }
+//       carrure, sac: id du sac porté (SACS) | true (sac à dos) | false, sacoche: id de la sacoche | false, dos: id de l'objet sanglé dans le dos, taille, contour }
 // A = { t, marche (0..1), phase (rad), allure, geste: { type, p, combo }, charge (0..1), vise, empoigne, arme (id),
 //       lampe (bool), mainG (id), flash (0..1), fantome (bool), aTerre (bool), agonie (bool), frontale (bool) }
 // Comme les morts (./morts.js) : le torse, la tête, les mains et les chaussures sont peints UNE fois (sprites, ./corps.js)
@@ -453,6 +471,8 @@ export function dessinerHumain(c, x, y, dir, P, A) {
   if (T) posee(c, T); else { c.fillStyle = rgbC(a.vet); contourTorse(c, car, 0); c.fill(); }
   c.restore();
   if (sac) sacAvant(c, sac, bal, m, ph);
+  const sacoche = sacDe(P.sacoche);
+  if (sacoche) sacocheHanche(c, sacoche, bal, m, ph);
   if (pose.armeAvant !== false) dessinerTenue(c, pose, Ld);
   if (pose.lampeG) { c.save(); c.translate(pose.gx, pose.gy); c.rotate(pose.lampeG); dessinerArme(c, 'lampe', 9); c.restore(); }
   const tient = !!pose.forme;
@@ -626,7 +646,7 @@ export { dessinerMort, dessinerCadavre, apparenceMort } from './morts.js';
 
 // Fondu de contour d'une silhouette pour le marquage d'une cible (PC : survol / tactile : visée auto).
 export function apparenceJoueur(p, couleurs) {
-  return { ...couleurs, sac: (p && p.equip && p.equip.sac) || false };
+  return { ...couleurs, sac: (p && p.equip && p.equip.sac) || false, sacoche: (p && p.equip && p.equip.sacoche) || false };
 }
 
 void hash; void ease;

@@ -10,6 +10,13 @@ export const PHRASES_REVEIL = {
   'Après-midi': 'Le soleil a passé midi.', 'Fin d\'après-midi': 'L’après-midi touche à sa fin.',
   'Tombée du jour': 'Le jour tombe.', Nuit: 'La nuit est tombée.',
 };
+// Le premier soir (drapeau debut_guide) : on ne dort qu'une fois les objectifs remplis, et jusqu'au matin.
+export function matinSuivant(maintenant, heure = 7) {
+  const t = Math.floor(maintenant / 1440) * 1440 + heure * 60;
+  return t > maintenant ? t : t + 1440;
+}
+// À même le sol : seulement épuisé·e (un sac de couchage fait déjà un couchage).
+export const solRefuse = (categorie, fatigue) => categorie === 'sol' && (fatigue ?? 100) >= REGLAGES.survie.SOMMEIL.SOL_SI_FATIGUE;
 export const planNaturel = () => ({ alarme: null, regleePar: null });
 export function planSommeil(p) {
   return p && Number.isFinite(p.alarme) && p.alarme >= 0 && typeof p.regleePar === 'string'

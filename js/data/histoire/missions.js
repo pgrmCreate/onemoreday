@@ -28,6 +28,8 @@
 //   deposer   { lieu, marqueur, points }       ranger dans le conteneur du plan (son marqueur) de quoi caler `points` de faim :
 //                                              on ne « donne » rien, la caisse se remplit et l'étape avec (dit en mots)
 //             { lieu, marqueur, objets: { ids, n } }  … ou n objets parmi ces ids (le tas de bois : des branches, des brindilles)
+//   prendre   { lieu, marqueur, ids }           récupérer ces objets dans le conteneur du plan (son marqueur) : remplie quand on
+//                                              les a sur soi, ou que la fouille est finie et qu'ils n'y sont plus (à deux)
 //   construire { lieu, besoins: [{ types, n?, nom }] }  bâtir sur place ce qui est demandé (constructions du lieu : un feu de
 //                                              l'un des types, n alarmes…) ; le guide dit ce qui manque encore
 // Ce n'est pas un RPG (docs/RETOURS_JOUEUR.md #60) : aucun bandeau « Nouvelle mission ». Une étape peut porter `pensee`
@@ -39,18 +41,47 @@
 export const MISSIONS = {
 
   // ═══════════════ LE DÉBUT : le bois de la Barben (docs/HISTOIRE_DEBUT_V3.md, scènes bb_matin et bb_camp) ═══════════════
-  // le premier soir : René veut du bois mort sur le tas, près du creux (pas de feu ce soir, mais demain on en aura besoin).
-  // Acceptée au début de la partie (js/main.js) ; close sans un mot le lendemain matin si le tas n'est pas fait (bb_matin).
+  // le premier soir, c'est un didacticiel : le fourgon, le tas de bois, un coin pour la nuit, dormir (quête q_debut). L'horloge
+  // reste arrêtée à la tombée du jour et l'on ne peut pas dormir avant la fin (js/core/clock.js, js/game/sommeil.js).
+  // Acceptée au début de la partie (js/main.js).
+  m_fourgon: {
+    titre: 'L’arrière du fourgon',
+    resume: 'Le fourgon ne repart pas ce soir. À l’arrière, il reste un sac et une bâche : il faut que je les prenne avant de faire quoi que ce soit d’autre.',
+    etapes: [
+      { type: 'prendre', lieu: 'bois_barben', marqueur: 'fourgon', ids: ['sac_a_dos', 'bache_plastique'], texte: 'Fouiller l’arrière du fourgon et prendre le sac et la bâche',
+        penseeFaite: 'Un sac et une bâche. C’est mieux que rien. Je vais pouvoir aider.' },
+    ],
+    fin: {
+      effets: { quete: ['q_debut', 'bois'], mission: ['accepter', 'm_bois'], journal: 'À l’arrière du fourgon, j’ai trouvé un sac d’écolier et une bâche.' },
+    },
+  },
+  // René veut du bois mort sur le tas, près du creux (pas de feu ce soir, mais demain on en aura besoin).
   m_bois: {
     titre: 'Le tas de bois',
     resume: 'René m’a demandé de ramasser du bois mort et de le poser sur le tas, près du creux, avant qu’il fasse nuit. Pas de feu ce soir, la lumière se voit de loin, mais demain on en aura besoin.',
     etapes: [
       { type: 'deposer', lieu: 'bois_barben', marqueur: 'tas_bois', objets: { ids: ['branche', 'brindilles', 'buche'], n: 5 }, texte: 'Poser du bois mort sur le tas, près du creux',
         libelle: 'Poser du bois sur le tas',
-        penseeFaite: 'Ça fera pour demain. Maintenant, dormir, si j’y arrive.' },
+        penseeFaite: 'Ça fera pour demain. Maintenant, il me faut un coin pour la nuit.' },
     ],
     fin: {
-      effets: { flag: 'bois_fait', quete: ['q_debut', 'panne'], journal: 'J’ai ramassé du bois mort au pied des pins et je l’ai posé sur le tas, près du creux. René dit qu’on n’allumera rien ce soir : la lumière se voit de loin.' },
+      effets: { flag: 'bois_fait', quete: ['q_debut', 'coin'], mission: ['accepter', 'm_coin'], journal: 'J’ai ramassé du bois mort au pied des pins et je l’ai posé sur le tas, près du creux. René dit qu’on n’allumera rien ce soir : la lumière se voit de loin.' },
+    },
+  },
+  // un petit campement : la bâche tendue sur quatre branches, et de quoi ne pas dormir par terre
+  m_coin: {
+    titre: 'Un coin pour la nuit',
+    resume: 'Il va faire nuit, et nous dormirons ici. Il me faut un toit, même une simple bâche tendue sur des branches, et un lit de feuilles dessous, pour ne pas coucher sur la terre.',
+    etapes: [
+      { type: 'construire', lieu: 'bois_barben', texte: 'Monter ton coin pour la nuit',
+        besoins: [
+          { types: ['toit_bache', 'abri_branches'], nom: 'le toit de bâche' },
+          { types: ['lit_feuilles', 'lit_fortune'], nom: 'le lit de feuilles' },
+        ],
+        penseeFaite: 'Ça ne vaut pas un lit. Mais je ne dormirai pas par terre.' },
+    ],
+    fin: {
+      effets: { flag: 'coin_fait', quete: ['q_debut', 'dormir'], journal: 'Je me suis monté un coin pour la nuit : une bâche tendue sur des branches, et des feuilles par terre.' },
     },
   },
   m_vivres: {

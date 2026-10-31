@@ -99,7 +99,7 @@ ok(bois >= e.objets.n + 3, 'assez de bois mort par terre autour du camp (' + boi
 quetes.avancer('q_debut', 'bois'); M.accepter('m_bois');
 ok(M.etapeDe('m_bois') === e, 'la mission du soir commence avec la partie');
 M.reussirEtape('m_bois');
-ok(G.world.quetes.q_debut.etape === 'panne' && G.world.flags.bois_fait, 'le tas fait : l’objectif devient « te trouver un coin pour dormir »');
+ok(G.world.quetes.q_debut.etape === 'coin' && G.world.flags.bois_fait, 'le tas fait : l’objectif devient « monter ton coin pour la nuit »');
 M.accepter('m_bois'); M.clore('m_bois');
 ok(G.world.missions.m_bois.etat === 'close', 'le matin, un tas pas fait se clôt sans un mot');
 

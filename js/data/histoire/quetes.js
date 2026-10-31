@@ -10,10 +10,16 @@ export const QUETES = {
   q_debut: {
     titre: 'Le bois', chapitre: 0, principale: true,
     etapes: {
-      // le premier soir : du bois mort pour le tas (René le demande), puis un coin pour dormir (RETOURS_JOUEUR #63)
+      // le premier soir, un didacticiel : le fourgon, du bois mort pour le tas (René le demande), un coin pour la nuit, dormir
+      fourgon:    { objectif: 'Fouiller l’arrière du fourgon et prendre le sac et la bâche', lieu: 'bois_barben',
+                    pensee: 'Le moteur ne repartira pas ce soir. L’arrière du fourgon d’abord : il doit rester un sac et une bâche.' },
       bois:       { objectif: 'Ramasser du bois mort au pied des pins et le poser sur le tas, près du creux, avant la nuit', lieu: 'bois_barben',
                     pensee: 'René m’a demandé de ramasser du bois mort et de le poser sur le tas, près du creux, avant qu’il fasse nuit. Il y a des branches au pied des pins.' },
-      panne:      { objectif: 'Te trouver un coin pour dormir près du camp, là où René veille', lieu: 'bois_barben',
+      coin:       { objectif: 'Monter ton coin pour la nuit près du camp : un toit de bâche et un lit de feuilles (le marteau ouvre le menu Construire)', lieu: 'bois_barben',
+                    pensee: 'Le jour baisse. Il me faut un toit pour la nuit, et autre chose que la terre pour m’allonger : des branches, des fibres, des feuilles.' },
+      dormir:     { objectif: 'Dormir sur ton lit de feuilles', lieu: 'bois_barben',
+                    pensee: 'Je ne tiens plus debout. Tout le monde s’installe : il faut que je dorme, moi aussi.' },
+      panne:      { objectif: 'Te trouver un coin pour dormir près du camp, là où René veille', lieu: 'bois_barben',    // (anciennes parties)
                     pensee: 'Le moteur ne repartira pas ce soir. Il faut que je me trouve un coin pour dormir, pas loin de René.' },
       vivres:     { objectif: 'Rapporter des vivres du mas, en bas du sentier du vallon, et les ranger dans la caisse du camp', lieu: 'bois_barben',
                     pensee: 'Il faut trouver à manger pour tout le monde. René parle d’un mas, en bas du vallon.' },

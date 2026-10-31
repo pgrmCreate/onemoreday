@@ -331,6 +331,17 @@ prend du temps (fabriquer, construire, fouiller, manger) se fait sur le terrain,
 
 ---
 
+### 31 octobre 2026 — l'équilibre des sacs, le premier soir et les durées
+
+| # | Ce qu'il dit | Cause probable | Décision | Statut |
+|---|---|---|---|---|
+| 67 | La sacoche doit être un bonus, cumulable avec le sac du dos. Le sac de transport du fourgon est trop fort, le sac d'écolier aussi (20 L). | La sacoche partageait l'emplacement du sac ; le fourgon donnait 35 L dès le début. | Nouvel emplacement `sacoche` (2 à 8 L) ; écolier 12 L, sport 30 L ; le fourgon donne l'écolier. Échelle dans `js/data/clothing.js`. | Fait |
+| 68 | Les bras de la silhouette ne sont pas pareils. | Le sac était collé sur un seul bras de la figure d'équipement. | Les deux silhouettes sont refaites : une moitié tracée, l'autre en miroir ; le sac passe derrière le corps, la sacoche à la hanche. | Fait |
+| 69 | Le début doit être un didacticiel : fouiller le fourgon (sac et bâche sûrs, le reste au hasard), le bois, un petit campement, dormir. On est fatigué, on ne dort pas avant la fin, le temps s'arrête jusque-là. Dormir par terre seulement épuisé·e. | Le joueur arrivait presque reposé et ne dormait qu'une heure, puis tournait en rond toute la nuit. | Missions `m_fourgon`, `m_coin`, étapes `fourgon`, `coin`, `dormir`, horloge tenue à 19 h 45, première nuit jusqu'à 7 h, lit de feuilles, `SOL_SI_FATIGUE`. La bâche de l'abri de Laura est désormais à la remise du mas. | Fait |
+| 70 | Les pierres se voient mal, les graviers se ressemblent. Des actions sont trop rapides : un bandage en 2 s, et des chips plus longues qu'une conserve. | Durée du repas calculée sur les calories ; fabrication ×10 ; construction à 0,17 s/min ; soins et boisson instantanés. | Pierres plus grosses et plus claires, cailloutis propre à chaque sol ; repas selon le poids avalé, fabrication 4 à 30 s, construction 0,6 s/min, soins et boisson chronométrés. | Fait |
+
+---
+
 ## 3. Check-list de revue d'un niveau
 
 À passer **avant de livrer un plan**, nouveau ou refait. Cocher chaque ligne ; une ligne non cochée se justifie par écrit

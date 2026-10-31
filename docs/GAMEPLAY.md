@@ -30,7 +30,7 @@ Les principes, dans l'ordre : **lisible** (on sait toujours pourquoi on a pris u
 **Horloge** : `temps.MS_PAR_MINUTE = 1667` : 1,67 seconde réelle = 1 minute de jeu, **une journée ≈ 40 minutes réelles**
 (40 % plus lente qu'à l'origine). En voyage, l'horloge garde l'ancien rythme (×1,667) pour que les trajets ne s'allongent pas.
 En solo, le temps s'arrête pendant les scènes et les panneaux (inventaire, corps, fabrication) ; le combat se joue en temps réel.
-Fabriquer et attendre **accélèrent** l'horloge (×10 : une recette de 30 min dure toujours ~5 s réelles). En co-op, le temps coule toujours à ×1
+Fabriquer **accélère** l'horloge (×2 : une recette de 5 min dure 6 s réelles, entre 4 et 30 s). En co-op, le temps coule toujours à ×1
 (le sommeil n'accélère que si **les deux** dorment).
 
 | Échelle | Temps réel | Ce qu'on y fait | Ce qui la rend tendue |
@@ -644,8 +644,9 @@ rechute** : on redevient l'un d'eux.
 > correct (vrai lit). Par terre, on ne récupère pas, voire on se réveille avec des douleurs. » Voir aussi
 > `docs/RETOURS_JOUEUR.md` §5. Implémenté le 8 oct. 2026 : `REGLAGES.survie.SOMMEIL.COUCHAGE` / `COUCHAGES`.
 
-**But de design.** Le sommeil devient un choix de préparation, pas un bouton. Dormir n'importe où reste possible (on ne
-bloque jamais le joueur), mais on se réveille encore las et courbaturé. Le premier vrai confort (lit de fortune :
+**But de design.** Le sommeil devient un choix de préparation, pas un bouton. Depuis le 31 oct. 2026, on ne dort à même le
+sol que si l'on est épuisé·e (fatigue < 15, `SOMMEIL.SOL_SI_FATIGUE`) : sinon il faut un couchage, même un lit de feuilles
+(4 feuilles + 2 branches, couchage « mauvais »). Sur un mauvais couchage, on se réveille encore las et courbaturé. Le premier vrai confort (lit de fortune :
 2 planches + 2 draps, 20 min, sans compétence) est accessible dès le jour 1 ou 2 : la rareté pousse à s'installer, sans
 punir. Un vrai lit reste la récompense d'une base dans une maison.
 
@@ -760,7 +761,7 @@ comme ça.
 - **Outils = tags** (`usage` des objets) : `cuisson` (casserole, réchaud), `couper` (couteaux, machette, hache, éclat
   de verre), `marteler` (marteau, masse, trousse), `visser` (tournevis, clé, trousse), `affuter` (pierre, trousse),
   `coudre` (trousse de couture), `allumer` (briquet, allumettes, torche), `filtrer`, `entretien_arme`.
-- **Temps** : la barre dure `tempsMin` × 1 s ÷ 6 (30 min → 5 s), et l'horloge tourne ×6 en solo pendant ce temps.
+- **Temps** : la barre dure `tempsMin` × 1,2 s (5 min → 6 s), au moins 4 s, au plus 30 s (`temps.FABRICATION_ACCELERE`, `craft.BARRE_MIN_MS`, `BARRE_MAX_MS`). Construire : 0,6 s par minute de jeu (un toit de bâche, 12 s). Se soigner et boire se jouent aussi sur le terrain, chronométrés. Manger dépend de ce qu'on avale, pas des calories : conserve ≈ 16 s, chips ≈ 6,5 s (`survie.REPAS`).
   En co-op, l'horloge ne change pas : les besoins de celui qui fabrique sont débités du temps complet.
   **Rien n'est consommé avant la fin** : interrompre ne coûte rien. Marteler fait du bruit (4 cases/s).
 - **Catégories** (60 recettes) : soins 8 · armes 12 · réparation 4 · cuisine & eau 12 · lumière 4 · survie 8 · recyclage 2 · équipement 10.
@@ -851,8 +852,9 @@ facile.
 
 - **Volume (litres)** : chaque objet a un `volume` RÉEL (paire de piles 0,02 L, briquet 0,02 L, couteau 0,25 L, conserve 0,45 L,
   paquet de chips 1,2 L, batte 3,5 L, planche 6 L, pelle 10 L, jerrican 10 L). Les **poches** (1,5 L + jean 1 L, cargo 2 L, gilet 3 L) ne prennent
-  que les **petits objets** (≤ 1 L). Le **sac** a une `contenance` : cabas 12 L, écolier 20 L, randonnée 45 L, militaire 55 L,
-  expédition 70 L. **Une pile ne prend pas plus de place qu'un briquet ; une conserve, vingt fois plus.**
+  que les **petits objets** (≤ 1 L). Le **sac** a une `contenance` : cabas 10 L, écolier 12 L, sport 30 L, randonnée 45 L, militaire 55 L,
+  expédition 70 L. **La sacoche est un emplacement à part, qui se cumule avec le sac** : banane 2 L, sac à main 4 L, sacoche 5 L,
+  musette 7 L, facteur et gibecière 8 L. Un bonus, jamais de quoi remplacer un sac. **Une pile ne prend pas plus de place qu'un briquet ; une conserve, vingt fois plus.**
 - **Mains** : main droite, main gauche, ou **les deux**. Tout objet peut se tenir (une planche dans chaque main). Une arme à
   `deux_mains` (pelle, hache, masse, lance, fusils) tenue d'**une seule main** : dégâts ×0,6, gestes ×1,35 plus lents, pas de coup
   chargé. Une lampe torche / à huile se tient dans la main gauche. Certains objets servent d'arme improvisée (`melee` : planche,

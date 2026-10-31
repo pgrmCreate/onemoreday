@@ -448,7 +448,7 @@ export function mangerEnAction(entree, { forcer = false, rendre }) {
     if (r.rend && mod.inv) mod.inv.addItem(r.rend, 1);
     message(frac >= 1 ? r.texte : `Tu t'arrêtes de manger. ${r.texte}`, 3800);
   };
-  lancerAction(`Tu manges : ${nom}…`, S.dureeRepas(pts), V.j.x, V.j.y, () => finir(1), 0, 'manger', 1600, finir);
+  lancerAction(`Tu manges : ${nom}…`, S.dureeRepas(entree, pts), V.j.x, V.j.y, () => finir(1), 0, 'manger', 1600, finir);
   if (V.action) V.action.geste = 'manger';   // la main qui va à la bouche (js/rendu/personnages.js)
   sfx('manger');
   return true;

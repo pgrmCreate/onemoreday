@@ -5,12 +5,13 @@
 import { G } from '../../core/state.js';
 import { emit } from '../../core/bus.js';
 import * as cons from '../../game/construction.js';
+import { actives, etapeDe } from '../../game/missions.js';
 import { iconeObjet } from '../icons.js';
 import { el, icoEl, bouton, vide, g } from './commun.js';
 
 export const ICONE_CONSTRUCTION = {
   mur_planches: 'materiau', mur_renforce: 'materiau', palissade: 'materiau', porte_planches: 'verrou', barricade_fenetre: 'verrou',
-  pieux: 'lance', caisse_bois: 'sac', etabli: 'etabli', lit_fortune: 'dormir', feu_camp: 'feu', recuperateur: 'remplir', potager: 'nourriture',
+  pieux: 'lance', caisse_bois: 'sac', etabli: 'etabli', lit_fortune: 'dormir', lit_feuilles: 'dormir', feu_camp: 'feu', recuperateur: 'remplir', potager: 'nourriture',
 };
 const ic = (type) => ICONE_CONSTRUCTION[type] || 'construire';
 
@@ -18,7 +19,10 @@ const ic = (type) => ICONE_CONSTRUCTION[type] || 'construire';
 export function dessinerConstruire(liste, fiche, etat, redessiner, api) {
   const p = G.player;
   const tous = Object.keys(cons.CONSTRUCTIONS).filter(type => !etat.cat || cons.CONSTRUCTIONS[type].cat === etat.cat).map(type => ({ type, e: cons.etatConstruction(type, p) }));
-  const faisables = tous.filter(x => x.e.faisable), autres = tous.filter(x => !x.e.faisable);
+  // ce que l'objectif en cours demande de bâtir passe en tête de liste (au premier soir : le toit de bâche, le lit de feuilles)
+  const demande = new Set(actives().flatMap(id => (etapeDe(id) || {}).besoins || []).map(b => b.types[0]));
+  const voulus = tous.filter(x => demande.has(x.type)), reste = tous.filter(x => !demande.has(x.type));
+  const faisables = reste.filter(x => x.e.faisable), autres = reste.filter(x => !x.e.faisable);
   const enLieu = !!(G.player.position && G.player.position.mode === 'lieu');
   if (!enLieu) liste.append(el('p', { class: 'fi-desc' }, 'On construit sur place, dans un lieu : pas en route.'));
   const section = (titre, arr, cls) => {
@@ -26,7 +30,7 @@ export function dessinerConstruire(liste, fiche, etat, redessiner, api) {
     liste.append(el('h3', { class: `pn-section ${cls}` }, titre, el('em', {}, String(arr.length))));
     for (const { type, e } of arr) {
       const d = e.d;
-      const b = el('button', { type: 'button', class: `fa-ligne ${cls}${etat.sel === type ? ' actif' : ''}`, onclick: () => { etat.sel = type; redessiner(); } });
+      const b = el('button', { type: 'button', class: `fa-ligne ${e.faisable ? 'faisable' : 'incomplete'}${etat.sel === type ? ' actif' : ''}`, onclick: () => { etat.sel = type; redessiner(); } });
       b.append(el('span', { class: 'fa-ic' }, icoEl(ic(type))));
       b.append(el('span', { class: 'fa-txt' }, el('span', { class: 'fa-nom' }, d.nom),
         e.faisable ? el('small', {}, `${cons.CATS_CONSTRUCTION[d.cat]} · ${d.tempsMin} min`) : el('small', { class: 'manque' }, e.manques.slice(0, 2).join(' · ') + (e.manques.length > 2 ? ` (+${e.manques.length - 2})` : ''))));
@@ -34,6 +38,7 @@ export function dessinerConstruire(liste, fiche, etat, redessiner, api) {
       liste.append(b);
     }
   };
+  section('Pour ton objectif', voulus, 'objectif');
   section('Tu peux construire', faisables, 'faisable');
   section('Il manque quelque chose', autres, 'incomplete');
   // fiche

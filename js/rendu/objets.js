@@ -689,6 +689,18 @@ const DESSINS = {
     c.fillStyle = '#7a7a7a'; c.save(); c.translate(W * 0.35, H / 2); c.rotate(0.4); c.fillRect(-9, -1.5, 14, 3); c.fillStyle = '#3a2a1a'; c.fillRect(5, -2, 8, 4); c.restore();   // marteau
     c.fillStyle = 'rgba(210,200,170,0.5)'; for (let k = 0; k < 5; k++) c.fillRect(8 + r() * (W * 0.4), 6 + r() * (H - 14), 2, 1);   // copeaux
   },
+  lit_feuilles(c, W, H, r) {
+    // deux branches sur les côtés, et entre elles un tas de feuilles mortes, plus épais au milieu
+    c.fillStyle = 'rgba(0,0,0,0.28)'; rr(c, 3, 4, W - 6, H - 7, 6); c.fill();
+    const FEUILLES = ['#7a5a26', '#8a6a2a', '#5a4a22', '#9a7032', '#6a3a1a', '#7a6a30'];
+    for (let k = 0; k < 150; k++) {
+      const x = 6 + r() * (W - 12), y = 6 + r() * (H - 12);
+      c.save(); c.translate(x, y); c.rotate(r() * 6.28); c.fillStyle = teinte(FEUILLES[Math.floor(r() * FEUILLES.length)], 0.8 + r() * 0.4);
+      ellipse(c, 0, 0, 3.4, 1.9); c.fill(); c.restore();
+    }
+    c.strokeStyle = '#4a3522'; c.lineCap = 'round'; c.lineWidth = 3.4;
+    for (const x of [3.5, W - 3.5]) { c.beginPath(); c.moveTo(x, 3); c.quadraticCurveTo(x + (r() - 0.5) * 3, H / 2, x, H - 3); c.stroke(); }
+  },
   lit_fortune(c, W, H, r) {
     avecOmbre(c, 5, 3, 4, 0.5, () => { c.fillStyle = BOIS; c.fillRect(3, 3, W - 6, H - 6); });
     c.fillStyle = DRAP; rr(c, 5, 5, W - 10, H - 10, 4); c.fill();

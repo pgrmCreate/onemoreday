@@ -1,5 +1,5 @@
 // ============ One More Day — démarrage, écran titre, création, mort, fin ============
-import { G, nouvellePartie, charger, sauver, aSauvegarde, resumeSauvegarde, effacerSauvegarde, genrer, noteJournal } from './core/state.js';
+import { G, nouvellePartie, charger, sauver, aSauvegarde, resumeSauvegarde, effacerSauvegarde, genrer, noteJournal, setFlag } from './core/state.js';
 import { on, emit } from './core/bus.js';
 import * as clock from './core/clock.js';
 import { el, $, texteHtml, escapeHtml } from './core/util.js';
@@ -198,14 +198,17 @@ export async function nouvelleAventure({ nom, genre, difficulte, mode = 'solo', 
   if (avant) avant();
   cacherEcran();
   demarrerSystemes();
-  // le début (docs/HISTOIRE_DEBUT_V3.md) : deux jours dans un fourgon, sans rien manger ou presque, à dormir assis
-  Object.assign(G.player, { faim: 55, soif: 60, fatigue: 70 });
+  // le début (docs/HISTOIRE_DEBUT_V3.md) : deux jours dans un fourgon, sans rien manger ou presque, à dormir assis ; on
+  // arrive fatigué·e, et l'horloge s'arrêtera à la tombée du jour jusqu'à ce qu'on ait dormi (didacticiel du premier soir)
+  Object.assign(G.player, { faim: 62, soif: 72, fatigue: 42 });
+  setFlag('debut_guide', true);
+  G.world.horlogeTenue = REGLAGES.temps.TENUE_DEBUT;
   sauver();
   await flow.cinematique('ouverture');
   await flow.explorer('bois_barben', { entree: 'fourgon' });
-  // pas de « Nouvel objectif » : la pensée de la première étape, une fois qu'on est sur la piste — René veut du bois mort
-  // sur le tas avant la nuit (la mission m_bois compte ce qu'il y a sur le tas), puis on se trouve un coin pour dormir
-  setTimeout(() => { quetes.avancer('q_debut', 'bois'); missions.accepter('m_bois'); }, 1800);
+  // pas de « Nouvel objectif » : la pensée de la première étape, une fois qu'on est sur la piste. Le premier soir s'enchaîne
+  // de mission en mission : le fourgon (le sac, la bâche), le tas de bois, un coin pour la nuit, dormir
+  setTimeout(() => { quetes.avancer('q_debut', 'fourgon'); missions.accepter('m_fourgon'); }, 1800);
 }
 
 export async function continuer(mode = 'solo', avant = null) {

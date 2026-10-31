@@ -514,6 +514,8 @@ for (const [type, cats] of Object.entries(BRUME)) {
   }
 }
 
+// Le bric-à-brac de l'arrière du fourgon (js/data/niveaux/bois_barben.js) : quelques riens, différents d'une partie à l'autre.
+BUTIN.fourgon = { voiture: [L('bouteille_vide', 1, 2, 0.5), L('canette_vide', 1, 2, 0.4), L('sac_plastique', 1, 2, 0.4), L('journal_papier', 1, 1, 0.3), L('chiffon', 1, 1, 0.25), L('corde', 1, 1, 0.12), L('ferraille', 1, 1, 0.15)] };
 export const CATEGORIES_MEUBLE = ['vetements', 'frigo', 'cuisine', 'etagere', 'bureau', 'comptoir', 'caisse', 'lit',
   'salle_de_bain', 'voiture', 'voiture_pillee', 'poubelle', 'machine', 'table', 'canape'];   // voiture_pillee : voitures déjà vidées des abords
 

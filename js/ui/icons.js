@@ -188,7 +188,7 @@ const PAR_ID = {
   lingette: 'desinfecter', kit_suture: 'suturer', attelle: 'attelle', trousse_outils: 'outil', pierre_aiguiser: 'reparer',
   montre: 'montre', montre_digitale: 'montre', reveil: 'horloge', calendrier: 'calendrier', agenda: 'calendrier',
 };
-const SLOT_ICONE = { tete: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', sac: 'sac', ceinture: 'ceinture', holster: 'holster', poignet: 'montre' };
+const SLOT_ICONE = { tete: 'tete', haut: 'torse', torse: 'torse', veste: 'torse', mains: 'mains', jambes: 'jambes', pieds: 'pieds', sac: 'sac', sacoche: 'sac', ceinture: 'ceinture', holster: 'holster', poignet: 'montre' };
 export function iconeObjet(id) {
   if (ARME[id]) return ARME[id];
   if (PAR_ID[id]) return PAR_ID[id];

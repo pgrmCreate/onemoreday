@@ -87,6 +87,12 @@ trouve un coin pour dormir près de lui. On n’allume rien ce soir ; le tas ser
 Autour, chacun fait quelque chose (RETOURS_JOUEUR #63) : Thierry sous le capot, Martine qui compte, Mathis qui joue,
 Sandrine qui le surveille, René qui veille et fait sa ronde, Laura qui ne bouge presque pas.
 
+*Refonte du 31 oct. 2026 (demande du propriétaire, RETOURS_JOUEUR #67-70)* : le premier soir est un didacticiel. Le joueur
+arrive fatigué (fatigue 42). Dans l'ordre : **fouiller le fourgon** (toujours un sac d'écolier et une bâche, plus quelques
+riens tirés au sort ; mission `m_fourgon`), **le bois mort** sur le tas (`m_bois`), **un coin pour la nuit** avec un toit de
+bâche et un lit de feuilles (`m_coin`), puis **dormir**. L'horloge s'arrête à 19 h 45 (`temps.TENUE_DEBUT`) et l'on ne peut
+pas dormir avant la fin des objectifs. La première nuit dure jusqu'à 7 h, René veille, puis le temps redevient normal.
+
 ### Étape 2 — Manger (jour 2)
 
 Le vieux parle d’un mas en bas du vallon, avec des vignes que personne n’a vendangées et un potager. On y descend : c’est
@@ -97,7 +103,7 @@ jours. »*
 ### Étape 3 — Construire le camp (jour 2)
 
 Le conducteur ne trouve pas la panne ; on va rester. Avec le menu Construire et de vrais matériaux (des branches, la
-bâche du fourgon, le fil de fer d’une clôture), tu creuses un **feu caché** dans un creux (la lumière attire les morts),
+vieille bâche de la remise du mas, le fil de fer d’une clôture), tu creuses un **feu caché** dans un creux (la lumière attire les morts),
 tu tends **une ligne de boîtes de conserve** autour du camp et tu montes **un abri**. La nuit suivante, les boîtes
 sonnent pour la première fois.
 

@@ -161,7 +161,22 @@ const SPECIAUX = {
     c.strokeStyle = 'rgba(25,16,8,0.55)'; c.lineWidth = 0.7; for (let k = 0; k < 6; k++) { const y = -4 + k * 1.6; c.beginPath(); c.moveTo(-13, y + (r() - 0.5)); c.lineTo(13, y + (r() - 0.5)); c.stroke(); }
     c.fillStyle = '#c4a272'; ellipse(c, 14, 0, 2.8, 5.2); c.fill(); c.strokeStyle = 'rgba(110,70,30,0.6)'; c.lineWidth = 0.5; ellipse(c, 14, 0, 1.4, 2.8); c.stroke();
   } },
-  pierre: { R: 14, n: 3, e: eparpille(6, 4), d: (c, r) => caillou(c, 0, 0, 4.6 + r() * 1.6, r, ['#8e877a', '#857f73', '#968e7e'][Math.floor(r() * 3)]) },
+  // assez gros et assez clairs pour se détacher du sol : une pierre, ça se ramasse (docs/RETOURS_JOUEUR.md)
+  pierre: { R: 20, n: 3, e: eparpille(9, 6), d: (c, r) => {
+    const t = 7 + r() * 2.4;
+    c.fillStyle = 'rgba(10,8,6,0.45)'; ellipse(c, 1.6, 2.2, t * 1.05, t * 0.82); c.fill();   // son ombre portée
+    caillou(c, 0, 0, t, r, ['#c4bcac', '#b6ae9e', '#cec6b4', '#a89f8e'][Math.floor(r() * 4)]);
+  } },
+  feuilles: { R: 20, n: 1, d: (c, r) => {
+    c.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(c, 1, 1.5, 15, 10.5); c.fill();
+    for (let k = 0; k < 46; k++) {
+      const a = r() * TAU, d = Math.sqrt(r()) * 13;
+      c.save(); c.translate(Math.cos(a) * d, Math.sin(a) * d * 0.72); c.rotate(r() * TAU);
+      c.fillStyle = ['#8a6a2a', '#7a5a26', '#9a7032', '#5a4a22', '#6a3a1a', '#a08034'][Math.floor(r() * 6)]; ellipse(c, 0, 0, 3.6, 2); c.fill();
+      c.strokeStyle = 'rgba(30,18,6,0.45)'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(-3.4, 0); c.lineTo(3.4, 0); c.stroke();
+      c.restore();
+    }
+  } },
   brique: { R: 13, n: 2, e: eparpille(5, 5), d: (c) => { plein(c, '#a24a32', () => rr(c, -9, -4.5, 18, 9, 1)); c.fillStyle = 'rgba(0,0,0,0.25)'; cercle(c, -4, 0, 1.4); c.fill(); cercle(c, 0, 0, 1.4); c.fill(); cercle(c, 4, 0, 1.4); c.fill(); } },
   planche: { R: 28, n: 2, e: eparpille(2, 6), d: (c, r) => {
     plein(c, '#a07a4e', () => c.rect(-24, -4.5, 48, 9));

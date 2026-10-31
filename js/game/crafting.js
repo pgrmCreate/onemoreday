@@ -116,10 +116,10 @@ export function compteParCategorie(p) {
   for (const r of RECIPES) { const e = etatRecette(r, p); const x = o[r.cat] || (o[r.cat] = { faisables: 0, connues: 0, total: 0 }); x.total++; if (e.connue) x.connues++; if (e.faisable) x.faisables++; }
   return o;
 }
-// Durée réelle de la barre (ms) pour tempsMin : tempsMin × MS_PAR_MINUTE / FABRICATION (×6 en solo).
+// Durée réelle de la barre (ms) pour tempsMin : tempsMin × MS_PAR_MINUTE / FABRICATION_ACCELERE, entre les bornes de REGLAGES.craft.
 export function dureeBarreMs(tempsMin) {
-  const acc = REGLAGES.temps.FABRICATION_ACCELERE || 6;
-  return Math.min(12000, tempsMin * (REGLAGES.temps.MS_PAR_MINUTE || 1000) / acc);
+  const acc = REGLAGES.temps.FABRICATION_ACCELERE || 2;
+  return Math.max(K().BARRE_MIN_MS, Math.min(K().BARRE_MAX_MS, tempsMin * (REGLAGES.temps.MS_PAR_MINUTE || 1000) / acc));
 }
 
 // ---------- Fabriquer ----------

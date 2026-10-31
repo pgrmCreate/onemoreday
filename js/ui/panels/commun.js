@@ -1,6 +1,7 @@
 // ============ Outils communs aux panneaux ============
 import { el, escapeHtml } from '../../core/util.js';
 import { genrer } from '../../core/state.js';
+import { emit } from '../../core/bus.js';
 import { ico, icoEl } from '../icons.js';
 
 export { el, escapeHtml, ico, icoEl };
@@ -48,6 +49,15 @@ export function avecScroll(racine, rendre) {
   rendre();
   racine.querySelectorAll('[data-scroll]').forEach(n => { if (pos[n.dataset.scroll] != null) n.scrollTop = pos[n.dataset.scroll]; });
 }
+// Un geste demandé depuis un panneau (boire, soigner) : il se joue sur le terrain, chronométré ; ailleurs (carte, voyage), tout de suite.
+export function demanderGeste(label, ms, fin, o = {}) {
+  const d = { label, ms, fin, ...o };
+  emit('geste:demande', d);
+  if (!d.pris) fin();
+}
+// La moitié droite d'une silhouette, d'après sa moitié gauche : même tracé, retourné autour de l'axe (coordonnées absolues « x y »).
+export const miroir = (d, axe) => d.replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (_, x, y) => `${axe * 2 - Number(x)} ${y}`);
+export const paire = (d, axe) => `${d} ${miroir(d, axe)}`;
 export function vide(texte, icone = 'divers') {
   return el('div', { class: 'pn-vide' }, icoEl(icone), el('p', {}, texte));
 }
