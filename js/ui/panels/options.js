@@ -20,6 +20,7 @@ appliquerTailleTexte();
 
 let audio = null;
 const chargerAudio = () => audio ? Promise.resolve(audio) : import('../../audio.js').then(m => (audio = m)).catch(() => null);
+const clicFort = () => chargerAudio().then(a => a && a.sfx && a.sfx('clic_fort'));
 
 let etat = { onglet: 'reglages', confirmer: false };
 export function monter(racine) {
@@ -70,12 +71,12 @@ function dessiner(racine) {
       // mémorisé dans les préférences : il reste actif aux parties suivantes (core/cadence.js)
       ligne('pile', 'Mode économie', '30 images par seconde au lieu de 60 : le téléphone chauffe moins et la batterie tient plus longtemps.', interrupteur(!!pref('economie'), (v) => { setPref('economie', v); dessiner(racine); }, 'Mode économie')));
     z.append(el('h3', { class: 'pn-section' }, 'Partie'));
-    if (G && G.mode !== 'invite') z.append(ligne('coche', 'Sauvegarder', 'La partie se sauvegarde aussi seule, à chaque lieu.', bouton({ label: 'Sauvegarder', icone: 'coche', cls: 'second', onclick: () => toast(sauver() ? 'Partie sauvegardée.' : 'Sauvegarde impossible.', 'info') })));
+    if (G && G.mode !== 'invite') z.append(ligne('coche', 'Sauvegarder', 'La partie se sauvegarde aussi seule, à chaque lieu.', bouton({ label: 'Sauvegarder', icone: 'coche', cls: 'second', onclick: () => { clicFort(); toast(sauver() ? 'Partie sauvegardée.' : 'Sauvegarde impossible.', 'info'); } })));
     z.append(ligne('quitter', 'Quitter vers le titre', etat.confirmer ? 'Sûr ? Ce qui n\'est pas sauvegardé sera perdu.' : null,
       etat.confirmer
         ? el('div', { class: 'op-confirme' }, bouton({ label: 'Annuler', cls: 'second', onclick: () => { etat.confirmer = false; dessiner(racine); } }),
-            bouton({ label: 'Quitter', icone: 'quitter', cls: 'danger', onclick: () => { if (G && G.mode !== 'invite') sauver(); import('./index.js').then(m => m.fermerPanneau()); emit('menu:titre', {}); } }))
-        : bouton({ label: 'Quitter', icone: 'quitter', cls: 'second', onclick: () => { etat.confirmer = true; dessiner(racine); } })));
+            bouton({ label: 'Quitter', icone: 'quitter', cls: 'danger', onclick: () => { clicFort(); if (G && G.mode !== 'invite') sauver(); import('./index.js').then(m => m.fermerPanneau()); emit('menu:titre', {}); } }))
+        : bouton({ label: 'Quitter', icone: 'quitter', cls: 'second', onclick: () => { clicFort(); etat.confirmer = true; dessiner(racine); } })));
   } else {
     const T = [
       ['Se déplacer', 'Z Q S D · W A S D · flèches', 'Joystick à gauche'],

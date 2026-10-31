@@ -830,14 +830,14 @@ function tension() {
     const ici = lieuDansZone(V.lieuId), t = performance.now(), S = REGLAGES.ruees.SIRENE_S;
     if (!V.tSirene || t >= V.tSirene) {
       V.tSirene = t + (S[0] + Math.random() * (S[1] - S[0])) * 1000 * (ici ? 1 : 2.2);
-      sfx('sirene', { volume: ici ? 1 : 0.22 });
+      sfx('sirene', { volume: ici ? 1 : 0.22, dehors: true });
     }
   }
   // L'orage : le tonnerre roule de temps en temps (étouffé à l'intérieur, par le canal du dehors)
   if (V.meteo === 'orage' && !V.arene) {
     const t = performance.now();
     if (!V.tTonnerre) V.tTonnerre = t + 4000 + Math.random() * 8000;
-    if (t >= V.tTonnerre) { V.tTonnerre = t + 20000 + Math.random() * 45000; sfx('tonnerre', { volume: 0.6 + Math.random() * 0.4 }); }
+    if (t >= V.tTonnerre) { V.tTonnerre = t + 20000 + Math.random() * 45000; sfx('tonnerre', { volume: 0.6 + Math.random() * 0.4, dehors: true }); }
   }
   // Les cloches du soir : tant que Maud guette, elles sonnent sur Salon chaque soir à 21 h 10
   // (l'heure où l'horloge s'est arrêtée). Une fois par jour, dehors, en ville.

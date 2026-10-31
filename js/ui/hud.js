@@ -69,6 +69,7 @@ function construire() {
   els.pastJournal = racine.querySelector('[data-p=journal] .hud-pastille');
   racine.querySelectorAll('.hud-btn').forEach(b => b.addEventListener('click', () => {
     if (b.dataset.p === 'journal') els.pastJournal.hidden = true;
+    import('../audio.js').then(a => a.sfx && a.sfx(b.dataset.p === 'options' ? 'clic_fort' : 'clic')).catch(() => {});
     ouvrirPanneau(b.dataset.p);
   }));
   els.obj.addEventListener('click', () => ouvrirPanneau('journal', { onglet: 'objectifs' }));

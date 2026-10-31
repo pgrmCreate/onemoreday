@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Écoute des sons</title>
+<style>
+  :root { --fond: #16181b; --carte: #202328; --trait: #33383f; --texte: #e8e6e1; --doux: #9ca3ab; --acc: #d9a441; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fond); color: var(--texte); font: 16px/1.45 system-ui, sans-serif; padding: 20px 16px 96px; }
+  main { max-width: 820px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 32px 0 12px; color: var(--acc); }
+  .intro { color: var(--doux); margin: 0 0 8px; }
+  .place { background: var(--carte); border: 1px solid var(--trait); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+  .place h3 { margin: 0 0 4px; font-size: 17px; }
+  .place p { margin: 0 0 4px; color: var(--doux); font-size: 14px; }
+  .place > audio { display: block; width: 100%; height: 36px; margin: 6px 0; }
+  .cand { display: grid; grid-template-columns: 24px 1fr; gap: 4px 8px; padding: 10px 0 6px; border-top: 1px solid var(--trait); margin-top: 8px; }
+  .cand input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--acc); }
+  .cand label { font-weight: 600; overflow-wrap: anywhere; }
+  .cand small { color: var(--doux); font-weight: 400; }
+  .cand audio { grid-column: 1 / -1; width: 100%; height: 36px; }
+  .refus { display: flex; gap: 8px; align-items: center; margin-top: 10px; color: var(--doux); font-size: 14px; }
+  .refus input { width: 18px; height: 18px; accent-color: var(--acc); }
+  .barre { position: fixed; left: 0; right: 0; bottom: 0; background: #101214; border-top: 1px solid var(--trait); padding: 10px 16px; display: flex; justify-content: center; gap: 14px; align-items: center; }
+  .barre button { background: var(--acc); color: #1b1b1b; border: 0; border-radius: 6px; font: 600 15px system-ui; padding: 9px 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Compléter la bande sonore</h1>
+  <p class="intro">Coche un ou plusieurs candidats par emplacement : si tu en gardes plusieurs, le jeu les fera tourner au hasard. Tout vient de Pixabay, gratuit et sans attribution. Je me suis fié aux titres et aux durées, sans pouvoir écouter : c'est ton oreille qui tranche. Ta sélection se garde toute seule.</p>
+  <section class="place">
+    <h3>Sons retravaillés, à valider</h3>
+    <p>La tôle au loin : plus aucun son direct, une grappe de trois copies noyée dans une longue réverbération.</p>
+    <audio controls preload="none" src="../audio/environnement/tole-loin-1.mp3"></audio>
+    <audio controls preload="none" src="../audio/environnement/tole-loin-2.mp3"></audio>
+    <audio controls preload="none" src="../audio/environnement/tole-loin-3.mp3"></audio>
+    <audio controls preload="none" src="../audio/environnement/tole-loin-4.mp3"></audio>
+    <p>Water Dripping coupé en trois, avec écho.</p>
+    <audio controls preload="none" src="../audio/environnement/goutte-echo-1.mp3"></audio>
+    <audio controls preload="none" src="../audio/environnement/goutte-echo-2.mp3"></audio>
+    <audio controls preload="none" src="../audio/environnement/goutte-echo-3.mp3"></audio>
+  </section>
+  <div id="liste"></div>
+</main>
+<div class="barre"><span id="compte">0 son choisi</span><button id="copier" type="button">Copier ma sélection</button></div>
+<script>
+const P = 'https://cdn.pixabay.com/audio/';
+const GROUPES = [
+  { titre: 'Fouille : le bruit change selon le meuble', places: [
+    { id: 'fouille_bois', nom: 'Tiroirs et armoires en bois', etat: 'Aujourd’hui, deux bruits de fouille identiques partout.', ou: 'Bureaux, cuisines, comptoirs, penderies.', c: [
+      [81308, 'Rummaging in a drawer', 9, '2022/03/15/audio_fe7b261067.mp3'],
+      [88854, 'Searching through desk drawer', 5, '2022/03/15/audio_6e8e8ef559.mp3'],
+      [107740, 'Dresser Drawer', 9, '2022/03/26/audio_7b54f2508a.mp3'],
+      [72891, 'Tons of drawers and ambries being open and closed', 16, '2022/03/15/audio_dc3ab97e88.mp3'] ] },
+    { id: 'fouille_metal', nom: 'Métal : casiers, outils, étagères', etat: 'Aucun son de métal à la fouille.', ou: 'Étagères, caisses, distributeurs, garages, Weldom, vestiaires.', c: [
+      [399667, 'Digging through tool drawer', 10, '2025/09/05/audio_720c6ae928.mp3'],
+      [13197, 'Tools, metal tools, tool kit', 12, '2021/12/31/audio_1af93d1a9f.mp3'],
+      [65501, 'File cabinet open and close', 14, '2022/03/14/audio_8762e9b8fa.mp3'],
+      [74318, 'LockerOpenClose', 15, '2022/03/15/audio_1f94a09c7d.mp3'] ] },
+    { id: 'fouille_papier', nom: 'Papier, carton, plastique', etat: 'Aucun bruit de papier ni de sac.', ou: 'Cartons, poubelles, sacs, bureaux de mairie, médiathèque.', c: [
+      [104299, 'Fumbling with a Box', 9, '2022/03/24/audio_ccc880864c.mp3'],
+      [66647, 'Rustling a newspaper', 16, '2022/03/14/audio_6ced8b9d88.mp3'],
+      [46380, 'Rustling Paper', 6, '2022/03/10/audio_7b0be95681.mp3'],
+      [26972, 'Plastic bag', 19, '2022/03/09/audio_81e9c58126.mp3'] ] },
+    { id: 'fouille_voiture', nom: 'Voiture', etat: 'Une voiture se fouille avec le bruit d’un tiroir.', ou: 'Au début de la fouille d’une voiture : la portière s’ouvre.', c: [
+      [14507, 'Squeaky Car Door', 22, '2022/01/18/audio_ae479a23c6.mp3'],
+      [402584, 'Car door opening', 5, '2025/09/10/audio_3deb3e57c7.mp3'],
+      [45512, 'Car Door Closing and Opening', 7, '2022/03/10/audio_a2dffb7e1a.mp3'] ] },
+    { id: 'fouille_terre', nom: 'Terre, feuilles, branches', etat: 'Dans les bois, on fouille encore avec des bruits de meuble.', ou: 'Sol, lit de feuilles, tas de bois, tentes, bois de la Barben.', c: [
+      [482874, 'Dry Leaves Rustling', 10, '2026/02/10/audio_a52e03582a.mp3'],
+      [6875, 'Rustling leaves', 18, '2021/08/09/audio_7a0b82f054.mp3'],
+      [329006, 'Branch Movement', 23, '2025/04/18/audio_14a10e65e5.mp3'],
+      [6691, 'Digging', 7, '2021/08/09/audio_fe886b9253.mp3'] ] },
+  ] },
+  { titre: 'Musiques : là où ça tourne en rond', places: [
+    { id: 'musique_combat', nom: 'Combat', etat: 'Six morceaux, mais très courts : de 10 à 47 secondes. C’est sans doute ce qui s’entend le plus.', ou: 'Tous les combats.', c: [
+      [263069, 'Survival Horror', 123, '2024/11/11/audio_68cb9bd2fb.mp3'],
+      [253760, 'Rise Of The Zombies', 100, '2024/10/22/audio_ba2de00384.mp3'],
+      [271171, 'Spinning Head', 128, '2024/12/02/audio_4255c48290.mp3'],
+      [297629, 'Cinematic Tension', 109, '2025/02/06/audio_bdad1cfc37.mp3'] ] },
+    { id: 'musique_tension', nom: 'Un mort approche', etat: 'Trois morceaux de 10, 19 et 54 secondes, dont deux viennent du combat.', ou: 'Quand un mort se rapproche, avant le combat.', c: [
+      [612318, 'Zeros (Tension)', 134, '2026/09/29/audio_1e9bd0fa3f.mp3'],
+      [614347, 'Grey Square (Tension)', 120, '2026/10/02/audio_708985ae65.mp3'],
+      [622546, 'Suspense Tension', 186, '2026/10/18/audio_bf870b155e.mp3'],
+      [501709, 'Suspense', 103, '2026/03/13/audio_b49cc4c9ab.mp3'] ] },
+    { id: 'musique_interieur', nom: 'Lieux fermés', etat: 'Magasins, hôpital, commissariat, gare, garage, église : pas de vraie musique, seulement de petites notes synthétisées. C’est le plus gros trou.', ou: 'Tous les bâtiments, en plus du lit sonore de chaque lieu.', c: [
+      [437429, 'Drone', 134, '2025/11/15/audio_a1a72565eb.mp3'],
+      [518685, 'Drone Ambient', 240, '2026/04/13/audio_0ddab8ccf9.mp3'],
+      [511876, 'Ominous', 142, '2026/03/31/audio_0a40610e6c.mp3'],
+      [518292, 'Ambient Horror', 148, '2026/04/27/audio_d9b6cb813f.mp3'] ] },
+    { id: 'musique_nuit', nom: 'La nuit dehors', etat: 'Quatre pistes, déjà jouées aussi le jour.', ou: 'Dehors, la nuit.', c: [
+      [595682, 'Night Ambience', 128, '2026/09/01/audio_1a66a762c4.mp3'],
+      [380681, 'Night Suspense', 136, '2025/07/26/audio_89e87b60c8.mp3'],
+      [586983, 'Horror Ambient Dark Atmosphere', 144, '2026/08/17/audio_2530ded16d.mp3'],
+      [520165, 'Dystopian Ambient', 122, '2026/04/21/audio_48784d340a.mp3'] ] },
+    { id: 'musique_collines', nom: 'Collines et bois, mélancolique', etat: 'Entre le « mystère » et le « très calme », rien pour une marche triste de jour, comme le début à la Barben.', ou: 'Campagne de jour, sans danger proche, dès le début du jeu.', c: [
+      [604060, 'Melancholic', 131, '2026/09/15/audio_0be918b8dc.mp3'],
+      [114947, 'Sad Ambient', 153, '2022/07/14/audio_9ff58fc73b.mp3'],
+      [295786, 'Calm Ambient', 127, '2025/02/01/audio_2b695d900c.mp3'],
+      [615222, 'Our Story In The Past (Sad Piano)', 122, '2026/10/04/audio_92e66fa36d.mp3'] ] },
+  ] },
+  { titre: 'Petits sons encore synthétisés', places: [
+    { id: 'orage', nom: 'Le tonnerre', etat: 'Synthétisé.', ou: 'Les orages.', c: [
+      [405128, 'Distant Thunder', 36, '2025/09/15/audio_748ed78cbb.mp3'],
+      [191992, 'Peals of Thunder', 9, '2024/02/19/audio_8d25df9ef0.mp3'],
+      [73277, 'Thunder Sounds Long', 31, '2022/03/15/audio_6a20f131f4.mp3'],
+      [124463, 'Thunder Strike', 11, '2022/10/30/audio_65a2d39d7c.mp3'] ] },
+    { id: 'sirene', nom: 'Les sirènes de l’armée', etat: 'Synthétisées, alors que c’est un moment fort du jeu.', ou: 'Les ruées annoncées par les sirènes.', c: [
+      [128262, 'Civil Defense Siren', 57, '2022/12/05/audio_b0137167cf.mp3'],
+      [164346, 'WW2 UK Air Raid Siren', 49, '2023/08/30/audio_8fa6a54c54.mp3'],
+      [241383, 'Air Raid Siren', 15, '2024/09/16/audio_5464b60e9b.mp3'] ] },
+    { id: 'radio', nom: 'La radio', etat: 'Friture et bips synthétisés.', ou: 'Radio du joueur, commissariat.', c: [
+      [46734, 'Old radio noise', 9, '2022/03/10/audio_59a652634b.mp3'],
+      [298746, 'Radio Tuning 1', 11, '2025/02/08/audio_0ad24ff69a.mp3'],
+      [323621, 'Radio Static', 8, '2025/04/06/audio_7ad9983b3e.mp3'] ] },
+    { id: 'metal_ville', nom: 'Tôle et ferraille au loin', etat: 'Synthétisées, et très présentes dehors.', ou: 'Rue, gare, triage, garage, magasins.', c: [
+      [511322, 'Groaning Metal', 6, '2026/03/30/audio_5fa568400e.mp3'],
+      [415814, 'Metal Rattling', 9, '2025/10/05/audio_107c7decc3.mp3'],
+      [96330, 'Metal clanking light', 8, '2022/03/19/audio_0d1a632ac2.mp3'],
+      [47323, 'Metal Door Creaking Closing', 5, '2022/03/10/audio_39ecb45397.mp3'] ] },
+    { id: 'batiment', nom: 'Le bâtiment qui vit : craquements et gouttes', etat: 'Synthétisés. Ce sont les bruits les plus fréquents dedans.', ou: 'Tous les intérieurs, les grottes.', c: [
+      [474057, 'Wooden Walls Creaking', 7, '2026/01/26/audio_cd3015efd5.mp3'],
+      [411791, 'Wood creaks', 7, '2025/09/28/audio_d46c1bafb6.mp3'],
+      [499661, 'Floorboard Creak 04', 4, '2026/03/10/audio_5466f57961.mp3'],
+      [482871, 'Droplets in a Cave', 7, '2026/02/10/audio_a02ffddc37.mp3'],
+      [62956, 'Water Dripping', 18, '2022/03/14/audio_99e573e544.mp3'],
+      [45622, 'Water Drip', 1, '2022/03/10/audio_36af1110f4.mp3'] ] },
+    { id: 'clic', nom: 'Le clic de l’interface', etat: 'Synthétisé. On l’entend à chaque bouton et à chaque objet révélé.', ou: 'Menus, inventaire, fouille.', c: [
+      [126517, 'Soft Interface Click', 1, '2022/11/20/audio_244968a8c0.mp3'],
+      [124476, 'Interface Click', 1, '2022/10/30/audio_f5dbe8213e.mp3'],
+      [147358, 'UI Button Click', 0, '2023/04/23/audio_4de3f97248.mp3'],
+      [43196, 'UI click', 0, '2022/03/10/audio_1f6d9a0355.mp3'] ] },
+  ] },
+];
+
+const CLE = 'omd_ecoute_sons';
+let choix = {};
+try { choix = JSON.parse(localStorage.getItem(CLE)) || {}; } catch (e) { choix = {}; }
+function sauver() { try { localStorage.setItem(CLE, JSON.stringify(choix)); } catch (e) { /* page utilisable sans mémoire */ } }
+const duree = (s) => s >= 60 ? `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')}` : `${Math.max(1, s)} s`;
+
+const liste = document.getElementById('liste');
+for (const g of GROUPES) {
+  const h = document.createElement('h2'); h.textContent = g.titre; liste.append(h);
+  for (const p of g.places) {
+    const s = document.createElement('section'); s.className = 'place';
+    s.innerHTML = `<h3>${p.nom}</h3><p>${p.etat}</p><p>Où : ${p.ou}</p>`;
+    for (const [id, nom, d, f] of p.c) {
+      const k = `${p.id}:${id}`, c = document.createElement('div'); c.className = 'cand';
+      c.innerHTML = `<input type="checkbox" id="c${k}"><label for="c${k}">${nom} <small>${duree(d)}</small></label><audio controls preload="none" src="${P}${f}"></audio>`;
+      const box = c.querySelector('input');
+      box.checked = !!(choix[p.id] || []).includes(id);
+      box.addEventListener('change', () => {
+        const l = new Set(choix[p.id] || []); if (box.checked) l.add(id); else l.delete(id);
+        choix[p.id] = [...l]; sauver(); compter();
+      });
+      s.append(c);
+    }
+    const r = document.createElement('label'); r.className = 'refus';
+    r.innerHTML = '<input type="checkbox"> Aucun ne me plaît, cherche autre chose';
+    const b = r.querySelector('input'); b.checked = !!choix[`${p.id}_refus`];
+    b.addEventListener('change', () => { choix[`${p.id}_refus`] = b.checked; sauver(); compter(); });
+    s.append(r); liste.append(s);
+  }
+}
+// un seul son à la fois
+document.addEventListener('play', (e) => { document.querySelectorAll('audio').forEach(a => { if (a !== e.target) a.pause(); }); }, true);
+function texte() {
+  const l = [];
+  for (const g of GROUPES) for (const p of g.places) {
+    if ((choix[p.id] || []).length) l.push(`${p.id}: ${choix[p.id].join(', ')}`);
+    if (choix[`${p.id}_refus`]) l.push(`${p.id}: autre chose`);
+  }
+  return l.join('\n');
+}
+function compter() {
+  const n = Object.keys(choix).filter(k => !k.endsWith('_refus')).reduce((t, k) => t + choix[k].length, 0);
+  document.getElementById('compte').textContent = `${n} son${n > 1 ? 's' : ''} choisi${n > 1 ? 's' : ''}`;
+  window.selection = texte();
+}
+document.getElementById('copier').addEventListener('click', async (e) => {
+  try { await navigator.clipboard.writeText(texte()); e.target.textContent = 'Copié'; } catch (err) { e.target.textContent = 'Copie impossible'; }
+  setTimeout(() => { e.target.textContent = 'Copier ma sélection'; }, 1600);
+});
+compter();
+</script>
+</body>
+</html>

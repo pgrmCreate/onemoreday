@@ -80,7 +80,7 @@ export function ecranTitre() {
     </div>
     <p class="aide">Jeu pour adultes : violence et gore explicites.</p>`, 'refuge_place');
   c.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
-    try { audio.sfx('clic'); } catch (e) {}
+    try { audio.sfx('clic_fort'); } catch (e) {}
     pleinEcran();
     const a = b.dataset.a;
     if (a === 'continuer') continuer('solo');
@@ -140,6 +140,7 @@ export function ecranCreation({ mode = 'solo', apres } = {}) {
     nouvelleAventure({ nom, genre, difficulte: diff, mode });
   };
   commencer.onclick = () => {
+    try { audio.sfx('clic_fort'); } catch (e) {}
     const sauvegarde = mode === 'solo' && !apres ? resumeSauvegarde('solo') : null;
     if (!sauvegarde) { lancer(); return; }
     const qui = sauvegarde.nom ? ` avec ${sauvegarde.nom}` : '';

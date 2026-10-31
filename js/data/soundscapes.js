@@ -5,9 +5,9 @@
 // propre à l'endroit. La nuit ajoute ses propres bruits.
 // Tout est synthétisé par js/audio.js — les noms de stingers y sont définis.
 
-// Musique d'exploration CALME (campagne paisible) : seulement de jour, hors de Salon,
-// dans un lieu peu dangereux, et une fois les premiers jours passés. Partout ailleurs
-// (le réveil au cimetière, la ville, les lieux risqués, la nuit) : mystère et tension sourde.
+// Musiques de CAMPAGNE paisible : seulement de jour, hors de Salon, dans un lieu peu dangereux.
+// D'abord mélancoliques, puis aussi très calmes une fois les premiers jours passés (DES_JOUR).
+// Partout ailleurs (le réveil au cimetière, la ville, les lieux risqués, la nuit) : mystère et tension sourde.
 export const EXPLORATION_CALME = { DANGER_MAX: 0.25, DES_JOUR: 4 };
 
 // Carte → scène sonore. Une carte absente retombe sur carte.ambiance (héritage).
@@ -59,7 +59,7 @@ export const SCENES_SONORES = {
     stingers: [['craquement', 3], ['vent_rafale', 1], ['goutte', 1], ['bois_travaille', 2], ['souffle_couloir', 1]],
     stingersNuit: [['gemissement', 1], ['grattement', 2], ['rat', 1]],
     intervalle: [10, 26],
-    musique: { theme: 'titre' }, // le générique — joue partout où 'calme' joue (écran titre compris)
+    musique: { theme: 'interieur' },
   },
   rue: {
     vent: [480, 0.16, 0.07],
@@ -76,7 +76,7 @@ export const SCENES_SONORES = {
     stingers: [['ferraille', 3], ['chariot', 2], ['verre', 2], ['rideau_fer', 2], ['tole', 1], ['craquement', 1], ['goutte', 1], ['chute_gravats', 2], ['metal_dilate', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1], ['rat', 2]],
     intervalle: [8, 22],
-    musique: { base: 104, gammes: [[0, 3, 5, 8, 10], [0, 3, 7, 8, 10]], p: 0.4, timbre: 'triangle' },
+    musique: { theme: 'interieur' },
   },
   eglise: {
     vent: [220, 0.07, 0.04],
@@ -85,7 +85,7 @@ export const SCENES_SONORES = {
     stingersNuit: [['gemissement', 1], ['hibou', 1]],
     stingersJour: [['oiseau_isole', 1]],
     intervalle: [10, 28],
-    musique: { base: 82.4, gammes: [[0, 2, 3, 7, 8], [0, 2, 5, 7, 8]], p: 0.6, timbre: 'sine', doux: true },
+    musique: { theme: 'interieur' },
   },
   musee: {
     vent: [240, 0.08, 0.05],
@@ -93,7 +93,7 @@ export const SCENES_SONORES = {
     stingers: [['craquement', 4], ['vent_rafale', 1], ['goutte', 1], ['grattement', 1], ['bois_travaille', 2], ['souffle_couloir', 1]],
     stingersNuit: [['gemissement', 1], ['grattement', 2], ['rat', 1]],
     intervalle: [9, 26],
-    musique: { base: 92.5, gammes: [[0, 2, 3, 5, 7], [0, 2, 5, 7, 9]], p: 0.5, timbre: 'sine' },
+    musique: { theme: 'interieur' },
   },
   gare: {
     vent: [520, 0.16, 0.09],
@@ -102,7 +102,7 @@ export const SCENES_SONORES = {
     stingersNuit: [['gemissement', 2], ['grattement', 1], ['insectes_nuit', 1]],
     stingersJour: [['cigales', 2], ['oiseau_isole', 1]],
     intervalle: [7, 19],
-    musique: { base: 98, gammes: [[0, 3, 5, 7, 10], [0, 3, 5, 6, 10]], p: 0.45, timbre: 'triangle' },
+    musique: { theme: 'interieur' },
   },
   triage: {
     vent: [560, 0.18, 0.10],
@@ -111,7 +111,7 @@ export const SCENES_SONORES = {
     stingersNuit: [['gemissement', 3], ['hibou', 1], ['insectes_nuit', 1]],
     stingersJour: [['cigales', 2]],
     intervalle: [6, 16],
-    musique: { base: 87.3, gammes: [[0, 3, 5, 6, 10], [0, 1, 3, 6, 8]], p: 0.45, timbre: 'triangle' },
+    musique: { theme: 'exploration' },
   },
   hopital: {
     vent: [200, 0.06, 0.04],
@@ -119,7 +119,7 @@ export const SCENES_SONORES = {
     stingers: [['neon', 3], ['goutte', 3], ['ferraille', 1], ['gemissement', 1], ['grattement', 1], ['gouttiere', 2], ['souffle_couloir', 2], ['eau_egout', 1]],
     stingersNuit: [['gemissement', 3], ['grattement', 2], ['rat', 2]],
     intervalle: [6, 16],
-    musique: { base: 116.5, gammes: [[0, 1, 5, 7, 8], [0, 1, 3, 7, 8]], p: 0.4, timbre: 'sine' },
+    musique: { theme: 'interieur' },
   },
   commissariat: {
     vent: [240, 0.08, 0.05],
@@ -127,7 +127,7 @@ export const SCENES_SONORES = {
     stingers: [['radio_statique', 2], ['craquement', 2], ['ferraille', 1], ['goutte', 1], ['volet', 1], ['souffle_couloir', 1], ['bois_travaille', 1]],
     stingersNuit: [['gemissement', 2], ['grattement', 1], ['rat', 1]],
     intervalle: [8, 22],
-    musique: { base: 98, gammes: [[0, 3, 5, 7, 10], [0, 1, 5, 7, 8]], p: 0.4, timbre: 'triangle' },
+    musique: { theme: 'interieur' },
   },
   garage: {
     vent: [300, 0.09, 0.05],
@@ -135,7 +135,7 @@ export const SCENES_SONORES = {
     stingers: [['goutte', 3], ['ferraille', 3], ['tole', 2], ['rideau_fer', 1], ['craquement', 1], ['chariot', 1], ['metal_dilate', 2], ['chute_gravats', 1], ['gouttiere', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1], ['rat', 1]],
     intervalle: [7, 20],
-    musique: { base: 92.5, gammes: [[0, 3, 5, 7, 10], [0, 3, 5, 8, 10]], p: 0.35, timbre: 'triangle' },
+    musique: { theme: 'interieur' },
   },
   mediatheque: {
     vent: [230, 0.07, 0.04],
@@ -143,7 +143,7 @@ export const SCENES_SONORES = {
     stingers: [['pages', 3], ['craquement', 2], ['goutte', 1], ['pigeons', 1], ['bois_travaille', 1], ['souffle_couloir', 1]],
     stingersNuit: [['grattement', 2], ['gemissement', 1], ['rat', 2]],
     intervalle: [9, 24],
-    musique: { base: 110, gammes: [[0, 2, 5, 7, 9], [0, 2, 4, 7, 9]], p: 0.55, timbre: 'sine', doux: true },
+    musique: { theme: 'interieur' },
   },
   cinema: {
     vent: [150, 0.05, 0.03],
@@ -151,7 +151,7 @@ export const SCENES_SONORES = {
     stingers: [['craquement', 2], ['grattement', 2], ['goutte', 1], ['mouches', 1], ['souffle_couloir', 2], ['bois_travaille', 1]],
     stingersNuit: [['gemissement', 2], ['rat', 2]],
     intervalle: [8, 20],
-    musique: { base: 82.4, gammes: [[0, 1, 3, 7, 8], [0, 1, 5, 6, 8]], p: 0.35, timbre: 'sine' },
+    musique: { theme: 'interieur' },
   },
   region: {
     vent: [640, 0.20, 0.05],
@@ -160,7 +160,7 @@ export const SCENES_SONORES = {
     stingersNuit: [['hibou', 2], ['gemissement', 1], ['chien', 1], ['insectes_nuit', 3]],
     stingersJour: [['cigales', 4], ['oiseau_isole', 3]], // la garrigue salonaise en plein cagnard
     intervalle: [8, 20],
-    musique: { theme: 'exploration' }, // la route est longue — même thème que la rue (calme seulement si EXPLORATION_CALME le permet)
+    musique: { theme: 'exploration' }, // la route est longue — même thème que la rue (campagne seulement si EXPLORATION_CALME le permet)
   },
   village: {
     vent: [420, 0.12, 0.05],

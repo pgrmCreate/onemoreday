@@ -18,12 +18,24 @@ export function lierButin(v) { V = v; }
 
 // rect { x0, y0, x1, y1 } : l'emprise du meuble — la fenêtre reste ouverte tant qu'on est à portée de son bord (une
 // tente 3×3 se fouille depuis son flanc, loin de son centre)
-export async function commencerFouille(cle, nom, x, y, rect) {
+// Le bruit de la fouille suit ce qu'on fouille : le type du meuble d'abord, sa catégorie sinon.
+const FOUILLE_TYPE = { casier: 'fouille_metal', classeur: 'fouille_metal', rayonnage: 'fouille_metal', caisse_enreg: 'fouille_metal', etabli_meuble: 'fouille_metal',
+  palette: 'fouille_bois', tas_bois: 'fouille_feuilles', buisson: 'fouille_feuilles' };
+const FOUILLE_CAT = { bureau: 'fouille_bois', cuisine: 'fouille_bois', comptoir: 'fouille_bois', vetements: 'fouille_bois', table: 'fouille_bois', etagere: 'fouille_bois',
+  machine: 'fouille_metal', frigo: 'fouille_metal', caisse: 'fouille_papier', poubelle: 'fouille_papier' };
+function sonFouille(cle, m) {
+  if (cle.startsWith('cad:')) return 'fouille_corps';   // des vêtements qu'on retourne
+  return (m && (FOUILLE_TYPE[m.type] || FOUILLE_CAT[m.cat])) || 'fouille';
+}
+
+// m : le meuble fouillé, s'il y en a un (son bruit en dépend)
+export async function commencerFouille(cle, nom, x, y, rect, m) {
   const r = await V.canal.fouiller(cle);
   if (!V || r.erreur) return;
   if (r.verrouillee) { message(`${capitaliser(r.nom || nom)} est fermée à clé : il faut casser une vitre.`); return; }
   V.fouille = { cle, nom: r.nom || nom, items: r.items, duree: depotIci(cle) ? 400 : Math.max(400, r.dureeMs),   // on vient y ranger : on ne le fouille pas
-    p: r.progres || 0, x, y, rect, reveles: -1, tb: 0, tSon: 0, son: null };
+    p: r.progres || 0, x, y, rect, reveles: -1, tb: 0, nomSon: sonFouille(cle, m), tSon: 0, son: null };
+  if (m && m.cat === 'voiture') { sfx('portiere'); V.fouille.tSon = 2200; }   // la portière d'abord, on fouille ensuite
   ouvrirButin(V.fouille);
   majRevele();
 }
@@ -31,9 +43,8 @@ export function avancerFouille(dt) {
   const F = V.fouille, I = V.entrees.etat;
   if (Math.hypot(I.mx, I.my) > 0.3) { interrompreFouille(); return; }
   F.p = Math.min(1, F.p + dt / F.duree);
-  // le bruit de la fouille, relancé tant qu'on fouille (~5,6 s ; un cadavre : des vêtements qu'on retourne, ~7 s)
-  const corps = F.cle.startsWith('cad:');
-  F.tSon -= dt; if (F.tSon <= 0) { F.tSon = corps ? 6400 : 5200; F.son = sfx(corps ? 'fouille_corps' : 'fouille'); }
+  // le bruit de la fouille, relancé à la fin du précédent tant qu'on fouille
+  F.tSon -= dt; if (F.tSon <= 0) { F.son = sfx(F.nomSon); F.tSon = F.son ? F.son.duree * 1000 - 300 : 5200; }
   majRevele();
   if (F.p >= 1) {
     V.canal.arreterFouille(1);

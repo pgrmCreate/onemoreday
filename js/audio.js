@@ -75,6 +75,12 @@ const BANQUE_SFX = {
   mort_zombie:      { f: ['monster/zombie-death-fall.mp3'], vol: 0.75 }, // le corps tombe, un dernier râle
   fouille:          { f: ['effect/rummage-search.mp3', 'effect/rummage-search-2.mp3'], vol: 0.45 },
   fouille_corps:    { f: ['effect/body-search.mp3', 'effect/body-search-2.mp3'], vol: 0.28 }, // fouiller un cadavre : froissements de vêtements
+  // Le bruit de la fouille suit ce qu'on fouille (js/explore/butin.js). Égalisés sur la sonie : ces fichiers ont des silences et des chocs très différents.
+  fouille_bois:     { f: ['effect/fouille-bois-1.mp3', 'effect/fouille-bois-2.mp3', 'effect/fouille-bois-3.mp3', 'effect/rummage-search.mp3'], vol: 0.25, rms: true }, // tiroirs, placards, armoires
+  fouille_metal:    { f: [1, 2, 3, 4].map(i => `effect/fouille-metal-${i}.mp3`), vol: 0.25, rms: true }, // casiers, classeurs, outils
+  fouille_papier:   { f: ['effect/fouille-papier-1.mp3', 'effect/fouille-papier-2.mp3'], vol: 0.25, rms: true }, // cartons, poubelles, bâches
+  fouille_feuilles: { f: ['effect/fouille-feuilles-1.mp3', 'effect/fouille-feuilles-2.mp3'], vol: 0.25, rms: true }, // branches, feuilles sèches
+  portiere:         { f: ['effect/portiere-voiture.mp3'], vol: 0.5 }, // on ouvre la voiture avant de la fouiller
   vitre:            { f: ['effect/glass-break.mp3'], vol: 0.8 },
   alarme_voiture:   { f: ['effect/car-alarm.mp3'], vol: 0.75 },   // une alarme de voiture qui hurle (vitre cassée), ~2,1 s rejouées
   boire:            { f: ['action/drink-gulp.mp3'], vol: 0.6 },
@@ -89,7 +95,17 @@ const BANQUE_SFX = {
   briquet:          { f: ['effect/lighter.mp3'], vol: 0.55 },
   allumette:        { f: ['effect/match-strike.mp3'], vol: 0.55 },
   craft:            { f: ['effect/craft-tools.mp3'], vol: 0.5 },
+  clic:             { f: ['effect/clic.mp3'], vol: 0.2 },        // le clic discret, celui de tous les jours
+  clic_fort:        { f: ['effect/clic-fort.mp3'], vol: 0.4 },   // plus présent : réservé aux grands choix (nouvelle partie, menu, quitter)
+  radio:            { f: ['effect/radio-friture.mp3'], vol: 0.4 },
+  tonnerre:         { f: [1, 2, 3, 4].map(i => `environnement/tonnerre-${i}.mp3`), vol: 0.6 },
+  sirene:           { f: ['environnement/sirene-1.mp3', 'environnement/sirene-2.mp3'], vol: 0.45 },
   // Bruits ponctuels d'ambiance (stingers) : un fichier « amb_<nom> » remplace la synthèse du même nom.
+  amb_tole:         { f: [1, 2, 3, 4].map(i => `environnement/tole-loin-${i}.mp3`), vol: 0.25 }, // loin dans la ville : uniquement la réverbération, sans son direct
+  amb_ferraille:    { f: [1, 2, 3, 4].map(i => `environnement/tole-loin-${i}.mp3`), vol: 0.25 },
+  amb_craquement:   { f: [1, 2, 3].map(i => `environnement/craquement-${i}.mp3`), vol: 0.2 },
+  amb_goutte:       { f: [...[1, 2, 3].map(i => `environnement/goutte-echo-${i}.mp3`), 'environnement/goutte-grotte.mp3', 'environnement/goutte-seule.mp3'], vol: 0.18 },
+  amb_radio_statique: { f: ['environnement/radio-statique-1.mp3', 'environnement/radio-statique-2.mp3'], vol: 0.12 },
   amb_corbeau:      { f: ['environnement/crow-1.mp3', 'environnement/crow-2.mp3', 'environnement/crow-3.mp3'], vol: 0.4 },
   amb_chien:        { f: ['environnement/dog-distant.mp3'], vol: 0.35 },
   amb_hibou:        { f: ['environnement/owl.mp3'], vol: 0.35 },
@@ -134,8 +150,9 @@ const BANQUE_HORDES = {
 // boucle d'un seul fichier à l'infini. Le 'vol' est relatif (1.0 = niveau de
 // référence) ; la sonie absolue est égalisée à l'écoute (RMS) puis abaissée par
 // MUSIQUE_GAIN. Déposez d'autres fichiers : la rotation les prend tout seuls.
+const PISTES_COLLINES = ['musique/collines-piano.mp3', 'musique/collines-calme.mp3'];
 const BANQUE_THEMES = {
-  titre:       { f: ['musique/menu-theme.mp3'], vol: 1.0 },  // accueil et menu
+  titre:      { f: ['musique/menu-theme.mp3'], vol: 1.0 },  // accueil et menu
   // Scènes lentes, moments suspendus (scènes et cinématiques « calme »).
   lent:        { f: ['musique/scene-lente.mp3'], vol: 1.0 },
   // Cinématiques et lieux sombres (scène « sombre ») : remplace le glas synthétisé.
@@ -144,10 +161,15 @@ const BANQUE_THEMES = {
   // sourde — jamais d'action, jamais de calme. Le calme est réservé à exploration_calme.
   exploration: { f: ['musique/empty-city.mp3', 'musique/suspence-calm.mp3', 'musique/ambiance-horror-calm-deep.mp3',
     'musique/mystere-dark-ambient.mp3', 'musique/mystere-eerie.mp3', 'musique/mystere-horror-ambient.mp3'], vol: 0.9 },
-  exploration_nuit: { f: ['musique/empty-city.mp3', 'musique/ambiance-horror-calm-deep.mp3', 'musique/mystere-dark-ambient.mp3', 'musique/mystere-horror-ambient.mp3'], vol: 0.9 },
-  // Très calme : campagne paisible de jour, après les premiers jours (voir explorationCalme).
+  exploration_nuit: { f: ['musique/empty-city.mp3', 'musique/ambiance-horror-calm-deep.mp3', 'musique/mystere-dark-ambient.mp3', 'musique/mystere-horror-ambient.mp3',
+    'musique/nuit-ambiance.mp3', 'musique/nuit-suspense.mp3', 'musique/nuit-dystopie.mp3'], vol: 0.9 },
+  // Mélancolique : la campagne de jour dès le début du jeu (voir themeCampagne).
+  exploration_collines: { f: PISTES_COLLINES, vol: 0.9 },
+  // Très calme : campagne paisible de jour, après les premiers jours (voir themeCampagne).
   exploration_calme: { f: ['musique/exploration-calme.mp3', 'musique/calme-guitare-paisible.mp3', 'musique/calme-matin-village.mp3',
-    'musique/calme-campagne.mp3', 'musique/calme-guitare-acoustique.mp3'], vol: 0.9 },
+    'musique/calme-campagne.mp3', 'musique/calme-guitare-acoustique.mp3', ...PISTES_COLLINES], vol: 0.9 },
+  // Les lieux fermés : magasins, hôpital, commissariat, gare, garage, église…
+  interieur:   { f: ['musique/interieur-drone.mp3', 'musique/interieur-menace.mp3', 'musique/interieur-horreur.mp3'], vol: 0.9 },
   train:       { f: ['musique/on-the-road.mp3'], vol: 1.0 },
   refuge:      { f: ['musique/refuge-calme.mp3', 'musique/refuge-piano-chaleureux.mp3', 'musique/refuge-piano-calme.mp3', 'musique/refuge-piano-doux.mp3'], vol: 1.0 },
   // Écran de mort : cordes lentes qui s'éteignent.
@@ -161,13 +183,16 @@ const BANQUE_THEMES = {
     'musique/action-suspence-music-4.mp3',
     'musique/bandit-tribut-action-music.mp3',
     'musique/epic-musique-action.mp3',
+    'musique/combat-survie.mp3',
+    'musique/combat-tension.mp3',
   ], vol: 1.0 },
-  // Tension : quand un zombie approche sur la carte, un sous-ensemble plus
-  // sombre et en retrait monte sous la nappe dissonante.
+  // Tension : quand un zombie approche sur la carte, des morceaux sombres et en
+  // retrait, distincts du combat, montent sous la nappe dissonante.
   tension: { f: [
     'musique/dark-action-deep.mp3',
-    'musique/action-suspence-music-3.mp3',
-    'musique/action-suspence-music-2.mp3',
+    'musique/tension-zeros.mp3',
+    'musique/tension-suspense.mp3',
+    'musique/tension-sourde.mp3',
   ], vol: 0.85 },
   // Réservée : une fin épique. Déclarée (chargée, équilibrée) mais pas encore
   // branchée dans le jeu — prête pour une future scène de fin.
@@ -177,7 +202,7 @@ const FICHIER_CHRONO = 'effect/chrono.mp3';
 const FICHIERS_PLUIE = { legere: 'environnement/light-rain-background.mp3', forte: 'environnement/rain-hard-background.mp3' };
 const SCENES_EXTERIEURES = new Set(['rue', 'region', 'village', 'triage', 'gare']);
 // Bruits ponctuels (fichiers amb_) qui se produisent DANS la pièce : jamais étouffés.
-const STINGERS_DEDANS = new Set(['feu_crepite']);
+const STINGERS_DEDANS = new Set(['feu_crepite', 'craquement', 'goutte', 'radio_statique']);
 let sons = {};         // nom sfx -> [{buffer, gain}]
 let chronoBuf = null;  // tampon du tic-tac (barre d'attente)
 let chronoNode = null; // boucle chrono en cours
@@ -284,7 +309,7 @@ function jouerSonFichier(entree, opts = {}) {
   src.start();
   src.onended = () => { try { src.disconnect(); g.disconnect(); } catch (e) {} };
   // Poignée pour couper un son long en cours (fouille interrompue…), en fondu bref.
-  return { stop() { try { const t = ctx.currentTime; g.gain.setTargetAtTime(0.0001, t, 0.05); src.stop(t + 0.25); } catch (e) {} } };
+  return { duree: entree.buffer.duration, stop() { try { const t = ctx.currentTime; g.gain.setTargetAtTime(0.0001, t, 0.05); src.stop(t + 0.25); } catch (e) {} } };
 }
 
 export function initAudio() {
@@ -365,13 +390,14 @@ function resoudreScene(id) {
   return sid;
 }
 
-// La campagne paisible mérite la musique calme ; pas le réveil au cimetière ni la ville.
-function explorationCalme(id, nuit) {
-  if (nuit || !G || !G.world) return false;
+// La campagne paisible a ses musiques : mélancoliques d'abord, puis aussi les très calmes ;
+// pas le réveil au cimetière ni la ville. Renvoie le thème, ou null s'il faut garder le mystère.
+function themeCampagne(id, nuit) {
+  if (nuit || !G || !G.world) return null;
   const lg = LIEUX_GAMEPLAY[id], li = LIEUX_GEO[id];
-  if (li && li.echelle === 'salon') return false;                       // en ville : jamais
-  if (lg && (lg.danger ?? 1) > EXPLORATION_CALME.DANGER_MAX) return false; // lieu risqué
-  return jour() >= EXPLORATION_CALME.DES_JOUR;
+  if (li && li.echelle === 'salon') return null;                       // en ville : jamais
+  if (lg && (lg.danger ?? 1) > EXPLORATION_CALME.DANGER_MAX) return null; // lieu risqué
+  return jour() >= EXPLORATION_CALME.DES_JOUR ? 'exploration_calme' : 'exploration_collines';
 }
 
 export function playAmbiance(id) {
@@ -380,9 +406,9 @@ export function playAmbiance(id) {
   const sid = resoudreScene(id);
   const nuit = !!(G && estNuit());
   let sc = SCENES_SONORES[sid];
-  const calme = !!(sc && sc.musique && sc.musique.theme === 'exploration' && explorationCalme(id, nuit));
-  if (calme) sc = { ...sc, musique: { theme: 'exploration_calme' } };
-  const cle = sid + (nuit ? ':n' : ':j') + (calme ? ':c' : '');
+  const campagne = sc && sc.musique && sc.musique.theme === 'exploration' ? themeCampagne(id, nuit) : null;
+  if (campagne) sc = { ...sc, musique: { theme: campagne } };
+  const cle = sid + (nuit ? ':n' : ':j') + (campagne ? `:${campagne}` : '');
   if (ambianceCourante === cle) return;
   ambianceCourante = cle;
   stopAmbiance();
